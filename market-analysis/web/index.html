@@ -543,13 +543,66 @@ function renderSignalMeter(prob, rec) {
 
 function renderFactors(rec, finalProb) {
   const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  const DOW_NAMES = ["周一","周二","周三","周四","周五","周六","周日"];
+  const DOW_LR = [0.940,0.981,1.038,1.004,1.038,1.0,1.0];
+
+  // 日历效应文字
+  const calLR = rec.cal_lr || 1.0;
+  const hlLR  = rec.holiday_lr || 1.0;
+  const womLR = rec.wom ? ({1:1.112,2:0.996,3:1.015,4:0.950,5:0.992}[rec.wom]||1.0) : 1.0;
+  function lrToText(lr) {
+    if (lr >= 1.20) return "强利好 ↑↑";
+    if (lr >= 1.10) return "利好 ↑";
+    if (lr >= 1.02) return "微正 →↑";
+    if (lr >= 0.98) return "中性 →";
+    if (lr >= 0.90) return "微负 →↓";
+    return "利空 ↓";
+  }
+  function lrToScore(lr) { return Math.min(0.9, Math.max(0.1, (lr - 0.85) / 0.45)); }
+
+  const calNote = (rec.month===4 && rec.dom===15) ? "报税截止日(66%)" :
+                  (rec.month===4 && rec.dom<=14)  ? "报税季前(57%)" :
+                  (rec.month===12 && rec.dom>=11 && rec.dom<=15) ? "税损收割(47%)" :
+                  (rec.month===12 && rec.dom>=21 && rec.dom<=25) ? "圣诞前(61%)" :
+                  ([1,4,7,10].includes(rec.month) && rec.dom<=5) ? "季初建仓(59%)" : "普通";
+
   const factors = [
-    { name:"月度季节性",    val: Math.round(rec.prior*100)+"%",  score: rec.prior, dir: rec.prior>0.6?"↑":rec.prior<0.5?"↓":"→" },
-    { name:"NASDAQ均线",    val: rec.nasdaq_ma200?"多头结构":"空头结构", score: rec.nasdaq_ma200?0.75:0.35, dir: rec.nasdaq_ma200?"↑":"↓" },
-    { name:"BTC 20日动量",  val: (rec.btc_mom20>0?"+":"")+Math.round(rec.btc_mom20*100)+"%", score: rec.btc_mom20>0.03?0.72:rec.btc_mom20<-0.03?0.38:0.55, dir: rec.btc_mom20>0?"↑":"↓" },
-    { name:"DXY 美元趋势",  val: (rec.dxy_trend>0?"+":"")+Math.round(rec.dxy_trend*100)+"%", score: rec.dxy_trend<-0.01?0.72:rec.dxy_trend>0.01?0.38:0.55, dir: rec.dxy_trend<0?"↑":"↓" },
-    { name:"NASDAQ波动率",  val: Math.round(rec.nasdaq_vol*100)+"%年化", score: rec.nasdaq_vol<0.15?0.72:rec.nasdaq_vol>0.25?0.35:0.55, dir: rec.nasdaq_vol<0.15?"↑":"↓" },
-    { name:"NASDAQ RSI",    val: Math.round(rec.nasdaq_rsi), score: rec.nasdaq_rsi<35?0.72:rec.nasdaq_rsi>75?0.35:0.55, dir: rec.nasdaq_rsi<35?"↑(超卖)":rec.nasdaq_rsi>75?"↓(超买)":"→" },
+    { name:"月度季节性",
+      val: MONTH[rec.month]+" "+Math.round(rec.prior*100)+"%",
+      score: rec.prior,
+      dir: rec.prior>0.6?"↑":rec.prior<0.5?"↓":"→" },
+    { name:`星期效应(${DOW_NAMES[rec.dow||0]})`,
+      val: lrToText(DOW_LR[rec.dow||0])+" LR×"+DOW_LR[rec.dow||0],
+      score: lrToScore(DOW_LR[rec.dow||0]),
+      dir: DOW_LR[rec.dow||0]>=1?"↑":"↓" },
+    { name:`月内第${rec.wom||"?"}周`,
+      val: lrToText(womLR)+" LR×"+womLR.toFixed(3),
+      score: lrToScore(womLR),
+      dir: womLR>=1?"↑":"↓" },
+    { name:"日历异常",
+      val: calNote+" LR×"+calLR.toFixed(3),
+      score: lrToScore(calLR),
+      dir: calLR>=1.05?"↑":calLR<=0.95?"↓":"→" },
+    { name:"假日效应",
+      val: hlLR>1.2?"节日窗口 ↑↑":hlLR>1.0?"节前/后 ↑":"普通",
+      score: lrToScore(hlLR),
+      dir: hlLR>1?"↑":"→" },
+    { name:"NASDAQ均线",
+      val: rec.nasdaq_ma200?"多头结构":"空头结构",
+      score: rec.nasdaq_ma200?0.75:0.35,
+      dir: rec.nasdaq_ma200?"↑":"↓" },
+    { name:"BTC 20日动量",
+      val: (rec.btc_mom20>0?"+":"")+Math.round((rec.btc_mom20||0)*100)+"%",
+      score: (rec.btc_mom20||0)>0.03?0.72:(rec.btc_mom20||0)<-0.03?0.38:0.55,
+      dir: (rec.btc_mom20||0)>0?"↑":"↓" },
+    { name:"DXY 美元趋势",
+      val: (rec.dxy_trend>0?"+":"")+Math.round((rec.dxy_trend||0)*100)+"%",
+      score: (rec.dxy_trend||0)<-0.01?0.72:(rec.dxy_trend||0)>0.01?0.38:0.55,
+      dir: (rec.dxy_trend||0)<0?"↑":"↓" },
+    { name:"NASDAQ RSI",
+      val: Math.round(rec.nasdaq_rsi||50),
+      score: (rec.nasdaq_rsi||50)<35?0.72:(rec.nasdaq_rsi||50)>75?0.35:0.55,
+      dir: (rec.nasdaq_rsi||50)<35?"↑(超卖)":(rec.nasdaq_rsi||50)>75?"↓(超买)":"→" },
   ];
 
   const COLORS = {0.72:"#27ae60", 0.75:"#27ae60", 0.71:"#2ecc71",

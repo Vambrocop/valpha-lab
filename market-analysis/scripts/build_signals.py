@@ -46,13 +46,37 @@ DOW_LR = {
     4: 1.038,  # 周五：54.4%
 }
 
-# ── 月内效应似然比 ────────────────────────────────────────────────
-def _dom_lr(day):
-    if day <= 3:  return 1.117   # 月初1-3日：58.5%
-    if day <= 10: return 0.992   # 月初4-10日：52.0%
-    if day <= 20: return 0.992   # 月中：52.0%
-    if day <= 25: return 0.956   # 月末21-25日：50.1%
-    return 1.008                  # 月末26-31日：52.8%
+# ── 月内第几周效应（Week-of-Month）─────────────────────────────
+# 基准53.2%。第1周最强（59.1%），第4周最弱（50.5%）
+def _week_of_month(ts):
+    first_dow = ts.replace(day=1).weekday()
+    return (ts.day + first_dow - 1) // 7 + 1
+
+_WOM_LR = {1: 1.112, 2: 0.996, 3: 1.015, 4: 0.950, 5: 0.992}
+
+# ── 日历异常综合似然比（税季 + 季末 + 税损）────────────────────
+# 来源：S&P 500 日频 1950-2026，n≈19,000
+def _calendar_anomaly_lr(ts):
+    m, d = ts.month, ts.day
+
+    # ─ 报税季（4月细分）─────────────────────────────────────────
+    if m == 4:
+        if d == 15:          return 1.242   # 截止日当天：66%，最强单日
+        if d <= 14:          return 1.068   # 4月1-14：平均56-57%（纳税前准备期，不跌）
+        # 4月16日后恢复正常
+        return 1.0
+
+    # ─ 12月税损收割 ──────────────────────────────────────────────
+    if m == 12:
+        if 11 <= d <= 15:    return 0.889   # 税损收割最密集：47.2%
+        if 21 <= d <= 25:    return 1.147   # 圣诞前：61%
+        return 1.0
+
+    # ─ 季初建仓（1/4/7/10月前5日）─────────────────────────────
+    if m in (1, 4, 7, 10) and d <= 5:
+        return 1.117   # 59.4%，机构新季度建仓
+
+    return 1.0
 
 # ── 假日日历（美国股市） ──────────────────────────────────────────
 def _easter(year):
@@ -211,10 +235,13 @@ def compute_daily_signals(prices, ret, tech):
         # 1. 星期效应（日频，1928年统计）
         likelihoods.append(DOW_LR.get(ts.weekday(), 1.0))
 
-        # 2. 月内效应
-        likelihoods.append(_dom_lr(ts.day))
+        # 2. 月内第几周效应（Week-of-Month，1950+统计）
+        likelihoods.append(_WOM_LR.get(_week_of_month(ts), 1.0))
 
-        # 3. 假日效应
+        # 3. 日历异常（税季/税损/季初建仓）
+        likelihoods.append(_calendar_anomaly_lr(ts))
+
+        # 4. 假日效应
         likelihoods.append(_holiday_lr(ts))
 
         # 4. NASDAQ在200日均线上方
@@ -249,8 +276,10 @@ def compute_daily_signals(prices, ret, tech):
             "month":        month,
             "dow":          int(ts.weekday()),
             "dom":          int(ts.day),
+            "wom":          int(_week_of_month(ts)),
             "prior":        round(prior, 4),
             "holiday_lr":   round(_holiday_lr(ts), 4),
+            "cal_lr":       round(_calendar_anomaly_lr(ts), 4),
             "nasdaq_ma200": int(row.get("NASDAQ_above_ma200", 0)),
             "btc_mom20":    round(float(row.get("BTC_mom20", 0) or 0), 4),
             "dxy_trend":    round(float(row.get("dxy_trend", 0) or 0), 4),
