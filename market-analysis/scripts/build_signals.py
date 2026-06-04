@@ -180,5 +180,53 @@ def build():
     print(f"  当前基准概率: {base_prob*100:.1f}%  第{_tier(base_prob)}档")
     return output
 
+def build_timing_summary():
+    """把 timing_analysis 结果汇总为前端用的 JSON 片段"""
+    summary = {}
+
+    # DOW 胜率
+    try:
+        dow = pd.read_csv(PROC_DIR / "dow_stats.csv")
+        ndx = dow[dow["asset"] == "NASDAQ"][["dow","day_name","win_rate","avg_return"]].copy()
+        ndx["win_rate"] = (ndx["win_rate"] * 100).round(1)
+        ndx["avg_return"] = (ndx["avg_return"] * 100).round(3)
+        summary["dow"] = ndx.to_dict(orient="records")
+    except Exception: pass
+
+    # 卖出信号（最近一行）
+    try:
+        sell = pd.read_csv(PROC_DIR / "sell_signals.csv")
+        last = sell.dropna().iloc[-1]
+        summary["sell"] = {
+            "date":       last["date"],
+            "score":      float(last["sell_score"]),
+            "tier":       last["sell_tier"],
+            "rsi":        float(last["rsi"]) if not pd.isna(last["rsi"]) else None,
+            "mom20":      float(last["mom20"]),
+            "ma_cross":   int(last["ma_cross"]),
+            "vol_pct":    float(last["vol_pct"]) if not pd.isna(last["vol_pct"]) else None,
+        }
+    except Exception: pass
+
+    # 月内效应
+    try:
+        dom = pd.read_csv(PROC_DIR / "dom_stats.csv")
+        ndx = dom[dom["asset"] == "NASDAQ"][["dom","win_rate","avg_return"]].copy()
+        ndx["win_rate"] = (ndx["win_rate"] * 100).round(1)
+        summary["dom"] = ndx.to_dict(orient="records")
+    except Exception: pass
+
+    return summary
+
+
 if __name__ == "__main__":
-    build()
+    result = build()
+
+    # 合并时机摘要
+    timing = build_timing_summary()
+    result.update(timing)
+
+    out = WEB_DIR / "signals.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+    print("✓ signals.json 已更新（含买卖时机）")
