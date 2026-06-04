@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alpha Lab | 美股入场信号分析</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --surface: #161b22; --surface2: #1c2230;
+  --border: #30363d; --text: #e6edf3; --muted: #8b949e;
+  --green: #2ecc71; --yellow: #f1c40f; --orange: #e67e22;
+  --red: #e74c3c; --blue: #3498db; --purple: #9b59b6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+
+/* ── Header ── */
+header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+header h1 { font-size: 1.3rem; font-weight: 700; }
+header h1 span { color: var(--green); }
+.header-sub { color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
+
+/* ── Layout ── */
+main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; display: grid; grid-template-columns: 380px 1fr; gap: 1.5rem; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+/* ── Panel ── */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
+.panel-title { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 1rem; }
+
+/* ── Signal Meter ── */
+.signal-meter { text-align: center; padding: 1.5rem 0; }
+.signal-ring { width: 160px; height: 160px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 1rem; border: 6px solid var(--border); transition: border-color .4s, background .4s; }
+.signal-pct { font-size: 2.8rem; font-weight: 800; line-height: 1; }
+.signal-label { font-size: 0.85rem; margin-top: 4px; font-weight: 600; }
+.signal-stars { font-size: 1.3rem; margin: .5rem 0; }
+.signal-desc { font-size: 0.82rem; color: var(--muted); }
+
+/* Tier colors */
+.tier-5 { border-color: #27ae60 !important; background: rgba(39,174,96,.08) !important; }
+.tier-5 .signal-pct { color: #27ae60; }
+.tier-4 { border-color: var(--green) !important; background: rgba(46,204,113,.06) !important; }
+.tier-4 .signal-pct { color: var(--green); }
+.tier-3 { border-color: var(--yellow) !important; background: rgba(241,196,15,.06) !important; }
+.tier-3 .signal-pct { color: var(--yellow); }
+.tier-2 { border-color: var(--orange) !important; background: rgba(230,126,34,.06) !important; }
+.tier-2 .signal-pct { color: var(--orange); }
+.tier-1 { border-color: var(--red) !important; background: rgba(231,76,60,.06) !important; }
+.tier-1 .signal-pct { color: var(--red); }
+
+/* ── Date Picker ── */
+.input-group { margin-bottom: 1rem; }
+.input-group label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: .4rem; }
+.input-group input[type=date] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: .5rem .75rem; font-size: 0.9rem; }
+.input-group input:focus { outline: none; border-color: var(--green); }
+
+/* ── Event Checkboxes ── */
+.event-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.event-item { display: flex; align-items: center; gap: .5rem; cursor: pointer; padding: .35rem .5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; transition: border-color .2s; }
+.event-item:hover { border-color: var(--muted); }
+.event-item.active { border-color: var(--blue); background: rgba(52,152,219,.1); }
+.event-item input { display: none; }
+.event-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Factor Breakdown ── */
+.factor-list { font-size: 0.82rem; }
+.factor-row { display: flex; justify-content: space-between; align-items: center; padding: .4rem 0; border-bottom: 1px solid var(--border); }
+.factor-row:last-child { border-bottom: none; }
+.factor-name { color: var(--muted); }
+.factor-val { font-weight: 600; }
+.factor-bar-wrap { width: 60px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 .5rem; }
+.factor-bar { height: 100%; border-radius: 3px; }
+
+/* ── Tier Legend ── */
+.tier-legend { display: flex; flex-direction: column; gap: .4rem; margin-top: .75rem; font-size: 0.8rem; }
+.tier-row { display: flex; align-items: center; gap: .75rem; padding: .35rem .6rem; border-radius: 5px; }
+.tier-badge { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; flex-shrink: 0; }
+
+/* ── Charts section ── */
+.charts-col { display: flex; flex-direction: column; gap: 1.5rem; }
+.chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.chart-header { padding: .85rem 1.25rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+.chart-header .badge { font-size: 0.72rem; background: var(--surface2); border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px; color: var(--muted); font-weight: 400; }
+
+/* ── Insight box ── */
+.insight { background: var(--surface2); border-left: 3px solid var(--blue); border-radius: 0 6px 6px 0; padding: .75rem 1rem; font-size: 0.82rem; line-height: 1.6; margin-top: .75rem; }
+.insight strong { color: var(--blue); }
+
+/* ── Footer ── */
+footer { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.78rem; border-top: 1px solid var(--border); margin-top: 1rem; }
+footer a { color: var(--green); text-decoration: none; }
+
+/* ── Tabs ── */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; }
+.tab { padding: .5rem 1rem; font-size: 0.82rem; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: color .2s; }
+.tab.active { color: var(--text); border-bottom-color: var(--green); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⬡ <span>Alpha Lab</span> — 美股入场信号</h1>
+    <div class="header-sub">NASDAQ · DXY · BTC · ETH | 贝叶斯概率 + 统计学 + 机器学习 | 仅供学习研究</div>
+  </div>
+  <div style="color:var(--muted);font-size:0.8rem;" id="updated-time">—</div>
+</header>
+
+<main>
+  <!-- ── 左栏：信号面板 ── -->
+  <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+    <!-- 日期选择 -->
+    <div class="panel">
+      <div class="panel-title">选择日期 · 查看入场信号</div>
+      <div class="input-group">
+        <label>分析日期</label>
+        <input type="date" id="date-picker" />
+      </div>
+
+      <!-- 信号表盘 -->
+      <div class="signal-meter">
+        <div class="signal-ring" id="signal-ring">
+          <div class="signal-pct" id="signal-pct">—</div>
+          <div class="signal-label" id="signal-label">加载中</div>
+        </div>
+        <div class="signal-stars" id="signal-stars">☆☆☆☆☆</div>
+        <div class="signal-desc" id="signal-desc"></div>
+      </div>
+
+      <!-- 因子分解 -->
+      <div class="panel-title" style="margin-top:1rem;">信号因子分解</div>
+      <div class="factor-list" id="factor-list"></div>
+
+      <div class="insight" id="insight-box"></div>
+    </div>
+
+    <!-- 事件调整 -->
+    <div class="panel">
+      <div class="panel-title">叠加外部事件 · 概率动态更新</div>
+      <div class="event-grid" id="event-grid"></div>
+      <div style="margin-top:.75rem;font-size:0.78rem;color:var(--muted);">选择后概率实时更新 ↑↓</div>
+    </div>
+
+    <!-- 档位说明 -->
+    <div class="panel">
+      <div class="panel-title">五档入场等级</div>
+      <div class="tier-legend">
+        <div class="tier-row" style="background:rgba(39,174,96,.08)">
+          <div class="tier-badge" style="background:#27ae60;color:#fff">5</div>
+          <div><strong style="color:#27ae60">强势入场</strong> 80–100%<br><span style="color:var(--muted);font-size:0.75rem">季节 + 技术 + 宏观全面支撑</span></div>
+        </div>
+        <div class="tier-row" style="background:rgba(46,204,113,.06)">
+          <div class="tier-badge" style="background:var(--green);color:#fff">4</div>
+          <div><strong style="color:var(--green)">适合入场</strong> 60–80%<br><span style="color:var(--muted);font-size:0.75rem">多数指标偏多，可正常仓位</span></div>
+        </div>
+        <div class="tier-row" style="background:rgba(241,196,15,.06)">
+          <div class="tier-badge" style="background:var(--yellow);color:#000">3</div>
+          <div><strong style="color:var(--yellow)">中性观望</strong> 40–60%<br><span style="color:var(--muted);font-size:0.75rem">信号混合，小仓位或等待</span></div>
+        </div>
+        <div class="tier-row" style="background:rgba(230,126,34,.06)">
+          <div class="tier-badge" style="background:var(--orange);color:#fff">2</div>
+          <div><strong style="color:var(--orange)">谨慎等待</strong> 20–40%<br><span style="color:var(--muted);font-size:0.75rem">偏空信号为主，建议观望</span></div>
+        </div>
+        <div class="tier-row" style="background:rgba(231,76,60,.06)">
+          <div class="tier-badge" style="background:var(--red);color:#fff">1</div>
+          <div><strong style="color:var(--red)">极高风险</strong> 0–20%<br><span style="color:var(--muted);font-size:0.75rem">多重负面因素叠加，规避</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── 右栏：图表 ── -->
+  <div class="charts-col">
+
+    <!-- 历史走势 + 信号 -->
+    <div class="chart-wrap">
+      <div class="chart-header">📈 四大资产归一化走势 <span class="badge">2015–2026</span></div>
+      <div id="chart-price" style="height:400px;"></div>
+    </div>
+
+    <!-- 标签页：相关性 / Granger / GARCH / HMM -->
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('corr',this)">滚动相关性</div>
+        <div class="tab" onclick="switchTab('monthly',this)">月度胜率</div>
+        <div class="tab" onclick="switchTab('garch',this)">波动率(GARCH)</div>
+        <div class="tab" onclick="switchTab('granger',this)">Granger因果</div>
+        <div class="tab" onclick="switchTab('annual',this)">年度热力图</div>
+      </div>
+      <div class="tab-content active" id="tab-corr"><div id="chart-corr" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-monthly"><div id="chart-monthly" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-garch"><div id="chart-garch" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-granger"><div id="chart-granger" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-annual"><div id="chart-annual" style="height:340px;"></div></div>
+    </div>
+
+    <!-- 历史信号概率轨迹 -->
+    <div class="chart-wrap">
+      <div class="chart-header">🔮 历史入场概率轨迹 <span class="badge">贝叶斯综合信号</span></div>
+      <div id="chart-signal-history" style="height:300px;"></div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  Alpha Lab &nbsp;·&nbsp; <a href="https://github.com/Vambrocop/alpha-lab">github.com/Vambrocop/alpha-lab</a>
+  &nbsp;·&nbsp; 数据来源：Yahoo Finance &nbsp;·&nbsp; 仅供个人学习，不构成投资建议
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  全局状态
+// ═══════════════════════════════════════════════════════
+let SIGNALS = null;
+let PRICES  = null;
+let selectedDate = null;
+let activeEvents = new Set();
+
+const TIER_META = {
+  5: { label:"强势入场", stars:"★★★★★", color:"#27ae60", desc:"季节性、技术面、宏观全面支撑，历史上此类信号后20天平均涨幅最大" },
+  4: { label:"适合入场", stars:"★★★★☆", color:"#2ecc71", desc:"多数指标偏多，可按计划正常仓位入场" },
+  3: { label:"中性观望", stars:"★★★☆☆", color:"#f1c40f", desc:"信号混合，建议小仓位试探或等待更明确信号" },
+  2: { label:"谨慎等待", stars:"★★☆☆☆", color:"#e67e22", desc:"偏空信号为主，建议观望，不宜重仓" },
+  1: { label:"极高风险", stars:"★☆☆☆☆", color:"#e74c3c", desc:"多重负面因素叠加，历史上此类时期平均亏损，建议规避" },
+};
+
+const EVENTS_CONFIG = [
+  { key:"war",        label:"战争爆发",   dot:"#e74c3c" },
+  { key:"pandemic",   label:"疫情封锁",   dot:"#c0392b" },
+  { key:"trade_war",  label:"贸易战升级", dot:"#d35400" },
+  { key:"fed_hike",   label:"意外加息",   dot:"#9b59b6" },
+  { key:"fed_cut",    label:"降息",       dot:"#27ae60" },
+  { key:"gold_spike", label:"黄金暴涨",   dot:"#f1c40f" },
+  { key:"oil_spike",  label:"油价暴涨",   dot:"#e67e22" },
+  { key:"vix_spike",  label:"VIX恐慌↑",  dot:"#e74c3c" },
+  { key:"halving",    label:"BTC减半",    dot:"#f39c12" },
+  { key:"ai_boom",    label:"AI重大利好", dot:"#1abc9c" },
+  { key:"ipo_boom",   label:"大型IPO潮",  dot:"#3498db" },
+  { key:"election",   label:"选举不确定", dot:"#3498db" },
+];
+
+// ═══════════════════════════════════════════════════════
+//  初始化
+// ═══════════════════════════════════════════════════════
+async function init() {
+  try {
+    const r = await fetch("signals.json");
+    SIGNALS = await r.json();
+    document.getElementById("updated-time").textContent = "更新：" + SIGNALS.generated;
+  } catch(e) {
+    console.warn("signals.json 未找到，使用演示数据", e);
+    SIGNALS = buildDemoSignals();
+  }
+
+  buildEventGrid();
+  initDatePicker();
+  renderPriceChart();
+  renderCorrChart();
+  renderMonthlyChart();
+  renderGarchChart();
+  renderGrangerChart();
+  renderAnnualChart();
+  renderSignalHistory();
+}
+
+// ═══════════════════════════════════════════════════════
+//  演示数据（当 signals.json 不存在时）
+// ═══════════════════════════════════════════════════════
+function buildDemoSignals() {
+  const daily = {};
+  const start = new Date("2015-01-01");
+  const end   = new Date();
+  const PRIOR = [0,0.62,0.54,0.62,0.80,0.58,0.40,0.80,0.54,0.45,0.62,0.80,0.74];
+  for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
+    const k = d.toISOString().slice(0,10);
+    const m = d.getMonth()+1;
+    const p = PRIOR[m] * (0.85 + Math.random()*0.3);
+    const prob = Math.min(0.97, Math.max(0.03, p));
+    daily[k] = { prob, tier: tier(prob), month: m,
+      prior: PRIOR[m], nasdaq_ma200: 1, btc_mom20: 0.02,
+      dxy_trend: -0.005, nasdaq_vol: 0.15, nasdaq_rsi: 55 };
+  }
+  return { generated: new Date().toISOString().slice(0,10),
+    latest_prob: 0.392, latest_tier: 2,
+    event_adjustments: {war:0.72,pandemic:0.65,trade_war:0.78,fed_hike:0.80,
+      fed_cut:1.20,election:0.90,halving:1.15,gold_spike:0.82,oil_spike:0.78,
+      vix_spike:0.70,none:1.0,ai_boom:1.18,ipo_boom:1.08},
+    daily_signals: daily };
+}
+
+function tier(p) {
+  if(p>=0.80) return 5; if(p>=0.60) return 4;
+  if(p>=0.40) return 3; if(p>=0.20) return 2; return 1;
+}
+
+// ═══════════════════════════════════════════════════════
+//  日期选择器
+// ═══════════════════════════════════════════════════════
+function initDatePicker() {
+  const dp = document.getElementById("date-picker");
+  const today = new Date().toISOString().slice(0,10);
+  dp.value = today;
+  dp.max   = today;
+  dp.min   = "2015-01-01";
+  dp.addEventListener("change", () => updateSignal(dp.value));
+  updateSignal(today);
+}
+
+function updateSignal(dateStr) {
+  selectedDate = dateStr;
+  const daily = SIGNALS.daily_signals;
+
+  // 找最近有数据的交易日
+  let key = dateStr;
+  if (!daily[key]) {
+    const d = new Date(dateStr);
+    for(let i=0;i<7;i++) { d.setDate(d.getDate()-1); key=d.toISOString().slice(0,10); if(daily[key]) break; }
+  }
+
+  const rec = daily[key];
+  if (!rec) { document.getElementById("signal-pct").textContent = "无数据"; return; }
+
+  let prob = rec.prob;
+
+  // 叠加事件调整（贝叶斯更新）
+  if(activeEvents.size > 0) {
+    let logOdds = Math.log(prob/(1-prob+1e-10));
+    for(const ev of activeEvents) {
+      const lr = SIGNALS.event_adjustments[ev] || 1.0;
+      logOdds += Math.log(Math.max(lr, 0.01));
+    }
+    prob = 1/(1+Math.exp(-logOdds));
+    prob = Math.min(0.97, Math.max(0.03, prob));
+  }
+
+  renderSignalMeter(prob, rec);
+  renderFactors(rec, prob);
+}
+
+function renderSignalMeter(prob, rec) {
+  const t = tier(prob);
+  const meta = TIER_META[t];
+  const ring = document.getElementById("signal-ring");
+
+  ring.className = "signal-ring tier-" + t;
+  document.getElementById("signal-pct").textContent   = Math.round(prob*100) + "%";
+  document.getElementById("signal-label").textContent  = meta.label;
+  document.getElementById("signal-stars").textContent  = meta.stars;
+  document.getElementById("signal-desc").textContent   = "";
+
+  const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  const evText = activeEvents.size > 0
+    ? `<br>叠加事件调整后 → <strong style="color:${meta.color}">${Math.round(prob*100)}%</strong>`
+    : "";
+
+  document.getElementById("insight-box").innerHTML = `
+    <strong>${selectedDate}</strong>（${MONTH[rec.month]}）<br>
+    季节先验：${Math.round(rec.prior*100)}%
+    ${evText}<br>
+    ${meta.desc}
+  `;
+}
+
+function renderFactors(rec, finalProb) {
+  const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  const factors = [
+    { name:"月度季节性",    val: Math.round(rec.prior*100)+"%",  score: rec.prior, dir: rec.prior>0.6?"↑":rec.prior<0.5?"↓":"→" },
+    { name:"NASDAQ均线",    val: rec.nasdaq_ma200?"多头结构":"空头结构", score: rec.nasdaq_ma200?0.75:0.35, dir: rec.nasdaq_ma200?"↑":"↓" },
+    { name:"BTC 20日动量",  val: (rec.btc_mom20>0?"+":"")+Math.round(rec.btc_mom20*100)+"%", score: rec.btc_mom20>0.03?0.72:rec.btc_mom20<-0.03?0.38:0.55, dir: rec.btc_mom20>0?"↑":"↓" },
+    { name:"DXY 美元趋势",  val: (rec.dxy_trend>0?"+":"")+Math.round(rec.dxy_trend*100)+"%", score: rec.dxy_trend<-0.01?0.72:rec.dxy_trend>0.01?0.38:0.55, dir: rec.dxy_trend<0?"↑":"↓" },
+    { name:"NASDAQ波动率",  val: Math.round(rec.nasdaq_vol*100)+"%年化", score: rec.nasdaq_vol<0.15?0.72:rec.nasdaq_vol>0.25?0.35:0.55, dir: rec.nasdaq_vol<0.15?"↑":"↓" },
+    { name:"NASDAQ RSI",    val: Math.round(rec.nasdaq_rsi), score: rec.nasdaq_rsi<35?0.72:rec.nasdaq_rsi>75?0.35:0.55, dir: rec.nasdaq_rsi<35?"↑(超卖)":rec.nasdaq_rsi>75?"↓(超买)":"→" },
+  ];
+
+  const COLORS = {0.72:"#27ae60", 0.75:"#27ae60", 0.71:"#2ecc71",
+                  0.55:"#f1c40f", 0.38:"#e67e22", 0.35:"#e74c3c"};
+  function colForScore(s) {
+    if(s>=0.70) return "#27ae60"; if(s>=0.60) return "#2ecc71";
+    if(s>=0.50) return "#f1c40f"; if(s>=0.40) return "#e67e22"; return "#e74c3c";
+  }
+
+  const html = factors.map(f => `
+    <div class="factor-row">
+      <span class="factor-name">${f.name}</span>
+      <div class="factor-bar-wrap"><div class="factor-bar" style="width:${Math.round(f.score*100)}%;background:${colForScore(f.score)}"></div></div>
+      <span class="factor-val" style="color:${colForScore(f.score)}">${f.val} ${f.dir}</span>
+    </div>
+  `).join("");
+  document.getElementById("factor-list").innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
+//  事件选择
+// ═══════════════════════════════════════════════════════
+function buildEventGrid() {
+  const grid = document.getElementById("event-grid");
+  grid.innerHTML = EVENTS_CONFIG.map(e => `
+    <label class="event-item" id="ev-${e.key}" onclick="toggleEvent('${e.key}',this)">
+      <input type="checkbox">
+      <span class="event-dot" style="background:${e.dot}"></span>
+      ${e.label}
+    </label>
+  `).join("");
+}
+
+function toggleEvent(key, el) {
+  if(activeEvents.has(key)) { activeEvents.delete(key); el.classList.remove("active"); }
+  else                       { activeEvents.add(key);   el.classList.add("active"); }
+  if(selectedDate) updateSignal(selectedDate);
+}
+
+// ═══════════════════════════════════════════════════════
+//  图表
+// ═══════════════════════════════════════════════════════
+const DARK = { paper_bgcolor:"transparent", plot_bgcolor:"transparent",
+  font:{color:"#e6edf3",size:11}, xaxis:{gridcolor:"#30363d",zerolinecolor:"#30363d"},
+  yaxis:{gridcolor:"#30363d",zerolinecolor:"#30363d"}, margin:{t:30,b:40,l:50,r:20} };
+
+async function loadCSV(path) {
+  try {
+    const r = await fetch(path);
+    const text = await r.text();
+    const lines = text.trim().split("\n");
+    const headers = lines[0].split(",");
+    return lines.slice(1).map(l => {
+      const vals = l.split(",");
+      const row = {};
+      headers.forEach((h,i) => row[h.trim()] = vals[i]?.trim());
+      return row;
+    });
+  } catch(e) { return []; }
+}
+
+async function renderPriceChart() {
+  const data = await loadCSV("../data/raw/combined_prices.csv").catch(()=>[]);
+  if(!data.length) { Plotly.newPlot("chart-price", [], {...DARK, title:{text:"数据加载中..."}}); return; }
+
+  const assets = ["NASDAQ","DXY","BTC","ETH"];
+  const colors = {NASDAQ:"#2ecc71",DXY:"#3498db",BTC:"#f39c12",ETH:"#9b59b6"};
+  const base = {};
+  data.forEach(r => { assets.forEach(a => { if(r[a] && !base[a]) base[a]=parseFloat(r[a]); }); });
+
+  const traces = assets.map(a => ({
+    x: data.map(r=>r.Date), y: data.map(r=>r[a]?parseFloat(r[a])/base[a]*100:null),
+    name:a, type:"scatter", mode:"lines", line:{color:colors[a],width:1.5},
+    hovertemplate:`<b>${a}</b> %{x}<br>指数 %{y:.1f}<extra></extra>`
+  }));
+
+  Plotly.newPlot("chart-price", traces, {...DARK, hovermode:"x unified",
+    yaxis:{...DARK.yaxis,title:"指数（起点=100）"},
+    legend:{orientation:"h",y:1.05}, height:400}, {responsive:true});
+}
+
+async function renderCorrChart() {
+  const data = await loadCSV("../data/processed/rolling_correlation_90d.csv");
+  if(!data.length) return;
+  const cols = Object.keys(data[0]).filter(k=>k!=="Date");
+  const colors = ["#f39c12","#9b59b6","#3498db"];
+  const traces = cols.map((c,i)=>({
+    x:data.map(r=>r.Date), y:data.map(r=>parseFloat(r[c])||null),
+    name:c.replace("NASDAQ_vs_","NASDAQ↔"), type:"scatter", mode:"lines",
+    line:{color:colors[i]||"#888",width:1.5}
+  }));
+  traces.push({x:[data[0].Date,data[data.length-1].Date],y:[0,0],
+    mode:"lines",line:{color:"#555",dash:"dash"},showlegend:false});
+  Plotly.newPlot("chart-corr",traces,{...DARK,yaxis:{...DARK.yaxis,range:[-1,1],
+    title:"相关系数"},hovermode:"x unified",legend:{orientation:"h",y:1.05}},{responsive:true});
+}
+
+async function renderMonthlyChart() {
+  const data = await loadCSV("../data/processed/monthly_stats.csv");
+  if(!data.length) return;
+  const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  const assets=["NASDAQ","DXY","BTC","ETH"], colors={NASDAQ:"#2ecc71",DXY:"#3498db",BTC:"#f39c12",ETH:"#9b59b6"};
+  const traces = assets.map(a=>({
+    x:data.filter(r=>r.asset===a).map(r=>MONTH[+r.month]),
+    y:data.filter(r=>r.asset===a).map(r=>Math.round(parseFloat(r.win_rate)*100)),
+    name:a, type:"bar", marker:{color:colors[a]},
+    hovertemplate:`<b>${a}</b> %{x}<br>胜率 %{y}%<extra></extra>`
+  }));
+  Plotly.newPlot("chart-monthly",traces,{...DARK,barmode:"group",
+    yaxis:{...DARK.yaxis,title:"胜率 (%)"},legend:{orientation:"h",y:1.05}},{responsive:true});
+}
+
+async function renderGarchChart() {
+  const nd = await loadCSV("../data/processed/garch_nasdaq.csv");
+  const bt = await loadCSV("../data/processed/garch_btc.csv");
+  const traces = [];
+  if(nd.length) traces.push({x:nd.map(r=>r.date),y:nd.map(r=>parseFloat(r.cond_vol_ann)),
+    name:"NASDAQ年化波动率",type:"scatter",mode:"lines",line:{color:"#2ecc71",width:1.5}});
+  if(bt.length) traces.push({x:bt.map(r=>r.date),y:bt.map(r=>parseFloat(r.cond_vol_ann)),
+    name:"BTC年化波动率",type:"scatter",mode:"lines",line:{color:"#f39c12",width:1.5},
+    yaxis:"y2"});
+  Plotly.newPlot("chart-garch",traces,{...DARK,hovermode:"x unified",
+    yaxis:{...DARK.yaxis,title:"NASDAQ波动率%"},
+    yaxis2:{overlaying:"y",side:"right",title:"BTC波动率%",gridcolor:"transparent"},
+    legend:{orientation:"h",y:1.05}},{responsive:true});
+}
+
+async function renderGrangerChart() {
+  const data = await loadCSV("../data/processed/granger_causality.csv");
+  if(!data.length) {
+    const demoData = [
+      {label:"美元→纳指",pval:0.0005,lag:8,sig:1},
+      {label:"BTC→纳指", pval:0.0067,lag:8,sig:1},
+      {label:"纳指→BTC", pval:0.0625,lag:1,sig:0},
+      {label:"ETH→BTC",  pval:0.0001,lag:10,sig:1},
+      {label:"BTC→ETH",  pval:0.0039,lag:6,sig:1},
+    ];
+    renderGrangerFromRows(demoData); return;
+  }
+  renderGrangerFromRows(data.map(r=>({label:r.label,pval:parseFloat(r.p_value),lag:+r.best_lag_days,sig:r.significant==="True"?1:0})));
+}
+
+function renderGrangerFromRows(rows) {
+  const colors = rows.map(r=>r.sig?"#2ecc71":"#e74c3c");
+  Plotly.newPlot("chart-granger",[{
+    type:"bar", orientation:"h",
+    x:rows.map(r=>Math.max(-Math.log10(r.pval),0)),
+    y:rows.map(r=>r.label),
+    marker:{color:colors},
+    text:rows.map(r=>`p=${r.pval.toFixed(4)} 滞后${r.lag}天 ${r.sig?"✓":"✗"}`),
+    textposition:"outside", hovertemplate:"%{y}<br>%{text}<extra></extra>",
+  }],{...DARK,xaxis:{...DARK.xaxis,title:"-log10(p值)，越大越显著"},
+    shapes:[{type:"line",x0:1.3,x1:1.3,y0:-0.5,y1:rows.length-0.5,
+      line:{color:"#e74c3c",dash:"dash",width:1}}],
+    annotations:[{x:1.3,y:rows.length-0.5,text:"p=0.05",showarrow:false,
+      font:{color:"#e74c3c",size:10}}]},{responsive:true});
+}
+
+async function renderAnnualChart() {
+  const data = await loadCSV("../data/processed/annual_returns.csv");
+  if(!data.length) return;
+  const assets=["NASDAQ","DXY","BTC","ETH"];
+  const years=data.map(r=>r.year);
+  const z=assets.map(a=>data.map(r=>r[a]?Math.round(parseFloat(r[a])*100):null));
+  Plotly.newPlot("chart-annual",[{type:"heatmap",z,x:years,y:assets,
+    colorscale:"RdYlGn",zmid:0,
+    text:z.map(row=>row.map(v=>v!=null?v+"%":"—")),
+    texttemplate:"%{text}",colorbar:{title:"涨幅%"},
+    hovertemplate:"<b>%{y}</b> %{x}年<br>%{text}<extra></extra>"}],
+    {...DARK,margin:{...DARK.margin,b:60}},{responsive:true});
+}
+
+async function renderSignalHistory() {
+  if(!SIGNALS) return;
+  const entries = Object.entries(SIGNALS.daily_signals).slice(-500);
+  const dates = entries.map(([k])=>k);
+  const probs = entries.map(([,v])=>v.prob*100);
+  const tiers = entries.map(([,v])=>v.tier);
+  const colors = tiers.map(t=>[,"#e74c3c","#e67e22","#f1c40f","#2ecc71","#27ae60"][t]);
+
+  Plotly.newPlot("chart-signal-history",[
+    {x:dates,y:probs,type:"scatter",mode:"lines",name:"贝叶斯概率",
+     line:{color:"#3498db",width:1.5},fill:"tozeroy",fillcolor:"rgba(52,152,219,.15)"},
+    {x:dates,y:Array(dates.length).fill(60),mode:"lines",
+     line:{color:"#2ecc71",dash:"dot",width:1},name:"入场线(60%)",showlegend:true},
+    {x:dates,y:Array(dates.length).fill(80),mode:"lines",
+     line:{color:"#27ae60",dash:"dot",width:1},name:"强势线(80%)",showlegend:true},
+  ],{...DARK,yaxis:{...DARK.yaxis,range:[0,100],title:"入场概率%"},
+    hovermode:"x unified",legend:{orientation:"h",y:1.05}},{responsive:true});
+}
+
+// ── 标签切换 ──
+function switchTab(name, el) {
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("tab-"+name).classList.add("active");
+}
+
+// ── 启动 ──
+init();
+</script>
+</body>
+</html>

@@ -78,7 +78,29 @@ EVENTS = [
     {"date": "2020-03-11", "type": "pandemic",    "label": "WHO宣布全球大流行", "impact": -1},
     {"date": "2020-11-09", "type": "pandemic",    "label": "辉瑞疫苗有效性公布", "impact": 1},
     {"date": "2021-12-01", "type": "pandemic",    "label": "奥密克戎变异株出现", "impact": -1},
+
+    # ── 美国节日效应（Pre-holiday drift） ─────────────────────────
+    # 感恩节前一交易日、圣诞前一周往往成交量低+偏涨
+    {"date": "2023-11-22", "type": "holiday_us",  "label": "感恩节前（涨势窗口）", "impact": 1},
+    {"date": "2024-11-27", "type": "holiday_us",  "label": "感恩节前（涨势窗口）", "impact": 1},
+    {"date": "2023-12-22", "type": "holiday_us",  "label": "圣诞涨势启动", "impact": 1},
+    {"date": "2024-12-20", "type": "holiday_us",  "label": "圣诞涨势启动", "impact": 1},
+
+    # ── 中国节日效应（影响BTC + 中概股ADR） ─────────────────────
+    # 春节：中国资金回撤，BTC往往在节前抛售，节后反弹
+    {"date": "2023-01-22", "type": "holiday_cn",  "label": "中国春节（BTC节前抛压）", "impact": -1},
+    {"date": "2024-02-10", "type": "holiday_cn",  "label": "中国春节（BTC节前抛压）", "impact": -1},
+    {"date": "2025-01-29", "type": "holiday_cn",  "label": "中国春节（BTC节前抛压）", "impact": -1},
+    # 国庆黄金周：A股/港股关闭，资金短暂流入美股中概股
+    {"date": "2023-10-02", "type": "holiday_cn",  "label": "中国国庆黄金周", "impact": 0},
+    {"date": "2024-10-01", "type": "holiday_cn",  "label": "中国国庆黄金周", "impact": 0},
 ]
+
+# 节假日效应说明（供分析参考）
+HOLIDAY_NOTES = {
+    "holiday_us": "美国节假日前后成交量萎缩，机构不在场，散户情绪主导，历史上偏涨",
+    "holiday_cn": "中国春节前：BTC矿工/交易者套现，节后资金回流反弹；国庆：A股关闭资金外流",
+}
 
 EVENT_COLORS = {
     "black_swan":  "#e74c3c",
@@ -91,6 +113,8 @@ EVENT_COLORS = {
     "geopolitical":"#e67e22",
     "trade_war":   "#d35400",
     "pandemic":    "#c0392b",
+    "holiday_us":  "#f8c471",
+    "holiday_cn":  "#e74c3c",
 }
 
 EVENT_SYMBOLS = {
@@ -100,8 +124,10 @@ EVENT_SYMBOLS = {
     "halving":     "⬡",
     "ipo":         "▲",
     "ai":          "●",
-    "tax":         "¥",
+    "tax":         "$",
     "geopolitical":"⚔",
-    "trade_war":   "⚡",
-    "pandemic":    "☣",
+    "trade_war":   "!",
+    "pandemic":    "+",
+    "holiday_us":  "T",
+    "holiday_cn":  "C",
 }

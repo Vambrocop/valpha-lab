@@ -26,7 +26,11 @@ def fetch_all():
     for name, ticker in TICKERS.items():
         print(f"下载 {name} ({ticker})...")
         df = yf.download(ticker, start=START, end=END, auto_adjust=True, progress=False)
-        close = df["Close"].rename(name)
+        # yfinance 1.x 返回 MultiIndex 列，取第一列
+        close_raw = df["Close"]
+        if isinstance(close_raw, pd.DataFrame):
+            close_raw = close_raw.iloc[:, 0]
+        close = close_raw.rename(name)
         close.index = pd.to_datetime(close.index)
         frames[name] = close
         out = RAW_DIR / f"{name}.csv"
