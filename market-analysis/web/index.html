@@ -168,6 +168,8 @@ footer a { color: var(--green); text-decoration: none; }
 
 /* Year stats highlight */
 .digit-highlight { background: rgba(241,196,15,.12); border: 1px solid rgba(241,196,15,.3); border-radius: 6px; padding: .4rem .75rem; font-size: 0.8rem; margin-bottom: .75rem; }
+/* Placeholder shown while lazy tab charts haven't loaded yet */
+.chart-ph { display:flex; align-items:center; justify-content:center; height:340px; color:var(--muted); font-size:0.85rem; }
 </style>
 </head>
 <body>
@@ -363,11 +365,11 @@ footer a { color: var(--green); text-decoration: none; }
         <div id="chart-forecast" style="height:340px;"></div>
         <div class="insight" id="forecast-insight" style="margin-top:.75rem;"></div>
       </div>
-      <div class="tab-content" id="tab-corr"><div id="chart-corr" style="height:340px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">点击标签加载图表…</div></div>
-      <div class="tab-content" id="tab-monthly"><div id="chart-monthly" style="height:340px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">点击标签加载图表…</div></div>
-      <div class="tab-content" id="tab-garch"><div id="chart-garch" style="height:340px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">点击标签加载图表…</div></div>
-      <div class="tab-content" id="tab-granger"><div id="chart-granger" style="height:340px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">点击标签加载图表…</div></div>
-      <div class="tab-content" id="tab-annual"><div id="chart-annual" style="height:340px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">点击标签加载图表…</div></div>
+      <div class="tab-content" id="tab-corr"><div class="chart-ph" id="ph-corr">点击标签加载图表…</div><div id="chart-corr" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-monthly"><div class="chart-ph" id="ph-monthly">点击标签加载图表…</div><div id="chart-monthly" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-garch"><div class="chart-ph" id="ph-garch">点击标签加载图表…</div><div id="chart-garch" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-granger"><div class="chart-ph" id="ph-granger">点击标签加载图表…</div><div id="chart-granger" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-annual"><div class="chart-ph" id="ph-annual">点击标签加载图表…</div><div id="chart-annual" style="height:340px;"></div></div>
     </div>
 
     <!-- 高级多元分析 -->
@@ -595,7 +597,16 @@ function updateSignal(dateStr) {
 
   // ── 未来日期：从 next_opportunities 前瞻数据中取 ──
   if (isFuture) {
-    const forecast = (SIGNALS.next_opportunities?.all_forecast || []).find(d => d.date === dateStr);
+    const allFc = SIGNALS.next_opportunities?.all_forecast || [];
+    let forecast = allFc.find(d => d.date === dateStr);
+    // 如果不是交易日（节假日/周末），找最近的交易日
+    if (!forecast && allFc.length > 0) {
+      const target = new Date(dateStr).getTime();
+      forecast = allFc.reduce((best, d) => {
+        return Math.abs(new Date(d.date).getTime() - target) <
+               Math.abs(new Date(best.date).getTime() - target) ? d : best;
+      });
+    }
     if (!forecast) {
       const ring = document.getElementById("signal-ring");
       ring.className = "signal-ring tier-3";
@@ -603,12 +614,14 @@ function updateSignal(dateStr) {
       document.getElementById("signal-label").textContent = "超出预测范围";
       document.getElementById("signal-stars").textContent = "—";
       document.getElementById("insight-box").innerHTML =
-        `<strong>${dateStr}</strong><br>该日期超出45个交易日预测范围，暂无数据。<br>
+        `<strong>${dateStr}</strong><br>该日期超出45个交易日预测范围（至 ${allFc[allFc.length-1]?.date||"—"}）。<br>
          <span style="color:var(--muted);font-size:0.78rem">左侧"最佳操作窗口"显示了未来约两个月的高/低概率窗口。</span>`;
       document.getElementById("factor-list").innerHTML = "";
       document.getElementById("signal-percentile").innerHTML = "";
       return;
     }
+    // 如果找到的是最近交易日而非选定日期本身，给 forecast 加一个标记
+    if (forecast.date !== dateStr) forecast = {...forecast, _nearestDate: forecast.date};
     // 用预测数据合成一个 rec，技术因子用最新值
     const tech = SIGNALS.next_opportunities?.latest_tech || {};
     const synRec = {
@@ -668,6 +681,9 @@ function renderSignalMeter(prob, rec) {
   const today = localDateStr();
   const isToday = selectedDate === today;
   const isForecast = rec._isForecast;
+  const nearestNote = rec._nearestDate
+    ? ` <span style="color:var(--muted);font-size:0.75rem">（非交易日，显示最近交易日 ${rec._nearestDate}）</span>`
+    : "";
   const dateBadge = isToday
     ? `<span style="background:#2ecc7122;color:#2ecc71;border-radius:4px;padding:1px 6px;font-size:0.78rem">今天</span>`
     : isForecast
@@ -684,7 +700,7 @@ function renderSignalMeter(prob, rec) {
     : "";
 
   document.getElementById("insight-box").innerHTML = `
-    <strong>${selectedDate}</strong> ${dateBadge}（${MONTH[rec.month]}）<br>
+    <strong>${selectedDate}</strong>${nearestNote} ${dateBadge}（${MONTH[rec.month]}）<br>
     季节先验：${Math.round(rec.prior*100)}%${forecastReasons}
     ${evText}${techNote}<br>
     ${meta.desc}
@@ -989,6 +1005,8 @@ function switchTab(name, el) {
   document.getElementById("tab-"+name)?.classList.add("active");
   if (_mainTabRendered.has(name)) return;
   _mainTabRendered.add(name);
+  const ph = document.getElementById("ph-"+name);
+  if (ph) ph.style.display = "none";
   if (name === "forecast")  renderForecastChart();
   if (name === "corr")      renderCorrChart();
   if (name === "monthly")   renderMonthlyChart();
