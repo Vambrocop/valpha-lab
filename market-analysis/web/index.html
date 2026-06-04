@@ -501,7 +501,9 @@ const EVENTS_CONFIG = [
 async function init() {
   try {
     const r = await fetch("signals.json?_=" + Date.now());
-    SIGNALS = await r.json();
+    const txt = await r.text();
+    // signals.json may contain NaN (invalid JSON) from Python's json.dump default
+    SIGNALS = JSON.parse(txt.replace(/:\s*NaN\b/g, ': null'));
     const genDate = new Date(SIGNALS.generated);
     const daysDiff = Math.floor((Date.now() - genDate) / 86400000);
     const staleHtml = daysDiff > 3
