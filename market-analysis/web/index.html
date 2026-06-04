@@ -363,11 +363,11 @@ footer a { color: var(--green); text-decoration: none; }
         <div id="chart-forecast" style="height:340px;"></div>
         <div class="insight" id="forecast-insight" style="margin-top:.75rem;"></div>
       </div>
-      <div class="tab-content" id="tab-corr"><div id="chart-corr" style="height:340px;"></div></div>
-      <div class="tab-content" id="tab-monthly"><div id="chart-monthly" style="height:340px;"></div></div>
-      <div class="tab-content" id="tab-garch"><div id="chart-garch" style="height:340px;"></div></div>
-      <div class="tab-content" id="tab-granger"><div id="chart-granger" style="height:340px;"></div></div>
-      <div class="tab-content" id="tab-annual"><div id="chart-annual" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-corr"><div id="chart-corr" style="height:340px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">点击标签加载图表…</div></div>
+      <div class="tab-content" id="tab-monthly"><div id="chart-monthly" style="height:340px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">点击标签加载图表…</div></div>
+      <div class="tab-content" id="tab-garch"><div id="chart-garch" style="height:340px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">点击标签加载图表…</div></div>
+      <div class="tab-content" id="tab-granger"><div id="chart-granger" style="height:340px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">点击标签加载图表…</div></div>
+      <div class="tab-content" id="tab-annual"><div id="chart-annual" style="height:340px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.85rem">点击标签加载图表…</div></div>
     </div>
 
     <!-- 高级多元分析 -->
@@ -500,7 +500,12 @@ async function init() {
   try {
     const r = await fetch("signals.json");
     SIGNALS = await r.json();
-    document.getElementById("updated-time").textContent = "更新：" + SIGNALS.generated;
+    const genDate = new Date(SIGNALS.generated);
+    const daysDiff = Math.floor((Date.now() - genDate) / 86400000);
+    const staleHtml = daysDiff > 3
+      ? `<span style="color:#e67e22">⚠ 数据${daysDiff}天前</span>`
+      : `<span style="color:var(--muted)">更新：${SIGNALS.generated}</span>`;
+    document.getElementById("updated-time").innerHTML = staleHtml;
   } catch(e) {
     console.warn("signals.json 未找到，使用演示数据", e);
     SIGNALS = buildDemoSignals();
@@ -516,11 +521,6 @@ async function init() {
   buildEventGrid();
   initDatePicker();
   renderPriceChart();
-  renderCorrChart();
-  renderMonthlyChart();
-  renderGarchChart();
-  renderGrangerChart();
-  renderAnnualChart();
   renderSignalHistory();
 
   if (MV) {
@@ -608,6 +608,7 @@ function updateSignal(dateStr) {
 
   renderSignalMeter(prob, rec);
   renderFactors(rec, prob);
+  renderPercentileInfo(prob);
 }
 
 function renderSignalMeter(prob, rec) {
@@ -622,12 +623,17 @@ function renderSignalMeter(prob, rec) {
   document.getElementById("signal-desc").textContent   = "";
 
   const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  const today = new Date().toISOString().slice(0,10);
+  const isToday = selectedDate === today;
+  const dateLabel = isToday
+    ? `<strong>${selectedDate}</strong> <span style="background:#2ecc7122;color:#2ecc71;border-radius:4px;padding:1px 6px;font-size:0.78rem">今天</span>`
+    : `<strong>${selectedDate}</strong>`;
   const evText = activeEvents.size > 0
     ? `<br>叠加事件调整后 → <strong style="color:${meta.color}">${Math.round(prob*100)}%</strong>`
     : "";
 
   document.getElementById("insight-box").innerHTML = `
-    <strong>${selectedDate}</strong>（${MONTH[rec.month]}）<br>
+    ${dateLabel}（${MONTH[rec.month]}）<br>
     季节先验：${Math.round(rec.prior*100)}%
     ${evText}<br>
     ${meta.desc}
@@ -921,21 +927,23 @@ async function renderSignalHistory() {
 
 // ── 标签切换（主图区，仅影响 id="tab-*" 的内容）──
 const MAIN_TABS = ["forecast","corr","monthly","garch","granger","annual"];
+const _mainTabRendered = new Set();
 function switchTab(name, el) {
-  // 只切换主图区的标签头
   el.closest(".tabs").querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   el.classList.add("active");
-  // 只隐藏/显示主图区的内容
   MAIN_TABS.forEach(t => {
     const el2 = document.getElementById("tab-"+t);
     if (el2) el2.classList.remove("active");
   });
-  const target = document.getElementById("tab-"+name);
-  if (target) target.classList.add("active");
-  // 懒渲染30日前瞻图
-  if (name === "forecast" && document.getElementById("chart-forecast").childNodes.length === 0) {
-    renderForecastChart();
-  }
+  document.getElementById("tab-"+name)?.classList.add("active");
+  if (_mainTabRendered.has(name)) return;
+  _mainTabRendered.add(name);
+  if (name === "forecast")  renderForecastChart();
+  if (name === "corr")      renderCorrChart();
+  if (name === "monthly")   renderMonthlyChart();
+  if (name === "garch")     renderGarchChart();
+  if (name === "granger")   renderGrangerChart();
+  if (name === "annual")    renderAnnualChart();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1396,9 +1404,6 @@ function renderForecastChart() {
     x: dates, y: probs,
     marker: { color: colors, opacity: 0.85 },
     text: dows,
-    hovertemplate: "<b>%{x}</b> %{text}<br>概率: %{y:.1f}%<br>因子: " +
-      reasons.map(r => r).join("|").split("|").map((_,i) => reasons[i]).join("<br>—") +
-      "<extra></extra>",
     customdata: reasons,
     hovertemplate: "<b>%{x}</b> (%{text})<br>概率: <b>%{y:.1f}%</b><br>%{customdata}<extra></extra>",
   }], {
@@ -1534,6 +1539,7 @@ function renderEventStudyChart() {
 
 // ── 百分位信息 ──
 function renderPercentileInfo(todayProb) {
+  if (!SIGNALS || !SIGNALS.daily_signals) return;
   const allProbs = Object.values(SIGNALS.daily_signals).map(d => d.prob);
   const last252  = allProbs.slice(-252);
   const below    = last252.filter(p => p < todayProb).length;
@@ -1804,8 +1810,8 @@ init().then(() => {
   renderEventStudyChart();
   renderOppPanel();
   renderForecastChart();
-  renderDigitChart();      // default active tab
-  renderPercentileInfo(SIGNALS.latest_prob);
+  renderDigitChart();      // default active cal tab
+  _mainTabRendered.add("forecast"); // mark forecast as already rendered
 });
 </script>
 </body>
