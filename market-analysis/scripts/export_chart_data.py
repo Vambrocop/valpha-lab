@@ -102,10 +102,8 @@ def export_charts_extra():
     # ── 月度胜率 ─────────────────────────────────────────────────
     mstats = _safe_csv(PROC_DIR / "monthly_stats.csv")
     if not mstats.empty:
-        # 筛选 NASDAQ
-        nd = mstats[mstats["asset"] == "NASDAQ"] if "asset" in mstats.columns else mstats
-        out["monthly_stats"] = nd.to_dict(orient="records")
-        print(f"  monthly_stats: {len(nd)} 行")
+        out["monthly_stats"] = mstats.to_dict(orient="records")
+        print(f"  monthly_stats: {len(mstats)} 行  assets: {list(mstats['asset'].unique()) if 'asset' in mstats.columns else '?'}")
 
     # ── GARCH 波动率 ──────────────────────────────────────────────
     for asset in ["NASDAQ", "BTC"]:

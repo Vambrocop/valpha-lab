@@ -572,8 +572,10 @@ function tier(p) {
 function initDatePicker() {
   const dp = document.getElementById("date-picker");
   const today = new Date().toISOString().slice(0,10);
+  // 最远可选到未来60天（覆盖45个交易日预测）
+  const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 60);
   dp.value = today;
-  dp.max   = today;
+  dp.max   = maxDate.toISOString().slice(0,10);
   dp.min   = "2015-01-01";
   dp.addEventListener("change", () => updateSignal(dp.value));
   updateSignal(today);
@@ -581,31 +583,64 @@ function initDatePicker() {
 
 function updateSignal(dateStr) {
   selectedDate = dateStr;
-  const daily = SIGNALS.daily_signals;
+  const today = new Date().toISOString().slice(0,10);
+  const isFuture = dateStr > today;
 
-  // 找最近有数据的交易日
+  // ── 未来日期：从 next_opportunities 前瞻数据中取 ──
+  if (isFuture) {
+    const forecast = (SIGNALS.next_opportunities?.all_forecast || []).find(d => d.date === dateStr);
+    if (!forecast) {
+      const ring = document.getElementById("signal-ring");
+      ring.className = "signal-ring tier-3";
+      document.getElementById("signal-pct").textContent  = "—";
+      document.getElementById("signal-label").textContent = "超出预测范围";
+      document.getElementById("signal-stars").textContent = "—";
+      document.getElementById("insight-box").innerHTML =
+        `<strong>${dateStr}</strong><br>该日期超出45个交易日预测范围，暂无数据。<br>
+         <span style="color:var(--muted);font-size:0.78rem">左侧"最佳操作窗口"显示了未来约两个月的高/低概率窗口。</span>`;
+      document.getElementById("factor-list").innerHTML = "";
+      document.getElementById("signal-percentile").innerHTML = "";
+      return;
+    }
+    // 用预测数据合成一个 rec，技术因子用最新值
+    const tech = SIGNALS.next_opportunities?.latest_tech || {};
+    const synRec = {
+      prob: forecast.prob, tier: forecast.tier, month: forecast.month,
+      prior: forecast.prior, dow: forecast.dow_cn ? ["周一","周二","周三","周四","周五"].indexOf(forecast.dow_cn) : 0,
+      wom: forecast.wom, cal_lr: forecast.cal_lr || 1.0, holiday_lr: forecast.hol_lr || 1.0,
+      nasdaq_ma200: tech.nasdaq_ma200 ?? 1, btc_mom20: tech.btc_mom20 ?? 0,
+      dxy_trend: tech.dxy_trend ?? 0, nasdaq_rsi: tech.nasdaq_rsi ?? 50,
+      nasdaq_vol: tech.nasdaq_vol ?? 0.15,
+      _isForecast: true, _reasons: forecast.reasons || [],
+    };
+    let prob = forecast.prob;
+    if(activeEvents.size > 0) {
+      let logOdds = Math.log(prob/(1-prob+1e-10));
+      for(const ev of activeEvents) logOdds += Math.log(Math.max(SIGNALS.event_adjustments[ev]||1, 0.01));
+      prob = Math.min(0.97, Math.max(0.03, 1/(1+Math.exp(-logOdds))));
+    }
+    renderSignalMeter(prob, synRec);
+    renderFactors(synRec, prob);
+    renderPercentileInfo(prob);
+    return;
+  }
+
+  // ── 历史日期：从 daily_signals 取 ──
+  const daily = SIGNALS.daily_signals;
   let key = dateStr;
   if (!daily[key]) {
     const d = new Date(dateStr);
     for(let i=0;i<7;i++) { d.setDate(d.getDate()-1); key=d.toISOString().slice(0,10); if(daily[key]) break; }
   }
-
   const rec = daily[key];
   if (!rec) { document.getElementById("signal-pct").textContent = "无数据"; return; }
 
   let prob = rec.prob;
-
-  // 叠加事件调整（贝叶斯更新）
   if(activeEvents.size > 0) {
     let logOdds = Math.log(prob/(1-prob+1e-10));
-    for(const ev of activeEvents) {
-      const lr = SIGNALS.event_adjustments[ev] || 1.0;
-      logOdds += Math.log(Math.max(lr, 0.01));
-    }
-    prob = 1/(1+Math.exp(-logOdds));
-    prob = Math.min(0.97, Math.max(0.03, prob));
+    for(const ev of activeEvents) logOdds += Math.log(Math.max(SIGNALS.event_adjustments[ev]||1, 0.01));
+    prob = Math.min(0.97, Math.max(0.03, 1/(1+Math.exp(-logOdds))));
   }
-
   renderSignalMeter(prob, rec);
   renderFactors(rec, prob);
   renderPercentileInfo(prob);
@@ -625,17 +660,26 @@ function renderSignalMeter(prob, rec) {
   const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
   const today = new Date().toISOString().slice(0,10);
   const isToday = selectedDate === today;
-  const dateLabel = isToday
-    ? `<strong>${selectedDate}</strong> <span style="background:#2ecc7122;color:#2ecc71;border-radius:4px;padding:1px 6px;font-size:0.78rem">今天</span>`
-    : `<strong>${selectedDate}</strong>`;
+  const isForecast = rec._isForecast;
+  const dateBadge = isToday
+    ? `<span style="background:#2ecc7122;color:#2ecc71;border-radius:4px;padding:1px 6px;font-size:0.78rem">今天</span>`
+    : isForecast
+    ? `<span style="background:#3498db22;color:#3498db;border-radius:4px;padding:1px 6px;font-size:0.78rem">📡 预测</span>`
+    : "";
   const evText = activeEvents.size > 0
     ? `<br>叠加事件调整后 → <strong style="color:${meta.color}">${Math.round(prob*100)}%</strong>`
     : "";
+  const forecastReasons = isForecast && rec._reasons?.length
+    ? `<br>日历因子：${rec._reasons.join("、")}`
+    : "";
+  const techNote = isForecast
+    ? `<br><span style="color:var(--muted);font-size:0.76rem">技术因子冻结为最新值</span>`
+    : "";
 
   document.getElementById("insight-box").innerHTML = `
-    ${dateLabel}（${MONTH[rec.month]}）<br>
-    季节先验：${Math.round(rec.prior*100)}%
-    ${evText}<br>
+    <strong>${selectedDate}</strong> ${dateBadge}（${MONTH[rec.month]}）<br>
+    季节先验：${Math.round(rec.prior*100)}%${forecastReasons}
+    ${evText}${techNote}<br>
     ${meta.desc}
   `;
 }
@@ -1804,14 +1848,18 @@ function renderBacktestCharts() {
 }
 
 // ── 启动 ──
+function safeRender(fn, name) {
+  try { fn(); } catch(e) { console.warn("renderError ["+name+"]:", e); }
+}
+
 init().then(() => {
-  renderDOWPanel();
-  renderSellPanel();
-  renderEventStudyChart();
-  renderOppPanel();
-  renderForecastChart();
-  renderDigitChart();      // default active cal tab
-  _mainTabRendered.add("forecast"); // mark forecast as already rendered
+  safeRender(renderDOWPanel,        "DOW");
+  safeRender(renderSellPanel,       "Sell");
+  safeRender(renderEventStudyChart, "EventStudy");
+  safeRender(renderOppPanel,        "Opp");
+  safeRender(renderForecastChart,   "Forecast");
+  safeRender(renderDigitChart,      "Digit");
+  _mainTabRendered.add("forecast");
 });
 </script>
 </body>
