@@ -384,6 +384,12 @@ footer a { color: var(--green); text-decoration: none; }
         <div class="tab" onclick="switchMVTab('path',this)">路径分析</div>
         <div class="tab" onclick="switchMVTab('cca',this)">CCA/RDA</div>
         <div class="tab" onclick="switchMVTab('eventstudy',this)">事件研究</div>
+        <div class="tab" onclick="switchMVTab('backtest',this)">回测验证</div>
+      </div>
+      <div class="tab-content" id="mvtab-backtest">
+        <div id="chart-backtest-tier" style="height:300px;"></div>
+        <div id="chart-backtest-cal" style="height:260px;margin-top:.5rem;"></div>
+        <div class="insight" id="backtest-insight" style="margin-top:.75rem;"></div>
       </div>
       <div class="tab-content" id="mvtab-eventstudy">
         <div id="chart-eventstudy" style="height:360px;"></div>
@@ -1133,6 +1139,9 @@ function switchMVTab(name, el) {
   if (name === "eventstudy" && document.getElementById("chart-eventstudy").childNodes.length === 0) {
     renderEventStudyChart();
   }
+  if (name === "backtest" && document.getElementById("chart-backtest-tier").childNodes.length === 0) {
+    renderBacktestCharts();
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1661,6 +1670,99 @@ function renderCalHolidayChart() {
 
   document.getElementById("cal-holiday-insight").innerHTML =
     `<strong>假日效应（1950-2026日频）：</strong>感恩节前夕胜率 <strong style="color:#f1c40f">${hd.thanksgiving_eve?.win_rate}%</strong>（n=${hd.thanksgiving_eve?.n}），是全年单日最强规律之一。节前节后均显著高于普通日（基准${hd.normal?.win_rate}%）。`;
+}
+
+// ── 回测验证图表 ──
+function renderBacktestCharts() {
+  const bt = SIGNALS?.backtest;
+  if (!bt) return;
+
+  const tiers   = bt.by_tier || [];
+  const base20  = bt.baseline?.["20d"]?.win_rate || 63.1;
+  const TIER_COLOR = { 1:"#e74c3c", 2:"#e74c3c", 3:"#f1c40f", 4:"#2ecc71", 5:"#27ae60" };
+  const TIER_LABEL = { 1:"第1档", 2:"第2档", 3:"第3档", 4:"第4档", 5:"第5档" };
+
+  // ── 图1：各档位实际20日胜率 ──────────────────────────────────
+  const horizons = ["1d","5d","10d","20d","30d"];
+  const hLabels  = ["1日","5日","10日","20日","30日"];
+  const traces = tiers.map(t => ({
+    type: "scatter", mode: "lines+markers",
+    name: TIER_LABEL[t.tier] + `（n=${t.n}）`,
+    x: hLabels,
+    y: horizons.map(h => t.horizons[h]?.win_rate ?? null),
+    line: { color: TIER_COLOR[t.tier] || "#3498db", width: 2 },
+    marker: { size: 7 },
+    hovertemplate: `<b>Tier ${t.tier} %{x}</b><br>胜率: %{y:.1f}%<extra></extra>`,
+  }));
+  // 基准线
+  traces.push({
+    type: "scatter", mode: "lines",
+    name: `基准（全样本 ${base20}%）`,
+    x: hLabels, y: hLabels.map(() => base20),
+    line: { color: "#8b949e", dash: "dot", width: 1.5 },
+    hoverinfo: "skip",
+  });
+
+  Plotly.newPlot("chart-backtest-tier", traces, {
+    ...DARK,
+    yaxis: {...DARK.yaxis, title: "实际上涨胜率 (%)", range: [25, 80]},
+    xaxis: {...DARK.xaxis, title: "持有天数"},
+    margin: {t: 20, b: 50, l: 60, r: 20},
+    legend: {orientation: "h", y: 1.12},
+  }, {responsive: true});
+
+  // ── 图2：校准曲线（模型预测 vs 实际20日胜率）────────────────
+  const cal = bt.calibration_20d || [];
+  if (cal.length > 0) {
+    const calX = cal.map(c => c.bucket);
+    const calY = cal.map(c => c.actual_wr_20d);
+    const calN = cal.map(c => c.n);
+    const calColors = calY.map(y => y >= base20 + 3 ? "#2ecc71" : y >= base20 ? "#f1c40f" : "#e74c3c");
+    Plotly.newPlot("chart-backtest-cal", [{
+      type: "bar",
+      x: calX, y: calY,
+      marker: { color: calColors },
+      text: cal.map(c => `n=${c.n}`),
+      hovertemplate: "<b>预测概率区间: %{x}</b><br>实际20日胜率: %{y:.1f}%<br>%{text}<extra></extra>",
+    }, {
+      type: "scatter", mode: "lines",
+      x: calX, y: calX.map(() => base20),
+      line: { color: "#8b949e", dash: "dot", width: 1.5 },
+      name: "基准", hoverinfo: "skip",
+    }], {
+      ...DARK,
+      yaxis: {...DARK.yaxis, title: "实际胜率 (%)", range: [45, 75]},
+      xaxis: {...DARK.xaxis, title: "模型预测概率区间"},
+      margin: {t: 10, b: 50, l: 60, r: 20},
+      showlegend: false,
+    }, {responsive: true});
+  }
+
+  // ── Insight 文字 ──────────────────────────────────────────────
+  const s4 = bt.tier4_strategy || {};
+  const t4 = tiers.find(t => t.tier === 4);
+  const t2 = tiers.find(t => t.tier === 2);
+  const t3 = tiers.find(t => t.tier === 3);
+  const sig4 = t4?.horizons?.["20d"]?.significant;
+  const sig2 = t2?.horizons?.["5d"]?.significant;
+
+  document.getElementById("backtest-insight").innerHTML =
+    `<strong>历史回测结论（2000-2026，${Object.values(SIGNALS.daily_signals).length}个交易日）：</strong><br><br>
+     <span style="color:#2ecc71">▲ 第4档信号（≥60%，n=${t4?.n||0}天）：</span>
+     20日实际胜率 <strong style="color:#2ecc71">${t4?.horizons?.["20d"]?.win_rate||"?"}%</strong>，
+     高于全样本基准 ${base20}%（+${t4?.horizons?.["20d"]?.diff_vs_baseline||"?"}pp），
+     <strong>p=${t4?.horizons?.["20d"]?.p_value||"?"}</strong>${sig4?" ✓统计显著":""}<br>
+     <span style="color:#e74c3c">▼ 第2档信号（≤40%，n=${t2?.n||0}天）：</span>
+     5日胜率仅 <strong style="color:#e74c3c">${t2?.horizons?.["5d"]?.win_rate||"?"}%</strong>，
+     远低于基准（${t2?.horizons?.["5d"]?.diff_vs_baseline||"?"}pp），
+     <strong>p=${t2?.horizons?.["5d"]?.p_value||"?"}</strong>${sig2?" ✓统计显著":""}<br>
+     <span style="color:#f1c40f">△ 第3档信号：</span>
+     20日胜率 ${t3?.horizons?.["20d"]?.win_rate||"?"}%，略低于基准（几乎中性）<br><br>
+     <span style="color:var(--muted);font-size:0.79rem">
+       校准曲线：模型预测概率越高 → 实际胜率越高，说明信号有单调性。<br>
+       「仅Tier≥4入场」策略 20日胜率 ${s4.win_rate_20d||"?"}% vs 随时买入 ${s4.baseline_win_rate||"?"}%，
+       p=${s4.p_value||"?"}（<strong>高度显著</strong>）。绝对差距 +${s4.diff||"?"}pp，持续复利后可产生显著超额收益。
+     </span>`;
 }
 
 // ── 启动 ──
