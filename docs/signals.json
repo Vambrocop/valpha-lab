@@ -130094,5 +130094,90 @@
       "avg_return_20d": 0.9,
       "baseline_avg_ret": 0.6
     }
+  },
+  "walk_forward": {
+    "folds": [
+      {
+        "train": "2000-2012",
+        "test": "2012-2014",
+        "baseline_wr": 71.7,
+        "tier4_wr": 64.7,
+        "tier4_diff": -7.0,
+        "tier4_sig": true
+      },
+      {
+        "train": "2000-2014",
+        "test": "2014-2016",
+        "baseline_wr": 56.3,
+        "tier4_wr": 51.0,
+        "tier4_diff": -5.4,
+        "tier4_sig": true
+      },
+      {
+        "train": "2000-2016",
+        "test": "2016-2018",
+        "baseline_wr": 76.9,
+        "tier4_wr": null,
+        "tier4_diff": null,
+        "tier4_sig": null
+      },
+      {
+        "train": "2000-2018",
+        "test": "2018-2020",
+        "baseline_wr": 67.0,
+        "tier4_wr": 61.9,
+        "tier4_diff": -5.1,
+        "tier4_sig": true
+      },
+      {
+        "train": "2000-2020",
+        "test": "2020-2022",
+        "baseline_wr": 75.0,
+        "tier4_wr": 71.8,
+        "tier4_diff": -3.3,
+        "tier4_sig": false
+      },
+      {
+        "train": "2000-2022",
+        "test": "2022-2024",
+        "baseline_wr": 54.3,
+        "tier4_wr": 61.4,
+        "tier4_diff": 7.1,
+        "tier4_sig": true
+      }
+    ],
+    "summary": {
+      "n_folds": 6,
+      "mean_tier4_advantage_pp": -2.74,
+      "n_significant_folds": 4,
+      "horizon_days": 20
+    },
+    "optimized_lr_key_factors": {
+      "NASDAQ_above_ma200": {
+        "lr": 1.063,
+        "wr": 66.8,
+        "n": 4233
+      },
+      "NASDAQ_mom20_neg": {
+        "lr": 0.9393,
+        "wr": 59.1,
+        "n": 911
+      },
+      "BTC_above_ma200": {
+        "lr": 1.0966,
+        "wr": 69.0,
+        "n": 1549
+      },
+      "BTC_mom20_pos": {
+        "lr": 1.1646,
+        "wr": 73.2,
+        "n": 1083
+      },
+      "nasdaq_high_vol": {
+        "lr": 0.8392,
+        "wr": 52.8,
+        "n": 1429
+      }
+    }
   }
 }
