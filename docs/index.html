@@ -498,7 +498,7 @@ const EVENTS_CONFIG = [
 // ═══════════════════════════════════════════════════════
 async function init() {
   try {
-    const r = await fetch("signals.json");
+    const r = await fetch("signals.json?_=" + Date.now());
     SIGNALS = await r.json();
     const genDate = new Date(SIGNALS.generated);
     const daysDiff = Math.floor((Date.now() - genDate) / 86400000);
@@ -569,13 +569,20 @@ function tier(p) {
 // ═══════════════════════════════════════════════════════
 //  日期选择器
 // ═══════════════════════════════════════════════════════
+// 用本地日期（不用 UTC），解决澳洲等 UTC+ 时区跨日问题
+function localDateStr(d) {
+  d = d || new Date();
+  return d.getFullYear() + '-' +
+         String(d.getMonth()+1).padStart(2,'0') + '-' +
+         String(d.getDate()).padStart(2,'0');
+}
+
 function initDatePicker() {
   const dp = document.getElementById("date-picker");
-  const today = new Date().toISOString().slice(0,10);
-  // 最远可选到未来60天（覆盖45个交易日预测）
+  const today = localDateStr();
   const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 60);
   dp.value = today;
-  dp.max   = maxDate.toISOString().slice(0,10);
+  dp.max   = localDateStr(maxDate);
   dp.min   = "2015-01-01";
   dp.addEventListener("change", () => updateSignal(dp.value));
   updateSignal(today);
@@ -583,7 +590,7 @@ function initDatePicker() {
 
 function updateSignal(dateStr) {
   selectedDate = dateStr;
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr();
   const isFuture = dateStr > today;
 
   // ── 未来日期：从 next_opportunities 前瞻数据中取 ──
@@ -658,7 +665,7 @@ function renderSignalMeter(prob, rec) {
   document.getElementById("signal-desc").textContent   = "";
 
   const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr();
   const isToday = selectedDate === today;
   const isForecast = rec._isForecast;
   const dateBadge = isToday
@@ -1606,6 +1613,7 @@ function renderPercentileInfo(todayProb) {
 
 // ── 日历统计标签切换 ──
 const CAL_TABS = ["digit","cycle","party","calholiday"];
+const _calTabRendered = new Set();
 function switchCalTab(name, el) {
   el.closest(".tabs").querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   el.classList.add("active");
@@ -1614,10 +1622,13 @@ function switchCalTab(name, el) {
     if (e) e.classList.remove("active");
   });
   document.getElementById("caltab-"+name)?.classList.add("active");
-  if (name==="digit"      && !document.getElementById("chart-digit").childNodes.length)       renderDigitChart();
-  if (name==="cycle"      && !document.getElementById("chart-cycle").childNodes.length)       renderCycleChart();
-  if (name==="party"      && !document.getElementById("chart-party").childNodes.length)       renderPartyChart();
-  if (name==="calholiday" && !document.getElementById("chart-cal-holiday").childNodes.length) renderCalHolidayChart();
+  if (_calTabRendered.has(name)) return;
+  _calTabRendered.add(name);
+  // setTimeout 确保浏览器 reflow 完成再让 Plotly 计算尺寸
+  if (name==="digit")      setTimeout(() => safeRender(renderDigitChart,      "Digit"),      0);
+  if (name==="cycle")      setTimeout(() => safeRender(renderCycleChart,      "Cycle"),      0);
+  if (name==="party")      setTimeout(() => safeRender(renderPartyChart,      "Party"),      0);
+  if (name==="calholiday") setTimeout(() => safeRender(renderCalHolidayChart, "CalHoliday"), 0);
 }
 
 function renderDigitChart() {
@@ -1858,8 +1869,10 @@ init().then(() => {
   safeRender(renderEventStudyChart, "EventStudy");
   safeRender(renderOppPanel,        "Opp");
   safeRender(renderForecastChart,   "Forecast");
-  safeRender(renderDigitChart,      "Digit");
   _mainTabRendered.add("forecast");
+  // Digit chart is default-visible; use setTimeout so Plotly gets correct width
+  _calTabRendered.add("digit");
+  setTimeout(() => safeRender(renderDigitChart, "Digit"), 100);
 });
 </script>
 </body>
