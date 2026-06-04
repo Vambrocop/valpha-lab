@@ -285,14 +285,19 @@ footer a { color: var(--green); text-decoration: none; }
         🔬 高级统计分析 <span class="badge">CCA · SHAP · Kalman · Prophet · 路径分析</span>
       </div>
       <div class="tabs" id="mv-tabs">
-        <div class="tab active" onclick="switchMVTab('shap',this)">SHAP因子</div>
+        <div class="tab active" onclick="switchMVTab('modelcmp',this)">模型对比</div>
+        <div class="tab" onclick="switchMVTab('shap',this)">SHAP因子</div>
         <div class="tab" onclick="switchMVTab('prophet',this)">Prophet预测</div>
         <div class="tab" onclick="switchMVTab('kalman',this)">卡尔曼趋势</div>
         <div class="tab" onclick="switchMVTab('rolling',this)">滚动β系数</div>
         <div class="tab" onclick="switchMVTab('path',this)">路径分析</div>
         <div class="tab" onclick="switchMVTab('cca',this)">CCA/RDA</div>
       </div>
-      <div class="tab-content active" id="mvtab-shap">
+      <div class="tab-content active" id="mvtab-modelcmp">
+        <div id="chart-modelcmp" style="height:360px;"></div>
+        <div class="insight" id="modelcmp-insight" style="margin-top:.75rem;"></div>
+      </div>
+      <div class="tab-content" id="mvtab-shap">
         <div id="chart-shap" style="height:340px;"></div>
         <div class="insight" id="shap-insight" style="margin-top:.75rem;"></div>
       </div>
@@ -387,6 +392,7 @@ async function init() {
   renderSignalHistory();
 
   if (MV) {
+    renderModelComparison();
     renderSHAPChart();
     renderProphetChart();
     renderKalmanChart();
@@ -804,6 +810,60 @@ function switchMVTab(name, el) {
 // ══════════════════════════════════════════════════════
 //  多元分析图表
 // ══════════════════════════════════════════════════════
+function renderModelComparison() {
+  if (!MV || !MV.model_comparison) return;
+  const mc = MV.model_comparison;
+
+  // ML模型：用AUC排序（AUC是分类质量的真实衡量）
+  const ml = [...mc.ml_models].sort((a,b) => b.auc - a.auc);
+  // 统计模型：用R²排序
+  const st = [...mc.stats_models].sort((a,b) => b.r2_pct - a.r2_pct);
+
+  const allNames  = [...ml.map(m=>m.name+"（ML）"), ...st.map(s=>s.name)].reverse();
+  const allValues = [...ml.map(m=>+(m.auc*100).toFixed(1)), ...st.map(s=>s.r2_pct)].reverse();
+  const allColors = [
+    ...st.map(s => s.significant ? "#3498db" : "#555"),
+    ...ml.map(m => "#9b59b6"),
+  ];
+  const allText = [
+    ...ml.map(m=>`AUC=${m.auc} Acc=${m.acc}`),
+    ...st.map(s=>`R²=${s.r2_pct}% ${s.note}`),
+  ].reverse();
+
+  Plotly.newPlot("chart-modelcmp", [{
+    type: "bar", orientation: "h",
+    x: allValues, y: allNames,
+    marker: { color: allColors },
+    text: allText,
+    textposition: "outside",
+    hovertemplate: "<b>%{y}</b><br>%{text}<extra></extra>",
+    cliponaxis: false,
+  }], {
+    ...DARK,
+    xaxis: {...DARK.xaxis, title: "解释力 / AUC×100（越大越好）", range: [0, 70]},
+    margin: {t:20, b:50, l:200, r:80},
+    shapes: [
+      {type:"line",x0:50,x1:50,y0:-0.5,y1:allNames.length-0.5,
+       line:{color:"#9b59b6",dash:"dot",width:1}},
+    ],
+    annotations: [
+      {x:50, y:allNames.length-0.5, text:"AUC=0.5（随机水平）",
+       showarrow:false, font:{color:"#9b59b6",size:10}},
+    ]
+  }, {responsive:true});
+
+  // 找最佳ML和最佳统计
+  const bestML  = ml[0];
+  const bestStat= st[0];
+  document.getElementById("modelcmp-insight").innerHTML =
+    `<strong>核心结论：</strong><br>
+     <span style="color:#3498db">统计关系模型</span>（<strong>${bestStat.name}</strong>）解释力最高，R²=<strong style="color:#2ecc71">${bestStat.r2_pct}%</strong>——
+     这是"已知X时，Y的方差有多少被解释"。<br>
+     <span style="color:#9b59b6">机器学习分类模型</span> AUC 最高仅 <strong style="color:#f1c40f">${(bestML.auc*100).toFixed(1)}</strong>（随机=50）——
+     这是"预测明天涨还是跌"，市场半有效，难度极大。<br>
+     <span style="color:var(--muted);font-size:0.78rem">解读：VIX和SP500高度相关≠可以用VIX预测未来涨跌。相关是同步的，预测是提前的——两回事。</span>`;
+}
+
 function renderSHAPChart() {
   if (!MV || !MV.shap) return;
   const items = MV.shap.slice(0,12).reverse();

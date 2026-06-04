@@ -30,7 +30,7 @@ PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 PROC_DIR.mkdir(exist_ok=True)
 
 MARKET_ASSETS  = ["NASDAQ", "SP500", "BTC", "ETH", "DXY", "OIL", "GOLD", "TNX", "VIX",
-                   "CNY", "AUD", "VNQ", "NVDA"]
+                   "VNQ", "NVDA"]
 MACRO_COLS     = ["M2", "FED_RATE", "CPI", "UNRATE", "YIELD_10Y"]
 
 # ── 加载数据 ──────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ def build_features(df):
 
     # ── 收益率动量 ────────────────────────────────────────────────
     for col in ["NASDAQ", "SP500", "BTC", "DXY", "OIL", "GOLD", "VIX",
-                "CNY", "AUD", "VNQ", "NVDA"]:
+                "VNQ", "NVDA"]:
         if col not in m.columns: continue
         r = m[col].pct_change()
         feat[f"{col}_ret1m"]  = r
@@ -84,13 +84,7 @@ def build_features(df):
         feat["vix_chg"]     = m["VIX"].pct_change()
         feat["vix_hi30"]    = (m["VIX"] > 30).astype(int)  # VIX > 30 = 极度恐慌
 
-    # ── 汇率信号 ─────────────────────────────────────────────────
-    if "CNY" in m.columns:
-        feat["cny_trend"]   = m["CNY"].pct_change(3)    # 人民币3月趋势（升=资本流入美国减少）
-        feat["cny_accel"]   = m["CNY"].pct_change().diff()
-    if "AUD" in m.columns:
-        feat["aud_trend"]   = m["AUD"].pct_change(3)    # 澳元趋势（风险情绪代理）
-    # REIT信贷压力
+    # ── REIT 信贷压力
     if "VNQ" in m.columns:
         feat["vnq_trend"]   = m["VNQ"].pct_change(3)
         feat["vnq_vs_sp"]   = m["VNQ"].pct_change(3) - (m["SP500"].pct_change(3) if "SP500" in m.columns else 0)
