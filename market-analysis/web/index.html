@@ -132,6 +132,18 @@ footer a { color: var(--green); text-decoration: none; }
 .window-buy .window-title  { color: var(--green); }
 .window-sell .window-title { color: var(--red); }
 .window-list { color: var(--muted); line-height: 1.7; }
+
+/* ── Next Opportunity cards ── */
+.opp-list { display: flex; flex-direction: column; gap: .45rem; margin-top: .6rem; }
+.opp-item { display: flex; align-items: center; gap: .65rem; background: var(--surface2); border-radius: 7px; padding: .5rem .75rem; border-left: 3px solid transparent; }
+.opp-item.entry { border-left-color: var(--green); }
+.opp-item.exit  { border-left-color: #e74c3c; }
+.opp-date  { font-size: 0.9rem; font-weight: 700; min-width: 82px; }
+.opp-dow   { font-size: 0.75rem; color: var(--muted); min-width: 28px; }
+.opp-prob  { font-size: 0.88rem; font-weight: 700; min-width: 42px; }
+.opp-tags  { font-size: 0.72rem; color: var(--muted); flex: 1; }
+.opp-tier  { font-size: 0.72rem; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+.opp-note  { font-size: 0.75rem; color: var(--muted); margin-top: .5rem; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -231,6 +243,16 @@ footer a { color: var(--green); text-decoration: none; }
       </div>
     </div>
 
+    <!-- 未来最佳入场/减仓窗口（动态预测） -->
+    <div class="panel" id="opp-panel">
+      <div class="panel-title">🎯 接下来最佳操作窗口 <span style="color:var(--muted);font-size:0.72rem;font-weight:400;">未来45个交易日</span></div>
+      <div style="font-size:0.8rem;color:var(--green);font-weight:600;margin-bottom:.4rem;">▲ 最佳买入窗口（概率最高）</div>
+      <div class="opp-list" id="opp-entry-list"></div>
+      <div style="font-size:0.8rem;color:#e74c3c;font-weight:600;margin:1rem 0 .4rem;">▼ 最弱 / 适合减仓（概率最低）</div>
+      <div class="opp-list" id="opp-exit-list"></div>
+      <div class="opp-note" id="opp-note"></div>
+    </div>
+
     <!-- 档位说明 -->
     <div class="panel">
       <div class="panel-title">五档入场等级</div>
@@ -305,13 +327,18 @@ footer a { color: var(--green); text-decoration: none; }
     <!-- 标签页：相关性 / Granger / GARCH / 年度热力图 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="tabs">
-        <div class="tab active" onclick="switchTab('corr',this)">滚动相关性</div>
+        <div class="tab active" onclick="switchTab('forecast',this)">30日前瞻</div>
+        <div class="tab" onclick="switchTab('corr',this)">滚动相关性</div>
         <div class="tab" onclick="switchTab('monthly',this)">月度胜率(2000+)</div>
         <div class="tab" onclick="switchTab('garch',this)">波动率(GARCH)</div>
         <div class="tab" onclick="switchTab('granger',this)">Granger因果</div>
         <div class="tab" onclick="switchTab('annual',this)">年度热力图</div>
       </div>
-      <div class="tab-content active" id="tab-corr"><div id="chart-corr" style="height:340px;"></div></div>
+      <div class="tab-content active" id="tab-forecast">
+        <div id="chart-forecast" style="height:340px;"></div>
+        <div class="insight" id="forecast-insight" style="margin-top:.75rem;"></div>
+      </div>
+      <div class="tab-content" id="tab-corr"><div id="chart-corr" style="height:340px;"></div></div>
       <div class="tab-content" id="tab-monthly"><div id="chart-monthly" style="height:340px;"></div></div>
       <div class="tab-content" id="tab-garch"><div id="chart-garch" style="height:340px;"></div></div>
       <div class="tab-content" id="tab-granger"><div id="chart-granger" style="height:340px;"></div></div>
@@ -799,12 +826,23 @@ async function renderSignalHistory() {
     hovermode:"x unified",legend:{orientation:"h",y:1.05}},{responsive:true});
 }
 
-// ── 标签切换 ──
+// ── 标签切换（主图区，仅影响 id="tab-*" 的内容）──
+const MAIN_TABS = ["forecast","corr","monthly","garch","granger","annual"];
 function switchTab(name, el) {
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-  document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));
+  // 只切换主图区的标签头
+  el.closest(".tabs").querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   el.classList.add("active");
-  document.getElementById("tab-"+name).classList.add("active");
+  // 只隐藏/显示主图区的内容
+  MAIN_TABS.forEach(t => {
+    const el2 = document.getElementById("tab-"+t);
+    if (el2) el2.classList.remove("active");
+  });
+  const target = document.getElementById("tab-"+name);
+  if (target) target.classList.add("active");
+  // 懒渲染30日前瞻图
+  if (name === "forecast" && document.getElementById("chart-forecast").childNodes.length === 0) {
+    renderForecastChart();
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1236,6 +1274,102 @@ function renderCCAChart() {
      其余 ${(100-rdaTotal).toFixed(1)}% 由市场情绪和动量主导——这解释了为什么宏观指标无法完全预测短期行情。`;
 }
 
+// ── 30日概率前瞻图 ──
+function renderForecastChart() {
+  if (!SIGNALS || !SIGNALS.next_opportunities) return;
+  const opp = SIGNALS.next_opportunities;
+  const all = opp.all_forecast || [];
+  if (all.length === 0) return;
+
+  const dates  = all.map(d => d.date);
+  const probs  = all.map(d => +(d.prob * 100).toFixed(1));
+  const tiers  = all.map(d => d.tier);
+  const dows   = all.map(d => d.dow_cn);
+  const reasons= all.map(d => d.reasons.join("、") || "普通交易日");
+  const tops   = new Set(opp.top_entry.map(x => x.date));
+  const bottoms= new Set(opp.top_exit.map(x => x.date));
+
+  const colors = dates.map((d, i) => {
+    if (tops.has(d))    return "#27ae60";
+    if (bottoms.has(d)) return "#e74c3c";
+    return tiers[i] >= 4 ? "#2ecc71" : tiers[i] <= 2 ? "#e67e22" : "#3498db";
+  });
+
+  Plotly.newPlot("chart-forecast", [{
+    type: "bar",
+    x: dates, y: probs,
+    marker: { color: colors, opacity: 0.85 },
+    text: dows,
+    hovertemplate: "<b>%{x}</b> %{text}<br>概率: %{y:.1f}%<br>因子: " +
+      reasons.map(r => r).join("|").split("|").map((_,i) => reasons[i]).join("<br>—") +
+      "<extra></extra>",
+    customdata: reasons,
+    hovertemplate: "<b>%{x}</b> (%{text})<br>概率: <b>%{y:.1f}%</b><br>%{customdata}<extra></extra>",
+  }], {
+    ...DARK,
+    yaxis: {...DARK.yaxis, title: "入场概率 (%)", range: [45, 80]},
+    xaxis: {...DARK.xaxis, tickangle: -45, tickfont: {size: 10}},
+    margin: {t:20, b:80, l:60, r:20},
+    shapes: [
+      {type:"line", x0:dates[0], x1:dates[dates.length-1], y0:60, y1:60,
+       line:{color:"#2ecc71", dash:"dot", width:1}},
+      {type:"line", x0:dates[0], x1:dates[dates.length-1], y0:55, y1:55,
+       line:{color:"#f1c40f", dash:"dot", width:1}},
+    ],
+    annotations: [
+      {x:dates[Math.floor(dates.length*0.9)], y:60.5, text:"60% 入场线",
+       showarrow:false, font:{color:"#2ecc71",size:10}},
+      {x:dates[Math.floor(dates.length*0.9)], y:55.5, text:"55% 中性线",
+       showarrow:false, font:{color:"#f1c40f",size:10}},
+    ]
+  }, {responsive:true});
+
+  const topDate = opp.top_entry[0];
+  const tech = opp.latest_tech || {};
+  const maState = tech.nasdaq_ma200 === 1 ? "NASDAQ在200均线上方（偏多）" : "NASDAQ在200均线下方（偏空）";
+  document.getElementById("forecast-insight").innerHTML =
+    `<strong>未来45交易日概率前瞻</strong><br>
+     <span style="color:#27ae60">绿色</span>=最佳买入窗口 &nbsp;
+     <span style="color:#e74c3c">红色</span>=最弱/减仓窗口 &nbsp;
+     <span style="color:#3498db">蓝色</span>=普通日<br>
+     最高概率日：<strong style="color:#27ae60">${topDate.date} (${topDate.dow_cn})</strong>
+     — ${topDate.prob*100 > 0 ? (topDate.prob*100).toFixed(1) : "—"}%，原因：${topDate.reasons.join("、") || "日历因子叠加"}<br>
+     <span style="color:var(--muted);font-size:0.78rem">
+       技术信号已冻结为最新值：${maState}；RSI=${tech.nasdaq_rsi}；BTC动量=${tech.btc_mom20?.toFixed(3) || "—"}。
+       日历因子（星期/月份/假日/税季）可精确预测，技术信号近期不确定。
+     </span>`;
+}
+
+// ── 未来操作窗口面板（左栏）──
+function renderOppPanel() {
+  if (!SIGNALS || !SIGNALS.next_opportunities) return;
+  const opp = SIGNALS.next_opportunities;
+
+  const TIER_COLOR = { 5:"#27ae60", 4:"#2ecc71", 3:"#f1c40f", 2:"#e67e22", 1:"#e74c3c" };
+  const TIER_LABEL = { 5:"强势", 4:"适合", 3:"中性", 2:"谨慎", 1:"高险" };
+
+  function makeItem(d, cls) {
+    const color = TIER_COLOR[d.tier] || "#888";
+    const label = TIER_LABEL[d.tier] || "";
+    const tags  = d.reasons.length > 0 ? d.reasons.slice(0,2).join(" · ") : "普通日";
+    return `<div class="opp-item ${cls}">
+      <span class="opp-date">${d.date}</span>
+      <span class="opp-dow">${d.dow_cn}</span>
+      <span class="opp-prob" style="color:${color}">${(d.prob*100).toFixed(1)}%</span>
+      <span class="opp-tags">${tags}</span>
+      <span class="opp-tier" style="background:${color}22;color:${color}">${label}</span>
+    </div>`;
+  }
+
+  const entryHTML = opp.top_entry.slice(0,4).map(d => makeItem(d,"entry")).join("");
+  const exitHTML  = opp.top_exit.slice(0,3).map(d => makeItem(d,"exit")).join("");
+
+  document.getElementById("opp-entry-list").innerHTML = entryHTML;
+  document.getElementById("opp-exit-list").innerHTML  = exitHTML;
+  document.getElementById("opp-note").innerHTML =
+    `<span style="color:var(--muted)">技术信号冻结为今日值；日历因子（星期/假日/月份/税季）精确预测。</span>`;
+}
+
 // ── 事件研究图表 ──
 function renderEventStudyChart() {
   const es = SIGNALS && SIGNALS.event_study;
@@ -1307,6 +1441,8 @@ init().then(() => {
   renderDOWPanel();
   renderSellPanel();
   renderEventStudyChart();
+  renderOppPanel();
+  renderForecastChart();
 });
 </script>
 </body>

@@ -391,6 +391,119 @@ def build_timing_summary():
     return summary
 
 
+DOW_CN = {0:"周一", 1:"周二", 2:"周三", 3:"周四", 4:"周五"}
+
+def find_next_opportunities(signals, n_days=45):
+    """
+    扫描未来 n_days 个自然日中的所有交易日，计算每天的贝叶斯概率。
+    日历因子（星期/月/假日/税季）完全可预测；
+    技术因子（MA/BTC/DXY/RSI）用最新一天值冻结（30天内通常不会突变）。
+
+    Returns:
+        dict with top_entry (top 5 buy days), top_exit (5 weakest days),
+        and all_forecast (full list sorted by date).
+    """
+    today = date.today()
+
+    # 从最新信号提取技术因子LR（冻结）
+    latest = list(signals.values())[-1]
+    tech_lrs = []
+
+    nasdaq_ma200 = latest.get("nasdaq_ma200", 1)
+    tech_lrs.append(1.15 if nasdaq_ma200 == 1 else 0.85)
+
+    btc_mom = latest.get("btc_mom20", 0) or 0
+    tech_lrs.append(1.12 if btc_mom > 0.05 else (0.90 if btc_mom < -0.05 else 1.0))
+
+    dxy = latest.get("dxy_trend", 0) or 0
+    tech_lrs.append(0.88 if dxy > 0.01 else (1.12 if dxy < -0.01 else 1.0))
+
+    nasdaq_vol = latest.get("nasdaq_vol", 0.20) or 0.20
+    tech_lrs.append(0.85 if nasdaq_vol > 0.25 else (1.10 if nasdaq_vol < 0.15 else 1.0))
+
+    nasdaq_rsi = latest.get("nasdaq_rsi", 50) or 50
+    tech_lrs.append(0.85 if nasdaq_rsi > 75 else (1.10 if nasdaq_rsi < 35 else 1.0))
+
+    forecast = []
+    d = today + timedelta(days=1)
+    trading_days_found = 0
+
+    while trading_days_found < n_days:
+        # 跳过周末
+        if d.weekday() >= 5:
+            d += timedelta(days=1)
+            continue
+        # 跳过假日
+        if d in _HOLIDAY_SET:
+            d += timedelta(days=1)
+            continue
+
+        ts = pd.Timestamp(d)
+        month = ts.month
+        prior = MONTHLY_PRIOR[month]
+
+        cal_lrs = [
+            DOW_LR.get(ts.weekday(), 1.0),
+            _WOM_LR.get(_week_of_month(ts), 1.0),
+            _calendar_anomaly_lr(ts),
+            _holiday_lr(ts),
+        ] + tech_lrs
+
+        prob = bayesian_update(prior, cal_lrs)
+
+        # 主因子说明（用于前端tooltip）
+        reasons = []
+        dow_lr = DOW_LR.get(ts.weekday(), 1.0)
+        if dow_lr > 1.02: reasons.append(f"{DOW_CN[ts.weekday()]}效应")
+        wom_lr = _WOM_LR.get(_week_of_month(ts), 1.0)
+        if wom_lr > 1.05: reasons.append(f"月内第{_week_of_month(ts)}周最强")
+        if wom_lr < 0.97: reasons.append(f"月内第{_week_of_month(ts)}周偏弱")
+        hol_lr = _holiday_lr(ts)
+        if hol_lr > 1.10: reasons.append("假日效应")
+        cal_lr = _calendar_anomaly_lr(ts)
+        if cal_lr > 1.10: reasons.append("税季/季初建仓")
+        if cal_lr < 0.95: reasons.append("税损收割期")
+        month_prior = MONTHLY_PRIOR[month]
+        if month_prior >= 0.62: reasons.append(f"{month}月胜率高")
+        if month_prior <= 0.50: reasons.append(f"{month}月胜率低")
+
+        forecast.append({
+            "date":      d.strftime("%Y-%m-%d"),
+            "dow_cn":    DOW_CN.get(ts.weekday(), ""),
+            "month":     month,
+            "wom":       int(_week_of_month(ts)),
+            "prob":      round(prob, 4),
+            "tier":      _tier(prob),
+            "prior":     round(prior, 4),
+            "dow_lr":    round(dow_lr, 4),
+            "wom_lr":    round(wom_lr, 4),
+            "hol_lr":    round(hol_lr, 4),
+            "cal_lr":    round(cal_lr, 4),
+            "reasons":   reasons,
+        })
+
+        d += timedelta(days=1)
+        trading_days_found += 1
+
+    # 按概率排序
+    sorted_asc  = sorted(forecast, key=lambda x: x["prob"])
+    sorted_desc = sorted(forecast, key=lambda x: -x["prob"])
+
+    return {
+        "top_entry": sorted_desc[:5],   # 最佳买入：概率最高的5天
+        "top_exit":  sorted_asc[:5],    # 最弱/减仓：概率最低的5天
+        "all_forecast": forecast,        # 按日期顺序，供日历视图
+        "tech_frozen_note": "技术信号使用当前最新值（MA/BTC/DXY/RSI），日历因子基于统计规律精确预测",
+        "latest_tech": {
+            "nasdaq_ma200": int(nasdaq_ma200),
+            "btc_mom20":    round(btc_mom, 4),
+            "dxy_trend":    round(dxy, 4),
+            "nasdaq_vol":   round(nasdaq_vol, 4),
+            "nasdaq_rsi":   round(nasdaq_rsi, 1),
+        }
+    }
+
+
 def load_event_study():
     """将 event_study_results.json 中的核心数据嵌入 signals.json"""
     try:
@@ -437,6 +550,9 @@ if __name__ == "__main__":
 
     # 嵌入事件研究结果
     result["event_study"] = load_event_study()
+
+    # 未来最佳入场/离场窗口
+    result["next_opportunities"] = find_next_opportunities(result["daily_signals"], n_days=45)
 
     out = WEB_DIR / "signals.json"
     with open(out, "w", encoding="utf-8") as f:
