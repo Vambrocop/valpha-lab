@@ -302,7 +302,160 @@ def compute_holiday_effects(sp500_daily):
 
 
 # ══════════════════════════════════════════════════════════════════
-# 4. 熊市目录
+# 4. 年份规律统计（年份尾数、总统任期年、执政党）
+# ══════════════════════════════════════════════════════════════════
+
+# 美国总统执政党（按任期年份）
+_PARTY_BY_YEAR = {}
+_PRESIDENT_BY_YEAR = {}
+_PRESIDENTS = [
+    (range(1929, 1933), "R", "胡佛"),
+    (range(1933, 1945), "D", "罗斯福"),
+    (range(1945, 1953), "D", "杜鲁门"),
+    (range(1953, 1961), "R", "艾森豪威尔"),
+    (range(1961, 1964), "D", "肯尼迪"),
+    (range(1964, 1969), "D", "约翰逊"),
+    (range(1969, 1974), "R", "尼克松"),
+    (range(1974, 1977), "R", "福特"),
+    (range(1977, 1981), "D", "卡特"),
+    (range(1981, 1989), "R", "里根"),
+    (range(1989, 1993), "R", "布什(父)"),
+    (range(1993, 2001), "D", "克林顿"),
+    (range(2001, 2009), "R", "布什(子)"),
+    (range(2009, 2017), "D", "奥巴马"),
+    (range(2017, 2021), "R", "特朗普1"),
+    (range(2021, 2025), "D", "拜登"),
+    (range(2025, 2029), "R", "特朗普2"),
+]
+for _rng, _party, _name in _PRESIDENTS:
+    for _yr in _rng:
+        _PARTY_BY_YEAR[_yr] = _party
+        _PRESIDENT_BY_YEAR[_yr] = _name
+
+
+def year_pattern_stats(price_series):
+    """
+    计算三类年份规律：
+    1. 年份尾数（0-9），哪个数字历史上最强
+    2. 总统任期年（1-4年周期）
+    3. 执政党（共和党 R vs 民主党 D）
+    """
+    yearly = price_series.resample("YE").last()
+    yearly_ret = yearly.pct_change().dropna()
+
+    result = {}
+
+    # ── 1. 年份尾数（Decade Effect）─────────────────────────────
+    digit_data = {}
+    for ts, ret in yearly_ret.items():
+        digit = ts.year % 10
+        digit_data.setdefault(digit, []).append(float(ret * 100))
+
+    digit_stats = []
+    for d in range(10):
+        vals = digit_data.get(d, [])
+        if len(vals) < 3:
+            continue
+        arr = np.array(vals)
+        digit_stats.append({
+            "digit": d,
+            "label": f"×{d}年",
+            "example": f"如{2020 + d if d >= 5 else 2030 + d}",
+            "win_rate": round(float((arr > 0).mean() * 100), 1),
+            "avg_return": round(float(arr.mean()), 2),
+            "median_return": round(float(np.median(arr)), 2),
+            "n": len(vals),
+            "best": round(float(arr.max()), 1),
+            "worst": round(float(arr.min()), 1),
+        })
+    result["decade_digit"] = sorted(digit_stats, key=lambda x: -x["avg_return"])
+
+    # ── 2. 总统任期年（Presidential Cycle）────────────────────────
+    # year % 4 == 1 → Year 1 (post-election), == 2 → Year 2 (midterm)
+    # == 3 → Year 3 (pre-election), == 0 → Year 4 (election)
+    cycle_map = {1: "Year 1 (新任期)", 2: "Year 2 (中期选举)", 3: "Year 3 (选前)", 0: "Year 4 (大选年)"}
+    cycle_data = {}
+    for ts, ret in yearly_ret.items():
+        cy = ts.year % 4
+        cycle_data.setdefault(cy, []).append(float(ret * 100))
+
+    cycle_stats = []
+    for cy in [1, 2, 3, 0]:
+        vals = cycle_data.get(cy, [])
+        if not vals:
+            continue
+        arr = np.array(vals)
+        cycle_stats.append({
+            "cycle_year": cy if cy > 0 else 4,
+            "label": cycle_map[cy],
+            "win_rate": round(float((arr > 0).mean() * 100), 1),
+            "avg_return": round(float(arr.mean()), 2),
+            "median_return": round(float(np.median(arr)), 2),
+            "n": len(vals),
+        })
+    result["presidential_cycle"] = cycle_stats
+
+    # ── 3. 执政党对比（Party Effect）──────────────────────────────
+    party_data = {"R": [], "D": []}
+    for ts, ret in yearly_ret.items():
+        party = _PARTY_BY_YEAR.get(ts.year)
+        if party in party_data:
+            party_data[party].append(float(ret * 100))
+
+    party_stats = []
+    for party, label in [("R", "共和党"), ("D", "民主党")]:
+        vals = party_data.get(party, [])
+        if not vals:
+            continue
+        arr = np.array(vals)
+        party_stats.append({
+            "party": party,
+            "label": label,
+            "win_rate": round(float((arr > 0).mean() * 100), 1),
+            "avg_return": round(float(arr.mean()), 2),
+            "median_return": round(float(np.median(arr)), 2),
+            "n": len(vals),
+            "best_year": int(yearly_ret[(yearly_ret.index.year.map(lambda y: _PARTY_BY_YEAR.get(y)) == party)].idxmax().year),
+            "worst_year": int(yearly_ret[(yearly_ret.index.year.map(lambda y: _PARTY_BY_YEAR.get(y)) == party)].idxmin().year),
+        })
+    result["party_effect"] = party_stats
+
+    # ── 每任总统明细 ────────────────────────────────────────────
+    president_detail = []
+    for _rng, _party, _name in _PRESIDENTS:
+        yrs = [ts for ts in yearly_ret.index if ts.year in _rng]
+        if not yrs:
+            continue
+        vals = [float(yearly_ret.loc[ts] * 100) for ts in yrs]
+        arr = np.array(vals)
+        president_detail.append({
+            "name": _name,
+            "party": _party,
+            "start": _rng.start,
+            "end": _rng.stop - 1,
+            "avg_return": round(float(arr.mean()), 2),
+            "win_rate": round(float((arr > 0).mean() * 100), 1),
+            "n": len(vals),
+            "cumulative": round(float(np.prod(1 + np.array(vals)/100) - 1) * 100, 1),
+        })
+    result["president_detail"] = president_detail
+
+    print("\n=== 年份规律统计 ===")
+    print("年份尾数（均值最高→最低）:")
+    for d in result["decade_digit"][:3]:
+        print(f"  ×{d['digit']}年: 均值={d['avg_return']:+.1f}%  胜率={d['win_rate']}%  n={d['n']}")
+    print("总统任期年:")
+    for c in result["presidential_cycle"]:
+        print(f"  {c['label']}: 均值={c['avg_return']:+.1f}%  胜率={c['win_rate']}%")
+    print("执政党:")
+    for p in result["party_effect"]:
+        print(f"  {p['label']}: 均值={p['avg_return']:+.1f}%  胜率={p['win_rate']}%  n={p['n']}年")
+
+    return result
+
+
+# ══════════════════════════════════════════════════════════════════
+# 5. 熊市目录
 # ══════════════════════════════════════════════════════════════════
 BEAR_MARKETS = [
     {"name":"大萧条", "start":"1929-09", "end":"1932-06", "drawdown":-89.2, "cause":"银行系统崩溃、货币紧缩", "recovery_months":266},
@@ -339,11 +492,15 @@ def run_all():
     # 假日效应（日频）
     holiday_effects = compute_holiday_effects(sp)
 
+    # 年份规律（尾数/任期年/执政党）
+    year_patterns = year_pattern_stats(sp)
+
     # 组合输出
     out = {
         "monthly_by_period": monthly_by_period,
         "annual_returns": annual,
         "holiday_effects": holiday_effects,
+        "year_patterns": year_patterns,
         "bear_markets": BEAR_MARKETS,
         "meta": {
             "sp500_start": str(sp.index[0].date()),
@@ -355,7 +512,7 @@ def run_all():
     out_path = PROC_DIR / "long_history.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2, default=str)
-    print(f"\n✓ long_history.json 写入完成  ({out_path.stat().st_size//1024} KB)")
+    print(f"\n[OK] long_history.json 写入完成  ({out_path.stat().st_size//1024} KB)")
 
     # 汇总打印
     print("\n=== 各时段9月胜率（最弱月对比）===")

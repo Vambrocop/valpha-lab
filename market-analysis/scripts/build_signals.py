@@ -541,6 +541,29 @@ def load_event_study():
         return {}
 
 
+def load_year_patterns():
+    """从 long_history.json 读取年份规律统计（尾数/任期年/执政党）"""
+    try:
+        with open(PROC_DIR / "long_history.json", encoding="utf-8") as f:
+            lh = json.load(f)
+        return lh.get("year_patterns", {})
+    except Exception:
+        return {}
+
+def load_holiday_effects():
+    """从 long_history.json 读取假日效应统计"""
+    try:
+        with open(PROC_DIR / "long_history.json", encoding="utf-8") as f:
+            lh = json.load(f)
+        he = lh.get("holiday_effects", {})
+        # 精简：只保留前端需要的字段
+        keep = ["pre_holiday","post_holiday","normal","santa_claus_rally",
+                "january_effect","thanksgiving_eve","thanksgiving_friday","dom","dow_daily"]
+        return {k: he[k] for k in keep if k in he}
+    except Exception:
+        return {}
+
+
 if __name__ == "__main__":
     result = build()
 
@@ -553,6 +576,12 @@ if __name__ == "__main__":
 
     # 未来最佳入场/离场窗口
     result["next_opportunities"] = find_next_opportunities(result["daily_signals"], n_days=45)
+
+    # 年份规律统计
+    result["year_patterns"] = load_year_patterns()
+
+    # 假日效应详细统计
+    result["holiday_detail"] = load_holiday_effects()
 
     out = WEB_DIR / "signals.json"
     with open(out, "w", encoding="utf-8") as f:

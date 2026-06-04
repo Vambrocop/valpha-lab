@@ -144,6 +144,30 @@ footer a { color: var(--green); text-decoration: none; }
 .opp-tags  { font-size: 0.72rem; color: var(--muted); flex: 1; }
 .opp-tier  { font-size: 0.72rem; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
 .opp-note  { font-size: 0.75rem; color: var(--muted); margin-top: .5rem; line-height: 1.5; }
+
+/* Better signal ring with glow */
+.signal-ring { box-shadow: 0 0 20px rgba(0,0,0,.4); }
+.tier-4 .signal-ring, .tier-5 .signal-ring { box-shadow: 0 0 24px rgba(46,204,113,.2); }
+.tier-1 .signal-ring, .tier-2 .signal-ring { box-shadow: 0 0 24px rgba(231,76,60,.15); }
+
+/* Panel header accent */
+.panel { border-top: 2px solid transparent; transition: border-color .3s; }
+.panel:hover { border-top-color: var(--border); }
+
+/* Smooth number transitions */
+.signal-pct { transition: color .4s; }
+.factor-val { transition: color .3s; }
+
+/* Better opp-item hover */
+.opp-item { transition: background .2s; }
+.opp-item:hover { background: var(--surface); }
+
+/* Chart wrap subtle glow on hover */
+.chart-wrap { transition: box-shadow .3s; }
+.chart-wrap:hover { box-shadow: 0 2px 16px rgba(0,0,0,.3); }
+
+/* Year stats highlight */
+.digit-highlight { background: rgba(241,196,15,.12); border: 1px solid rgba(241,196,15,.3); border-radius: 6px; padding: .4rem .75rem; font-size: 0.8rem; margin-bottom: .75rem; }
 </style>
 </head>
 <body>
@@ -176,6 +200,7 @@ footer a { color: var(--green); text-decoration: none; }
         </div>
         <div class="signal-stars" id="signal-stars">☆☆☆☆☆</div>
         <div class="signal-desc" id="signal-desc"></div>
+        <div id="signal-percentile" style="margin-top:.6rem;font-size:0.8rem;"></div>
       </div>
 
       <!-- 因子分解 -->
@@ -389,6 +414,36 @@ footer a { color: var(--green); text-decoration: none; }
     <div class="chart-wrap">
       <div class="chart-header">🔮 历史入场概率轨迹 <span class="badge">贝叶斯综合信号</span></div>
       <div id="chart-signal-history" style="height:300px;"></div>
+    </div>
+
+    <!-- 日历规律统计 -->
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        📅 日历规律统计 <span class="badge">1928-2026 · 98年S&P500</span>
+      </div>
+      <div class="tabs" id="cal-tabs">
+        <div class="tab active" onclick="switchCalTab('digit',this)">年份尾数</div>
+        <div class="tab" onclick="switchCalTab('cycle',this)">任期年</div>
+        <div class="tab" onclick="switchCalTab('party',this)">执政党</div>
+        <div class="tab" onclick="switchCalTab('calholiday',this)">假日效应</div>
+      </div>
+      <div class="tab-content active" id="caltab-digit">
+        <div class="digit-highlight" id="digit-highlight"></div>
+        <div id="chart-digit" style="height:320px;"></div>
+      </div>
+      <div class="tab-content" id="caltab-cycle">
+        <div id="chart-cycle" style="height:300px;"></div>
+        <div class="insight" id="cycle-insight" style="margin-top:.75rem;"></div>
+      </div>
+      <div class="tab-content" id="caltab-party">
+        <div id="chart-party" style="height:300px;"></div>
+        <div id="chart-presidents" style="height:280px;margin-top:.5rem;"></div>
+        <div class="insight" id="party-insight" style="margin-top:.75rem;"></div>
+      </div>
+      <div class="tab-content" id="caltab-calholiday">
+        <div id="chart-cal-holiday" style="height:300px;"></div>
+        <div class="insight" id="cal-holiday-insight" style="margin-top:.75rem;"></div>
+      </div>
     </div>
 
   </div>
@@ -1436,6 +1491,178 @@ function renderEventStudyChart() {
   document.getElementById("eventstudy-insight").innerHTML = insight;
 }
 
+// ── 百分位信息 ──
+function renderPercentileInfo(todayProb) {
+  const allProbs = Object.values(SIGNALS.daily_signals).map(d => d.prob);
+  const last252  = allProbs.slice(-252);
+  const below    = last252.filter(p => p < todayProb).length;
+  const pct      = Math.round(below / last252.length * 100);
+  const maxForecast = SIGNALS.next_opportunities?.top_entry?.[0];
+
+  // Count days >=60% in next 45
+  const forecast = SIGNALS.next_opportunities?.all_forecast || [];
+  const strongDays = forecast.filter(d => d.prob >= 0.60).length;
+
+  let html = `<span style="color:var(--muted)">过去一年排名前 </span><strong style="color:var(--green)">${100-pct}%</strong>`;
+  if (maxForecast) {
+    html += `<br><span style="color:var(--muted)">未来45日最高：</span><strong>${(maxForecast.prob*100).toFixed(1)}%</strong><span style="color:var(--muted)"> (${maxForecast.date} ${maxForecast.dow_cn})</span>`;
+  }
+  if (strongDays > 0) {
+    html += `<br><span style="color:var(--muted)">未来45日中 </span><strong style="color:#2ecc71">${strongDays}</strong><span style="color:var(--muted)"> 天≥60%</span>`;
+  }
+  document.getElementById("signal-percentile").innerHTML = html;
+}
+
+// ── 日历统计标签切换 ──
+const CAL_TABS = ["digit","cycle","party","calholiday"];
+function switchCalTab(name, el) {
+  el.closest(".tabs").querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  CAL_TABS.forEach(t => {
+    const e = document.getElementById("caltab-"+t);
+    if (e) e.classList.remove("active");
+  });
+  document.getElementById("caltab-"+name)?.classList.add("active");
+  if (name==="digit"      && !document.getElementById("chart-digit").childNodes.length)       renderDigitChart();
+  if (name==="cycle"      && !document.getElementById("chart-cycle").childNodes.length)       renderCycleChart();
+  if (name==="party"      && !document.getElementById("chart-party").childNodes.length)       renderPartyChart();
+  if (name==="calholiday" && !document.getElementById("chart-cal-holiday").childNodes.length) renderCalHolidayChart();
+}
+
+function renderDigitChart() {
+  const yp = SIGNALS?.year_patterns;
+  if (!yp?.decade_digit) return;
+  const items = [...yp.decade_digit].sort((a,b) => a.digit - b.digit);
+  const colors = items.map(d => d.digit===5 ? "#f1c40f" : d.avg_return>0 ? "#2ecc71" : "#e74c3c");
+  Plotly.newPlot("chart-digit",[{
+    type:"bar",
+    x: items.map(d => d.label),
+    y: items.map(d => d.avg_return),
+    marker:{color:colors},
+    text: items.map(d=>`胜率${d.win_rate}% n=${d.n}`),
+    hovertemplate:"<b>%{x}</b><br>年均回报: %{y:.1f}%<br>%{text}<extra></extra>",
+  }],{
+    ...DARK,
+    yaxis:{...DARK.yaxis,title:"S&P500年均回报 (%)"},
+    xaxis:{...DARK.xaxis,title:"年份个位数"},
+    margin:{t:20,b:60,l:60,r:20},
+    shapes:[{type:"line",x0:-0.5,x1:9.5,y0:0,y1:0,line:{color:"#555",width:1}}]
+  },{responsive:true});
+  const d5 = yp.decade_digit.find(d=>d.digit==5);
+  document.getElementById("digit-highlight").innerHTML =
+    `<span style="color:#f1c40f">★ ×5年（如1995、2005、2015、2025）：均值 <strong>+${d5?.avg_return||"?"}%</strong>，胜率 <strong>${d5?.win_rate||"?"}%</strong>，历史最强十年位</span>`;
+}
+
+function renderCycleChart() {
+  const yp = SIGNALS?.year_patterns;
+  if (!yp?.presidential_cycle) return;
+  const items = yp.presidential_cycle;
+  const colors = items.map(d => d.label.includes("选前") ? "#f1c40f" : "#3498db");
+  Plotly.newPlot("chart-cycle",[
+    {type:"bar", name:"年均回报%",
+     x:items.map(d=>d.label), y:items.map(d=>d.avg_return),
+     marker:{color:colors},
+     text:items.map(d=>`胜率${d.win_rate}% n=${d.n}`),
+     hovertemplate:"<b>%{x}</b><br>%{y:.1f}%<br>%{text}<extra></extra>"},
+    {type:"scatter",mode:"lines+markers", name:"胜率%",
+     x:items.map(d=>d.label), y:items.map(d=>d.win_rate),
+     yaxis:"y2", line:{color:"#9b59b6",width:2},
+     marker:{color:"#9b59b6",size:7}}
+  ],{
+    ...DARK,
+    yaxis:{...DARK.yaxis,title:"年均回报 (%)"},
+    yaxis2:{title:"胜率 (%)",overlaying:"y",side:"right",range:[40,90],gridcolor:"transparent"},
+    xaxis:{...DARK.xaxis},
+    margin:{t:20,b:60,l:60,r:60},
+    legend:{orientation:"h",y:1.05}
+  },{responsive:true});
+  const best = items.find(d=>d.label.includes("选前")) || items[0];
+  document.getElementById("cycle-insight").innerHTML =
+    `<strong>总统任期四年周期：</strong>选前年（Year 3）历史均值 <strong style="color:#f1c40f">+${best.avg_return}%</strong>，胜率 <strong>${best.win_rate}%</strong>——总统在大选前一年倾向刺激经济。<br>
+     中期选举年（Year 2）最弱，均值 ${items.find(d=>d.label.includes("中期"))?.avg_return||"?"}%，不确定性最大。<br>
+     <span style="color:var(--muted);font-size:0.78rem">2025年=Year 1（新任期），历史均值+7.0%，胜率60%。</span>`;
+}
+
+function renderPartyChart() {
+  const yp = SIGNALS?.year_patterns;
+  if (!yp?.party_effect) return;
+  const parties = yp.party_effect;
+  const R = parties.find(p=>p.party==="R");
+  const D = parties.find(p=>p.party==="D");
+  const presidents = (yp.president_detail||[]).sort((a,b)=>a.start-b.start);
+
+  Plotly.newPlot("chart-party",[
+    {type:"bar",name:"共和党",
+     x:["年均回报(%)","胜率(%)"],
+     y:[R?.avg_return||0, R?.win_rate||0],
+     marker:{color:"#e74c3c"},
+     text:[`n=${R?.n}年`,`n=${R?.n}年`],
+     hovertemplate:"共和党 %{x}: %{y:.1f}<extra></extra>"},
+    {type:"bar",name:"民主党",
+     x:["年均回报(%)","胜率(%)"],
+     y:[D?.avg_return||0, D?.win_rate||0],
+     marker:{color:"#3498db"},
+     text:[`n=${D?.n}年`,`n=${D?.n}年`],
+     hovertemplate:"民主党 %{x}: %{y:.1f}<extra></extra>"},
+  ],{...DARK,barmode:"group",margin:{t:20,b:40,l:60,r:20},legend:{orientation:"h",y:1.05}},{responsive:true});
+
+  if (presidents.length > 0) {
+    Plotly.newPlot("chart-presidents",[{
+      type:"bar", orientation:"h",
+      x: presidents.map(p=>p.avg_return),
+      y: presidents.map(p=>`${p.name}(${p.start}-${p.end})`),
+      marker:{color: presidents.map(p=>p.party==="R"?"#e74c3c":"#3498db"), opacity:0.8},
+      text: presidents.map(p=>`${p.avg_return>0?"+":""}${p.avg_return}%  胜率${p.win_rate}%`),
+      textposition:"outside", cliponaxis:false,
+      hovertemplate:"<b>%{y}</b><br>年均: %{x:.1f}%<extra></extra>",
+    }],{
+      ...DARK,
+      xaxis:{...DARK.xaxis,title:"年均回报 (%)", zeroline:true, zerolinecolor:"#444"},
+      margin:{t:10,b:40,l:150,r:100},
+      height:280,
+    },{responsive:true});
+  }
+
+  document.getElementById("party-insight").innerHTML =
+    `<strong>执政党效应（1928-2026）：</strong>民主党执政年均 <strong style="color:#3498db">+${D?.avg_return}%</strong>（胜率${D?.win_rate}%，n=${D?.n}年）；共和党 <strong style="color:#e74c3c">+${R?.avg_return}%</strong>（胜率${R?.win_rate}%，n=${R?.n}年）。<br>
+     <span style="color:var(--muted);font-size:0.78rem">⚠ 相关≠因果：差异主要来自经济周期的巧合（胡佛遇大萧条，克林顿遇科技繁荣），而非政策直接驱动。不建议据此做选党投资决策。</span>`;
+}
+
+function renderCalHolidayChart() {
+  const hd = SIGNALS?.holiday_detail;
+  if (!hd) return;
+  const items = [
+    {label:"感恩节前夕", wr: hd.thanksgiving_eve?.win_rate, n: hd.thanksgiving_eve?.n},
+    {label:"黑色星期五", wr: hd.thanksgiving_friday?.win_rate, n: hd.thanksgiving_friday?.n},
+    {label:"节前3天内",  wr: hd.pre_holiday?.win_rate, n: hd.pre_holiday?.n},
+    {label:"节后3天内",  wr: hd.post_holiday?.win_rate, n: hd.post_holiday?.n},
+    {label:"圣诞行情",   wr: hd.santa_claus_rally?.win_rate, n: hd.santa_claus_rally?.n},
+    {label:"1月效应",    wr: hd.january_effect?.win_rate, n: hd.january_effect?.n},
+    {label:"普通交易日", wr: hd.normal?.win_rate, n: hd.normal?.n},
+  ].filter(d=>d.wr!=null).sort((a,b)=>b.wr-a.wr);
+
+  const colors = items.map(d => d.wr>=65?"#f1c40f": d.wr>=58?"#2ecc71": d.wr>=54?"#3498db":"#8b949e");
+  Plotly.newPlot("chart-cal-holiday",[{
+    type:"bar", orientation:"h",
+    x: items.map(d=>d.wr),
+    y: items.map(d=>d.label),
+    marker:{color:colors},
+    text: items.map(d=>`${d.wr}%  n=${d.n}`),
+    textposition:"outside", cliponaxis:false,
+    hovertemplate:"<b>%{y}</b><br>胜率: %{x:.1f}%<extra></extra>",
+  }],{
+    ...DARK,
+    xaxis:{...DARK.xaxis, title:"上涨胜率 (%)", range:[44,84]},
+    margin:{t:20,b:50,l:110,r:90},
+    shapes:[{type:"line",x0:hd.normal?.win_rate||52.4,x1:hd.normal?.win_rate||52.4,
+             y0:-0.5,y1:items.length-0.5,
+             line:{color:"#555",dash:"dot",width:1}}]
+  },{responsive:true});
+
+  document.getElementById("cal-holiday-insight").innerHTML =
+    `<strong>假日效应（1950-2026日频）：</strong>感恩节前夕胜率 <strong style="color:#f1c40f">${hd.thanksgiving_eve?.win_rate}%</strong>（n=${hd.thanksgiving_eve?.n}），是全年单日最强规律之一。节前节后均显著高于普通日（基准${hd.normal?.win_rate}%）。`;
+}
+
 // ── 启动 ──
 init().then(() => {
   renderDOWPanel();
@@ -1443,6 +1670,8 @@ init().then(() => {
   renderEventStudyChart();
   renderOppPanel();
   renderForecastChart();
+  renderDigitChart();      // default active tab
+  renderPercentileInfo(SIGNALS.latest_prob);
 });
 </script>
 </body>
