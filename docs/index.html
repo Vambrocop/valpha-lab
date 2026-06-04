@@ -757,45 +757,71 @@ async function loadCSV(path) {
   } catch(e) { return []; }
 }
 
+let PRICES_JSON = null;
+let CHARTS_EXTRA = null;
+
+async function loadPricesJSON() {
+  if (PRICES_JSON) return PRICES_JSON;
+  try {
+    const r = await fetch("prices.json");
+    PRICES_JSON = await r.json();
+  } catch(e) { PRICES_JSON = null; }
+  return PRICES_JSON;
+}
+
+async function loadChartsExtra() {
+  if (CHARTS_EXTRA) return CHARTS_EXTRA;
+  try {
+    const r = await fetch("charts_extra.json");
+    CHARTS_EXTRA = await r.json();
+  } catch(e) { CHARTS_EXTRA = {}; }
+  return CHARTS_EXTRA;
+}
+
 async function renderPriceChart() {
-  const data = await loadCSV("../data/raw/combined_prices.csv").catch(()=>[]);
-  if(!data.length) { Plotly.newPlot("chart-price", [], {...DARK, title:{text:"数据加载中..."}}); return; }
+  const pj = await loadPricesJSON();
+  if (!pj) { Plotly.newPlot("chart-price", [], {...DARK, title:{text:"价格数据加载失败"}}); return; }
 
-  const assets = ["NASDAQ","DXY","BTC","ETH"];
-  const colors = {NASDAQ:"#2ecc71",DXY:"#3498db",BTC:"#f39c12",ETH:"#9b59b6"};
-  const base = {};
-  data.forEach(r => { assets.forEach(a => { if(r[a] && !base[a]) base[a]=parseFloat(r[a]); }); });
-
-  const traces = assets.map(a => ({
-    x: data.map(r=>r.Date), y: data.map(r=>r[a]?parseFloat(r[a])/base[a]*100:null),
-    name:a, type:"scatter", mode:"lines", line:{color:colors[a],width:1.5},
-    hovertemplate:`<b>${a}</b> %{x}<br>指数 %{y:.1f}<extra></extra>`
+  const SHOW = ["NASDAQ","NDX100","SP500","BTC","DXY","GOLD","VIX","ETH"];
+  const dates = pj.dates;
+  const assets = pj.assets;
+  const traces = SHOW.filter(a => assets[a]).map(a => ({
+    x: dates,
+    y: assets[a].values,
+    name: assets[a].label,
+    type: "scatter", mode: "lines",
+    line: {color: assets[a].color, width: 1.8},
+    hovertemplate: `<b>${assets[a].label}</b> %{x}<br>指数 %{y:.1f}<extra></extra>`,
+    visible: ["NASDAQ","NDX100","SP500","BTC","DXY"].includes(a) ? true : "legendonly",
   }));
 
   Plotly.newPlot("chart-price", traces, {...DARK, hovermode:"x unified",
-    yaxis:{...DARK.yaxis,title:"指数（起点=100）"},
-    legend:{orientation:"h",y:1.05}, height:400}, {responsive:true});
+    yaxis:{...DARK.yaxis, title:"归一化指数（起点=100）"},
+    legend:{orientation:"h", y:1.05}, height:400}, {responsive:true});
 }
 
 async function renderCorrChart() {
-  const data = await loadCSV("../data/processed/rolling_correlation_90d.csv");
-  if(!data.length) return;
-  const cols = Object.keys(data[0]).filter(k=>k!=="Date");
-  const colors = ["#f39c12","#9b59b6","#3498db"];
+  const extra = await loadChartsExtra();
+  const rc = extra?.rolling_corr;
+  if (!rc) return;
+  const cols = Object.keys(rc.series);
+  const colors = ["#f39c12","#9b59b6","#3498db","#2ecc71","#e74c3c","#1abc9c"];
   const traces = cols.map((c,i)=>({
-    x:data.map(r=>r.Date), y:data.map(r=>parseFloat(r[c])||null),
+    x:rc.dates, y:rc.series[c],
     name:c.replace("NASDAQ_vs_","NASDAQ↔"), type:"scatter", mode:"lines",
-    line:{color:colors[i]||"#888",width:1.5}
+    line:{color:colors[i%colors.length],width:1.5}
   }));
-  traces.push({x:[data[0].Date,data[data.length-1].Date],y:[0,0],
+  if(rc.dates.length>0) traces.push({
+    x:[rc.dates[0],rc.dates[rc.dates.length-1]],y:[0,0],
     mode:"lines",line:{color:"#555",dash:"dash"},showlegend:false});
   Plotly.newPlot("chart-corr",traces,{...DARK,yaxis:{...DARK.yaxis,range:[-1,1],
     title:"相关系数"},hovermode:"x unified",legend:{orientation:"h",y:1.05}},{responsive:true});
 }
 
 async function renderMonthlyChart() {
-  const data = await loadCSV("../data/processed/monthly_stats.csv");
-  if(!data.length) return;
+  const extra = await loadChartsExtra();
+  const data = extra?.monthly_stats;
+  if(!data || !data.length) return;
   const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
   const assets=["NASDAQ","DXY","BTC","ETH"], colors={NASDAQ:"#2ecc71",DXY:"#3498db",BTC:"#f39c12",ETH:"#9b59b6"};
   const traces = assets.map(a=>({
@@ -809,14 +835,18 @@ async function renderMonthlyChart() {
 }
 
 async function renderGarchChart() {
-  const nd = await loadCSV("../data/processed/garch_nasdaq.csv");
-  const bt = await loadCSV("../data/processed/garch_btc.csv");
+  const extra = await loadChartsExtra();
   const traces = [];
-  if(nd.length) traces.push({x:nd.map(r=>r.date),y:nd.map(r=>parseFloat(r.cond_vol_ann)),
-    name:"NASDAQ年化波动率",type:"scatter",mode:"lines",line:{color:"#2ecc71",width:1.5}});
-  if(bt.length) traces.push({x:bt.map(r=>r.date),y:bt.map(r=>parseFloat(r.cond_vol_ann)),
-    name:"BTC年化波动率",type:"scatter",mode:"lines",line:{color:"#f39c12",width:1.5},
-    yaxis:"y2"});
+  const nd = extra?.garch_nasdaq;
+  const bt = extra?.garch_btc;
+  if(nd && nd.dates && nd.volatility)
+    traces.push({x:nd.dates, y:nd.volatility,
+      name:"NASDAQ年化波动率",type:"scatter",mode:"lines",line:{color:"#2ecc71",width:1.5}});
+  if(bt && bt.dates && bt.volatility)
+    traces.push({x:bt.dates, y:bt.volatility,
+      name:"BTC年化波动率",type:"scatter",mode:"lines",line:{color:"#f39c12",width:1.5},
+      yaxis:"y2"});
+  if(!traces.length) return;
   Plotly.newPlot("chart-garch",traces,{...DARK,hovermode:"x unified",
     yaxis:{...DARK.yaxis,title:"NASDAQ波动率%"},
     yaxis2:{overlaying:"y",side:"right",title:"BTC波动率%",gridcolor:"transparent"},
@@ -824,8 +854,9 @@ async function renderGarchChart() {
 }
 
 async function renderGrangerChart() {
-  const data = await loadCSV("../data/processed/granger_causality.csv");
-  if(!data.length) {
+  const extra = await loadChartsExtra();
+  const data = extra?.granger;
+  if(!data || !data.length) {
     const demoData = [
       {label:"美元→纳指",pval:0.0005,lag:8,sig:1},
       {label:"BTC→纳指", pval:0.0067,lag:8,sig:1},
@@ -835,7 +866,7 @@ async function renderGrangerChart() {
     ];
     renderGrangerFromRows(demoData); return;
   }
-  renderGrangerFromRows(data.map(r=>({label:r.label,pval:parseFloat(r.p_value),lag:+r.best_lag_days,sig:r.significant==="True"?1:0})));
+  renderGrangerFromRows(data.map(r=>({label:r.label,pval:parseFloat(r.p_value),lag:+r.best_lag_days,sig:r.significant===true||r.significant==="True"?1:0})));
 }
 
 function renderGrangerFromRows(rows) {
@@ -855,11 +886,12 @@ function renderGrangerFromRows(rows) {
 }
 
 async function renderAnnualChart() {
-  const data = await loadCSV("../data/processed/annual_returns.csv");
-  if(!data.length) return;
+  const extra = await loadChartsExtra();
+  const data = extra?.annual_returns;
+  if(!data || !data.length) return;
   const assets=["NASDAQ","DXY","BTC","ETH"];
   const years=data.map(r=>r.year);
-  const z=assets.map(a=>data.map(r=>r[a]?Math.round(parseFloat(r[a])*100):null));
+  const z=assets.map(a=>data.map(r=>r[a]!=null?Math.round(parseFloat(r[a])*100):null));
   Plotly.newPlot("chart-annual",[{type:"heatmap",z,x:years,y:assets,
     colorscale:"RdYlGn",zmid:0,
     text:z.map(row=>row.map(v=>v!=null?v+"%":"—")),
