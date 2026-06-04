@@ -391,12 +391,52 @@ def build_timing_summary():
     return summary
 
 
+def load_event_study():
+    """将 event_study_results.json 中的核心数据嵌入 signals.json"""
+    try:
+        with open(PROC_DIR / "event_study_results.json", encoding="utf-8") as f:
+            es = json.load(f)
+        studies = es.get("event_studies", {})
+        # 只保留前端需要的字段，去掉 returns 列表（太大）
+        out = {}
+        labels = {
+            "fed_hike_first":      "首次加息",
+            "fed_cut_first":       "首次降息",
+            "trade_war_escalation":"贸易战升级",
+            "trade_war_relief":    "贸易战缓和",
+            "geopolitical_shock":  "地缘冲击",
+            "pandemic_lockdown":   "疫情封锁",
+            "vix_spike_extreme":   "VIX恐慌飙升",
+            "banking_crisis":      "银行危机",
+            "ai_breakthrough":     "AI突破",
+        }
+        for k, v in studies.items():
+            out[k] = {
+                "label":       labels.get(k, k),
+                "n":           v["n"],
+                "avg_return":  v["avg_return_pct"],
+                "median_return": v["median_return_pct"],
+                "win_rate":    v["win_rate"],
+                "base_win_rate": v["base_win_rate"],
+                "lr":          v["lr"],
+                "p_value":     v["p_value"],
+                "significant": v["significant"],
+                "base_avg":    v["base_avg_pct"],
+            }
+        return out
+    except Exception:
+        return {}
+
+
 if __name__ == "__main__":
     result = build()
 
     # 合并时机摘要
     timing = build_timing_summary()
     result.update(timing)
+
+    # 嵌入事件研究结果
+    result["event_study"] = load_event_study()
 
     out = WEB_DIR / "signals.json"
     with open(out, "w", encoding="utf-8") as f:

@@ -321,7 +321,7 @@ footer a { color: var(--green); text-decoration: none; }
     <!-- 高级多元分析 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🔬 高级统计分析 <span class="badge">CCA · SHAP · Kalman · Prophet · 路径分析</span>
+        🔬 高级统计分析 <span class="badge">CCA · SHAP · Kalman · Prophet · 路径分析 · 事件研究</span>
       </div>
       <div class="tabs" id="mv-tabs">
         <div class="tab active" onclick="switchMVTab('modelcmp',this)">模型对比</div>
@@ -331,6 +331,11 @@ footer a { color: var(--green); text-decoration: none; }
         <div class="tab" onclick="switchMVTab('rolling',this)">滚动β系数</div>
         <div class="tab" onclick="switchMVTab('path',this)">路径分析</div>
         <div class="tab" onclick="switchMVTab('cca',this)">CCA/RDA</div>
+        <div class="tab" onclick="switchMVTab('eventstudy',this)">事件研究</div>
+      </div>
+      <div class="tab-content" id="mvtab-eventstudy">
+        <div id="chart-eventstudy" style="height:360px;"></div>
+        <div class="insight" id="eventstudy-insight" style="margin-top:.75rem;"></div>
       </div>
       <div class="tab-content active" id="mvtab-modelcmp">
         <div id="chart-modelcmp" style="height:360px;"></div>
@@ -543,13 +548,66 @@ function renderSignalMeter(prob, rec) {
 
 function renderFactors(rec, finalProb) {
   const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  const DOW_NAMES = ["周一","周二","周三","周四","周五","周六","周日"];
+  const DOW_LR = [0.940,0.981,1.038,1.004,1.038,1.0,1.0];
+
+  // 日历效应文字
+  const calLR = rec.cal_lr || 1.0;
+  const hlLR  = rec.holiday_lr || 1.0;
+  const womLR = rec.wom ? ({1:1.112,2:0.996,3:1.015,4:0.950,5:0.992}[rec.wom]||1.0) : 1.0;
+  function lrToText(lr) {
+    if (lr >= 1.20) return "强利好 ↑↑";
+    if (lr >= 1.10) return "利好 ↑";
+    if (lr >= 1.02) return "微正 →↑";
+    if (lr >= 0.98) return "中性 →";
+    if (lr >= 0.90) return "微负 →↓";
+    return "利空 ↓";
+  }
+  function lrToScore(lr) { return Math.min(0.9, Math.max(0.1, (lr - 0.85) / 0.45)); }
+
+  const calNote = (rec.month===4 && rec.dom===15) ? "报税截止日(66%)" :
+                  (rec.month===4 && rec.dom<=14)  ? "报税季前(57%)" :
+                  (rec.month===12 && rec.dom>=11 && rec.dom<=15) ? "税损收割(47%)" :
+                  (rec.month===12 && rec.dom>=21 && rec.dom<=25) ? "圣诞前(61%)" :
+                  ([1,4,7,10].includes(rec.month) && rec.dom<=5) ? "季初建仓(59%)" : "普通";
+
   const factors = [
-    { name:"月度季节性",    val: Math.round(rec.prior*100)+"%",  score: rec.prior, dir: rec.prior>0.6?"↑":rec.prior<0.5?"↓":"→" },
-    { name:"NASDAQ均线",    val: rec.nasdaq_ma200?"多头结构":"空头结构", score: rec.nasdaq_ma200?0.75:0.35, dir: rec.nasdaq_ma200?"↑":"↓" },
-    { name:"BTC 20日动量",  val: (rec.btc_mom20>0?"+":"")+Math.round(rec.btc_mom20*100)+"%", score: rec.btc_mom20>0.03?0.72:rec.btc_mom20<-0.03?0.38:0.55, dir: rec.btc_mom20>0?"↑":"↓" },
-    { name:"DXY 美元趋势",  val: (rec.dxy_trend>0?"+":"")+Math.round(rec.dxy_trend*100)+"%", score: rec.dxy_trend<-0.01?0.72:rec.dxy_trend>0.01?0.38:0.55, dir: rec.dxy_trend<0?"↑":"↓" },
-    { name:"NASDAQ波动率",  val: Math.round(rec.nasdaq_vol*100)+"%年化", score: rec.nasdaq_vol<0.15?0.72:rec.nasdaq_vol>0.25?0.35:0.55, dir: rec.nasdaq_vol<0.15?"↑":"↓" },
-    { name:"NASDAQ RSI",    val: Math.round(rec.nasdaq_rsi), score: rec.nasdaq_rsi<35?0.72:rec.nasdaq_rsi>75?0.35:0.55, dir: rec.nasdaq_rsi<35?"↑(超卖)":rec.nasdaq_rsi>75?"↓(超买)":"→" },
+    { name:"月度季节性",
+      val: MONTH[rec.month]+" "+Math.round(rec.prior*100)+"%",
+      score: rec.prior,
+      dir: rec.prior>0.6?"↑":rec.prior<0.5?"↓":"→" },
+    { name:`星期效应(${DOW_NAMES[rec.dow||0]})`,
+      val: lrToText(DOW_LR[rec.dow||0])+" LR×"+DOW_LR[rec.dow||0],
+      score: lrToScore(DOW_LR[rec.dow||0]),
+      dir: DOW_LR[rec.dow||0]>=1?"↑":"↓" },
+    { name:`月内第${rec.wom||"?"}周`,
+      val: lrToText(womLR)+" LR×"+womLR.toFixed(3),
+      score: lrToScore(womLR),
+      dir: womLR>=1?"↑":"↓" },
+    { name:"日历异常",
+      val: calNote+" LR×"+calLR.toFixed(3),
+      score: lrToScore(calLR),
+      dir: calLR>=1.05?"↑":calLR<=0.95?"↓":"→" },
+    { name:"假日效应",
+      val: hlLR>1.2?"节日窗口 ↑↑":hlLR>1.0?"节前/后 ↑":"普通",
+      score: lrToScore(hlLR),
+      dir: hlLR>1?"↑":"→" },
+    { name:"NASDAQ均线",
+      val: rec.nasdaq_ma200?"多头结构":"空头结构",
+      score: rec.nasdaq_ma200?0.75:0.35,
+      dir: rec.nasdaq_ma200?"↑":"↓" },
+    { name:"BTC 20日动量",
+      val: (rec.btc_mom20>0?"+":"")+Math.round((rec.btc_mom20||0)*100)+"%",
+      score: (rec.btc_mom20||0)>0.03?0.72:(rec.btc_mom20||0)<-0.03?0.38:0.55,
+      dir: (rec.btc_mom20||0)>0?"↑":"↓" },
+    { name:"DXY 美元趋势",
+      val: (rec.dxy_trend>0?"+":"")+Math.round((rec.dxy_trend||0)*100)+"%",
+      score: (rec.dxy_trend||0)<-0.01?0.72:(rec.dxy_trend||0)>0.01?0.38:0.55,
+      dir: (rec.dxy_trend||0)<0?"↑":"↓" },
+    { name:"NASDAQ RSI",
+      val: Math.round(rec.nasdaq_rsi||50),
+      score: (rec.nasdaq_rsi||50)<35?0.72:(rec.nasdaq_rsi||50)>75?0.35:0.55,
+      dir: (rec.nasdaq_rsi||50)<35?"↑(超卖)":(rec.nasdaq_rsi||50)>75?"↓(超买)":"→" },
   ];
 
   const COLORS = {0.72:"#27ae60", 0.75:"#27ae60", 0.71:"#2ecc71",
@@ -979,6 +1037,9 @@ function switchMVTab(name, el) {
   document.querySelectorAll("[id^='mvtab-']").forEach(t=>t.classList.remove("active"));
   el.classList.add("active");
   document.getElementById("mvtab-"+name).classList.add("active");
+  if (name === "eventstudy" && document.getElementById("chart-eventstudy").childNodes.length === 0) {
+    renderEventStudyChart();
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1175,10 +1236,77 @@ function renderCCAChart() {
      其余 ${(100-rdaTotal).toFixed(1)}% 由市场情绪和动量主导——这解释了为什么宏观指标无法完全预测短期行情。`;
 }
 
+// ── 事件研究图表 ──
+function renderEventStudyChart() {
+  const es = SIGNALS && SIGNALS.event_study;
+  if (!es || Object.keys(es).length === 0) return;
+
+  const items = Object.values(es).sort((a,b) => a.avg_return - b.avg_return);
+  const labels  = items.map(d => d.significant ? d.label + " *" : d.label);
+  const returns = items.map(d => d.avg_return);
+  const lrs     = items.map(d => d.lr);
+  const ns      = items.map(d => d.n);
+  const ps      = items.map(d => d.p_value);
+  const baseAvg = items.length > 0 ? items[0].base_avg : 0;
+
+  const colors = returns.map(v => v >= 0 ? "#2ecc71" : "#e74c3c");
+
+  Plotly.newPlot("chart-eventstudy", [
+    {
+      type: "bar", orientation: "h",
+      x: returns, y: labels,
+      marker: { color: colors },
+      text: returns.map((v,i) => `LR=${lrs[i].toFixed(3)}  p=${ps[i].toFixed(3)}  n=${ns[i]}`),
+      textposition: "outside",
+      cliponaxis: false,
+      hovertemplate: "<b>%{y}</b><br>30日均收益: %{x:.1f}%<br>%{text}<extra></extra>",
+    },
+    {
+      type: "scatter", mode: "lines",
+      x: [baseAvg, baseAvg], y: [labels[0], labels[labels.length-1]],
+      line: { color: "#8b949e", dash: "dot", width: 1.5 },
+      name: `随机基准 ${baseAvg.toFixed(1)}%`, hoverinfo: "skip",
+    }
+  ], {
+    ...DARK,
+    xaxis: {...DARK.xaxis, title: "事件后30日累计收益 (%)", zeroline:true, zerolinecolor:"#444"},
+    margin: {t:20, b:60, l:130, r:130},
+    showlegend: true,
+    legend: {x:0.6, y:0.05, bgcolor:"transparent"},
+    annotations: [
+      {x: baseAvg, y: labels.length-0.5,
+       text: `基准 ${baseAvg.toFixed(1)}%`, showarrow: false,
+       font: {color:"#8b949e", size:10}, xanchor:"left"}
+    ]
+  }, {responsive:true});
+
+  const sigItems  = items.filter(d => d.significant);
+  const hikeFinding = es["fed_hike_first"];
+  const warFinding  = es["geopolitical_shock"];
+  const cutFinding  = es["fed_cut_first"];
+
+  let insight = `<strong>事件研究法（Event Study）</strong> — 事件后30个交易日累计收益，与500次随机窗口比较。<br>
+    <span style="color:#8b949e;font-size:0.79rem">* = 统计显著（p&lt;0.10）</span><br><br>`;
+
+  if (hikeFinding && hikeFinding.significant) {
+    insight += `<span style="color:#e74c3c">▼ 首次加息</span>：事件后30日均亏 <strong>${hikeFinding.avg_return.toFixed(1)}%</strong>，LR=${hikeFinding.lr}（<strong>p=${hikeFinding.p_value}</strong>，唯一显著结论）。靴子落地并不总是利好。<br>`;
+  }
+  if (warFinding) {
+    insight += `<span style="color:#2ecc71">▲ 地缘冲击</span>：平均30日收益 <strong>+${warFinding.avg_return.toFixed(1)}%</strong>，LR=${warFinding.lr}——市场往往在30天内完全消化恐慌。<br>`;
+  }
+  if (cutFinding) {
+    insight += `<span style="color:#f1c40f">△ 首次降息</span>：LR=${cutFinding.lr}，30日均收益 ${cutFinding.avg_return.toFixed(1)}%——"降息=利好"是误解，因为降息时往往经济已走弱（"买预期卖事实"）。<br>`;
+  }
+  insight += `<span style="color:var(--muted);font-size:0.78rem">方法：取每类事件历史发生日，计算事后30交易日累计收益，t检验验证与随机窗口的差异。</span>`;
+
+  document.getElementById("eventstudy-insight").innerHTML = insight;
+}
+
 // ── 启动 ──
 init().then(() => {
   renderDOWPanel();
   renderSellPanel();
+  renderEventStudyChart();
 });
 </script>
 </body>

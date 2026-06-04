@@ -321,7 +321,7 @@ footer a { color: var(--green); text-decoration: none; }
     <!-- 高级多元分析 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🔬 高级统计分析 <span class="badge">CCA · SHAP · Kalman · Prophet · 路径分析</span>
+        🔬 高级统计分析 <span class="badge">CCA · SHAP · Kalman · Prophet · 路径分析 · 事件研究</span>
       </div>
       <div class="tabs" id="mv-tabs">
         <div class="tab active" onclick="switchMVTab('modelcmp',this)">模型对比</div>
@@ -331,6 +331,11 @@ footer a { color: var(--green); text-decoration: none; }
         <div class="tab" onclick="switchMVTab('rolling',this)">滚动β系数</div>
         <div class="tab" onclick="switchMVTab('path',this)">路径分析</div>
         <div class="tab" onclick="switchMVTab('cca',this)">CCA/RDA</div>
+        <div class="tab" onclick="switchMVTab('eventstudy',this)">事件研究</div>
+      </div>
+      <div class="tab-content" id="mvtab-eventstudy">
+        <div id="chart-eventstudy" style="height:360px;"></div>
+        <div class="insight" id="eventstudy-insight" style="margin-top:.75rem;"></div>
       </div>
       <div class="tab-content active" id="mvtab-modelcmp">
         <div id="chart-modelcmp" style="height:360px;"></div>
@@ -1032,6 +1037,9 @@ function switchMVTab(name, el) {
   document.querySelectorAll("[id^='mvtab-']").forEach(t=>t.classList.remove("active"));
   el.classList.add("active");
   document.getElementById("mvtab-"+name).classList.add("active");
+  if (name === "eventstudy" && document.getElementById("chart-eventstudy").childNodes.length === 0) {
+    renderEventStudyChart();
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1228,10 +1236,77 @@ function renderCCAChart() {
      其余 ${(100-rdaTotal).toFixed(1)}% 由市场情绪和动量主导——这解释了为什么宏观指标无法完全预测短期行情。`;
 }
 
+// ── 事件研究图表 ──
+function renderEventStudyChart() {
+  const es = SIGNALS && SIGNALS.event_study;
+  if (!es || Object.keys(es).length === 0) return;
+
+  const items = Object.values(es).sort((a,b) => a.avg_return - b.avg_return);
+  const labels  = items.map(d => d.significant ? d.label + " *" : d.label);
+  const returns = items.map(d => d.avg_return);
+  const lrs     = items.map(d => d.lr);
+  const ns      = items.map(d => d.n);
+  const ps      = items.map(d => d.p_value);
+  const baseAvg = items.length > 0 ? items[0].base_avg : 0;
+
+  const colors = returns.map(v => v >= 0 ? "#2ecc71" : "#e74c3c");
+
+  Plotly.newPlot("chart-eventstudy", [
+    {
+      type: "bar", orientation: "h",
+      x: returns, y: labels,
+      marker: { color: colors },
+      text: returns.map((v,i) => `LR=${lrs[i].toFixed(3)}  p=${ps[i].toFixed(3)}  n=${ns[i]}`),
+      textposition: "outside",
+      cliponaxis: false,
+      hovertemplate: "<b>%{y}</b><br>30日均收益: %{x:.1f}%<br>%{text}<extra></extra>",
+    },
+    {
+      type: "scatter", mode: "lines",
+      x: [baseAvg, baseAvg], y: [labels[0], labels[labels.length-1]],
+      line: { color: "#8b949e", dash: "dot", width: 1.5 },
+      name: `随机基准 ${baseAvg.toFixed(1)}%`, hoverinfo: "skip",
+    }
+  ], {
+    ...DARK,
+    xaxis: {...DARK.xaxis, title: "事件后30日累计收益 (%)", zeroline:true, zerolinecolor:"#444"},
+    margin: {t:20, b:60, l:130, r:130},
+    showlegend: true,
+    legend: {x:0.6, y:0.05, bgcolor:"transparent"},
+    annotations: [
+      {x: baseAvg, y: labels.length-0.5,
+       text: `基准 ${baseAvg.toFixed(1)}%`, showarrow: false,
+       font: {color:"#8b949e", size:10}, xanchor:"left"}
+    ]
+  }, {responsive:true});
+
+  const sigItems  = items.filter(d => d.significant);
+  const hikeFinding = es["fed_hike_first"];
+  const warFinding  = es["geopolitical_shock"];
+  const cutFinding  = es["fed_cut_first"];
+
+  let insight = `<strong>事件研究法（Event Study）</strong> — 事件后30个交易日累计收益，与500次随机窗口比较。<br>
+    <span style="color:#8b949e;font-size:0.79rem">* = 统计显著（p&lt;0.10）</span><br><br>`;
+
+  if (hikeFinding && hikeFinding.significant) {
+    insight += `<span style="color:#e74c3c">▼ 首次加息</span>：事件后30日均亏 <strong>${hikeFinding.avg_return.toFixed(1)}%</strong>，LR=${hikeFinding.lr}（<strong>p=${hikeFinding.p_value}</strong>，唯一显著结论）。靴子落地并不总是利好。<br>`;
+  }
+  if (warFinding) {
+    insight += `<span style="color:#2ecc71">▲ 地缘冲击</span>：平均30日收益 <strong>+${warFinding.avg_return.toFixed(1)}%</strong>，LR=${warFinding.lr}——市场往往在30天内完全消化恐慌。<br>`;
+  }
+  if (cutFinding) {
+    insight += `<span style="color:#f1c40f">△ 首次降息</span>：LR=${cutFinding.lr}，30日均收益 ${cutFinding.avg_return.toFixed(1)}%——"降息=利好"是误解，因为降息时往往经济已走弱（"买预期卖事实"）。<br>`;
+  }
+  insight += `<span style="color:var(--muted);font-size:0.78rem">方法：取每类事件历史发生日，计算事后30交易日累计收益，t检验验证与随机窗口的差异。</span>`;
+
+  document.getElementById("eventstudy-insight").innerHTML = insight;
+}
+
 // ── 启动 ──
 init().then(() => {
   renderDOWPanel();
   renderSellPanel();
+  renderEventStudyChart();
 });
 </script>
 </body>
