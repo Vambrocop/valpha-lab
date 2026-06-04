@@ -25,11 +25,15 @@ TICKERS = {
     "OIL":     "CL=F",        # WTI原油期货
     "GOLD":    "GC=F",        # 黄金期货
     "TNX":     "^TNX",        # 10年期美债收益率
-    "PC_RATIO":"^PCCE",       # 期权Put/Call比率（股票）
+    # 新增
+    "CNY":     "CNYUSD=X",    # 人民币/美元汇率（人民币升值=正向）
+    "AUD":     "AUDUSD=X",    # 澳元/美元汇率（澳洲投资者换汇成本）
+    "VNQ":     "VNQ",         # 美国REIT（房地产信托），信贷压力代理
+    "NVDA":    "NVDA",        # 英伟达（AI景气最佳代理指标）
 }
 
-START = "2010-01-01"   # 更长历史
-END   = "2026-06-04"
+START = "2000-01-01"   # 含2000年互联网泡沫 + 2008年金融危机
+END   = "2026-06-05"
 
 def _get_close(ticker, name):
     df = yf.download(ticker, start=START, end=END, auto_adjust=True, progress=False)
