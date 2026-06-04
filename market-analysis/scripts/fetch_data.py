@@ -16,7 +16,8 @@ RAW_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Yahoo Finance 可直接下载的 ────────────────────────────────────
 TICKERS = {
-    "NASDAQ":  "^IXIC",       # 纳斯达克综合
+    "NASDAQ":  "^IXIC",       # 纳斯达克综合（1971+）
+    "NDX100":  "^NDX",        # 纳斯达克100（科技龙头，1985+）
     "SP500":   "^GSPC",       # 标普500
     "VIX":     "^VIX",        # 恐慌指数
     "DXY":     "DX-Y.NYB",    # 美元指数
@@ -25,9 +26,9 @@ TICKERS = {
     "OIL":     "CL=F",        # WTI原油期货
     "GOLD":    "GC=F",        # 黄金期货
     "TNX":     "^TNX",        # 10年期美债收益率
-    # 新增
     "VNQ":     "VNQ",         # 美国REIT（房地产信托），信贷压力代理
-    "NVDA":    "NVDA",        # 英伟达（AI景气最佳代理指标）
+    "NVDA":    "NVDA",        # 英伟达（AI景气个股代理）
+    "SOX":     "^SOX",        # 费城半导体指数（AI/芯片景气标准指标，1994+）
 }
 
 START = "2000-01-01"   # 含2000年互联网泡沫 + 2008年金融危机

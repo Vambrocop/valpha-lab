@@ -29,8 +29,8 @@ RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 PROC_DIR.mkdir(exist_ok=True)
 
-MARKET_ASSETS  = ["NASDAQ", "SP500", "BTC", "ETH", "DXY", "OIL", "GOLD", "TNX", "VIX",
-                   "VNQ", "NVDA"]
+MARKET_ASSETS  = ["NASDAQ", "NDX100", "SP500", "BTC", "ETH", "DXY", "OIL", "GOLD", "TNX", "VIX",
+                   "VNQ", "NVDA", "SOX"]
 MACRO_COLS     = ["M2", "FED_RATE", "CPI", "UNRATE", "YIELD_10Y"]
 
 # ── 加载数据 ──────────────────────────────────────────────────────
@@ -48,8 +48,8 @@ def build_features(df):
     feat = pd.DataFrame(index=m.index)
 
     # ── 收益率动量 ────────────────────────────────────────────────
-    for col in ["NASDAQ", "SP500", "BTC", "DXY", "OIL", "GOLD", "VIX",
-                "VNQ", "NVDA"]:
+    for col in ["NASDAQ", "NDX100", "SP500", "BTC", "DXY", "OIL", "GOLD", "VIX",
+                "VNQ", "NVDA", "SOX"]:
         if col not in m.columns: continue
         r = m[col].pct_change()
         feat[f"{col}_ret1m"]  = r
@@ -346,8 +346,9 @@ def run_all():
             f"PC{i+1}": loadings[f"PC{i+1}"].abs().nlargest(3).index.tolist()
             for i in range(min(3, len(loadings.columns)))
         },
-        "model_ranking": df_models[["model","auc_mean"]].to_dict(orient="records"),
-        "latest_prob": round(latest_prob, 4),
+        "model_ranking": [{"model": str(r["model"]), "auc_mean": float(r["auc_mean"])}
+                          for r in df_models[["model","auc_mean"]].to_dict(orient="records")],
+        "latest_prob": round(float(latest_prob), 4),
     }
     with open(PROC_DIR / "factor_summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)

@@ -1,26 +1,142 @@
 """
 build_signals.py
 预计算每一天的入场信号，输出 JSON 供前端使用。
-信号 = 综合贝叶斯概率（季节性 + 技术 + 宏观 + 事件调整）
+信号 = 综合贝叶斯概率（季节性 + 星期 + 月内 + 假日 + 技术 + 事件调整）
 """
 
 import pandas as pd
 import numpy as np
 import json
 from pathlib import Path
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.preprocessing import StandardScaler
+from datetime import date, timedelta
 
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 WEB_DIR  = Path(__file__).parent.parent / "web"
 
-# ── 月度先验概率（贝叶斯先验，来自历史统计） ─────────────────────
+# ── 月度先验概率（1928-2026 真实统计，后面会从 long_history.json 覆盖）
 MONTHLY_PRIOR = {
-    1: 0.62, 2: 0.54, 3: 0.62, 4: 0.80,
-    5: 0.58, 6: 0.40, 7: 0.80, 8: 0.54,
-    9: 0.45, 10: 0.62, 11: 0.80, 12: 0.74,
+    1: 0.62, 2: 0.54, 3: 0.62, 4: 0.68,
+    5: 0.58, 6: 0.55, 7: 0.60, 8: 0.57,
+    9: 0.45, 10: 0.60, 11: 0.65, 12: 0.64,
 }
+
+# ── 从 long_history.json 加载更精确的月度先验（1928+）─────────────
+def _load_long_priors():
+    try:
+        with open(PROC_DIR / "long_history.json", encoding="utf-8") as f:
+            lh = json.load(f)
+        rows = lh.get("monthly_by_period", {}).get("1928+", [])
+        return {r["month"]: round(r["win_rate"] / 100, 4) for r in rows}
+    except Exception:
+        return {}
+
+_long_priors = _load_long_priors()
+if _long_priors:
+    MONTHLY_PRIOR.update(_long_priors)
+    print(f"  使用 long_history 月度先验（1928+年历史数据）")
+
+# ── 星期效应似然比（日频，1928-2026 真实统计）────────────────────
+# 以普通日基准 52.4% 为 1.0，各星期相对调整
+DOW_LR = {
+    0: 0.940,  # 周一：49.3% — 最弱
+    1: 0.981,  # 周二：51.4%
+    2: 1.038,  # 周三：54.4% — 最强
+    3: 1.004,  # 周四：52.6%
+    4: 1.038,  # 周五：54.4%
+}
+
+# ── 月内效应似然比 ────────────────────────────────────────────────
+def _dom_lr(day):
+    if day <= 3:  return 1.117   # 月初1-3日：58.5%
+    if day <= 10: return 0.992   # 月初4-10日：52.0%
+    if day <= 20: return 0.992   # 月中：52.0%
+    if day <= 25: return 0.956   # 月末21-25日：50.1%
+    return 1.008                  # 月末26-31日：52.8%
+
+# ── 假日日历（美国股市） ──────────────────────────────────────────
+def _easter(year):
+    a = year % 19; b = year // 100; c = year % 100
+    d = b // 4; e = b % 4; f = (b + 8) // 25
+    g = (b - f + 1) // 3; h = (19*a + b - d - g + 15) % 30
+    i = c // 4; k = c % 4; l = (32 + 2*e + 2*i - h - k) % 7
+    m = (a + 11*h + 22*l) // 451
+    month = (h + l - 7*m + 114) // 31
+    day = ((h + l - 7*m + 114) % 31) + 1
+    return date(year, month, day)
+
+def _nth_weekday(year, month, weekday, n):
+    d = date(year, month, 1); count = 0
+    while True:
+        if d.weekday() == weekday:
+            count += 1
+            if count == n: return d
+        d += timedelta(days=1)
+
+def _last_weekday(year, month, weekday):
+    import calendar
+    last_day = calendar.monthrange(year, month)[1]
+    d = date(year, month, last_day)
+    while d.weekday() != weekday:
+        d -= timedelta(days=1)
+    return d
+
+def _adjust_weekend(d):
+    if d.weekday() == 5: return d - timedelta(days=1)
+    if d.weekday() == 6: return d + timedelta(days=1)
+    return d
+
+def _us_holidays(year):
+    easter = _easter(year)
+    return {
+        _adjust_weekend(date(year, 1, 1)),       # New Year
+        _nth_weekday(year, 1, 0, 3),             # MLK Day
+        _nth_weekday(year, 2, 0, 3),             # Presidents Day
+        easter - timedelta(days=2),               # Good Friday
+        _last_weekday(year, 5, 0),               # Memorial Day
+        _adjust_weekend(date(year, 7, 4)),        # Independence Day
+        _nth_weekday(year, 9, 0, 1),             # Labor Day
+        _nth_weekday(year, 11, 3, 4),            # Thanksgiving
+        _adjust_weekend(date(year, 12, 25)),      # Christmas
+    }
+
+# 预生成1990-2030年假日集合
+_HOLIDAY_SET = set()
+_THANKSGIVING_DATES = set()
+for _yr in range(1990, 2031):
+    try:
+        _HOLIDAY_SET |= _us_holidays(_yr)
+        _THANKSGIVING_DATES.add(_nth_weekday(_yr, 11, 3, 4))
+    except Exception:
+        pass
+
+def _holiday_lr(ts):
+    """返回该交易日的假日效应似然比"""
+    d = ts.date()
+
+    # 感恩节前夕（周三）：76.3%  → LR=1.457
+    if d in {tg - timedelta(days=1) for tg in _THANKSGIVING_DATES}:
+        return 1.457
+
+    # 感恩节后的黑色星期五：71.1% → LR=1.357
+    if d in {tg + timedelta(days=1) for tg in _THANKSGIVING_DATES}:
+        return 1.357
+
+    # 圣诞行情窗口 Dec 26 – Jan 3
+    if (d.month == 12 and d.day >= 26) or (d.month == 1 and d.day <= 3):
+        return 1.105   # 57.9% vs 52.4%
+
+    # 节前（前3天内有假日）：59.0% → LR=1.126
+    for offset in range(1, 4):
+        if (d + timedelta(days=offset)) in _HOLIDAY_SET:
+            return 1.126
+
+    # 节后（后3天内有假日）：58.2% → LR=1.111
+    for offset in range(1, 4):
+        if (d - timedelta(days=offset)) in _HOLIDAY_SET:
+            return 1.111
+
+    return 1.0  # 普通日
 
 # 事件调整因子（乘法，贝叶斯似然比）
 EVENT_ADJUSTMENTS = {
@@ -79,55 +195,67 @@ def compute_daily_signals(prices, ret, tech):
     records = {}
     idx = prices.dropna(how="all").index
 
-    for date in idx:
-        if date not in tech.index:
+    for ts in idx:
+        if ts not in tech.index:
             continue
-        row = tech.loc[date]
+        row = tech.loc[ts]
         if row.isnull().all():
             continue
 
-        month = date.month
+        month = ts.month
         prior = MONTHLY_PRIOR[month]
 
-        # 技术似然比
+        # ── 似然比列表（贝叶斯连乘）────────────────────────────────
         likelihoods = []
 
-        # NASDAQ在200日均线上方 → 牛市结构
+        # 1. 星期效应（日频，1928年统计）
+        likelihoods.append(DOW_LR.get(ts.weekday(), 1.0))
+
+        # 2. 月内效应
+        likelihoods.append(_dom_lr(ts.day))
+
+        # 3. 假日效应
+        likelihoods.append(_holiday_lr(ts))
+
+        # 4. NASDAQ在200日均线上方
         if not pd.isna(row.get("NASDAQ_above_ma200")):
             likelihoods.append(1.15 if row["NASDAQ_above_ma200"] else 0.85)
 
-        # BTC动量（领先8天效应）
+        # 5. BTC动量（领先8天效应）
         if not pd.isna(row.get("BTC_mom20")):
             m = row["BTC_mom20"]
             likelihoods.append(1.12 if m > 0.05 else (0.90 if m < -0.05 else 1.0))
 
-        # 美元趋势（负相关）
+        # 6. 美元趋势（负相关）
         if not pd.isna(row.get("dxy_trend")):
             d = row["dxy_trend"]
             likelihoods.append(0.88 if d > 0.01 else (1.12 if d < -0.01 else 1.0))
 
-        # NASDAQ波动率（低波动 = 好信号）
+        # 7. NASDAQ波动率
         if not pd.isna(row.get("NASDAQ_vol20")):
             v = row["NASDAQ_vol20"]
             likelihoods.append(0.85 if v > 0.25 else (1.10 if v < 0.15 else 1.0))
 
-        # NASDAQ RSI（超买/超卖）
+        # 8. NASDAQ RSI
         if not pd.isna(row.get("NASDAQ_rsi")):
             rsi = row["NASDAQ_rsi"]
             likelihoods.append(0.85 if rsi > 75 else (1.10 if rsi < 35 else 1.0))
 
         prob = bayesian_update(prior, likelihoods)
 
-        records[date.strftime("%Y-%m-%d")] = {
-            "prob":        round(prob, 4),
-            "tier":        _tier(prob),
-            "month":       month,
-            "prior":       round(prior, 4),
+        records[ts.strftime("%Y-%m-%d")] = {
+            "prob":         round(prob, 4),
+            "tier":         _tier(prob),
+            "month":        month,
+            "dow":          int(ts.weekday()),
+            "dom":          int(ts.day),
+            "prior":        round(prior, 4),
+            "holiday_lr":   round(_holiday_lr(ts), 4),
             "nasdaq_ma200": int(row.get("NASDAQ_above_ma200", 0)),
-            "btc_mom20":   round(float(row.get("BTC_mom20", 0) or 0), 4),
-            "dxy_trend":   round(float(row.get("dxy_trend", 0) or 0), 4),
-            "nasdaq_vol":  round(float(row.get("NASDAQ_vol20", 0) or 0), 4),
-            "nasdaq_rsi":  round(float(row.get("NASDAQ_rsi", 0) or 0), 1),
+            "btc_mom20":    round(float(row.get("BTC_mom20", 0) or 0), 4),
+            "dxy_trend":    round(float(row.get("dxy_trend", 0) or 0), 4),
+            "nasdaq_vol":   round(float(row.get("NASDAQ_vol20", 0) or 0), 4),
+            "nasdaq_rsi":   round(float(row.get("NASDAQ_rsi", 0) or 0), 1),
         }
 
     return records
