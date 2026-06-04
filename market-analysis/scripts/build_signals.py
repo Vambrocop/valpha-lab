@@ -163,20 +163,35 @@ def _holiday_lr(ts):
     return 1.0  # 普通日
 
 # 事件调整因子（乘法，贝叶斯似然比）
+# ── 标注[实证]的来自 event_study.py（1928-2026历史事件研究），其余为主观估计
+def _load_event_lr():
+    try:
+        with open(PROC_DIR / "event_study_results.json", encoding="utf-8") as f:
+            es = json.load(f)
+        return es.get("data_driven_lr", {})
+    except Exception:
+        return {}
+
+_event_lr = _load_event_lr()
+
 EVENT_ADJUSTMENTS = {
-    "war":        0.72,   # 战争爆发，概率乘0.72
-    "pandemic":   0.65,   # 疫情/封锁
-    "trade_war":  0.78,   # 贸易战升级
-    "fed_hike":   0.80,   # 意外加息
-    "fed_cut":    1.20,   # 降息
-    "election":   0.90,   # 选举不确定
-    "halving":    1.15,   # BTC减半（正面情绪溢出）
-    "gold_spike": 0.82,   # 黄金暴涨（避险情绪）
-    "oil_spike":  0.78,   # 油价暴涨（滞胀担忧）
-    "vix_spike":  0.70,   # VIX恐慌指数飙升
-    "none":       1.00,   # 无特殊事件
-    "ai_boom":    1.18,   # AI重大利好
-    "ipo_boom":   1.08,   # 大型科技IPO
+    # ── 实证估计（Event Study 数据驱动）────────────────────────────
+    "war":          _event_lr.get("war",         1.001),  # [实证] 地缘冲击30日后=LR1.001（市场30日内反弹）
+    "pandemic":     _event_lr.get("pandemic",    0.985),  # [实证] 疫情封锁30日=LR0.985（轻微负面）
+    "trade_war":    _event_lr.get("trade_war",   1.089),  # [实证] 贸易战升级后市场30日=LR1.089（阶段性反弹）
+    "trade_relief": _event_lr.get("trade_relief",1.080),  # [实证] 贸易协议缓和=LR1.080
+    "fed_hike":     _event_lr.get("fed_hike",    0.915),  # [实证] 首次加息30日=LR0.915（显著负面 p=0.021）
+    "fed_cut":      _event_lr.get("fed_cut",     0.978),  # [实证] 首次降息30日=LR0.978（反直觉：靴子落地卖）
+    "vix_spike":    _event_lr.get("vix_spike",   0.978),  # [实证] VIX暴涨后30日=LR0.978
+    "banking":      _event_lr.get("banking",     0.889),  # [实证] 银行危机30日=LR0.889
+    "ai_boom":      _event_lr.get("ai_boom",     1.001),  # [实证] AI突破30日=LR1.001（短期中性）
+    # ── 主观估计（尚无足够历史样本）────────────────────────────────
+    "election":     0.92,   # 大选不确定期（主观，基于历史不确定性折扣）
+    "halving":      1.15,   # BTC减半（正面情绪溢出，主观）
+    "gold_spike":   0.88,   # 黄金暴涨（避险情绪，主观）
+    "oil_spike":    0.85,   # 油价暴涨（滞胀担忧，主观）
+    "none":         1.00,   # 无特殊事件
+    "ipo_boom":     1.08,   # 大型科技IPO（主观）
 }
 
 # ── 技术信号计算 ──────────────────────────────────────────────────
@@ -333,7 +348,7 @@ def build():
     with open(out, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"✓ 信号已写入 {out}  ({len(signals)} 天)")
+    print(f"[OK] 信号已写入 {out}  ({len(signals)} 天)")
     print(f"  当前基准概率: {base_prob*100:.1f}%  第{_tier(base_prob)}档")
     return output
 
@@ -386,4 +401,4 @@ if __name__ == "__main__":
     out = WEB_DIR / "signals.json"
     with open(out, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
-    print("✓ signals.json 已更新（含买卖时机）")
+    print("[OK] signals.json 已更新（含买卖时机）")
