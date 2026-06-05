@@ -205,6 +205,9 @@ footer a { color: var(--green); text-decoration: none; }
         <div id="signal-percentile" style="margin-top:.6rem;font-size:0.8rem;"></div>
       </div>
 
+      <!-- 今日操作建议 -->
+      <div id="today-rec" style="margin-top:.75rem;"></div>
+
       <!-- 因子分解 -->
       <div class="panel-title" style="margin-top:1rem;">信号因子分解</div>
       <div class="factor-list" id="factor-list"></div>
@@ -311,6 +314,14 @@ footer a { color: var(--green); text-decoration: none; }
 
   <!-- ── 右栏：图表 ── -->
   <div class="charts-col">
+
+    <!-- 未来60天信号日历 -->
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        📅 未来60天信号预览 <span class="badge">交易日 · 颜色=入场档位</span>
+      </div>
+      <div id="forecast-calendar" style="min-height:60px;"></div>
+    </div>
 
     <!-- 历史走势 + 信号 -->
     <div class="chart-wrap">
@@ -644,6 +655,7 @@ function updateSignal(dateStr) {
     renderSignalMeter(prob, synRec);
     renderFactors(synRec, prob);
     renderPercentileInfo(prob);
+    renderTodayRec();
     return;
   }
 
@@ -666,6 +678,7 @@ function updateSignal(dateStr) {
   renderSignalMeter(prob, rec);
   renderFactors(rec, prob);
   renderPercentileInfo(prob);
+  renderTodayRec();
 }
 
 function renderSignalMeter(prob, rec) {
@@ -1878,6 +1891,110 @@ function renderBacktestCharts() {
      </span>`;
 }
 
+// ── 今日操作建议 ──
+function renderTodayRec() {
+  const el = document.getElementById("today-rec");
+  if (!el || !SIGNALS) return;
+  const dateStr = selectedDate || localDateStr();
+  const isFuture = dateStr > localDateStr();
+  let tier, prob, isForecast = false;
+
+  if (isFuture) {
+    const allFc = SIGNALS.next_opportunities?.all_forecast || [];
+    const fc = allFc.find(d => d.date === dateStr) ||
+               allFc.reduce((best, d) =>
+                 Math.abs(new Date(d.date) - new Date(dateStr)) <
+                 Math.abs(new Date(best.date) - new Date(dateStr)) ? d : best, allFc[0]);
+    if (!fc) { el.innerHTML = ""; return; }
+    tier = fc.tier; prob = fc.prob; isForecast = true;
+  } else {
+    const rec = SIGNALS.daily_signals?.[dateStr];
+    if (!rec) { el.innerHTML = ""; return; }
+    tier = rec.tier; prob = rec.prob;
+  }
+
+  const map = {
+    5: { color:"#27ae60", bg:"rgba(39,174,96,.12)", icon:"🟢", action:"积极加仓",
+         desc:"多重指标全面支撑，历史最强信号。适合以较大仓位买入美股/主流加密货币。" },
+    4: { color:"#2ecc71", bg:"rgba(46,204,113,.09)", icon:"✅", action:"适合买入",
+         desc:"信号偏多，可以正常仓位入场。美股ETF（QQQ/SPY）或BTC/ETH均合适。" },
+    3: { color:"#f1c40f", bg:"rgba(241,196,15,.09)", icon:"⏸",  action:"观望持有",
+         desc:"信号中性，不是最佳入场时机。现有持仓无需操作，等待更强信号出现。" },
+    2: { color:"#e67e22", bg:"rgba(230,126,34,.09)", icon:"⚠️", action:"谨慎等待",
+         desc:"偏空信号。不建议新建仓位，可考虑减少高风险持仓，保留现金等待机会。" },
+    1: { color:"#e74c3c", bg:"rgba(231,76,60,.09)", icon:"🔴", action:"规避风险",
+         desc:"信号极弱，多重负面因素叠加。建议低仓位或空仓，等待市场企稳。" },
+  };
+  const c = map[tier] || map[3];
+  const tag = isForecast ? `<span style="color:var(--muted);font-size:0.72rem">（预测）</span>` : "";
+  el.innerHTML = `
+    <div style="background:${c.bg};border:1px solid ${c.color}55;border-radius:8px;padding:.85rem 1rem;">
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.3rem;">今日操作建议${tag}</div>
+      <div style="font-size:1.05rem;font-weight:700;color:${c.color}">${c.icon} 第${tier}档 · ${c.action}</div>
+      <div style="font-size:0.8rem;color:var(--text);margin-top:.4rem;line-height:1.55">${c.desc}</div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:.4rem">上涨概率 ${Math.round(prob*100)}% · 仅供参考，不构成投资建议</div>
+    </div>`;
+}
+
+// ── 未来60天信号日历 ──
+function renderForecastCalendar() {
+  const el = document.getElementById("forecast-calendar");
+  if (!el || !SIGNALS) return;
+  const allFc = SIGNALS.next_opportunities?.all_forecast || [];
+  if (!allFc.length) { el.innerHTML = `<span style="color:var(--muted);font-size:0.82rem">暂无预测数据</span>`; return; }
+
+  const TC = { 5:"#27ae60", 4:"#2ecc71", 3:"#f1c40f", 2:"#e67e22", 1:"#e74c3c" };
+  const TB = { 5:"rgba(39,174,96,.22)", 4:"rgba(46,204,113,.18)", 3:"rgba(241,196,15,.18)", 2:"rgba(230,126,34,.18)", 1:"rgba(231,76,60,.18)" };
+
+  // Group by ISO week (Monday-based)
+  const weeks = {};
+  allFc.forEach(d => {
+    const dt = new Date(d.date);
+    const day = dt.getDay(); // 0=Sun
+    const diff = day === 0 ? -6 : 1 - day;
+    const mon = new Date(dt); mon.setDate(dt.getDate() + diff);
+    const key = mon.toISOString().slice(0, 10);
+    if (!weeks[key]) weeks[key] = [];
+    weeks[key].push(d);
+  });
+
+  const today = localDateStr();
+  let html = `<div style="display:flex;flex-direction:column;gap:5px;">`;
+  Object.keys(weeks).sort().forEach(wk => {
+    const days = weeks[wk].sort((a,b) => a.date.localeCompare(b.date));
+    const wkLabel = wk.slice(5).replace("-", "/");
+    html += `<div style="display:flex;align-items:center;gap:4px;">
+      <span style="font-size:0.68rem;color:var(--muted);width:38px;flex-shrink:0">${wkLabel}</span>`;
+    days.forEach(d => {
+      const dt = new Date(d.date);
+      const dom = dt.getDate();
+      const isToday = d.date === today;
+      const border = isToday ? `2px solid ${TC[d.tier]}` : `1px solid ${TC[d.tier]}44`;
+      html += `<div title="${d.date}  概率${Math.round(d.prob*100)}%  第${d.tier}档"
+        style="width:36px;height:36px;border-radius:5px;background:${TB[d.tier]};border:${border};
+               display:flex;flex-direction:column;align-items:center;justify-content:center;
+               ${isToday?"box-shadow:0 0 0 2px "+TC[d.tier]+"44;":""}" >
+        <span style="font-size:0.65rem;color:var(--muted);line-height:1">${dom}日</span>
+        <span style="font-size:0.7rem;font-weight:700;color:${TC[d.tier]};line-height:1.3">${Math.round(d.prob*100)}%</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  const strong = allFc.filter(d => d.tier >= 4).length;
+  const weak   = allFc.filter(d => d.tier <= 2).length;
+  const neut   = allFc.length - strong - weak;
+  html += `<div style="font-size:0.75rem;color:var(--muted);margin-top:.6rem;display:flex;gap:1rem;flex-wrap:wrap;">
+    <span>共 ${allFc.length} 个交易日</span>
+    <span style="color:#2ecc71">■ 强势(T4-5): ${strong}天</span>
+    <span style="color:#f1c40f">■ 中性(T3): ${neut}天</span>
+    <span style="color:#e74c3c">■ 偏弱(T1-2): ${weak}天</span>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
 // ── 启动 ──
 function safeRender(fn, name) {
   try { fn(); } catch(e) { console.warn("renderError ["+name+"]:", e); }
@@ -1889,6 +2006,8 @@ init().then(() => {
   safeRender(renderEventStudyChart, "EventStudy");
   safeRender(renderOppPanel,        "Opp");
   safeRender(renderForecastChart,   "Forecast");
+  safeRender(renderTodayRec,        "TodayRec");
+  safeRender(renderForecastCalendar,"ForecastCal");
   _mainTabRendered.add("forecast");
   // Digit chart is default-visible; use setTimeout so Plotly gets correct width
   _calTabRendered.add("digit");
