@@ -170,6 +170,50 @@ footer a { color: var(--green); text-decoration: none; }
 .digit-highlight { background: rgba(241,196,15,.12); border: 1px solid rgba(241,196,15,.3); border-radius: 6px; padding: .4rem .75rem; font-size: 0.8rem; margin-bottom: .75rem; }
 /* Placeholder shown while lazy tab charts haven't loaded yet */
 .chart-ph { display:flex; align-items:center; justify-content:center; height:340px; color:var(--muted); font-size:0.85rem; }
+
+/* ── Tooltip (ⓘ hover) ── */
+.tip { position:relative; cursor:help; border-bottom:1px dashed var(--muted); display:inline; }
+.tip::after { content:attr(data-tip); position:absolute; bottom:130%; left:50%; transform:translateX(-50%);
+  background:#1c2230; border:1px solid var(--border); border-radius:7px; padding:.5rem .8rem;
+  font-size:0.75rem; white-space:normal; max-width:220px; z-index:300; color:var(--text);
+  pointer-events:none; opacity:0; transition:opacity .18s; line-height:1.5; text-align:left;
+  box-shadow:0 4px 16px rgba(0,0,0,.4); }
+.tip:hover::after { opacity:1; }
+
+/* ── SpaceX IPO Tracker ── */
+.spcx-countdown { display:flex; align-items:center; gap:.75rem; margin-bottom:.75rem; }
+.spcx-big-num { font-size:2.8rem; font-weight:800; line-height:1; color:var(--green); }
+.spcx-big-label { font-size:0.78rem; color:var(--muted); line-height:1.4; }
+.spcx-row { display:flex; justify-content:space-between; align-items:center; padding:.3rem 0; border-bottom:1px solid var(--border)22; font-size:0.82rem; }
+.spcx-row:last-child { border:none; }
+.spcx-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:5px;
+  color:var(--text); padding:.35rem .65rem; font-size:0.85rem; margin-top:.35rem; }
+.spcx-input:focus { outline:none; border-color:var(--green); }
+.spcx-decision-box { border-radius:7px; padding:.65rem .9rem; margin-top:.65rem; font-size:0.8rem; line-height:1.6; }
+.spcx-pl-row { display:flex; gap:.75rem; flex-wrap:wrap; margin:.5rem 0; font-size:0.82rem; }
+.spcx-pl-val { background:var(--surface2); border-radius:5px; padding:.3rem .6rem; }
+
+/* ── Portfolio P&L ── */
+.pl-up { color:#2ecc71; font-size:0.72rem; }
+.pl-dn { color:#e74c3c; font-size:0.72rem; }
+.cost-link { color:var(--muted); font-size:0.68rem; cursor:pointer; text-decoration:underline dashed; }
+.cost-link:hover { color:var(--text); }
+
+/* ── Data staleness banner ── */
+.stale-banner { background:rgba(230,126,34,.12); border:1px solid rgba(230,126,34,.35);
+  border-radius:7px; padding:.55rem .9rem; font-size:0.79rem; margin-bottom:.65rem;
+  display:flex; align-items:center; gap:.5rem; color:#e67e22; }
+
+/* ── Mobile improvements ── */
+@media (max-width: 900px) {
+  main { padding:.75rem; gap:1rem; }
+  .panel { padding:1rem; }
+  .signal-ring { width:130px; height:130px; }
+  .signal-pct { font-size:2.2rem; }
+  .event-grid { grid-template-columns:1fr 1fr; }
+  header { padding:.75rem 1rem; flex-direction:column; align-items:flex-start; gap:.35rem; }
+  header h1 { font-size:1.1rem; }
+}
 </style>
 </head>
 <body>
@@ -225,6 +269,12 @@ footer a { color: var(--green); text-decoration: none; }
     <div class="panel">
       <div class="panel-title">🗓 重要经济日历</div>
       <div id="econ-calendar-list" style="display:flex;flex-direction:column;gap:.45rem;font-size:0.8rem;"></div>
+    </div>
+
+    <!-- SpaceX IPO 追踪器 -->
+    <div class="panel" id="spcx-panel">
+      <div class="panel-title">🚀 SpaceX SPCX · IPO追踪</div>
+      <div id="spcx-tracker"></div>
     </div>
 
     <!-- 事件调整 -->
@@ -335,6 +385,36 @@ footer a { color: var(--green); text-decoration: none; }
       <div id="forecast-calendar" style="min-height:60px;"></div>
     </div>
 
+    <!-- SpaceX IPO 详情 -->
+    <div class="chart-wrap" style="padding:1.25rem;" id="spcx-detail-wrap">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+        <span>🚀 SpaceX SPCX IPO 盈亏计算 <span class="badge">2026-06-12 Nasdaq</span></span>
+        <button onclick="fetchSPCXPrice()" id="spcx-price-btn"
+          style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
+          📡 获取价格
+        </button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;">我的持仓与盈亏</div>
+          <div id="spcx-calc" style="font-size:0.82rem;display:flex;flex-direction:column;gap:.5rem;"></div>
+          <div style="margin-top:.75rem;">
+            <label style="font-size:0.78rem;color:var(--muted);">申购股数（上市后填写实际分配量）</label>
+            <input class="spcx-input" type="number" id="spcx-shares-input" min="0" step="1" placeholder="例如：30"
+              oninput="updateSPCXCalc()" style="margin-top:.3rem;">
+            <label style="font-size:0.78rem;color:var(--muted);margin-top:.5rem;display:block;">当前市价 (USD)（上市后填写）</label>
+            <input class="spcx-input" type="number" id="spcx-price-input" min="0" step="0.01" placeholder="发行价 135"
+              oninput="updateSPCXCalc()" style="margin-top:.3rem;">
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;">知名科技股IPO首日涨幅参考</div>
+          <div id="chart-spcx-ipo" style="height:220px;"></div>
+        </div>
+      </div>
+      <div id="spcx-decision-detail" class="insight" style="margin-top:.5rem;"></div>
+    </div>
+
     <!-- 我的持仓计算器 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
@@ -350,7 +430,7 @@ footer a { color: var(--green); text-decoration: none; }
             <th style="text-align:left;padding:.3rem .4rem;">资产</th>
             <th style="text-align:right;padding:.3rem .4rem;">持仓数量</th>
             <th style="text-align:right;padding:.3rem .4rem;">单价(USD)</th>
-            <th style="text-align:right;padding:.3rem .4rem;">价值(AUD)</th>
+            <th style="text-align:right;padding:.3rem .4rem;">市值/盈亏(AUD)</th>
           </tr>
         </thead>
         <tbody id="portfolio-body"></tbody>
@@ -805,39 +885,39 @@ function renderFactors(rec, finalProb) {
                   ([1,4,7,10].includes(rec.month) && rec.dom<=5) ? "季初建仓(59%)" : "普通";
 
   const factors = [
-    { name:"月度季节性",
+    { name:"月度季节性", tip:"基于1928年以来S&P500月度历史胜率的贝叶斯先验概率，6月历史均值约62%",
       val: MONTH[rec.month]+" "+Math.round(rec.prior*100)+"%",
       score: rec.prior,
       dir: rec.prior>0.6?"↑":rec.prior<0.5?"↓":"→" },
-    { name:`星期效应(${DOW_NAMES[rec.dow||0]})`,
+    { name:`星期效应(${DOW_NAMES[rec.dow||0]})`, tip:"周内效应：周三/周五历史胜率最高(55%+)，周一最弱；这是市场微结构造成的系统性规律",
       val: lrToText(DOW_LR[rec.dow||0])+" LR×"+DOW_LR[rec.dow||0],
       score: lrToScore(DOW_LR[rec.dow||0]),
       dir: DOW_LR[rec.dow||0]>=1?"↑":"↓" },
-    { name:`月内第${rec.wom||"?"}周`,
+    { name:`月内第${rec.wom||"?"}周`, tip:"月内周次效应：第1周(季初建仓)和第3周往往强于第4周(月末税收/平仓压力)",
       val: lrToText(womLR)+" LR×"+womLR.toFixed(3),
       score: lrToScore(womLR),
       dir: womLR>=1?"↑":"↓" },
-    { name:"日历异常",
+    { name:"日历异常", tip:"税季异常、报税截止日、圣诞行情等特殊日历效应，来自贝叶斯似然比(LR)调整",
       val: calNote+" LR×"+calLR.toFixed(3),
       score: lrToScore(calLR),
       dir: calLR>=1.05?"↑":calLR<=0.95?"↓":"→" },
-    { name:"假日效应",
+    { name:"假日效应", tip:"感恩节前夕胜率76%、节前节后均高于基准。节前买入、节后卖出是有统计支持的策略",
       val: hlLR>1.2?"节日窗口 ↑↑":hlLR>1.0?"节前/后 ↑":"普通",
       score: lrToScore(hlLR),
       dir: hlLR>1?"↑":"→" },
-    { name:"NASDAQ均线",
+    { name:"NASDAQ均线", tip:"价格在200日均线上方=多头结构(牛市)；下方=空头结构(熊市)。这是最基础的趋势判断工具",
       val: rec.nasdaq_ma200?"多头结构":"空头结构",
       score: rec.nasdaq_ma200?0.75:0.35,
       dir: rec.nasdaq_ma200?"↑":"↓" },
-    { name:"BTC 20日动量",
+    { name:"BTC 20日动量", tip:"BTC的20日价格动量(涨跌幅)。BTC往往领先纳指科技股1-2周：BTC涨→科技股跟涨概率高",
       val: (rec.btc_mom20>0?"+":"")+Math.round((rec.btc_mom20||0)*100)+"%",
       score: (rec.btc_mom20||0)>0.03?0.72:(rec.btc_mom20||0)<-0.03?0.38:0.55,
       dir: (rec.btc_mom20||0)>0?"↑":"↓" },
-    { name:"DXY 美元趋势",
+    { name:"DXY 美元趋势", tip:"美元指数(DXY)与股市通常负相关：美元强→外资回流美债，股市承压；美元弱→股市往往受益",
       val: (rec.dxy_trend>0?"+":"")+Math.round((rec.dxy_trend||0)*100)+"%",
       score: (rec.dxy_trend||0)<-0.01?0.72:(rec.dxy_trend||0)>0.01?0.38:0.55,
       dir: (rec.dxy_trend||0)<0?"↑":"↓" },
-    { name:"NASDAQ RSI",
+    { name:"NASDAQ RSI", tip:"RSI(相对强弱指数)：>70超买(短期可能回调)；<30超卖(可能反弹)；50以上偏多，50以下偏空",
       val: Math.round(rec.nasdaq_rsi||50),
       score: (rec.nasdaq_rsi||50)<35?0.72:(rec.nasdaq_rsi||50)>75?0.35:0.55,
       dir: (rec.nasdaq_rsi||50)<35?"↑(超卖)":(rec.nasdaq_rsi||50)>75?"↓(超买)":"→" },
@@ -852,7 +932,7 @@ function renderFactors(rec, finalProb) {
 
   const html = factors.map(f => `
     <div class="factor-row">
-      <span class="factor-name">${f.name}</span>
+      <span class="factor-name"><span class="tip" data-tip="${f.tip}">${f.name}</span></span>
       <div class="factor-bar-wrap"><div class="factor-bar" style="width:${Math.round(f.score*100)}%;background:${colForScore(f.score)}"></div></div>
       <span class="factor-val" style="color:${colForScore(f.score)}">${f.val} ${f.dir}</span>
     </div>
@@ -2111,39 +2191,54 @@ function loadPortfolio() {
 function savePortfolio(p) { localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(p)); }
 function defaultPortfolio() {
   return [
-    { ticker:"BTC",  qty:0.002,    priceUSD:null, type:"crypto" },
-    { ticker:"ETH",  qty:0.0103,   priceUSD:null, type:"crypto" },
-    { ticker:"XLM",  qty:503.78,   priceUSD:null, type:"crypto" },
-    { ticker:"DOGE", qty:1360.5,   priceUSD:null, type:"crypto" },
-    { ticker:"HOME", qty:100,      priceUSD:null, type:"crypto" },
-    { ticker:"SPCX", qty:0,        priceUSD:135,  type:"stock",  note:"IPO发行价，上市后更新" },
+    { ticker:"BTC",  qty:0.002,    priceUSD:null, costUSD:null,  type:"crypto" },
+    { ticker:"ETH",  qty:0.0103,   priceUSD:null, costUSD:null,  type:"crypto" },
+    { ticker:"XLM",  qty:503.78,   priceUSD:null, costUSD:null,  type:"crypto" },
+    { ticker:"DOGE", qty:1360.5,   priceUSD:null, costUSD:null,  type:"crypto" },
+    { ticker:"HOME", qty:100,      priceUSD:null, costUSD:null,  type:"crypto" },
+    { ticker:"SPCX", qty:0,        priceUSD:135,  costUSD:135,   type:"stock",  note:"IPO发行价US$135" },
   ];
 }
 
+let _portAudRate = 0.71;
+
 function renderPortfolioTable(audRate) {
+  if (audRate && audRate > 0) _portAudRate = audRate;
   const port = loadPortfolio();
   const body = document.getElementById("portfolio-body");
   const foot = document.getElementById("portfolio-foot");
   if (!body) return;
-  let total = 0;
+  let total = 0, totalCost = 0;
   body.innerHTML = port.map((item, i) => {
     const p = portfolioPrices[item.ticker] || item.priceUSD;
-    const pAUD = p && audRate ? p / audRate : null;
+    const pAUD = p && _portAudRate ? p / _portAudRate : null;
     const val = pAUD ? item.qty * pAUD : null;
     if (val) total += val;
+    // P&L
+    const costUSD = item.costUSD;
+    const costAUD = (costUSD && _portAudRate) ? (costUSD / _portAudRate * item.qty) : null;
+    if (costAUD) totalCost += costAUD;
+    const plAUD = (val && costAUD) ? val - costAUD : null;
+    const plPct = (plAUD != null && costAUD > 0) ? plAUD / costAUD * 100 : null;
+    const plStr = plAUD != null
+      ? `<br><span class="${plAUD >= 0 ? 'pl-up' : 'pl-dn'}">${plAUD >= 0 ? '+' : ''}A$${plAUD.toFixed(0)} (${plPct >= 0 ? '+' : ''}${(plPct||0).toFixed(1)}%)</span>`
+      : `<br><span class="cost-link" onclick="setPortfolioCost(${i},'${item.ticker}')">设置成本价</span>`;
     const valStr = val ? `A$${val.toFixed(2)}` : "—";
     const pStr  = p   ? `$${p < 1 ? p.toFixed(4) : p.toFixed(2)}` : "—";
-    const pAUDStr = pAUD ? `A$${pAUD < 1 ? pAUD.toFixed(4) : pAUD.toFixed(2)}` : "—";
     return `<tr style="border-bottom:1px solid var(--border)22;">
       <td style="padding:.35rem .4rem;font-weight:600;color:var(--text)">${item.ticker}${item.note?`<br><span style="font-size:0.68rem;color:var(--muted);font-weight:400">${item.note}</span>`:""}</td>
       <td style="text-align:right;padding:.35rem .4rem;color:var(--muted)">${item.qty}</td>
       <td style="text-align:right;padding:.35rem .4rem">${pStr}</td>
-      <td style="text-align:right;padding:.35rem .4rem;font-weight:600;color:${val?'var(--green)':'var(--muted)'}">${valStr}</td>
+      <td style="text-align:right;padding:.35rem .4rem;font-weight:600;color:${val?'var(--green)':'var(--muted)'}">${valStr}${plStr}</td>
     </tr>`;
   }).join("");
+  const plTotal = (total > 0 && totalCost > 0) ? total - totalCost : null;
+  const plTotalPct = plTotal != null && totalCost > 0 ? plTotal / totalCost * 100 : null;
+  const plTotalStr = plTotal != null
+    ? `<span class="${plTotal >= 0 ? 'pl-up' : 'pl-dn'}" style="font-size:0.8rem;margin-left:.5rem">${plTotal >= 0 ? '+' : ''}A$${plTotal.toFixed(0)} (${plTotalPct >= 0 ? '+' : ''}${(plTotalPct||0).toFixed(1)}%)</span>` : "";
   foot.innerHTML = total > 0 ? `<tr style="border-top:1px solid var(--border);">
     <td colspan="3" style="padding:.4rem;font-weight:700;color:var(--muted)">总计</td>
-    <td style="text-align:right;padding:.4rem;font-weight:800;font-size:1rem;color:var(--green)">A$${total.toFixed(2)}</td>
+    <td style="text-align:right;padding:.4rem;font-weight:800;font-size:1rem;color:var(--green)">A$${total.toFixed(2)}${plTotalStr}</td>
   </tr>` : "";
 
   // Signal overlay
@@ -2174,6 +2269,8 @@ async function fetchPortfolioPrices() {
     const updEl = document.getElementById("portfolio-updated");
     if (updEl) updEl.textContent = `更新于 ${ts}，1 AUD ≈ US$${audRate?audRate.toFixed(4):"?"}`;
     renderPortfolioTable(audRate || 0.71);
+    renderSPCXTracker();
+    updateSPCXCalc();
   } catch(e) {
     console.warn("Portfolio price fetch failed:", e);
     renderPortfolioTable(0.71);
@@ -2312,6 +2409,212 @@ function renderSentimentPanel() {
   el.innerHTML += summary;
 }
 
+// ═══════════════════════════════════════════════════════
+//  SpaceX SPCX IPO 追踪器
+// ═══════════════════════════════════════════════════════
+const SPCX_LISTING_DATE = "2026-06-12";
+const SPCX_ISSUE_USD    = 135;
+
+function renderSPCXTracker() {
+  const el = document.getElementById("spcx-tracker");
+  if (!el) return;
+  const today = localDateStr();
+  const hasListed = today >= SPCX_LISTING_DATE;
+
+  // Countdown
+  const listDt  = new Date(2026, 5, 12); // June 12 local time
+  const daysLeft = Math.max(0, Math.ceil((listDt - new Date()) / 86400000));
+
+  const savedShares = +(localStorage.getItem("spcx_shares") || 0);
+  const savedPrice  = +(localStorage.getItem("spcx_price")  || 0);
+  const savedCostAUD= +(localStorage.getItem("spcx_cost_aud")|| 0);
+
+  // AUD value
+  const issueAUD = savedShares * SPCX_ISSUE_USD / _portAudRate;
+  const currAUD  = savedShares > 0 && savedPrice > 0 ? savedShares * savedPrice / _portAudRate : 0;
+  const plAUD    = currAUD - issueAUD;
+  const plPct    = issueAUD > 0 ? plAUD / issueAUD * 100 : 0;
+  const gainPct  = savedPrice > 0 ? (savedPrice - SPCX_ISSUE_USD) / SPCX_ISSUE_USD * 100 : 0;
+
+  // Pre-listing countdown
+  if (!hasListed) {
+    el.innerHTML = `
+      <div class="spcx-countdown">
+        <div class="spcx-big-num">${daysLeft}</div>
+        <div class="spcx-big-label">天后上市<br><span style="font-size:0.7rem">2026年6月12日 Nasdaq</span></div>
+      </div>
+      <div style="font-size:0.8rem;display:flex;flex-direction:column;gap:.3rem;margin-bottom:.75rem;">
+        <div class="spcx-row"><span style="color:var(--muted)">发行价</span><span style="font-weight:700">US$135</span></div>
+        <div class="spcx-row"><span style="color:var(--muted)">交易所</span><span>Nasdaq</span></div>
+        <div class="spcx-row"><span style="color:var(--muted)">澳洲通道</span><span>CommSec IPO</span></div>
+      </div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:.3rem">我的申购（股数）</div>
+      <input class="spcx-input" type="number" min="0" step="1" placeholder="等待分配结果后填写"
+        value="${savedShares||""}" oninput="saveSPCXData('shares',this.value)">
+      ${savedShares > 0 ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:.35rem">
+        ≈ A$${issueAUD.toFixed(0)}（按发行价US$135 · AUD/USD≈${_portAudRate.toFixed(3)}）</div>` : ""}
+      <div class="spcx-decision-box" style="background:rgba(52,152,219,.1);border-left:3px solid var(--blue);">
+        <strong style="color:var(--blue)">上市前建议：</strong><br>
+        1. 分配结果出来后填写实际获得股数<br>
+        2. 上市当天开盘价通常高于发行价（高关注度IPO平均+20-40%）<br>
+        3. 建议策略：<strong>卖一半锁利润，留一半长持</strong>
+      </div>`;
+    return;
+  }
+
+  // Post-listing
+  let decisionHtml = "";
+  if (savedPrice > 0) {
+    if (gainPct > 50)      decisionHtml = `<span style="color:#f1c40f">🔥 溢价${gainPct.toFixed(0)}%！建议立即卖出至少一半，锁定利润</span>`;
+    else if (gainPct > 25) decisionHtml = `<span style="color:#2ecc71">✅ 溢价${gainPct.toFixed(0)}%，可卖出1/3-1/2，其余长持</span>`;
+    else if (gainPct > 10) decisionHtml = `<span style="color:#2ecc71">📈 溢价${gainPct.toFixed(0)}%，可持有等待更高位再卖</span>`;
+    else if (gainPct > 0)  decisionHtml = `<span style="color:#f1c40f">⏸ 小幅溢价，持有观察后续走势</span>`;
+    else if (gainPct > -15)decisionHtml = `<span style="color:#e67e22">⚠️ 轻微破发，建议持有等待反弹</span>`;
+    else                   decisionHtml = `<span style="color:#e74c3c">🔴 大幅破发，考虑止损或长期持有</span>`;
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.65rem;">
+      <span style="background:#27ae6022;color:#27ae60;border-radius:4px;padding:2px 8px;font-size:0.75rem;font-weight:700">已上市 ✓</span>
+      <span style="color:var(--muted);font-size:0.75rem">2026-06-12 Nasdaq</span>
+    </div>
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:.3rem">实际获配股数</div>
+    <input class="spcx-input" type="number" min="0" step="1" placeholder="股数"
+      value="${savedShares||""}" oninput="saveSPCXData('shares',this.value)">
+    <div style="font-size:0.78rem;color:var(--muted);margin:.5rem 0 .3rem">当前市价 (USD)</div>
+    <input class="spcx-input" type="number" min="0" step="0.01" placeholder="发行价135"
+      value="${savedPrice||""}" oninput="saveSPCXData('price',this.value)">
+    ${savedShares > 0 && savedPrice > 0 ? `
+    <div class="spcx-pl-row" style="margin-top:.65rem;">
+      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">成本</span><br><strong>A$${issueAUD.toFixed(0)}</strong></div>
+      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">市值</span><br><strong>A$${currAUD.toFixed(0)}</strong></div>
+      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">盈亏</span><br>
+        <strong style="color:${plAUD>=0?'#2ecc71':'#e74c3c'}">${plAUD>=0?'+':''}A$${plAUD.toFixed(0)}<br>${plPct>=0?'+':''}${plPct.toFixed(1)}%</strong></div>
+    </div>
+    <div class="spcx-decision-box" style="background:rgba(46,204,113,.08);border-left:3px solid var(--green);">
+      ${decisionHtml}
+    </div>` : `<div style="font-size:0.78rem;color:var(--muted);margin-top:.5rem">填写股数和价格查看盈亏</div>`}`;
+}
+
+function saveSPCXData(field, val) {
+  if (field === 'shares') localStorage.setItem("spcx_shares", val);
+  if (field === 'price')  localStorage.setItem("spcx_price",  val);
+  renderSPCXTracker();
+  updateSPCXCalc();
+}
+
+// SPCX right-column detail panel
+function renderSPCXDetail() {
+  // Historical tech IPO first-day performance data
+  const ipoData = [
+    { name:"Airbnb\n2020",   gain:113 }, { name:"Snowflake\n2020", gain:112 },
+    { name:"Twitter\n2013",  gain:73  }, { name:"Reddit\n2024",    gain:48  },
+    { name:"Palantir\n2020", gain:37  }, { name:"ARM\n2023",       gain:25  },
+    { name:"Rivian\n2021",   gain:29  }, { name:"Lyft\n2019",      gain:9   },
+    { name:"Uber\n2019",     gain:-8  }, { name:"Robinhood\n2021", gain:-8  },
+  ];
+  const colors = ipoData.map(d => d.gain > 30 ? "#27ae60" : d.gain > 0 ? "#2ecc71" : "#e74c3c");
+  Plotly.newPlot("chart-spcx-ipo", [{
+    type:"bar", x: ipoData.map(d=>d.name), y: ipoData.map(d=>d.gain),
+    marker:{ color: colors },
+    text: ipoData.map(d => (d.gain >= 0 ? "+" : "") + d.gain + "%"),
+    textposition:"outside", cliponaxis:false,
+    hovertemplate:"<b>%{x}</b><br>首日涨幅: %{y}%<extra></extra>",
+  }], {
+    ...DARK, margin:{t:20,b:55,l:35,r:10},
+    yaxis:{...DARK.yaxis, title:"首日涨幅 %"},
+    xaxis:{...DARK.xaxis, tickfont:{size:9}},
+    shapes:[{type:"line",x0:-0.5,x1:9.5,y0:0,y1:0,line:{color:"#555",dash:"dot",width:1}}],
+  }, {responsive:true});
+
+  document.getElementById("spcx-decision-detail").innerHTML =
+    `<strong>首日操作历史规律：</strong>高关注度科技IPO首日平均涨幅 <span style="color:#2ecc71">+30–60%</span>，但差异极大（-8% 到 +113%）。<br>
+     <strong>建议策略：</strong>开盘溢价 >25% → 卖出一半锁利润；溢价 <10% → 可全部持有等待中期涨势；<strong>破发不要恐慌</strong>（SpaceX基本面极强，有长期持有价值）。<br>
+     <span style="color:var(--muted);font-size:0.78rem">数据来源：公开上市公告。非投资建议，仅供参考。</span>`;
+
+  updateSPCXCalc();
+}
+
+function updateSPCXCalc() {
+  const el = document.getElementById("spcx-calc");
+  if (!el) return;
+  const sharesIn = parseFloat(document.getElementById("spcx-shares-input")?.value || 0) || 0;
+  const priceIn  = parseFloat(document.getElementById("spcx-price-input")?.value  || 0) || 0;
+  // also sync with left-panel inputs and localStorage
+  if (sharesIn) { localStorage.setItem("spcx_shares", sharesIn); renderSPCXTracker(); }
+  if (priceIn)  { localStorage.setItem("spcx_price",  priceIn);  renderSPCXTracker(); }
+
+  const shares = sharesIn || +(localStorage.getItem("spcx_shares")||0);
+  const price  = priceIn  || +(localStorage.getItem("spcx_price") ||0);
+  const rate   = _portAudRate || 0.64;
+
+  const issueAUD = shares * SPCX_ISSUE_USD / rate;
+  const currAUD  = shares > 0 && price > 0 ? shares * price / rate : 0;
+  const plAUD    = currAUD - issueAUD;
+  const plPct    = issueAUD > 0 ? plAUD / issueAUD * 100 : 0;
+  const gainPct  = price > 0 ? (price - SPCX_ISSUE_USD) / SPCX_ISSUE_USD * 100 : 0;
+  const halfAUD  = currAUD / 2;
+  const halfProfit = halfAUD - issueAUD / 2;
+
+  if (!shares) { el.innerHTML = `<span style="color:var(--muted)">输入申购股数后显示</span>`; return; }
+
+  let recHtml = "";
+  if (price > 0) {
+    if (gainPct > 25)      recHtml = `<div style="color:#27ae60;font-weight:600">建议：卖出一半 → 锁定 A$${halfProfit.toFixed(0)} 利润，留一半长期持有</div>`;
+    else if (gainPct > 5)  recHtml = `<div style="color:#2ecc71;font-weight:600">建议：持有观察，等待更好的卖出时机</div>`;
+    else if (gainPct >= 0) recHtml = `<div style="color:#f1c40f;font-weight:600">建议：持有，SpaceX长期前景强劲</div>`;
+    else                   recHtml = `<div style="color:#e67e22;font-weight:600">破发：短期持有等待反弹，长期看好</div>`;
+  }
+
+  el.innerHTML = `
+    <div class="spcx-pl-row">
+      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">股数</span><br><strong>${shares}</strong></div>
+      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">成本(AUD)</span><br><strong>A$${issueAUD.toFixed(0)}</strong></div>
+      ${currAUD > 0 ? `<div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">市值(AUD)</span><br><strong>A$${currAUD.toFixed(0)}</strong></div>
+      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">盈亏</span><br>
+        <strong style="color:${plAUD>=0?'#2ecc71':'#e74c3c'}">${plAUD>=0?'+':''}A$${plAUD.toFixed(0)}<br>${plPct>=0?'+':''}${plPct.toFixed(1)}%</strong></div>` : ""}
+    </div>
+    ${currAUD > 0 && gainPct > 5 ? `<div style="font-size:0.78rem;color:var(--muted)">卖一半可入袋 <strong style="color:#2ecc71">A$${halfProfit.toFixed(0)}</strong></div>` : ""}
+    ${recHtml}`;
+}
+
+// Try to fetch SPCX price from Yahoo Finance
+async function fetchSPCXPrice() {
+  const btn = document.getElementById("spcx-price-btn");
+  if (btn) btn.textContent = "⏳ 获取中...";
+  try {
+    const r = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/SPCX?interval=1d&range=1d");
+    const d = await r.json();
+    const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (price) {
+      const inp = document.getElementById("spcx-price-input");
+      if (inp) { inp.value = price.toFixed(2); updateSPCXCalc(); }
+      localStorage.setItem("spcx_price", price);
+      renderSPCXTracker();
+    } else {
+      alert("暂时无法自动获取价格，请在上市后手动输入。");
+    }
+  } catch(e) {
+    alert("获取失败（可能尚未上市）。上市后手动输入当前价格即可。");
+  } finally {
+    if (btn) btn.textContent = "📡 获取价格";
+  }
+}
+
+// Portfolio cost basis editor
+function setPortfolioCost(i, ticker) {
+  const cost = prompt(`请输入 ${ticker} 的平均买入价（USD）：\n（例如：BTC填95000，DOGE填0.15）`);
+  if (cost == null) return;
+  const v = parseFloat(cost);
+  if (isNaN(v) || v < 0) { alert("请输入有效价格"); return; }
+  const port = loadPortfolio();
+  if (port[i]) {
+    port[i].costUSD = v;
+    savePortfolio(port);
+    renderPortfolioTable(_portAudRate);
+  }
+}
+
 // ── 启动 ──
 function safeRender(fn, name) {
   try { fn(); } catch(e) { console.warn("renderError ["+name+"]:", e); }
@@ -2328,6 +2631,13 @@ init().then(() => {
   safeRender(renderSentimentPanel,  "Sentiment");
   safeRender(renderEconCalendar,    "EconCal");
   safeRender(renderDipGuide,        "DipGuide");
+  safeRender(renderSPCXTracker,     "SPCX");
+  safeRender(renderSPCXDetail,      "SPCXDetail");
+  // Sync SPCX inputs with localStorage
+  const savedShares = localStorage.getItem("spcx_shares");
+  const savedPrice  = localStorage.getItem("spcx_price");
+  if (savedShares) { const el = document.getElementById("spcx-shares-input"); if (el) el.value = savedShares; }
+  if (savedPrice)  { const el = document.getElementById("spcx-price-input");  if (el) el.value = savedPrice; }
   renderPortfolioTable(0.71);  // render with fallback rate; user can refresh for live prices
   _mainTabRendered.add("forecast");
   // Digit chart is default-visible; use setTimeout so Plotly gets correct width
