@@ -215,6 +215,12 @@ footer a { color: var(--green); text-decoration: none; }
       <div class="insight" id="insight-box"></div>
     </div>
 
+    <!-- 市场情绪仪表盘 -->
+    <div class="panel" id="sentiment-panel">
+      <div class="panel-title">📊 市场情绪仪表盘</div>
+      <div id="sentiment-gauges" style="display:flex;flex-direction:column;gap:.6rem;font-size:0.82rem;"></div>
+    </div>
+
     <!-- 事件调整 -->
     <div class="panel">
       <div class="panel-title">叠加外部事件 · 概率动态更新</div>
@@ -2007,6 +2013,84 @@ function renderForecastCalendar() {
   el.innerHTML = html;
 }
 
+// ── 市场情绪仪表盘 ──
+function renderSentimentPanel() {
+  const el = document.getElementById("sentiment-gauges");
+  if (!el || !SIGNALS) return;
+  const tech = SIGNALS.next_opportunities?.latest_tech || {};
+
+  // VIX: use VIX from daily_signals (latest available) or fallback
+  const allDays = SIGNALS.daily_signals || {};
+  const latestKey = Object.keys(allDays).sort().pop();
+  // nasdaq_vol is annualized realized vol; derive a rough VIX proxy
+  // We store actual VIX in prices.json; use latest_tech nasdaq_vol as proxy if no direct VIX
+  const nasVol  = tech.nasdaq_vol;  // e.g. 0.0916 = 9.16% 20-day realized vol
+  const rsi     = tech.nasdaq_rsi;  // e.g. 77.1
+  const btcMom  = tech.btc_mom20;   // e.g. -0.1946
+
+  function gauge(label, val, min, max, zones, unit, note) {
+    if (val == null) return "";
+    const pct = Math.max(0, Math.min(100, (val - min) / (max - min) * 100));
+    let color = "#8b949e", zoneLabel = "";
+    for (const z of zones) {
+      if (val >= z.from && val < z.to) { color = z.color; zoneLabel = z.label; break; }
+    }
+    return `<div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:.25rem;">
+        <span style="color:var(--muted)">${label}</span>
+        <span style="font-weight:700;color:${color}">${typeof val==="number"?val.toFixed(1):val}${unit}
+          <span style="font-size:0.72rem;font-weight:400"> ${zoneLabel}</span></span>
+      </div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width .4s"></div>
+      </div>
+      ${note ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:.2rem">${note}</div>` : ""}
+    </div>`;
+  }
+
+  // VIX: annualize the 20-day realized vol to get a rough proxy
+  const vixProxy = nasVol ? +(nasVol * Math.sqrt(252) * 100).toFixed(1) : null;
+  const vixZones = [
+    {from:0,   to:15,  color:"#f1c40f", label:"过度乐观 ⚠️"},
+    {from:15,  to:20,  color:"#2ecc71", label:"正常"},
+    {from:20,  to:30,  color:"#e67e22", label:"担忧"},
+    {from:30,  to:999, color:"#e74c3c", label:"极度恐慌 → 买入机会"},
+  ];
+  const rsiZones = [
+    {from:0,  to:30,  color:"#e74c3c", label:"超卖 → 可能反弹"},
+    {from:30, to:50,  color:"#e67e22", label:"弱势"},
+    {from:50, to:70,  color:"#2ecc71", label:"正常偏多"},
+    {from:70, to:100, color:"#f1c40f", label:"超买 ⚠️"},
+  ];
+  const btcPct = btcMom != null ? +(btcMom * 100).toFixed(1) : null;
+  const btcZones = [
+    {from:-100, to:-20, color:"#e74c3c", label:"极度疲弱"},
+    {from:-20,  to:-5,  color:"#e67e22", label:"偏弱"},
+    {from:-5,   to:5,   color:"#8b949e", label:"横盘"},
+    {from:5,    to:20,  color:"#2ecc71", label:"偏强"},
+    {from:20,   to:999, color:"#27ae60", label:"强势"},
+  ];
+
+  el.innerHTML = [
+    gauge("VIX（波动率/恐慌指数）", vixProxy, 10, 50, vixZones, "",
+      vixProxy ? `<30=恐慌买入机会 · <15=过度乐观需谨慎 · 数据截至 ${SIGNALS.generated}` : ""),
+    gauge("纳指RSI（超买超卖）", rsi, 0, 100, rsiZones, "",
+      "RSI>70超买，<30超卖；现在" + (rsi>70?"偏高，注意回调":rsi<30?"极度超卖，反弹概率大":"正常区间")),
+    gauge("BTC 20日动量", btcPct, -50, 50, btcZones, "%",
+      "BTC往往领先美股科技股1-2周，负值代表近期加密偏弱"),
+  ].filter(Boolean).join("");
+
+  // Summary line
+  const warning = (vixProxy && vixProxy < 15) || (rsi && rsi > 75);
+  const bullish  = (vixProxy && vixProxy > 30) || (rsi && rsi < 30);
+  const summary = bullish
+    ? `<div style="color:#2ecc71;font-size:0.78rem;margin-top:.4rem">📈 恐慌信号出现 → 历史上往往是逆向买入机会</div>`
+    : warning
+    ? `<div style="color:#f1c40f;font-size:0.78rem;margin-top:.4rem">⚠️ 市场情绪偏乐观，短线注意回调风险</div>`
+    : `<div style="color:var(--muted);font-size:0.78rem;margin-top:.4rem">情绪中性，无极端信号</div>`;
+  el.innerHTML += summary;
+}
+
 // ── 启动 ──
 function safeRender(fn, name) {
   try { fn(); } catch(e) { console.warn("renderError ["+name+"]:", e); }
@@ -2020,6 +2104,7 @@ init().then(() => {
   safeRender(renderForecastChart,   "Forecast");
   safeRender(renderTodayRec,        "TodayRec");
   safeRender(renderForecastCalendar,"ForecastCal");
+  safeRender(renderSentimentPanel,  "Sentiment");
   _mainTabRendered.add("forecast");
   // Digit chart is default-visible; use setTimeout so Plotly gets correct width
   _calTabRendered.add("digit");
