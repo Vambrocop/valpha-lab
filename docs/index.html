@@ -199,6 +199,30 @@ footer a { color: var(--green); text-decoration: none; }
 .cost-link { color:var(--muted); font-size:0.68rem; cursor:pointer; text-decoration:underline dashed; }
 .cost-link:hover { color:var(--text); }
 
+/* ── CGT Calculator ── */
+.cgt-grid { display:grid; grid-template-columns:1fr 1fr; gap:.65rem; margin-bottom:.85rem; }
+.cgt-field { display:flex; flex-direction:column; gap:.3rem; }
+.cgt-label { font-size:0.78rem; color:var(--muted); }
+.cgt-input { background:var(--surface2); border:1px solid var(--border); border-radius:5px;
+  color:var(--text); padding:.4rem .65rem; font-size:0.84rem; }
+.cgt-input:focus { outline:none; border-color:var(--green); }
+.cgt-btn { background:var(--green); color:#000; border:none; border-radius:6px; padding:.55rem 1.5rem;
+  font-size:0.88rem; font-weight:700; cursor:pointer; width:100%; margin-bottom:.75rem; transition:background .2s; }
+.cgt-btn:hover { background:#27ae60; }
+.cgt-result-row { display:flex; justify-content:space-between; padding:.3rem 0;
+  border-bottom:1px solid var(--border)22; font-size:0.82rem; }
+.cgt-result-row:last-child { border:none; }
+.cgt-highlight { font-size:1rem; font-weight:800; padding:.4rem 0; }
+@media (max-width:600px) { .cgt-grid { grid-template-columns:1fr; } }
+
+/* ── Fear & Greed ── */
+.fg-gauge-track { height:8px; border-radius:4px; position:relative; margin:.5rem 0;
+  background:linear-gradient(to right,#e74c3c 0%,#e67e22 25%,#f1c40f 50%,#2ecc71 75%,#27ae60 100%); }
+.fg-needle { position:absolute; top:-4px; width:16px; height:16px; border-radius:50%;
+  transform:translateX(-50%); border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.4); transition:left .4s; }
+.fg-sparkline { display:flex; align-items:flex-end; gap:2px; height:28px; }
+.fg-spark-bar { flex:1; border-radius:2px 2px 0 0; min-height:3px; transition:height .3s; }
+
 /* ── Data staleness banner ── */
 .stale-banner { background:rgba(230,126,34,.12); border:1px solid rgba(230,126,34,.35);
   border-radius:7px; padding:.55rem .9rem; font-size:0.79rem; margin-bottom:.65rem;
@@ -263,6 +287,7 @@ footer a { color: var(--green); text-decoration: none; }
     <div class="panel" id="sentiment-panel">
       <div class="panel-title">📊 市场情绪仪表盘</div>
       <div id="sentiment-gauges" style="display:flex;flex-direction:column;gap:.6rem;font-size:0.82rem;"></div>
+      <div id="fear-greed-section" style="margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border);"></div>
     </div>
 
     <!-- 重要经济日历 -->
@@ -394,22 +419,22 @@ footer a { color: var(--green); text-decoration: none; }
           📡 获取价格
         </button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+      <div style="display:grid;grid-template-columns:minmax(200px,1fr) minmax(220px,1.4fr);gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
         <div>
           <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;">我的持仓与盈亏</div>
-          <div id="spcx-calc" style="font-size:0.82rem;display:flex;flex-direction:column;gap:.5rem;"></div>
-          <div style="margin-top:.75rem;">
-            <label style="font-size:0.78rem;color:var(--muted);">申购股数（上市后填写实际分配量）</label>
+          <div id="spcx-calc" style="font-size:0.82rem;display:flex;flex-direction:column;gap:.5rem;min-height:40px;"></div>
+          <div style="margin-top:.65rem;">
+            <label style="font-size:0.78rem;color:var(--muted);">申购股数（分配结果后填写）</label>
             <input class="spcx-input" type="number" id="spcx-shares-input" min="0" step="1" placeholder="例如：30"
               oninput="updateSPCXCalc()" style="margin-top:.3rem;">
-            <label style="font-size:0.78rem;color:var(--muted);margin-top:.5rem;display:block;">当前市价 (USD)（上市后填写）</label>
+            <label style="font-size:0.78rem;color:var(--muted);margin-top:.5rem;display:block;">当前市价 USD（上市后填写或自动获取）</label>
             <input class="spcx-input" type="number" id="spcx-price-input" min="0" step="0.01" placeholder="发行价 135"
               oninput="updateSPCXCalc()" style="margin-top:.3rem;">
           </div>
         </div>
         <div>
           <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;">知名科技股IPO首日涨幅参考</div>
-          <div id="chart-spcx-ipo" style="height:220px;"></div>
+          <div id="chart-spcx-ipo" style="height:240px;"></div>
         </div>
       </div>
       <div id="spcx-decision-detail" class="insight" style="margin-top:.5rem;"></div>
@@ -419,10 +444,16 @@ footer a { color: var(--green); text-decoration: none; }
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
         <span>💼 我的持仓计算器 <span class="badge">实时价格</span></span>
-        <button onclick="fetchPortfolioPrices()" id="portfolio-refresh-btn"
-          style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
-          🔄 更新价格
-        </button>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+          <button onclick="fetchPortfolioPrices()" id="portfolio-refresh-btn"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
+            🔄 更新价格
+          </button>
+          <button onclick="toggleAutoRefresh(this)" id="auto-refresh-btn"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
+            ⏱ 自动
+          </button>
+        </div>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:0.8rem;" id="portfolio-table">
         <thead>
@@ -458,6 +489,60 @@ footer a { color: var(--green); text-decoration: none; }
         </div>
       </div>
       <div class="insight" id="dip-insight" style="margin-top:.75rem;"></div>
+    </div>
+
+    <!-- 澳洲CGT税务计算器 -->
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        🇦🇺 澳洲CGT资本利得税计算器 <span class="badge">仅供参考 · 建议咨询会计师</span>
+      </div>
+      <div class="cgt-grid">
+        <div class="cgt-field">
+          <label class="cgt-label">资产名称</label>
+          <select class="cgt-input" id="cgt-asset" onchange="prefillCGT()">
+            <option value="">— 选择或自定义 —</option>
+            <option value="BTC">BTC 比特币</option>
+            <option value="ETH">ETH 以太坊</option>
+            <option value="XLM">XLM 恒星币</option>
+            <option value="DOGE">DOGE 狗狗币</option>
+            <option value="HOME">HOME DeFi.app</option>
+            <option value="SPCX">SPCX SpaceX</option>
+            <option value="custom">自定义资产</option>
+          </select>
+        </div>
+        <div class="cgt-field">
+          <label class="cgt-label">卖出数量</label>
+          <input class="cgt-input" type="number" id="cgt-qty" min="0" step="any" placeholder="例如：100">
+        </div>
+        <div class="cgt-field">
+          <label class="cgt-label">买入均价 (AUD/个)</label>
+          <input class="cgt-input" type="number" id="cgt-buy-aud" min="0" step="any" placeholder="买入时AUD单价">
+        </div>
+        <div class="cgt-field">
+          <label class="cgt-label">卖出价格 (AUD/个)</label>
+          <input class="cgt-input" type="number" id="cgt-sell-aud" min="0" step="any" placeholder="卖出时AUD单价">
+        </div>
+        <div class="cgt-field">
+          <label class="cgt-label">买入日期</label>
+          <input class="cgt-input" type="date" id="cgt-buy-date">
+        </div>
+        <div class="cgt-field">
+          <label class="cgt-label">边际税率 (%) <span class="tip" data-tip="澳洲个人所得税边际税率：$0-18,200免税；$18,201-45,000税率19%；$45,001-120,000税率32.5%；$120,001-180,000税率37%；$180,001+税率45%。加Medicare征费2%。">ⓘ</span></label>
+          <select class="cgt-input" id="cgt-tax-rate">
+            <option value="0">0%（年收入 < A$18,200）</option>
+            <option value="19">19%（A$18,201–45,000）</option>
+            <option value="32.5" selected>32.5%（A$45,001–120,000）</option>
+            <option value="37">37%（A$120,001–180,000）</option>
+            <option value="45">45%（A$180,001+）</option>
+          </select>
+        </div>
+      </div>
+      <button class="cgt-btn" onclick="calculateCGT()">📊 计算税务</button>
+      <div id="cgt-result"></div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:.65rem;line-height:1.5;">
+        ⚠️ 仅为估算参考，不构成税务建议。加密货币每次交易（包括换币）均为CGT事件。
+        若年收入较低，加密亏损可抵扣资本利得。建议咨询注册会计师（CPA/Tax Agent）。
+      </div>
     </div>
 
     <!-- 历史走势 + 信号 -->
@@ -2220,7 +2305,8 @@ function renderPortfolioTable(audRate) {
     if (costAUD) totalCost += costAUD;
     const plAUD = (val && costAUD) ? val - costAUD : null;
     const plPct = (plAUD != null && costAUD > 0) ? plAUD / costAUD * 100 : null;
-    const plStr = plAUD != null
+    const plStr = item.qty <= 0 ? "" :
+      plAUD != null
       ? `<br><span class="${plAUD >= 0 ? 'pl-up' : 'pl-dn'}">${plAUD >= 0 ? '+' : ''}A$${plAUD.toFixed(0)} (${plPct >= 0 ? '+' : ''}${(plPct||0).toFixed(1)}%)</span>`
       : `<br><span class="cost-link" onclick="setPortfolioCost(${i},'${item.ticker}')">设置成本价</span>`;
     const valStr = val ? `A$${val.toFixed(2)}` : "—";
@@ -2601,6 +2687,185 @@ async function fetchSPCXPrice() {
   }
 }
 
+// ═══════════════════════════════════════════════════════
+//  加密恐惧贪婪指数
+// ═══════════════════════════════════════════════════════
+function fgMeta(score) {
+  if (score <= 24) return { color:"#e74c3c", cn:"极度恐惧",  advice:"📈 历史最佳逆向买入时机（别人恐惧时贪婪）" };
+  if (score <= 44) return { color:"#e67e22", cn:"恐惧",      advice:"可考虑分批建仓，情绪偏负面但未极端" };
+  if (score <= 55) return { color:"#f1c40f", cn:"中性",      advice:"市场情绪中性，结合其他指标综合判断" };
+  if (score <= 74) return { color:"#2ecc71", cn:"贪婪",      advice:"⚠️ 注意追高风险，短期回调概率上升" };
+  return                  { color:"#27ae60", cn:"极度贪婪",  advice:"🔴 历史规律：此区间后续往往回调，适量减仓" };
+}
+
+async function fetchFearAndGreed() {
+  const el = document.getElementById("fear-greed-section");
+  if (!el) return;
+  el.innerHTML = `<span style="color:var(--muted);font-size:0.78rem">加载中...</span>`;
+  try {
+    const r = await fetch("https://api.alternative.me/fng/?limit=7&format=json");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const json = await r.json();
+    renderFearGreed(json.data || []);
+  } catch(e) {
+    el.innerHTML = `<div style="font-size:0.78rem;color:var(--muted)">
+      恐惧贪婪指数暂时无法加载
+      <button onclick="fetchFearAndGreed()"
+        style="margin-left:.5rem;background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:2px 8px;border-radius:4px;font-size:0.72rem;cursor:pointer;">重试</button>
+    </div>`;
+  }
+}
+
+function renderFearGreed(data) {
+  const el = document.getElementById("fear-greed-section");
+  if (!el || !data.length) return;
+  const cur = data[0];
+  const score = parseInt(cur.value);
+  const m = fgMeta(score);
+
+  // 7-day sparkline (oldest first)
+  const spark = data.slice(0,7).reverse();
+  const maxS = Math.max(...spark.map(d=>+d.value));
+  const sparkHtml = spark.map(d => {
+    const s = parseInt(d.value);
+    const h = Math.max(3, Math.round(s / 100 * 26));
+    const c = fgMeta(s).color;
+    const dt = new Date(+d.timestamp*1000).toLocaleDateString("zh-CN",{month:"numeric",day:"numeric"});
+    return `<div class="fg-spark-bar" style="height:${h}px;background:${c}" title="${dt} ${s}"></div>`;
+  }).join("");
+
+  const nextUpdate = cur.time_until_update
+    ? `· ${Math.round(+cur.time_until_update/3600)}h后更新`
+    : "";
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+      <div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.15rem">
+          加密恐惧&贪婪指数 <span style="opacity:.6">(alternative.me${nextUpdate})</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:.45rem;">
+          <span style="font-size:2rem;font-weight:800;line-height:1;color:${m.color}">${score}</span>
+          <span style="font-size:0.9rem;font-weight:700;color:${m.color}">${m.cn}</span>
+        </div>
+      </div>
+      <div style="text-align:right;min-width:70px;">
+        <div style="font-size:0.68rem;color:var(--muted);margin-bottom:.3rem;">7天走势</div>
+        <div class="fg-sparkline">${sparkHtml}</div>
+      </div>
+    </div>
+    <div class="fg-gauge-track">
+      <div class="fg-needle" style="left:${score}%;background:${m.color}"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--muted);margin-bottom:.45rem;">
+      <span>0 极度恐惧</span><span>50 中性</span><span>100 极度贪婪</span>
+    </div>
+    <div style="font-size:0.78rem;color:${m.color};line-height:1.4">${m.advice}</div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+//  澳洲 CGT 税务计算器
+// ═══════════════════════════════════════════════════════
+function prefillCGT() {
+  const asset = document.getElementById("cgt-asset")?.value;
+  if (!asset || asset === "custom") return;
+  const port = loadPortfolio();
+  const item = port.find(p => p.ticker === asset);
+  if (!item) return;
+  // Pre-fill quantity
+  const qtyEl = document.getElementById("cgt-qty");
+  if (qtyEl && item.qty) qtyEl.value = item.qty;
+  // Pre-fill sell price from live prices (convert USD→AUD)
+  const liveUSD = portfolioPrices[asset] || item.priceUSD;
+  const sellEl = document.getElementById("cgt-sell-aud");
+  if (sellEl && liveUSD) sellEl.value = (liveUSD / _portAudRate).toFixed(4);
+  // Pre-fill buy price from cost basis
+  const costEl = document.getElementById("cgt-buy-aud");
+  if (costEl && item.costUSD) costEl.value = (item.costUSD / _portAudRate).toFixed(4);
+}
+
+function calculateCGT() {
+  const qty     = parseFloat(document.getElementById("cgt-qty")?.value) || 0;
+  const buyAUD  = parseFloat(document.getElementById("cgt-buy-aud")?.value) || 0;
+  const sellAUD = parseFloat(document.getElementById("cgt-sell-aud")?.value) || 0;
+  const buyDate = document.getElementById("cgt-buy-date")?.value || "";
+  const taxRate = parseFloat(document.getElementById("cgt-tax-rate")?.value) || 32.5;
+  const el = document.getElementById("cgt-result");
+  if (!el) return;
+
+  if (!qty || !buyAUD || !sellAUD) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:0.82rem;padding:.5rem 0;">请填写数量、买入价和卖出价。</div>`;
+    return;
+  }
+
+  const totalCost     = qty * buyAUD;
+  const totalProceeds = qty * sellAUD;
+  const rawGain       = totalProceeds - totalCost;
+  const isGain        = rawGain > 0;
+
+  // 12-month CGT discount
+  let heldMonths = 0, eligible50 = false;
+  if (buyDate) {
+    heldMonths = Math.round((new Date() - new Date(buyDate)) / (1000*60*60*24*30.44));
+    eligible50 = isGain && heldMonths >= 12;
+  }
+
+  const taxableGain = eligible50 ? rawGain * 0.5 : rawGain;
+  const taxOnGain   = taxableGain > 0 ? taxableGain * (taxRate / 100) : 0;
+  const medicare    = taxableGain > 0 ? taxableGain * 0.02 : 0;
+  const totalTax    = taxOnGain + medicare;
+  const netGain     = rawGain - totalTax;
+  const netPct      = totalCost > 0 ? netGain / totalCost * 100 : 0;
+
+  // Break-even sell price (where net gain = 0)
+  const effectiveTaxRate = eligible50 ? (taxRate/100 + 0.02) * 0.5 : (taxRate/100 + 0.02);
+  const breakEvenAUD = totalCost / qty / (1 - effectiveTaxRate);
+
+  const gain_color = rawGain >= 0 ? "#2ecc71" : "#e74c3c";
+  const assetName = document.getElementById("cgt-asset")?.value || "资产";
+
+  el.innerHTML = `
+    <div style="background:var(--surface2);border-radius:8px;padding:1rem;margin-top:.5rem;">
+      <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem;">
+        ${assetName !== "custom" && assetName ? assetName : ""}  ${qty} 个 · 持有${heldMonths ? heldMonths+"个月" : "未知"}
+        ${eligible50 ? '<span style="background:rgba(46,204,113,.2);color:#2ecc71;border-radius:3px;padding:1px 6px;font-size:0.7rem;margin-left:.3rem;">✓ 12月折扣</span>' : ""}
+      </div>
+      <div class="cgt-result-row"><span style="color:var(--muted)">买入总成本</span><span>A$${totalCost.toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+      <div class="cgt-result-row"><span style="color:var(--muted)">卖出总收入</span><span>A$${totalProceeds.toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+      <div class="cgt-result-row"><span style="color:var(--muted)">资本利得（税前）</span><span style="color:${gain_color};font-weight:700">${rawGain >= 0 ? '+' : ''}A$${rawGain.toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+      ${eligible50 ? `<div class="cgt-result-row"><span style="color:var(--muted)">50%折扣（持有>12月）</span><span style="color:#2ecc71">−A$${(rawGain*0.5).toFixed(2)}</span></div>` : ""}
+      <div class="cgt-result-row"><span style="color:var(--muted)">应税金额</span><span>A$${Math.max(0,taxableGain).toFixed(2)}</span></div>
+      <div class="cgt-result-row"><span style="color:var(--muted)">个税（${taxRate}%）</span><span style="color:#e74c3c">−A$${taxOnGain.toFixed(2)}</span></div>
+      <div class="cgt-result-row"><span style="color:var(--muted)">Medicare征费（2%）</span><span style="color:#e74c3c">−A$${medicare.toFixed(2)}</span></div>
+      <div class="cgt-result-row cgt-highlight"><span>税后净盈亏</span>
+        <span style="color:${netGain >= 0 ? '#2ecc71' : '#e74c3c'}">${netGain >= 0 ? '+' : ''}A$${netGain.toFixed(2)} (${netPct >= 0 ? '+' : ''}${netPct.toFixed(1)}%)</span></div>
+      ${isGain && !eligible50 && heldMonths > 0 && heldMonths < 12 ? `
+      <div style="background:rgba(241,196,15,.1);border:1px solid rgba(241,196,15,.3);border-radius:5px;padding:.5rem .75rem;margin-top:.5rem;font-size:0.78rem;">
+        💡 再持有 <strong style="color:#f1c40f">${12 - heldMonths} 个月</strong>即可享受50%折扣，届时预计少缴税 <strong style="color:#2ecc71">A$${(rawGain*0.5*(taxRate/100+0.02)).toFixed(0)}</strong>
+      </div>` : ""}
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;">
+        保本卖出价（税后回本）≈ <strong>A$${breakEvenAUD.toFixed(4)}/个</strong>
+      </div>
+    </div>`;
+}
+
+// ── 自动刷新持仓价格 ──
+let _priceRefreshTimer = null;
+function toggleAutoRefresh(el) {
+  if (_priceRefreshTimer) {
+    clearInterval(_priceRefreshTimer);
+    _priceRefreshTimer = null;
+    el.textContent = "⏱ 自动";
+    el.style.cssText = "background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;";
+  } else {
+    fetchPortfolioPrices();
+    _priceRefreshTimer = setInterval(fetchPortfolioPrices, 30000);
+    el.textContent = "⏱ 30s·开";
+    el.style.cssText = "background:rgba(46,204,113,.15);border:1px solid var(--green);color:var(--green);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;font-weight:700;";
+  }
+}
+
 // Portfolio cost basis editor
 function setPortfolioCost(i, ticker) {
   const cost = prompt(`请输入 ${ticker} 的平均买入价（USD）：\n（例如：BTC填95000，DOGE填0.15）`);
@@ -2632,6 +2897,7 @@ init().then(() => {
   safeRender(renderEconCalendar,    "EconCal");
   safeRender(renderDipGuide,        "DipGuide");
   safeRender(renderSPCXTracker,     "SPCX");
+  fetchFearAndGreed();
   safeRender(renderSPCXDetail,      "SPCXDetail");
   // Sync SPCX inputs with localStorage
   const savedShares = localStorage.getItem("spcx_shares");
