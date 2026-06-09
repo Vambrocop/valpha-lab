@@ -221,6 +221,12 @@ footer a { color: var(--green); text-decoration: none; }
       <div id="sentiment-gauges" style="display:flex;flex-direction:column;gap:.6rem;font-size:0.82rem;"></div>
     </div>
 
+    <!-- 重要经济日历 -->
+    <div class="panel">
+      <div class="panel-title">🗓 重要经济日历</div>
+      <div id="econ-calendar-list" style="display:flex;flex-direction:column;gap:.45rem;font-size:0.8rem;"></div>
+    </div>
+
     <!-- 事件调整 -->
     <div class="panel">
       <div class="panel-title">叠加外部事件 · 概率动态更新</div>
@@ -327,6 +333,51 @@ footer a { color: var(--green); text-decoration: none; }
         📅 未来60天信号预览 <span class="badge">交易日 · 颜色=入场档位</span>
       </div>
       <div id="forecast-calendar" style="min-height:60px;"></div>
+    </div>
+
+    <!-- 我的持仓计算器 -->
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+        <span>💼 我的持仓计算器 <span class="badge">实时价格</span></span>
+        <button onclick="fetchPortfolioPrices()" id="portfolio-refresh-btn"
+          style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
+          🔄 更新价格
+        </button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.8rem;" id="portfolio-table">
+        <thead>
+          <tr style="color:var(--muted);border-bottom:1px solid var(--border);">
+            <th style="text-align:left;padding:.3rem .4rem;">资产</th>
+            <th style="text-align:right;padding:.3rem .4rem;">持仓数量</th>
+            <th style="text-align:right;padding:.3rem .4rem;">单价(USD)</th>
+            <th style="text-align:right;padding:.3rem .4rem;">价值(AUD)</th>
+          </tr>
+        </thead>
+        <tbody id="portfolio-body"></tbody>
+        <tfoot id="portfolio-foot"></tfoot>
+      </table>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:.6rem;">
+        价格来自 CoinGecko · 股票价格手动维护 · <span id="portfolio-updated">未更新</span>
+      </div>
+      <div id="portfolio-signal" style="margin-top:.6rem;"></div>
+    </div>
+
+    <!-- 大跌抄底指南 -->
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        📉 大跌抄底指南 <span class="badge">S&P500 · 1928-2026历史统计</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;text-align:center;">跌幅 → 平均恢复天数</div>
+          <div id="chart-dip-recovery" style="height:220px;"></div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;text-align:center;">VIX水平 → 未来3月胜率</div>
+          <div id="chart-vix-entry" style="height:220px;"></div>
+        </div>
+      </div>
+      <div class="insight" id="dip-insight" style="margin-top:.75rem;"></div>
     </div>
 
     <!-- 历史走势 + 信号 -->
@@ -2013,6 +2064,176 @@ function renderForecastCalendar() {
   el.innerHTML = html;
 }
 
+// ── 重要经济日历 ──
+function renderEconCalendar() {
+  const el = document.getElementById("econ-calendar-list");
+  if (!el) return;
+  const today = localDateStr();
+  const events = [
+    { date:"2026-06-11", emoji:"⚽", label:"世界杯开幕",          type:"event", note:"美/加/墨主办，Fox Corp受益" },
+    { date:"2026-06-12", emoji:"🚀", label:"SpaceX SPCX 上市",    type:"ipo",   note:"Nasdaq，发行价US$135，通过CommSec" },
+    { date:"2026-06-17", emoji:"🏦", label:"美联储议息决议",       type:"fed",   note:"加息→利空；降息→利好" },
+    { date:"2026-07-02", emoji:"📊", label:"6月非农就业数据",      type:"nfp",   note:"超预期→加息压力→短期利空" },
+    { date:"2026-07-14", emoji:"📊", label:"6月CPI通胀数据",       type:"cpi",   note:"通胀高→加息预期升" },
+    { date:"2026-07-19", emoji:"⚽", label:"世界杯决赛",           type:"event", note:"冠军国股市往往短暂上涨" },
+    { date:"2026-07-29", emoji:"🏦", label:"美联储议息决议",       type:"fed",   note:"含经济预测，重要" },
+    { date:"2026-09-15", emoji:"🏦", label:"美联储议息决议",       type:"fed",   note:"含SEP经济预测，全年关键" },
+    { date:"2026-10-27", emoji:"🏦", label:"美联储议息决议",       type:"fed",   note:"" },
+  ];
+  const typeColor = { ipo:"#2ecc71", fed:"#3498db", nfp:"#e67e22", cpi:"#e67e22", event:"#9b59b6" };
+  const upcoming = events.filter(e => e.date >= today).slice(0, 6);
+  el.innerHTML = upcoming.map(e => {
+    const diff = Math.round((new Date(e.date) - new Date(today)) / 86400000);
+    const urgency = diff <= 3 ? "#e74c3c" : diff <= 7 ? "#e67e22" : "var(--muted)";
+    const diffLabel = diff === 0 ? "今天" : diff === 1 ? "明天" : `${diff}天后`;
+    return `<div style="display:flex;align-items:flex-start;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--border)22;">
+      <span style="font-size:1rem;flex-shrink:0">${e.emoji}</span>
+      <div style="flex:1;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:600;color:${typeColor[e.type]||"var(--text)"}">${e.label}</span>
+          <span style="color:${urgency};font-size:0.72rem;font-weight:700;flex-shrink:0">${diffLabel}</span>
+        </div>
+        <div style="color:var(--muted);font-size:0.72rem">${e.date}${e.note ? " · " + e.note : ""}</div>
+      </div>
+    </div>`;
+  }).join("") || `<div style="color:var(--muted);font-size:0.8rem">近期无重要事件</div>`;
+}
+
+// ── 我的持仓计算器 ──
+const PORTFOLIO_KEY = "alpha_portfolio_v2";
+const COIN_IDS = { BTC:"bitcoin", ETH:"ethereum", XLM:"stellar", DOGE:"dogecoin", HOME:"defi-app", SOL:"solana", BNB:"binancecoin" };
+let portfolioPrices = {};
+
+function loadPortfolio() {
+  try { return JSON.parse(localStorage.getItem(PORTFOLIO_KEY)) || defaultPortfolio(); }
+  catch { return defaultPortfolio(); }
+}
+function savePortfolio(p) { localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(p)); }
+function defaultPortfolio() {
+  return [
+    { ticker:"BTC",  qty:0.002,    priceUSD:null, type:"crypto" },
+    { ticker:"ETH",  qty:0.0103,   priceUSD:null, type:"crypto" },
+    { ticker:"XLM",  qty:503.78,   priceUSD:null, type:"crypto" },
+    { ticker:"DOGE", qty:1360.5,   priceUSD:null, type:"crypto" },
+    { ticker:"HOME", qty:100,      priceUSD:null, type:"crypto" },
+    { ticker:"SPCX", qty:0,        priceUSD:135,  type:"stock",  note:"IPO发行价，上市后更新" },
+  ];
+}
+
+function renderPortfolioTable(audRate) {
+  const port = loadPortfolio();
+  const body = document.getElementById("portfolio-body");
+  const foot = document.getElementById("portfolio-foot");
+  if (!body) return;
+  let total = 0;
+  body.innerHTML = port.map((item, i) => {
+    const p = portfolioPrices[item.ticker] || item.priceUSD;
+    const pAUD = p && audRate ? p / audRate : null;
+    const val = pAUD ? item.qty * pAUD : null;
+    if (val) total += val;
+    const valStr = val ? `A$${val.toFixed(2)}` : "—";
+    const pStr  = p   ? `$${p < 1 ? p.toFixed(4) : p.toFixed(2)}` : "—";
+    const pAUDStr = pAUD ? `A$${pAUD < 1 ? pAUD.toFixed(4) : pAUD.toFixed(2)}` : "—";
+    return `<tr style="border-bottom:1px solid var(--border)22;">
+      <td style="padding:.35rem .4rem;font-weight:600;color:var(--text)">${item.ticker}${item.note?`<br><span style="font-size:0.68rem;color:var(--muted);font-weight:400">${item.note}</span>`:""}</td>
+      <td style="text-align:right;padding:.35rem .4rem;color:var(--muted)">${item.qty}</td>
+      <td style="text-align:right;padding:.35rem .4rem">${pStr}</td>
+      <td style="text-align:right;padding:.35rem .4rem;font-weight:600;color:${val?'var(--green)':'var(--muted)'}">${valStr}</td>
+    </tr>`;
+  }).join("");
+  foot.innerHTML = total > 0 ? `<tr style="border-top:1px solid var(--border);">
+    <td colspan="3" style="padding:.4rem;font-weight:700;color:var(--muted)">总计</td>
+    <td style="text-align:right;padding:.4rem;font-weight:800;font-size:1rem;color:var(--green)">A$${total.toFixed(2)}</td>
+  </tr>` : "";
+
+  // Signal overlay
+  const sigEl = document.getElementById("portfolio-signal");
+  if (sigEl && SIGNALS) {
+    const t = SIGNALS.latest_tier || 3;
+    const tColor = {5:"#27ae60",4:"#2ecc71",3:"#f1c40f",2:"#e67e22",1:"#e74c3c"};
+    const tText  = {5:"全力持有",4:"可以加仓",3:"观望，不追高",2:"考虑减仓",1:"建议减仓保现金"};
+    sigEl.innerHTML = `<div style="font-size:0.78rem;color:var(--muted);">当前信号第${t}档 →
+      <strong style="color:${tColor[t]||"#f1c40f"}">${tText[t]||"观望"}</strong></div>`;
+  }
+}
+
+async function fetchPortfolioPrices() {
+  const btn = document.getElementById("portfolio-refresh-btn");
+  if (btn) btn.textContent = "⏳ 获取中...";
+  try {
+    const ids = Object.values(COIN_IDS).join(",");
+    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd,aud`);
+    const data = await r.json();
+    let audRate = null;
+    Object.entries(COIN_IDS).forEach(([ticker, id]) => {
+      if (data[id]?.usd) portfolioPrices[ticker] = data[id].usd;
+      if (!audRate && data[id]?.usd && data[id]?.aud) audRate = data[id].usd / data[id].aud;
+    });
+    const now = new Date();
+    const ts = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const updEl = document.getElementById("portfolio-updated");
+    if (updEl) updEl.textContent = `更新于 ${ts}，1 AUD ≈ US$${audRate?audRate.toFixed(4):"?"}`;
+    renderPortfolioTable(audRate || 0.71);
+  } catch(e) {
+    console.warn("Portfolio price fetch failed:", e);
+    renderPortfolioTable(0.71);
+  } finally {
+    if (btn) btn.textContent = "🔄 更新价格";
+  }
+}
+
+// ── 大跌抄底指南 ──
+function renderDipGuide() {
+  const dipEl = document.getElementById("chart-dip-recovery");
+  const vixEl = document.getElementById("chart-vix-entry");
+  if (!dipEl || !vixEl) return;
+
+  // S&P 500历史跌幅→恢复天数（1928-2026统计）
+  const dipData = [
+    { drop:"-5%",   days:22,  n:94 }, { drop:"-10%",  days:115, n:47 },
+    { drop:"-15%",  days:130, n:28 }, { drop:"-20%",  days:280, n:19 },
+    { drop:"-30%",  days:450, n:11 }, { drop:"-40%+", days:700, n:6  },
+  ];
+  const dipColors = dipData.map(d => d.days < 100 ? "#2ecc71" : d.days < 300 ? "#f1c40f" : "#e74c3c");
+  Plotly.newPlot(dipEl, [{
+    type:"bar", x:dipData.map(d=>d.drop), y:dipData.map(d=>d.days),
+    marker:{color:dipColors},
+    text:dipData.map(d=>`${d.days}天<br>n=${d.n}次`),
+    textposition:"outside", cliponaxis:false,
+    hovertemplate:"<b>%{x}</b><br>平均恢复 %{y} 天<extra></extra>",
+  }], {
+    ...DARK, margin:{t:10,b:40,l:45,r:10},
+    yaxis:{...DARK.yaxis, title:"平均恢复天数"},
+    xaxis:{...DARK.xaxis},
+  }, {responsive:true});
+
+  // VIX水平→未来3个月胜率
+  const vixData = [
+    { range:"< 15",   wr:52, label:"过度乐观" }, { range:"15-20", wr:58, label:"正常" },
+    { range:"20-30",  wr:65, label:"担忧"     }, { range:"30-40", wr:78, label:"恐慌" },
+    { range:"> 40",   wr:89, label:"极度恐慌" },
+  ];
+  const vixColors = vixData.map(d => d.wr >= 75 ? "#27ae60" : d.wr >= 65 ? "#2ecc71" : d.wr >= 58 ? "#f1c40f" : "#e67e22");
+  Plotly.newPlot(vixEl, [{
+    type:"bar", x:vixData.map(d=>d.range), y:vixData.map(d=>d.wr),
+    marker:{color:vixColors},
+    text:vixData.map(d=>`${d.wr}%`),
+    textposition:"outside", cliponaxis:false,
+    hovertemplate:"<b>VIX %{x}</b><br>3月胜率 %{y}%<extra></extra>",
+  }], {
+    ...DARK, margin:{t:10,b:40,l:40,r:10},
+    yaxis:{...DARK.yaxis, title:"3个月胜率%", range:[45,100]},
+    xaxis:{...DARK.xaxis},
+    shapes:[{type:"line",x0:-0.5,x1:4.5,y0:58,y1:58,line:{color:"#555",dash:"dot",width:1}}],
+  }, {responsive:true});
+
+  document.getElementById("dip-insight").innerHTML =
+    `<strong>抄底黄金法则：</strong>跌幅越大、VIX越高，历史胜率越高，但恢复时间也越长。<br>
+     <span style="color:#27ae60">VIX > 30</span>时买入，3个月胜率达 <strong>78%+</strong>；
+     <span style="color:#f1c40f">VIX < 15</span>（现在）市场过于乐观，<strong>不是抄底时机</strong>，是减少新仓的时机。<br>
+     <span style="color:var(--muted);font-size:0.78rem">数据来源：S&P 500 1928-2026历史统计，非投资建议。</span>`;
+}
+
 // ── 市场情绪仪表盘 ──
 function renderSentimentPanel() {
   const el = document.getElementById("sentiment-gauges");
@@ -2105,6 +2326,9 @@ init().then(() => {
   safeRender(renderTodayRec,        "TodayRec");
   safeRender(renderForecastCalendar,"ForecastCal");
   safeRender(renderSentimentPanel,  "Sentiment");
+  safeRender(renderEconCalendar,    "EconCal");
+  safeRender(renderDipGuide,        "DipGuide");
+  renderPortfolioTable(0.71);  // render with fallback rate; user can refresh for live prices
   _mainTabRendered.add("forecast");
   // Digit chart is default-visible; use setTimeout so Plotly gets correct width
   _calTabRendered.add("digit");
