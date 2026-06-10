@@ -122,7 +122,7 @@ function localDateStr(d) {
 function initDatePicker() {
   const dp = document.getElementById("date-picker");
   const today = localDateStr();
-  const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 60);
+  const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 185);  // 约半年前瞻
   dp.value = today;
   dp.max   = localDateStr(maxDate);
   dp.min   = "2015-01-01";
@@ -154,8 +154,8 @@ function updateSignal(dateStr) {
       document.getElementById("signal-label").textContent = "超出预测范围";
       document.getElementById("signal-stars").textContent = "—";
       document.getElementById("insight-box").innerHTML =
-        `<strong>${dateStr}</strong><br>该日期超出45个交易日预测范围（至 ${allFc[allFc.length-1]?.date||"—"}）。<br>
-         <span style="color:var(--muted);font-size:0.78rem">左侧"最佳操作窗口"显示了未来约两个月的高/低概率窗口。</span>`;
+        `<strong>${dateStr}</strong><br>该日期超出预测范围（至 ${allFc[allFc.length-1]?.date||"—"}）。<br>
+         <span style="color:var(--muted);font-size:0.78rem">左侧"最佳操作窗口"显示了未来约半年的高/低概率窗口。</span>`;
       document.getElementById("factor-list").innerHTML = "";
       document.getElementById("signal-percentile").innerHTML = "";
       return;
@@ -183,6 +183,7 @@ function updateSignal(dateStr) {
     renderFactors(synRec, prob);
     renderPercentileInfo(prob);
     renderTodayRec(prob);
+    renderTradePlan(forecast, allFc);
     return;
   }
 
@@ -206,6 +207,8 @@ function updateSignal(dateStr) {
   renderFactors(rec, prob);
   renderPercentileInfo(prob);
   renderTodayRec(prob);
+  const tp = document.getElementById("trade-plan");
+  if (tp) tp.innerHTML = "";   // 历史日期不显示操作计划
 }
 
 function renderSignalMeter(prob, rec) {
@@ -1200,12 +1203,16 @@ function renderPercentileInfo(todayProb) {
   const forecast = SIGNALS.next_opportunities?.all_forecast || [];
   const strongDays = forecast.filter(d => d.prob >= 0.60).length;
 
-  let html = `<span style="color:var(--muted)">过去一年排名前 </span><strong style="color:var(--green)">${100-pct}%</strong>`;
+  // pct = 今日概率高于过去一年多少比例的交易日（越高越强；100%=一年内最强）
+  const tag = pct >= 80 ? ["历史高位","#27ae60"] : pct >= 60 ? ["偏强","#2ecc71"]
+            : pct >= 40 ? ["中等","#f1c40f"]   : pct >= 20 ? ["偏弱","#e67e22"]
+            : ["历史低位","#e74c3c"];
+  let html = `<span style="color:var(--muted)">强于过去一年 </span><strong style="color:${tag[1]}">${pct}%</strong><span style="color:var(--muted)"> 的交易日 · ${tag[0]}</span>`;
   if (maxForecast) {
-    html += `<br><span style="color:var(--muted)">未来45日最高：</span><strong>${(maxForecast.prob*100).toFixed(1)}%</strong><span style="color:var(--muted)"> (${maxForecast.date} ${maxForecast.dow_cn})</span>`;
+    html += `<br><span style="color:var(--muted)">未来半年最高：</span><strong>${(maxForecast.prob*100).toFixed(1)}%</strong><span style="color:var(--muted)"> (${maxForecast.date} ${maxForecast.dow_cn})</span>`;
   }
   if (strongDays > 0) {
-    html += `<br><span style="color:var(--muted)">未来45日中 </span><strong style="color:#2ecc71">${strongDays}</strong><span style="color:var(--muted)"> 天≥60%</span>`;
+    html += `<br><span style="color:var(--muted)">未来半年中 </span><strong style="color:#2ecc71">${strongDays}</strong><span style="color:var(--muted)"> 天≥60%</span>`;
   }
   document.getElementById("signal-percentile").innerHTML = html;
 }
@@ -1697,8 +1704,9 @@ function renderForecastCalendar() {
       const dom = parseInt(d.date.slice(8, 10)); // parse directly — timezone-safe
       const isToday = d.date === today;
       const border = isToday ? `2px solid ${TC[d.tier]}` : `1px solid ${TC[d.tier]}44`;
-      html += `<div title="${d.date}  概率${Math.round(d.prob*100)}%  第${d.tier}档"
-        style="width:36px;height:36px;border-radius:5px;background:${TB[d.tier]};border:${border};
+      html += `<div title="${d.date}  概率${Math.round(d.prob*100)}%  第${d.tier}档${d.macro ? "  ⚠"+d.macro : ""}（点击查看操作计划）"
+        onclick="selectForecastDay('${d.date}')"
+        style="width:36px;height:36px;border-radius:5px;background:${TB[d.tier]};border:${border};cursor:pointer;
                display:flex;flex-direction:column;align-items:center;justify-content:center;
                ${isToday ? "box-shadow:0 0 0 3px "+TC[d.tier]+"66;" : ""}">
         <span style="font-size:0.65rem;color:var(--muted);line-height:1">${dom}日</span>
@@ -2503,6 +2511,62 @@ function renderStockChart(sym) {
 }
 
 // ═══════════════════════════════════════════════════════
+//  操作计划：对未来选定日期给出 买入时段/持有期/卖出提醒
+// ═══════════════════════════════════════════════════════
+// 把美东 h:m 换算成访问者本地时间字符串（自动适配任何时区+夏令时）
+function etToLocalStr(h, m) {
+  const now = new Date();
+  const etNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const offsetMs = now - etNow;
+  const t = new Date(etNow); t.setHours(h, m, 0, 0);
+  return new Date(t.getTime() + offsetMs)
+    .toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+// 日历格点击 → 联动日期选择器并滚到信号表盘
+function selectForecastDay(dateStr) {
+  const dp = document.getElementById("date-picker");
+  if (dp) dp.value = dateStr;
+  updateSignal(dateStr);
+  document.querySelector(".signal-meter")?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function renderTradePlan(fc, allFc) {
+  const el = document.getElementById("trade-plan");
+  if (!el || !fc) return;
+  const t = fc.tier;
+  const action = t >= 4 ? ["✅ 建议买入窗口", "#2ecc71"]
+               : t === 3 ? ["⏸ 中性 · 小仓试探或观望", "#f1c40f"]
+               : ["🚫 偏弱 · 回避新仓/考虑减仓", "#e74c3c"];
+
+  // 持有期内（后续20个交易日）的弱势日和宏观事件提醒
+  const idx = allFc.findIndex(d => d.date === fc.date);
+  const horizon = idx >= 0 ? allFc.slice(idx + 1, idx + 21) : [];
+  const weakDays  = horizon.filter(d => d.tier <= 2).slice(0, 3);
+  const macroDays = horizon.filter(d => d.macro).slice(0, 3);
+
+  let html = `<div style="border:1px solid var(--border);border-radius:8px;padding:.7rem .8rem;font-size:0.78rem;line-height:1.65;">
+    <div style="font-weight:700;color:${action[1]};margin-bottom:.3rem;">${fc.date}（${fc.dow_cn}）${action[0]}</div>`;
+
+  if (t >= 3) {
+    html += `🕐 <b>买入时段</b>：尾盘 美东15:00–16:00 = 你的时间 <b>${etToLocalStr(15,0)}–${etToLocalStr(16,0)}</b><br>
+      <span style="color:var(--muted)">依据隔夜收益异象（QQQ隔夜段年化+11%，日内段-2%）：避免开盘追高，接近收盘买入以捕获隔夜段。</span><br>
+      📦 <b>持有期</b>：信号验证窗口为20个交易日（约1个月），短于此噪音大于信号。<br>
+      🕐 <b>卖出时段</b>：如需卖出，开盘后首小时（美东9:30–10:30 = 你的 ${etToLocalStr(9,30)}–${etToLocalStr(10,30)}）历史上更有利（隔夜涨幅已落袋）。<br>`;
+  } else {
+    html += `<span style="color:var(--muted)">该日日历因子偏弱。如已持仓且计划减仓，开盘时段（你的 ${etToLocalStr(9,30)}–${etToLocalStr(10,30)}）通常优于尾盘。</span><br>`;
+  }
+  if (weakDays.length) {
+    html += `⚠ 持有期内偏弱日：${weakDays.map(d => `${d.date.slice(5)}(${d.dow_cn})`).join("、")} —— 临近时复查信号<br>`;
+  }
+  if (macroDays.length) {
+    html += `📊 持有期内宏观事件：${macroDays.map(d => `${d.date.slice(5)} ${d.macro}`).join("、")} —— 当日波动放大<br>`;
+  }
+  html += `<span style="color:var(--muted);font-size:0.7rem">以上为历史统计规律的机械应用，非投资建议；越远的日期技术因子失效越多，临近时以当日信号为准。</span></div>`;
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
 //  市场时钟：美东开收盘 ↔ 本地时间对照（自动处理夏令时）
 // ═══════════════════════════════════════════════════════
 function renderMarketClock() {
@@ -2550,7 +2614,23 @@ function renderMarketClock() {
     <div style="color:var(--muted);margin-top:.25rem;">
       常规时段 美东9:30–16:00 = 你的时间 <b style="color:var(--text)">${localOpen}–${localClose}</b>
       <span style="font-size:0.68rem">（自动换算·含夏令时）</span>
-    </div>`;
+    </div>
+    ${sessionTip()}`;
+
+  // 盘中情境建议（基于隔夜收益异象）
+  function sessionTip() {
+    let tip = "";
+    if (isOpen && etMinutes < openMin + 45) {
+      tip = "🔔 开盘初段（首45分钟）波动最大，历史上不宜追高——日内段长期收益≈0";
+    } else if (isOpen && etMinutes >= closeMin - 60) {
+      tip = "🔔 尾盘时段——按信号执行买入的优选窗口（捕获隔夜段收益）";
+    } else if (isOpen) {
+      tip = "🔔 盘中：当日数据为临时价，正式信号以收盘后刷新为准";
+    } else if (isWeekday && etMinutes < openMin) {
+      tip = "🔔 未开盘。如计划买入，统计上尾盘买入优于开盘追高";
+    }
+    return tip ? `<div style="color:#f1c40f;font-size:0.72rem;margin-top:.3rem;">${tip}</div>` : "";
+  }
 }
 setInterval(renderMarketClock, 30000);
 

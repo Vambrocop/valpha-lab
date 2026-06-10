@@ -62,6 +62,23 @@ def _get_close(ticker, name):
         col = col.iloc[:, 0]
     col = col.rename(name)
     col.index = pd.to_datetime(col.index)
+    col = col.dropna()
+
+    # Yahoo 日线常滞后1天：用小时线最新价补一个临时收盘（下次运行被官方值覆盖）
+    try:
+        intra = yf.download(ticker, period="5d", interval="60m",
+                            auto_adjust=True, progress=False)
+        if not intra.empty:
+            ic = intra["Close"]
+            if isinstance(ic, pd.DataFrame):
+                ic = ic.iloc[:, 0]
+            ic = ic.dropna()
+            last_day = pd.Timestamp(ic.index[-1].tz_localize(None).date())
+            if len(col) and last_day > col.index[-1]:
+                col.loc[last_day] = float(ic.iloc[-1])
+                print(f"    + 盘中临时价补到 {last_day.date()}")
+    except Exception:
+        pass
     return col
 
 def fetch_yahoo():

@@ -42,6 +42,10 @@ MACRO_EVENTS = {
     "2026-05-06": "FOMC决议", "2026-06-17": "FOMC决议(含SEP)",
     "2026-07-29": "FOMC决议", "2026-09-16": "FOMC决议(含SEP)",
     "2026-11-04": "FOMC决议", "2026-12-16": "FOMC决议(含SEP)",
+    # 非农就业（通常每月第一个周五 8:30 ET；7月因独立日休市提前到周四）
+    "2026-07-02": "非农就业(6月)", "2026-08-07": "非农就业(7月)",
+    "2026-09-04": "非农就业(8月)", "2026-10-02": "非农就业(9月)",
+    "2026-11-06": "非农就业(10月)", "2026-12-04": "非农就业(11月)",
 }
 
 # ── 月度先验概率（1928-2026 真实统计，后面会从 long_history.json 覆盖）
@@ -834,18 +838,18 @@ if __name__ == "__main__":
     # 嵌入事件研究结果
     result["event_study"] = load_event_study()
 
-    # 未来最佳入场/离场窗口（两个指数各一份）
+    # 未来最佳入场/离场窗口（两个指数各一份，约半年=130个交易日）
     result["next_opportunities"] = find_next_opportunities(
-        result["daily_signals"], n_days=45, priors=NASDAQ_PRIOR)
+        result["daily_signals"], n_days=130, priors=NASDAQ_PRIOR)
     result["next_opportunities_sp500"] = find_next_opportunities(
-        result["daily_signals_sp500"], n_days=45, priors=SP500_PRIOR)
+        result["daily_signals_sp500"], n_days=130, priors=SP500_PRIOR)
 
     # 宏观事件日历（未来90天内的 CPI/FOMC，以美东日期为准）
     _today = us_today()
     result["macro_calendar"] = [
         {"date": d, "label": lbl}
         for d, lbl in sorted(MACRO_EVENTS.items())
-        if _today <= date.fromisoformat(d) <= _today + timedelta(days=90)
+        if _today <= date.fromisoformat(d) <= _today + timedelta(days=190)
     ]
 
     # 年份规律统计
