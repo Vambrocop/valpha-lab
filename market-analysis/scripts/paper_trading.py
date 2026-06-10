@@ -27,7 +27,9 @@ STRATS = {
     "trend":    {"label": "📈 趋势",   "desc": "纳指>MA200持有，跌破清仓；低频，适合6-12月持有"},
     "signal":   {"label": "🎯 信号",   "desc": "贝叶斯信号 tier≥4全仓 / ≤2清仓 / 3不动"},
     "momentum": {"label": "🚀 动量",   "desc": "观察池6月动量前3等权，每月调仓"},
+    "overnight": {"label": "🌙 隔夜",  "desc": "每日收盘买QQQ次日开盘卖（已扣每日2bp成本）——验证隔夜异象能否活过交易成本"},
 }
+OVERNIGHT_COST = 0.0002   # 每日双边交易成本 2bp（点差+滑点，零佣金时代的乐观估计）
 COLS = ["date", "strategy", "action", "holdings", "cash", "equity", "note", "logged_at"]
 
 
@@ -54,6 +56,14 @@ def main():
     ma200 = ndq.rolling(200).mean()
     stocks = pd.read_csv(RAW_DIR / "stocks_prices.csv",
                          index_col="Date", parse_dates=True)
+
+    # 隔夜收益序列（overnight_analysis.py 生成，QQQ）
+    try:
+        ov = pd.read_csv(PROC_DIR / "overnight_daily.csv",
+                         index_col="Date", parse_dates=True)
+        ov_ret = ov["NASDAQ100"] if "NASDAQ100" in ov.columns else ov.iloc[:, -1]
+    except Exception:
+        ov_ret = pd.Series(dtype=float)
 
     ledger = load_ledger()
     # 每个策略的当前状态（重放账本最后一行）
@@ -112,6 +122,13 @@ def main():
                         s["holdings"] = {}
                         action, note = "SELL", f"tier{tier}，清仓@{px_ndq:.0f}"
 
+            elif strat == "overnight":
+                # 净值直接按隔夜段收益复利（资金始终隔夜持有、日内空仓）
+                r = ov_ret.get(ts)
+                if r is not None and not pd.isna(r):
+                    s["cash"] *= (1 + float(r) - OVERNIGHT_COST)
+                    action, note = "ROLL", f"隔夜{float(r)*100:+.2f}%-成本"
+
             elif strat == "momentum":
                 # 每月首个交易日（或起跑日）调仓：6个月动量前3等权
                 is_first = (not s["holdings"] and s["cash"] > 0) or \
@@ -137,7 +154,7 @@ def main():
                 "cash": round(s["cash"], 2), "equity": round(eq, 2), "note": note,
                 "logged_at": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"),
             })
-            if action != "HOLD":
+            if action not in ("HOLD", "ROLL"):
                 print(f"  {d} [{strat}] {action}: {note}  净值=${eq:,.0f}")
 
     if new_rows:
@@ -152,8 +169,9 @@ def main():
             continue
         last = sub.iloc[-1]
         holdings = json.loads(last["holdings"])
-        pos_desc = "现金" if not holdings else "+".join(holdings)
-        trades = sub[sub["action"] != "HOLD"]
+        pos_desc = "每日隔夜持有QQQ" if strat == "overnight" else \
+                   ("现金" if not holdings else "+".join(holdings))
+        trades = sub[~sub["action"].isin(["HOLD", "ROLL"])]
         out["strategies"][strat] = {
             "label": meta["label"], "desc": meta["desc"],
             "equity": float(last["equity"]),

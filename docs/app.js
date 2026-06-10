@@ -2472,6 +2472,7 @@ async function loadStocksPanel() {
   renderStocksTable();
   const first = Object.keys(STOCKS.stocks)[0];
   if (first) renderStockChart(first);
+  renderGamePanel();   // 用户模拟盘需要最新股价
 }
 
 function renderStocksTable() {
@@ -2550,7 +2551,17 @@ async function loadBriefPanel() {
     const b = await r.json();
     const up = document.getElementById("brief-updated");
     if (up && b.generated) up.textContent = `生成于 ${b.generated} · 模型v${b.model_version||""}`;
-    el.innerHTML = (b.lines || []).map(l => {
+    // 🚦 关键指标红绿灯（直接看的状态层）
+    const LC = { green: "#2ecc71", yellow: "#f1c40f", red: "#e74c3c" };
+    const lights = (b.lights || []).map(l =>
+      `<div title="${l.note}" style="flex:1;min-width:96px;text-align:center;padding:.35rem .2rem;
+           border:1px solid ${LC[l.status]}55;border-radius:7px;background:${LC[l.status]}11;cursor:help;">
+        <div style="font-size:0.62rem;color:var(--muted);">${l.name}</div>
+        <div style="font-size:0.78rem;font-weight:700;color:${LC[l.status]};">●&nbsp;${l.value}</div>
+      </div>`).join("");
+    const lightsHtml = lights
+      ? `<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.55rem;">${lights}</div>` : "";
+    el.innerHTML = lightsHtml + (b.lines || []).map(l => {
       const m = l.match(/^【(.+?)】(.*)$/);
       if (!m) return `<div>${l}</div>`;
       const warn = m[2].includes("⚠");
@@ -2561,6 +2572,98 @@ async function loadBriefPanel() {
   } catch(e) {
     el.innerHTML = `<div style="color:var(--muted)">简报未生成（跑一次流水线即可）</div>`;
   }
+}
+
+// ═══════════════════════════════════════════════════════
+//  我的模拟盘（用户游戏，localStorage，按最近收盘价成交）
+// ═══════════════════════════════════════════════════════
+const GAME_KEY = "alpha_game_v1";
+function gameState() {
+  try { return JSON.parse(localStorage.getItem(GAME_KEY)) ||
+    { cash: 10000, holdings: {}, trades: [], started: new Date().toISOString().slice(0,10) }; }
+  catch { return { cash: 10000, holdings: {}, trades: [], started: "" }; }
+}
+function gameSave(g) { localStorage.setItem(GAME_KEY, JSON.stringify(g)); }
+function gamePx() {
+  const m = {};
+  if (STOCKS) for (const [s, v] of Object.entries(STOCKS.stocks)) m[s] = v.stats.last;
+  return m;
+}
+
+function renderGamePanel() {
+  const el = document.getElementById("game-content");
+  if (!el || !STOCKS) return;
+  const g = gameState(), px = gamePx();
+  let mv = 0;
+  const holdRows = Object.entries(g.holdings).map(([s, h]) => {
+    const p = px[s] || h.cost;
+    mv += h.units * p;
+    const pl = (p / h.cost - 1) * 100;
+    const c = pl >= 0 ? "#2ecc71" : "#e74c3c";
+    return `<tr>
+      <td style="padding:.25rem .4rem;font-weight:600;">${s}</td>
+      <td style="padding:.25rem .4rem;text-align:right;">$${(h.units*p).toFixed(0)}</td>
+      <td style="padding:.25rem .4rem;text-align:right;">成本$${h.cost.toFixed(2)}</td>
+      <td style="padding:.25rem .4rem;text-align:right;color:${c};">${pl>0?"+":""}${pl.toFixed(1)}%</td>
+      <td style="padding:.25rem .4rem;"><button class="period-btn" onclick="gameSell('${s}')">卖出</button></td>
+    </tr>`;
+  }).join("");
+  const eq = g.cash + mv, ret = (eq / 10000 - 1) * 100;
+  const rc = ret >= 0 ? "#2ecc71" : "#e74c3c";
+  const opts = Object.keys(STOCKS.stocks).map(s =>
+    `<option value="${s}">${s} ${STOCKS.stocks[s].label} $${px[s]}</option>`).join("");
+  const recent = (g.trades || []).slice(-6).reverse().map(t =>
+    `<div style="color:var(--muted);font-size:0.7rem;">${t.t} ${t.side} ${t.sym} $${t.amt.toFixed(0)} @${t.px}</div>`).join("");
+  el.innerHTML = `
+    <div style="margin-bottom:.5rem;">净值 <b style="font-size:1.1rem;">$${eq.toFixed(0)}</b>
+      <b style="color:${rc};">（${ret>0?"+":""}${ret.toFixed(2)}%）</b>
+      · 现金 $${g.cash.toFixed(0)} <span style="color:var(--muted);font-size:0.7rem;">自 ${g.started||"—"}</span></div>
+    <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap;">
+      <select id="game-sym" class="cgt-input" style="flex:2;min-width:140px;">${opts}</select>
+      <input id="game-amt" class="cgt-input" type="number" placeholder="金额$" value="1000" style="flex:1;min-width:70px;">
+      <button class="cgt-btn" style="flex:0;padding:.4rem .8rem;" onclick="gameBuy()">买入</button>
+    </div>
+    ${holdRows ? `<table style="width:100%;font-size:0.74rem;border-collapse:collapse;">${holdRows}</table>` : ""}
+    ${recent ? `<div style="margin-top:.4rem;">${recent}</div>` : ""}
+    <div style="display:flex;justify-content:space-between;margin-top:.45rem;align-items:center;">
+      <span style="color:var(--muted);font-size:0.66rem;">按最近收盘价成交（${STOCKS.generated}）· 存在本浏览器</span>
+      <button class="period-btn" onclick="gameReset()">重置</button>
+    </div>`;
+}
+
+function gameBuy() {
+  const sym = document.getElementById("game-sym").value;
+  const amt = parseFloat(document.getElementById("game-amt").value);
+  const g = gameState(), px = gamePx()[sym];
+  if (!px || !(amt > 0)) return;
+  if (amt > g.cash) { alert(`现金不足（剩 $${g.cash.toFixed(0)}）`); return; }
+  const units = amt / px;
+  const h = g.holdings[sym] || { units: 0, cost: 0 };
+  h.cost = (h.cost * h.units + px * units) / (h.units + units);   // 加权平均成本
+  h.units += units;
+  g.holdings[sym] = h;
+  g.cash -= amt;
+  g.trades.push({ t: new Date().toISOString().slice(0,16).replace("T"," "),
+                  side: "买", sym, px, amt });
+  gameSave(g); renderGamePanel();
+}
+
+function gameSell(sym) {
+  const g = gameState(), px = gamePx()[sym];
+  const h = g.holdings[sym];
+  if (!h || !px) return;
+  const amt = h.units * px;
+  g.cash += amt;
+  delete g.holdings[sym];
+  g.trades.push({ t: new Date().toISOString().slice(0,16).replace("T"," "),
+                  side: "卖", sym, px, amt });
+  gameSave(g); renderGamePanel();
+}
+
+function gameReset() {
+  if (!confirm("清空我的模拟盘，重新从 $10,000 开始？")) return;
+  localStorage.removeItem(GAME_KEY);
+  renderGamePanel();
 }
 
 // ═══════════════════════════════════════════════════════

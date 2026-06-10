@@ -63,6 +63,40 @@ def main():
     risk.append(f"纳指20日年化波动 {vol20:.0f}%" + ("（高波动）" if vol20 > 25 else ""))
     lines.append("【风险】" + "；".join(risk))
 
+    # ── 3.5 关键指标红绿灯（直接看的状态层，不进概率模型）─────────
+    lights = []
+    ndq_s = prices["NASDAQ"].dropna()
+    ma200 = float(ndq_s.rolling(200).mean().iloc[-1])
+    above = float(ndq_s.iloc[-1]) > ma200
+    lights.append({"name": "趋势(MA200)", "status": "green" if above else "red",
+                   "value": f"{'上方' if above else '下方'} {abs(ndq_s.iloc[-1]/ma200-1)*100:.1f}%",
+                   "note": "牛熊分界线，下方时一切看空信号加倍认真"})
+    if len(v) and len(v3):
+        bwd = v.iloc[-1] >= v3.iloc[-1]
+        lights.append({"name": "VIX期限结构", "status": "red" if bwd else "green",
+                       "value": f"{v.iloc[-1]:.1f}/{v3.iloc[-1]:.1f}",
+                       "note": "倒挂=恐慌（历史上倒挂后20日胜率64.8%，常近底部）"})
+        lights.append({"name": "VIX水平", "status": "red" if v.iloc[-1] > 30 else
+                       ("yellow" if v.iloc[-1] > 20 else "green"),
+                       "value": f"{v.iloc[-1]:.1f}",
+                       "note": "<20平静 / 20-30警惕 / >30恐慌"})
+    if "T10Y2Y" in prices.columns:
+        t = prices["T10Y2Y"].dropna()
+        if len(t):
+            tv = float(t.iloc[-1])
+            lights.append({"name": "收益率曲线(10Y-2Y)", "status": "red" if tv < 0 else
+                           ("yellow" if tv < 0.3 else "green"),
+                           "value": f"{tv:+.2f}%",
+                           "note": "倒挂(<0)是历史上最可靠的衰退预警，领先6-18个月"})
+    if "HY_SPREAD" in prices.columns:
+        h = prices["HY_SPREAD"].dropna()
+        if len(h) > 21:
+            hv, hchg = float(h.iloc[-1]), float(h.iloc[-1] - h.iloc[-21])
+            lights.append({"name": "信用利差(HY)", "status": "red" if hv > 5 or hchg > 0.8 else
+                           ("yellow" if hv > 4 or hchg > 0.4 else "green"),
+                           "value": f"{hv:.2f}%（20日{hchg:+.2f}）",
+                           "note": "信用市场比股市先闻到危险；快速走阔=避险"})
+
     # ── 4. 未来一周窗口 ───────────────────────────────────────────
     fc = sig.get("next_opportunities", {}).get("all_forecast", [])[:5]
     if fc:
@@ -85,6 +119,7 @@ def main():
         "generated": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"),
         "model_version": sig.get("model_version"),
         "lines": lines,
+        "lights": lights,
     }
     with open(WEB_DIR / "brief.json", "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)

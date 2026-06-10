@@ -105,6 +105,8 @@ def fetch_fred():
         "UNRATE":   "UNRATE",    # 失业率（月频）
         "YIELD_10Y":"GS10",      # 10年期国债收益率（月频，FRED官方）
         "YIELD_2Y": "GS2",       # 2年期国债收益率（用于算倒挂）
+        "T10Y2Y":   "T10Y2Y",    # 10Y-2Y利差（日频）：<0 倒挂=衰退预警
+        "HY_SPREAD":"BAMLH0A0HYM2",  # 高收益债利差（日频）：信用压力，>5%危险
     }
     for name, series in FRED_SERIES.items():
         try:
