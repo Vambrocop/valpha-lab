@@ -215,6 +215,14 @@ footer a { color: var(--green); text-decoration: none; }
 .cgt-highlight { font-size:1rem; font-weight:800; padding:.4rem 0; }
 @media (max-width:600px) { .cgt-grid { grid-template-columns:1fr; } }
 
+/* ── Prediction Accuracy ── */
+.acc-card { background:var(--surface2); border-radius:7px; padding:.5rem .85rem; flex:1; min-width:100px; text-align:center; }
+.acc-card-num { font-size:1.4rem; font-weight:800; line-height:1.1; }
+.acc-card-label { font-size:0.7rem; color:var(--muted); margin-top:.15rem; }
+.acc-table-row { display:flex; align-items:center; gap:.5rem; padding:.3rem 0; border-bottom:1px solid var(--border)22; }
+.acc-table-row:last-child { border:none; }
+.acc-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
 /* ── Fear & Greed ── */
 .fg-gauge-track { height:8px; border-radius:4px; position:relative; margin:.5rem 0;
   background:linear-gradient(to right,#e74c3c 0%,#e67e22 25%,#f1c40f 50%,#2ecc71 75%,#27ae60 100%); }
@@ -655,6 +663,25 @@ footer a { color: var(--green); text-decoration: none; }
     <div class="chart-wrap">
       <div class="chart-header">🔮 历史入场概率轨迹 <span class="badge">贝叶斯综合信号</span></div>
       <div id="chart-signal-history" style="height:300px;"></div>
+    </div>
+
+    <!-- 预测准确率回溯 -->
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+        <span>🎯 近期预测 vs 实际结果 <span class="badge">信号准确率回溯</span></span>
+        <select id="accuracy-days-select" onchange="renderPredictionAccuracy()"
+          style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.25rem .5rem;border-radius:5px;font-size:0.75rem;">
+          <option value="20">近20天</option>
+          <option value="40" selected>近40天</option>
+          <option value="60">近60天</option>
+        </select>
+      </div>
+      <!-- 准确率汇总卡片 -->
+      <div id="accuracy-summary" style="display:flex;gap:.65rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.8rem;"></div>
+      <!-- 时间轴图表 -->
+      <div id="chart-accuracy" style="height:220px;"></div>
+      <!-- 近期日历表格 -->
+      <div id="accuracy-table" style="margin-top:.85rem;font-size:0.8rem;overflow-x:auto;"></div>
     </div>
 
     <!-- 日历规律统计 -->
@@ -2020,6 +2047,153 @@ function renderCalHolidayChart() {
     `<strong>假日效应（1950-2026日频）：</strong>感恩节前夕胜率 <strong style="color:#f1c40f">${hd.thanksgiving_eve?.win_rate}%</strong>（n=${hd.thanksgiving_eve?.n}），是全年单日最强规律之一。节前节后均显著高于普通日（基准${hd.normal?.win_rate}%）。`;
 }
 
+// ═══════════════════════════════════════════════════════
+//  预测 vs 实际结果 — 准确率回溯
+// ═══════════════════════════════════════════════════════
+function renderPredictionAccuracy() {
+  if (!SIGNALS || !SIGNALS.daily_signals) return;
+  const nDays = parseInt(document.getElementById("accuracy-days-select")?.value || 40);
+
+  // Collect last N days that have actual return data
+  const allDays = Object.entries(SIGNALS.daily_signals)
+    .filter(([, v]) => v.ret != null)
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  const recent = allDays.slice(-nDays);
+  if (!recent.length) return;
+
+  // Build result objects
+  const DOW_CN = ["周一","周二","周三","周四","周五","周六","周日"];
+  const rows = recent.map(([date, v]) => {
+    const prob    = v.prob;
+    const ret     = v.ret;           // actual % return
+    const actualUp = ret > 0;
+    const tier    = v.tier;
+    // Signal direction: only "call" when signal is in tier 4+ (≥0.60) or tier 1-2 (≤0.40)
+    let predicted = "neutral";
+    if      (prob >= 0.60) predicted = "up";
+    else if (prob <= 0.40) predicted = "down";
+    const hasCall = predicted !== "neutral";
+    const correct  = hasCall
+      ? ((predicted === "up" && actualUp) || (predicted === "down" && !actualUp))
+      : null;
+    return { date, prob, tier, ret, actualUp, predicted, hasCall, correct, dow: v.dow };
+  });
+
+  // ── Summary stats ──────────────────────────────────────────────
+  const called   = rows.filter(r => r.hasCall);
+  const correct  = called.filter(r => r.correct);
+  const tier45   = rows.filter(r => r.tier >= 4);
+  const t45ok    = tier45.filter(r => r.correct);
+  const tier12   = rows.filter(r => r.tier <= 2);
+  const t12ok    = tier12.filter(r => r.correct);
+  const overall  = called.length > 0 ? (correct.length / called.length * 100) : null;
+  const h4Acc    = tier45.length  > 0 ? (t45ok.length  / tier45.length  * 100) : null;
+  const l2Acc    = tier12.length  > 0 ? (t12ok.length  / tier12.length  * 100) : null;
+
+  function accColor(pct) {
+    if (pct == null) return "var(--muted)";
+    if (pct >= 65) return "#27ae60";
+    if (pct >= 55) return "#2ecc71";
+    if (pct >= 45) return "#f1c40f";
+    return "#e74c3c";
+  }
+
+  const summaryEl = document.getElementById("accuracy-summary");
+  if (summaryEl) summaryEl.innerHTML = [
+    { label:`第4-5档信号准确率`,   val:h4Acc,   n:tier45.length,  hint:"概率≥60%时，预测上涨是否正确" },
+    { label:`第1-2档信号准确率`,   val:l2Acc,   n:tier12.length,  hint:"概率≤40%时，预测下跌是否正确" },
+    { label:`总体有效信号准确率`,   val:overall, n:called.length,  hint:"所有非中性预测的综合准确率" },
+    { label:`近${nDays}天上涨天数`, val: rows.filter(r=>r.actualUp).length / rows.length * 100,
+      n:rows.length, hint:"实际市场上涨天数占比" },
+  ].map(c => `
+    <div class="acc-card">
+      <div class="acc-card-num" style="color:${accColor(c.val)}">${c.val!=null ? c.val.toFixed(1)+"%" : "—"}</div>
+      <div class="acc-card-label">${c.label}<br><span style="opacity:.7">n=${c.n}</span></div>
+    </div>`).join("");
+
+  // ── Timeline Plotly chart ───────────────────────────────────────
+  const dates  = rows.map(r => r.date);
+  const probs  = rows.map(r => +(r.prob * 100).toFixed(1));
+  const rets   = rows.map(r => +r.ret.toFixed(2));
+  const barColors = rows.map(r => {
+    if (!r.hasCall) return "rgba(139,148,158,.35)";
+    return r.correct ? "rgba(46,204,113,.75)" : "rgba(231,76,60,.75)";
+  });
+  const hoverText = rows.map(r => {
+    const callStr = r.predicted === "up" ? "📈看多" : r.predicted === "down" ? "📉看空" : "中性";
+    const outStr  = r.actualUp ? `+${r.ret.toFixed(2)}%↑` : `${r.ret.toFixed(2)}%↓`;
+    const res     = r.hasCall ? (r.correct ? "✓正确" : "✗错误") : "中性(不计)";
+    return `${r.date}<br>信号: ${callStr} (${(r.prob*100).toFixed(1)}%)<br>实际: ${outStr}<br>${res}`;
+  });
+
+  Plotly.newPlot("chart-accuracy", [
+    { type:"bar", name:"预测概率%", x:dates, y:probs,
+      marker:{ color: barColors },
+      text: hoverText, hovertemplate:"%{text}<extra></extra>",
+      width: 0.7 },
+    { type:"scatter", name:"实际涨跌%", x:dates, y:rets,
+      mode:"lines+markers", yaxis:"y2",
+      line:{ color:"rgba(52,152,219,.8)", width:1.5 },
+      marker:{ size:4, color: rets.map(r => r>0?"#2ecc71":"#e74c3c") },
+      hovertemplate:"%{x}<br>实际: %{y:.2f}%<extra></extra>" },
+    { type:"scatter", name:"60% 基准线", x:[dates[0],dates[dates.length-1]], y:[60,60],
+      mode:"lines", line:{color:"rgba(46,204,113,.4)",dash:"dot",width:1}, hoverinfo:"skip" },
+  ], {
+    ...DARK,
+    yaxis:  { ...DARK.yaxis, title:"预测概率 %", range:[35,90] },
+    yaxis2: { overlaying:"y", side:"right", title:"实际涨跌 %", zeroline:true,
+               zerolinecolor:"#444", gridcolor:"transparent", tickformat:".1f" },
+    legend: { orientation:"h", y:1.08, font:{size:10} },
+    margin: { t:10, b:55, l:55, r:55 },
+    hovermode:"x unified",
+    xaxis:  { ...DARK.xaxis, tickangle:-40, tickfont:{size:9} },
+  }, { responsive:true });
+
+  // ── Recent rows table (last 14) ───────────────────────────────
+  const tableEl = document.getElementById("accuracy-table");
+  if (!tableEl) return;
+  const last14 = rows.slice(-14).reverse();
+  const headerStyle = "color:var(--muted);font-size:0.72rem;padding:.2rem .5rem;";
+  const cellStyle   = "padding:.3rem .5rem;white-space:nowrap;";
+  tableEl.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;min-width:480px;">
+      <thead><tr style="border-bottom:1px solid var(--border);">
+        <th style="${headerStyle}text-align:left">日期</th>
+        <th style="${headerStyle}text-align:right">预测方向</th>
+        <th style="${headerStyle}text-align:right">概率</th>
+        <th style="${headerStyle}text-align:right">实际涨跌</th>
+        <th style="${headerStyle}text-align:center">结果</th>
+      </tr></thead>
+      <tbody>
+      ${last14.map(r => {
+        const signalStr = r.predicted === "up"
+          ? `<span style="color:#2ecc71">📈 看多(T${r.tier})</span>`
+          : r.predicted === "down"
+          ? `<span style="color:#e74c3c">📉 看空(T${r.tier})</span>`
+          : `<span style="color:var(--muted)">→ 中性(T${r.tier})</span>`;
+        const retColor  = r.ret > 0 ? "#2ecc71" : r.ret < 0 ? "#e74c3c" : "var(--muted)";
+        const retStr    = `<span style="color:${retColor}">${r.ret > 0 ? "+" : ""}${r.ret.toFixed(2)}%</span>`;
+        const resultStr = !r.hasCall ? `<span style="color:var(--muted)">—</span>`
+          : r.correct ? `<span style="color:#2ecc71;font-weight:700">✓</span>`
+          : `<span style="color:#e74c3c;font-weight:700">✗</span>`;
+        const todayBg   = r.date === localDateStr() ? "background:rgba(52,152,219,.07);" : "";
+        return `<tr style="border-bottom:1px solid var(--border)22;${todayBg}">
+          <td style="${cellStyle}">${r.date} <span style="color:var(--muted);font-size:0.72rem">${DOW_CN[r.dow||0]}</span></td>
+          <td style="${cellStyle}text-align:right">${signalStr}</td>
+          <td style="${cellStyle}text-align:right;font-weight:700">${(r.prob*100).toFixed(1)}%</td>
+          <td style="${cellStyle}text-align:right">${retStr}</td>
+          <td style="${cellStyle}text-align:center">${resultStr}</td>
+        </tr>`;
+      }).join("")}
+      </tbody>
+    </table>
+    <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;line-height:1.5;">
+      ✓/✗ 仅统计信号概率≥60%（看多）或≤40%（看空）的有效预测。中性区间(40-60%)不纳入准确率计算。
+      <br>注意：本模型预测的是"统计上有利的入场时机"，不是逐日涨跌预测——单日准确率参考意义有限，多日累积效果更重要。
+    </div>`;
+}
+
 // ── 回测验证图表 ──
 function renderBacktestCharts() {
   const bt = SIGNALS?.backtest;
@@ -2897,6 +3071,7 @@ init().then(() => {
   safeRender(renderEconCalendar,    "EconCal");
   safeRender(renderDipGuide,        "DipGuide");
   safeRender(renderSPCXTracker,     "SPCX");
+  safeRender(renderPredictionAccuracy, "PredAccuracy");
   fetchFearAndGreed();
   safeRender(renderSPCXDetail,      "SPCXDetail");
   // Sync SPCX inputs with localStorage

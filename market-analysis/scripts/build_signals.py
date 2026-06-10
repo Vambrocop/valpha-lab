@@ -285,6 +285,17 @@ def compute_daily_signals(prices, ret, tech):
 
         prob = bayesian_update(prior, likelihoods)
 
+        # Actual NASDAQ daily return (simple %) for prediction accuracy
+        raw_ret = ret["NASDAQ"].get(ts, float("nan"))
+        actual_ret = round(float((prices["NASDAQ"].get(ts, float("nan")) /
+                                  prices["NASDAQ"].shift(1).get(ts, float("nan")) - 1) * 100), 3) \
+                     if ts in prices.index and ts in prices.shift(1).index else None
+        try:
+            if actual_ret is None or (isinstance(actual_ret, float) and (actual_ret != actual_ret)):
+                actual_ret = None
+        except Exception:
+            actual_ret = None
+
         records[ts.strftime("%Y-%m-%d")] = {
             "prob":         round(prob, 4),
             "tier":         _tier(prob),
@@ -300,6 +311,7 @@ def compute_daily_signals(prices, ret, tech):
             "dxy_trend":    round(float(row.get("dxy_trend", 0) or 0), 4),
             "nasdaq_vol":   round(float(row.get("NASDAQ_vol20", 0) or 0), 4),
             "nasdaq_rsi":   round(float(row.get("NASDAQ_rsi", 0) or 0), 1),
+            "ret":          actual_ret,
         }
 
     return records
