@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  issues: write   # 信号告警建 Issue → GitHub 自动邮件通知
 
 jobs:
   refresh:
@@ -30,6 +31,21 @@ jobs:
 
       - name: Run pipeline
         run: python market-analysis/scripts/run_all.py
+
+      - name: Signal alerts (state changes only)
+        run: python market-analysis/scripts/alert_check.py
+
+      - name: Open alert issue (GitHub emails you automatically)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f market-analysis/alert.md ]; then
+            gh issue create \
+              --title "📣 信号告警 $(date -u +%Y-%m-%d)" \
+              --body-file market-analysis/alert.md \
+              --label alert || true
+            rm market-analysis/alert.md
+          fi
 
       - name: Commit & push if data changed
         run: |

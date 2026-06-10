@@ -1,0 +1,109 @@
+"""
+weekly_report.py — 统计评估报告（滚动生成，模型的"体检报告"）
+
+不是新闻层，是数学层：实盘命中率（按模型版本）、样本外验证、校准质量、
+当前市场状态在历史分布中的位置、模拟盘表现。→ web/report.json
+"""
+import pandas as pd
+import numpy as np
+import json
+from pathlib import Path
+
+RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
+PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
+WEB_DIR  = Path(__file__).parent.parent / "web"
+
+
+def main():
+    with open(WEB_DIR / "signals.json", encoding="utf-8") as f:
+        sig = json.load(f)
+    sections = []
+
+    # ── 1. 实盘成绩单（按模型版本）────────────────────────────────
+    lt = sig.get("live_tracking", {})
+    if lt.get("n_logged"):
+        rows = []
+        for v, s in (lt.get("by_version") or {}).items():
+            rows.append({"版本": f"v{v}", "已记录": s.get("n"),
+                         "1日命中": f"{s['hit_rate_1d']}%" if s.get("hit_rate_1d") is not None else "待回填",
+                         "5日命中": f"{s['hit_rate_5d']}%" if s.get("hit_rate_5d") is not None else "待回填"})
+        sections.append({
+            "title": "实盘成绩单（append-only日志，按模型版本）",
+            "table": rows,
+            "note": f"自 {lt.get('since')} 起共 {lt['n_logged']} 条。命中=方向判断正确"
+                    "（prob>50% 且实际上涨，或反之）。样本少时波动大，4周后才有统计意义。",
+        })
+
+    # ── 2. 样本外验证（模型的真实能力）────────────────────────────
+    wf = sig.get("walk_forward", {})
+    if wf.get("summary"):
+        s = wf["summary"]
+        sections.append({
+            "title": "Walk-Forward 样本外验证（纳指）",
+            "table": [{"折数": s.get("n_folds"),
+                       "Tier≥4样本外优势": f"{s.get('mean_tier4_advantage_pp', '?')}pp",
+                       "显著折数": f"{s.get('n_significant_folds')}/{s.get('n_folds')}",
+                       "验证窗口": f"{s.get('horizon_days')}日"}],
+            "note": "负值=高档位信号在没见过的数据上没有跑赢基准。这是模型最诚实的成绩，"
+                    "也是为什么显示概率要经过校准、决策要参考校准后概率。",
+        })
+
+    # ── 3. 校准质量 ───────────────────────────────────────────────
+    cal = sig.get("calibration_points", [])
+    if cal:
+        sections.append({
+            "title": "概率校准映射（原始概率 → 历史实际20日胜率）",
+            "table": [{"模型概率": f"{c['prob']*100:.0f}%",
+                       "实际胜率": f"{c['actual_wr']*100:.1f}%"} for c in cal],
+            "note": "模型原始概率系统性偏低（55%档实际约60-64%），因为基准日上涨概率本身就≈63%。",
+        })
+
+    # ── 4. 当前状态在历史分布中的位置 ─────────────────────────────
+    prices = pd.read_csv(RAW_DIR / "combined_prices.csv",
+                         index_col="Date", parse_dates=True)
+    ndq = prices["NASDAQ"].dropna()
+    ret = ndq.pct_change()
+    vol20 = ret.rolling(20).std() * np.sqrt(252) * 100
+    vol_pct = float((vol20 < vol20.iloc[-1]).mean() * 100)
+    dd = float((ndq.iloc[-1] / ndq.tail(252).max() - 1) * 100)
+    rsi_r = ret.clip(lower=0).rolling(14).mean() / ((-ret.clip(upper=0)).rolling(14).mean() + 1e-10)
+    rsi = float(100 - 100 / (1 + rsi_r.iloc[-1]))
+    sections.append({
+        "title": "当前市场状态（历史分位）",
+        "table": [{
+            "20日波动率": f"{vol20.iloc[-1]:.0f}%（高于{vol_pct:.0f}%的历史日）",
+            "距52周高点": f"{dd:.1f}%",
+            "RSI14": f"{rsi:.0f}",
+            "VIX期限结构": "倒挂(恐慌)" if prices["VIX"].dropna().iloc[-1] >=
+                          prices["VIX3M"].dropna().iloc[-1] else "正常",
+        }],
+        "note": "波动率分位>80%时历史上未来20日胜率下降；倒挂期反而常接近底部（胜率64.8%）。",
+    })
+
+    # ── 5. 模拟盘 ─────────────────────────────────────────────────
+    try:
+        with open(WEB_DIR / "paper.json", encoding="utf-8") as f:
+            pp = json.load(f)
+        sections.append({
+            "title": "模拟盘 vs 买入持有",
+            "table": [{"策略净值": f"${pp['current']['equity']:,.0f}（{pp['current']['ret_pct']:+.2f}%）",
+                       "基准净值": f"${pp['benchmark']['equity']:,.0f}（{pp['benchmark']['ret_pct']:+.2f}%）",
+                       "当前仓位": pp["current"]["position"],
+                       "交易次数": pp["n_trades"]}],
+            "note": pp["rule"],
+        })
+    except Exception:
+        pass
+
+    out = {
+        "generated": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"),
+        "model_version": sig.get("model_version"),
+        "sections": sections,
+    }
+    with open(WEB_DIR / "report.json", "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
+    print(f"[OK] 统计评估报告：{len(sections)} 个板块 → report.json")
+
+
+if __name__ == "__main__":
+    main()

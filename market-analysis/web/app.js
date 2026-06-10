@@ -415,8 +415,23 @@ async function renderPriceChart() {
 
   Plotly.newPlot("chart-price", traces, {...DARK, hovermode:"x unified",
     yaxis:{...DARK.yaxis, title:"归一化指数（起点=100）"},
-    legend:{orientation:"h", y:1.05}, height:400}, {responsive:true});
+    xaxis:{...DARK.xaxis, rangeselector: RANGE_SEL},
+    legend:{orientation:"h", y:1.08}, height:400}, {responsive:true});
 }
+
+// 时间范围快捷按钮（周线数据最小到1月粒度）
+const RANGE_SEL = {
+  buttons: [
+    {count:1,  label:"1月", step:"month", stepmode:"backward"},
+    {count:6,  label:"6月", step:"month", stepmode:"backward"},
+    {count:1,  label:"1年", step:"year",  stepmode:"backward"},
+    {count:5,  label:"5年", step:"year",  stepmode:"backward"},
+    {count:10, label:"10年", step:"year", stepmode:"backward"},
+    {step:"all", label:"全部"},
+  ],
+  bgcolor: "rgba(255,255,255,0.06)", activecolor: "#3498db",
+  font: { color: "#aab", size: 10 }, y: 1.18,
+};
 
 async function renderCorrChart() {
   const extra = await loadChartsExtra();
@@ -2506,6 +2521,7 @@ function renderStockChart(sym) {
     });
   }
   Plotly.newPlot("chart-stock", traces, {...DARK, hovermode: "x unified",
+    xaxis: {...DARK.xaxis, rangeselector: RANGE_SEL},
     title: { text: `${sym}（${s.label}）vs 指数 · 归一化=100`, font: { size: 13 } }},
     {displayModeBar: false, responsive: true});
 }
@@ -2545,6 +2561,68 @@ async function loadBriefPanel() {
   } catch(e) {
     el.innerHTML = `<div style="color:var(--muted)">简报未生成（跑一次流水线即可）</div>`;
   }
+}
+
+// ═══════════════════════════════════════════════════════
+//  模拟盘（paper.json）
+// ═══════════════════════════════════════════════════════
+async function loadPaperPanel() {
+  const el = document.getElementById("paper-content");
+  if (!el) return;
+  let p;
+  try {
+    const r = await fetch("paper.json?_=" + Date.now());
+    p = await r.json();
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--muted)">模拟盘等待首个信号日启动（自 2026-06-10 起前向实验）</div>`;
+    return;
+  }
+  const diff = p.current.ret_pct - p.benchmark.ret_pct;
+  const dc = diff >= 0 ? "#2ecc71" : "#e74c3c";
+  const rc = p.current.ret_pct >= 0 ? "#2ecc71" : "#e74c3c";
+  el.innerHTML = `
+    <div style="display:flex;gap:.8rem;text-align:center;margin-bottom:.5rem;">
+      <div style="flex:1;padding:.5rem;border:1px solid var(--border);border-radius:8px;">
+        <div style="color:var(--muted);font-size:0.7rem;">策略净值</div>
+        <div style="font-size:1.15rem;font-weight:800;">$${p.current.equity.toLocaleString()}</div>
+        <div style="color:${rc};font-size:0.75rem;">${p.current.ret_pct>0?"+":""}${p.current.ret_pct}%</div>
+      </div>
+      <div style="flex:1;padding:.5rem;border:1px solid var(--border);border-radius:8px;">
+        <div style="color:var(--muted);font-size:0.7rem;">买入持有基准</div>
+        <div style="font-size:1.15rem;font-weight:800;">$${p.benchmark.equity.toLocaleString()}</div>
+        <div style="color:var(--muted);font-size:0.75rem;">${p.benchmark.ret_pct>0?"+":""}${p.benchmark.ret_pct}%</div>
+      </div>
+    </div>
+    <div>超额：<b style="color:${dc}">${diff>0?"+":""}${diff.toFixed(2)}pp</b>
+      · 仓位：<b>${p.current.position}</b> · 交易 ${p.n_trades} 次 · 截至 ${p.current.as_of}</div>
+    <div style="color:var(--muted);font-size:0.7rem;margin-top:.3rem;">${p.rule}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  模型体检报告（report.json）
+// ═══════════════════════════════════════════════════════
+async function loadReportPanel() {
+  const el = document.getElementById("report-content");
+  if (!el) return;
+  let rep;
+  try {
+    const r = await fetch("report.json?_=" + Date.now());
+    rep = await r.json();
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--muted)">报告未生成（跑一次流水线即可）</div>`;
+    return;
+  }
+  el.innerHTML = (rep.sections || []).map(s => {
+    const cols = s.table?.length ? Object.keys(s.table[0]) : [];
+    const head = cols.map(c => `<th style="text-align:left;padding:.3rem .6rem;color:var(--muted);font-size:0.72rem;">${c}</th>`).join("");
+    const rows = (s.table || []).map(r =>
+      `<tr>${cols.map(c => `<td style="padding:.3rem .6rem;border-top:1px solid var(--border)33;">${r[c]}</td>`).join("")}</tr>`).join("");
+    return `<div style="margin-bottom:1.1rem;">
+      <div style="font-weight:700;margin-bottom:.35rem;">${s.title}</div>
+      <table style="border-collapse:collapse;min-width:50%;">${head ? `<tr>${head}</tr>` : ""}${rows}</table>
+      ${s.note ? `<div style="color:var(--muted);font-size:0.72rem;margin-top:.3rem;line-height:1.5;">${s.note}</div>` : ""}
+    </div>`;
+  }).join("") + `<div style="color:var(--muted);font-size:0.68rem;">生成于 ${rep.generated} · 模型 v${rep.model_version}</div>`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2765,6 +2843,8 @@ init().then(() => {
   loadOvernightPanel();
   loadNewsPanel();
   loadBriefPanel();
+  loadPaperPanel();
+  loadReportPanel();
   fetchFearAndGreed();
   safeRender(renderSPCXDetail,      "SPCXDetail");
   // Sync SPCX inputs with localStorage

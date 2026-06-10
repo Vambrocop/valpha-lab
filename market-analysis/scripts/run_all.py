@@ -34,7 +34,9 @@ steps = [
     ("导出图表数据",       "export_chart_data.py"),
     ("导出个股数据",       "export_stocks.py"),
     ("市场要闻RSS",        "fetch_news.py"),
+    ("模拟盘执行",         "paper_trading.py"),
     ("每日盘后简报",       "daily_brief.py"),
+    ("统计评估报告",       "weekly_report.py"),
     ("发布前自检",         "verify_output.py"),   # 失败则终止，不发布坏数据
 ]
 

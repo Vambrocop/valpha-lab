@@ -67,6 +67,12 @@
       <div id="live-tracking" style="margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border);"></div>
     </div>
 
+    <!-- 模拟盘（$10,000 机械跟随信号，账本不可篡改） -->
+    <div class="panel">
+      <div class="panel-title">💰 模拟盘 · $10,000 跟随信号</div>
+      <div id="paper-content" style="font-size:0.8rem;line-height:1.6;"></div>
+    </div>
+
     <!-- 市场情绪仪表盘 -->
     <div class="panel" id="sentiment-panel">
       <div class="panel-title">📊 市场情绪仪表盘</div>
@@ -351,6 +357,14 @@
       <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;">
         点击表格行查看该股 vs 纳指/标普的归一化对比 · 数据随流水线更新
       </div>
+    </div>
+
+    <!-- 模型体检报告（统计评估） -->
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        📑 模型体检报告 <span class="badge">统计评估 · 每次刷新自动更新</span>
+      </div>
+      <div id="report-content" style="font-size:0.8rem;"></div>
     </div>
 
     <!-- 隔夜 vs 日内收益分解 -->
