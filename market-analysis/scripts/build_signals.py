@@ -9,10 +9,39 @@ import numpy as np
 import json
 from pathlib import Path
 from datetime import date, timedelta
+from zoneinfo import ZoneInfo
+
+
+def us_today():
+    """美东当前日期。用户在澳洲(UTC+9:30)，本地日期比美国快一天，
+    所有「今天/未来」的判断必须以美东交易日为准"""
+    return pd.Timestamp.now(tz=ZoneInfo("America/New_York")).date()
 
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 WEB_DIR  = Path(__file__).parent.parent / "web"
+
+# 模型版本号：每次调整模型逻辑时更新，供实盘预测追踪区分新旧模型
+MODEL_VERSION = "2.0"
+
+# ── 宏观事件日历（2026，官方日程）──────────────────────────────────
+# CPI：BLS 固定 8:30 ET 发布；FOMC：决议日（会议第2天）14:00 ET
+# 方向上无稳定偏向，但当日波动显著放大 → 只做警示，不拍涨跌概率
+# 来源：bls.gov/schedule/news_release/cpi.htm；federalreserve.gov FOMC calendar
+MACRO_EVENTS = {
+    # CPI 发布日（参考月: 发布日）
+    "2026-01-13": "CPI发布(12月)", "2026-02-11": "CPI发布(1月)",
+    "2026-03-11": "CPI发布(2月)", "2026-04-10": "CPI发布(3月)",
+    "2026-05-12": "CPI发布(4月)", "2026-06-10": "CPI发布(5月)",
+    "2026-07-14": "CPI发布(6月)", "2026-08-12": "CPI发布(7月)",
+    "2026-09-11": "CPI发布(8月)", "2026-10-14": "CPI发布(9月)",
+    "2026-11-10": "CPI发布(10月)", "2026-12-10": "CPI发布(11月)",
+    # FOMC 决议日
+    "2026-01-28": "FOMC决议", "2026-03-18": "FOMC决议(含SEP)",
+    "2026-05-06": "FOMC决议", "2026-06-17": "FOMC决议(含SEP)",
+    "2026-07-29": "FOMC决议", "2026-09-16": "FOMC决议(含SEP)",
+    "2026-11-04": "FOMC决议", "2026-12-16": "FOMC决议(含SEP)",
+}
 
 # ── 月度先验概率（1928-2026 真实统计，后面会从 long_history.json 覆盖）
 MONTHLY_PRIOR = {
@@ -34,7 +63,26 @@ def _load_long_priors():
 _long_priors = _load_long_priors()
 if _long_priors:
     MONTHLY_PRIOR.update(_long_priors)
-    print(f"  使用 long_history 月度先验（1928+年历史数据）")
+    print(f"  使用 long_history 月度先验（1928+年历史数据，S&P500）")
+
+
+def _monthly_prior_from_csv(csv_name, start_year):
+    """从长历史 CSV 计算月度胜率先验（月收益>0 的频率）"""
+    try:
+        s = pd.read_csv(RAW_DIR / csv_name, index_col=0, parse_dates=True).squeeze()
+        s = s.sort_index().dropna()
+        s = s[s.index.year >= start_year]
+        monthly = s.resample("ME").last().pct_change().dropna()
+        return {m: round(float((monthly[monthly.index.month == m] > 0).mean()), 4)
+                for m in range(1, 13)}
+    except Exception:
+        return {}
+
+
+# 纳指自己的月度先验（1971+），不再借用 S&P500 的
+NASDAQ_PRIOR = _monthly_prior_from_csv("NASDAQ_COMP_long.csv", 1971) or dict(MONTHLY_PRIOR)
+SP500_PRIOR  = dict(MONTHLY_PRIOR)   # S&P500 用 1928+ 长历史先验
+print(f"  纳指月度先验（1971+）已加载: 6月={NASDAQ_PRIOR.get(6)}")
 
 # ── 星期效应似然比（日频，1928-2026 真实统计）────────────────────
 # 以普通日基准 52.4% 为 1.0，各星期相对调整
@@ -194,11 +242,54 @@ EVENT_ADJUSTMENTS = {
     "ipo_boom":     1.08,   # 大型科技IPO（主观）
 }
 
+# ── 经验似然比（walk_forward 学习值，带收缩）──────────────────────
+def _load_learned_lrs():
+    try:
+        with open(PROC_DIR / "walk_forward_results.json", encoding="utf-8") as f:
+            wf = json.load(f)
+        opt = wf.get("optimized_lr", {})
+        return opt if opt.get("factors") else {}
+    except Exception:
+        return {}
+
+_LEARNED  = _load_learned_lrs()
+_SHRINK_N = 200   # 收缩强度：样本 n 越小，LR 越向 1（无信息）收缩
+
+def _learned_on(keys, fallback):
+    """因子触发时的 LR：优先用经验值（收缩后），无数据则用手设默认。
+    keys 可传多个候选（如 SP500 无专属学习值时回退到 NASDAQ 的）。"""
+    if isinstance(keys, str):
+        keys = [keys]
+    for k in keys:
+        f = _LEARNED.get("factors", {}).get(k)
+        if f and isinstance(f, dict) and "lr" in f:
+            n = f["n"]
+            return round(1 + (f["lr"] - 1) * n / (n + _SHRINK_N), 4)
+    return fallback
+
+def _learned_off(keys, fallback):
+    """因子未触发时的 LR：由全概率公式从触发侧推出，而不是简单取倒数"""
+    if isinstance(keys, str):
+        keys = [keys]
+    n_total = _LEARNED.get("n_total", 0)
+    base    = _LEARNED.get("base_win_rate", 0)
+    for k in keys:
+        f = _LEARNED.get("factors", {}).get(k)
+        if f and isinstance(f, dict) and "lr" in f and n_total and base:
+            n  = f["n"]
+            p1 = n / n_total
+            if 0 < p1 < 1:
+                wr_on  = (1 + (f["lr"] - 1) * n / (n + _SHRINK_N)) * base
+                wr_off = (base - p1 * wr_on) / (1 - p1)
+                return round(max(wr_off / base, 0.5), 4)
+    return fallback
+
+
 # ── 技术信号计算 ──────────────────────────────────────────────────
 def compute_technical_signals(prices, ret):
     df = pd.DataFrame(index=prices.index)
 
-    for asset in ["NASDAQ", "BTC", "DXY"]:
+    for asset in ["NASDAQ", "SP500", "BTC", "DXY"]:
         r = ret[asset]
         p = prices[asset]
         df[f"{asset}_above_ma50"]  = (p > p.rolling(50).mean()).astype(float)
@@ -230,11 +321,33 @@ def bayesian_update(prior, likelihoods):
     return float(np.clip(prob, 0.02, 0.98))
 
 # ── 计算每日信号 ──────────────────────────────────────────────────
-def compute_daily_signals(prices, ret, tech):
-    records = {}
-    idx = prices.dropna(how="all").index
+def compute_daily_signals(prices, ret, tech, trading_days, index="NASDAQ", priors=None):
+    """生成某个指数的每日信号流，只在该指数真实交易日上计算。
 
-    for ts in idx:
+    index:  "NASDAQ" 或 "SP500" —— 技术因子(MA200/RSI/波动率)取该指数自身；
+            BTC/DXY 跨资产因子两个流共用。
+    注意：为兼容前端，记录里的字段名固定为 nasdaq_ma200/nasdaq_vol/nasdaq_rsi，
+          在 SP500 流中它们的含义是 SP500 自身的对应指标。
+    """
+    if priors is None:
+        priors = MONTHLY_PRIOR
+    records = {}
+    # ffill 后的价格在交易日间隔上的 pct_change 即「相对上一交易日」收益
+    idx_pct = prices[index].pct_change() * 100
+
+    # 技术因子 LR：优先用 walk_forward 经验值（收缩后），否则手设默认
+    lr_ma200_on  = _learned_on([f"{index}_above_ma200", "NASDAQ_above_ma200"], 1.15)
+    lr_ma200_off = _learned_off([f"{index}_above_ma200", "NASDAQ_above_ma200"], 0.85)
+    lr_btc_pos   = _learned_on("BTC_mom20_pos", 1.12)
+    lr_btc_neg   = _learned_on("BTC_mom20_neg", 0.90)
+    lr_dxy_up    = _learned_on("dxy_rising",  0.88)
+    lr_dxy_down  = _learned_on("dxy_falling", 1.12)
+    lr_vol_high  = _learned_on("nasdaq_high_vol", 0.85)
+    lr_vol_low   = _learned_on("nasdaq_low_vol",  1.10)
+    lr_rsi_ob    = _learned_on("nasdaq_rsi_overbought", 0.85)
+    lr_rsi_os    = _learned_on("nasdaq_rsi_oversold",   1.10)
+
+    for ts in trading_days:
         if ts not in tech.index:
             continue
         row = tech.loc[ts]
@@ -242,7 +355,7 @@ def compute_daily_signals(prices, ret, tech):
             continue
 
         month = ts.month
-        prior = MONTHLY_PRIOR[month]
+        prior = priors[month]
 
         # ── 似然比列表（贝叶斯连乘）────────────────────────────────
         likelihoods = []
@@ -259,42 +372,35 @@ def compute_daily_signals(prices, ret, tech):
         # 4. 假日效应
         likelihoods.append(_holiday_lr(ts))
 
-        # 4. NASDAQ在200日均线上方
-        if not pd.isna(row.get("NASDAQ_above_ma200")):
-            likelihoods.append(1.15 if row["NASDAQ_above_ma200"] else 0.85)
+        # 5. 指数在200日均线上方
+        if not pd.isna(row.get(f"{index}_above_ma200")):
+            likelihoods.append(lr_ma200_on if row[f"{index}_above_ma200"] else lr_ma200_off)
 
-        # 5. BTC动量（领先8天效应）
+        # 6. BTC动量（领先效应）
         if not pd.isna(row.get("BTC_mom20")):
             m = row["BTC_mom20"]
-            likelihoods.append(1.12 if m > 0.05 else (0.90 if m < -0.05 else 1.0))
+            likelihoods.append(lr_btc_pos if m > 0.05 else (lr_btc_neg if m < -0.05 else 1.0))
 
-        # 6. 美元趋势（负相关）
+        # 7. 美元趋势（负相关）
         if not pd.isna(row.get("dxy_trend")):
             d = row["dxy_trend"]
-            likelihoods.append(0.88 if d > 0.01 else (1.12 if d < -0.01 else 1.0))
+            likelihoods.append(lr_dxy_up if d > 0.01 else (lr_dxy_down if d < -0.01 else 1.0))
 
-        # 7. NASDAQ波动率
-        if not pd.isna(row.get("NASDAQ_vol20")):
-            v = row["NASDAQ_vol20"]
-            likelihoods.append(0.85 if v > 0.25 else (1.10 if v < 0.15 else 1.0))
+        # 8. 指数波动率
+        if not pd.isna(row.get(f"{index}_vol20")):
+            v = row[f"{index}_vol20"]
+            likelihoods.append(lr_vol_high if v > 0.25 else (lr_vol_low if v < 0.15 else 1.0))
 
-        # 8. NASDAQ RSI
-        if not pd.isna(row.get("NASDAQ_rsi")):
-            rsi = row["NASDAQ_rsi"]
-            likelihoods.append(0.85 if rsi > 75 else (1.10 if rsi < 35 else 1.0))
+        # 9. 指数 RSI
+        if not pd.isna(row.get(f"{index}_rsi")):
+            rsi = row[f"{index}_rsi"]
+            likelihoods.append(lr_rsi_ob if rsi > 75 else (lr_rsi_os if rsi < 35 else 1.0))
 
         prob = bayesian_update(prior, likelihoods)
 
-        # Actual NASDAQ daily return (simple %) for prediction accuracy
-        raw_ret = ret["NASDAQ"].get(ts, float("nan"))
-        actual_ret = round(float((prices["NASDAQ"].get(ts, float("nan")) /
-                                  prices["NASDAQ"].shift(1).get(ts, float("nan")) - 1) * 100), 3) \
-                     if ts in prices.index and ts in prices.shift(1).index else None
-        try:
-            if actual_ret is None or (isinstance(actual_ret, float) and (actual_ret != actual_ret)):
-                actual_ret = None
-        except Exception:
-            actual_ret = None
+        # 当日实际收益（%），用于预测准确率展示
+        ar = idx_pct.get(ts)
+        actual_ret = round(float(ar), 3) if ar is not None and not pd.isna(ar) else None
 
         records[ts.strftime("%Y-%m-%d")] = {
             "prob":         round(prob, 4),
@@ -306,11 +412,11 @@ def compute_daily_signals(prices, ret, tech):
             "prior":        round(prior, 4),
             "holiday_lr":   round(_holiday_lr(ts), 4),
             "cal_lr":       round(_calendar_anomaly_lr(ts), 4),
-            "nasdaq_ma200": int(row.get("NASDAQ_above_ma200", 0)),
+            "nasdaq_ma200": int(row.get(f"{index}_above_ma200", 0)),
             "btc_mom20":    round(float(row.get("BTC_mom20", 0) or 0), 4),
             "dxy_trend":    round(float(row.get("dxy_trend", 0) or 0), 4),
-            "nasdaq_vol":   round(float(row.get("NASDAQ_vol20", 0) or 0), 4),
-            "nasdaq_rsi":   round(float(row.get("NASDAQ_rsi", 0) or 0), 1),
+            "nasdaq_vol":   round(float(row.get(f"{index}_vol20", 0) or 0), 4),
+            "nasdaq_rsi":   round(float(row.get(f"{index}_rsi", 0) or 0), 1),
             "ret":          actual_ret,
         }
 
@@ -331,16 +437,26 @@ def compute_current_signal(base_prob, event_keys):
 # ── 主流程 ────────────────────────────────────────────────────────
 def build():
     print("加载数据...")
-    prices = pd.read_csv(RAW_DIR / "combined_prices.csv",
-                         index_col="Date", parse_dates=True).ffill()
+    raw = pd.read_csv(RAW_DIR / "combined_prices.csv",
+                      index_col="Date", parse_dates=True)
+    prices = raw.ffill()
     ret = np.log(prices / prices.shift(1)).dropna()
-    tech = compute_technical_signals(prices, ret)
+    # 技术因子整体后移1天：当天的信号只能用前一天收盘算出的指标，
+    # 否则「信号 vs 当日收益」的对比存在同日前视偏差
+    tech = compute_technical_signals(prices, ret).shift(1)
 
-    print("计算每日信号...")
-    signals = compute_daily_signals(prices, ret, tech)
+    # 两套独立信号流：纳指用自己的先验和技术因子，标普用自己的
+    streams = {}
+    for index, priors in [("NASDAQ", NASDAQ_PRIOR), ("SP500", SP500_PRIOR)]:
+        # 该指数真实交易日（ffill 之前记录，避免把 BTC 的周末行算进来）
+        trading_days = raw[index].dropna().index
+        print(f"计算 {index} 每日信号...")
+        streams[index] = compute_daily_signals(
+            prices, ret, tech, trading_days, index=index, priors=priors)
 
-    # 当前基准概率（最新一天）
-    latest = list(signals.values())[-1]
+    signals   = streams["NASDAQ"]
+    latest    = list(signals.values())[-1]
+    sp_latest = list(streams["SP500"].values())[-1]
     base_prob = latest["prob"]
 
     # 输出事件调整表
@@ -349,19 +465,29 @@ def build():
 
     output = {
         "generated": pd.Timestamp.now().strftime("%Y-%m-%d"),
+        "model_version": MODEL_VERSION,
+        # 兼容字段：latest_* 指 NASDAQ 主信号流
         "latest_prob": round(base_prob, 4),
         "latest_tier": _tier(base_prob),
+        "indices": {
+            "NASDAQ": {"prob": latest["prob"],    "tier": latest["tier"],
+                       "date": list(signals)[-1]},
+            "SP500":  {"prob": sp_latest["prob"], "tier": sp_latest["tier"],
+                       "date": list(streams["SP500"])[-1]},
+        },
         "event_adjustments": EVENT_ADJUSTMENTS,
         "event_probs": event_table,
         "daily_signals": signals,
+        # SP500 流只保留核心字段（诊断字段前端只对 NASDAQ 流展示），控制文件体积
+        "daily_signals_sp500": {
+            d: {"prob": s["prob"], "tier": s["tier"], "ret": s["ret"]}
+            for d, s in streams["SP500"].items()
+        },
     }
 
-    out = WEB_DIR / "signals.json"
-    with open(out, "w", encoding="utf-8") as f:
-        json.dump(output, f, ensure_ascii=False, indent=2)
-
-    print(f"[OK] 信号已写入 {out}  ({len(signals)} 天)")
-    print(f"  当前基准概率: {base_prob*100:.1f}%  第{_tier(base_prob)}档")
+    print(f"[OK] 信号计算完成 (NASDAQ {len(signals)} 天 / SP500 {len(streams['SP500'])} 天)")
+    print(f"  NASDAQ: {base_prob*100:.1f}% 第{_tier(base_prob)}档 | "
+          f"SP500: {sp_latest['prob']*100:.1f}% 第{sp_latest['tier']}档")
     return output
 
 def build_timing_summary():
@@ -405,17 +531,20 @@ def build_timing_summary():
 
 DOW_CN = {0:"周一", 1:"周二", 2:"周三", 3:"周四", 4:"周五"}
 
-def find_next_opportunities(signals, n_days=45):
+def find_next_opportunities(signals, n_days=45, priors=None):
     """
     扫描未来 n_days 个自然日中的所有交易日，计算每天的贝叶斯概率。
     日历因子（星期/月/假日/税季）完全可预测；
     技术因子（MA/BTC/DXY/RSI）用最新一天值冻结（30天内通常不会突变）。
+    宏观事件日（CPI/FOMC）只做波动警示，不调方向概率。
 
     Returns:
         dict with top_entry (top 5 buy days), top_exit (5 weakest days),
         and all_forecast (full list sorted by date).
     """
-    today = date.today()
+    if priors is None:
+        priors = MONTHLY_PRIOR
+    today = us_today()
 
     # 从最新信号提取技术因子LR（冻结）
     latest = list(signals.values())[-1]
@@ -452,7 +581,7 @@ def find_next_opportunities(signals, n_days=45):
 
         ts = pd.Timestamp(d)
         month = ts.month
-        prior = MONTHLY_PRIOR[month]
+        prior = priors[month]
 
         cal_lrs = [
             DOW_LR.get(ts.weekday(), 1.0),
@@ -475,9 +604,14 @@ def find_next_opportunities(signals, n_days=45):
         cal_lr = _calendar_anomaly_lr(ts)
         if cal_lr > 1.10: reasons.append("税季/季初建仓")
         if cal_lr < 0.95: reasons.append("税损收割期")
-        month_prior = MONTHLY_PRIOR[month]
+        month_prior = priors[month]
         if month_prior >= 0.62: reasons.append(f"{month}月胜率高")
         if month_prior <= 0.50: reasons.append(f"{month}月胜率低")
+
+        # 宏观事件警示（CPI/FOMC：当日波动放大，方向无稳定偏向）
+        macro = MACRO_EVENTS.get(d.strftime("%Y-%m-%d"))
+        if macro:
+            reasons.append(f"⚠ {macro}·波动放大")
 
         forecast.append({
             "date":      d.strftime("%Y-%m-%d"),
@@ -491,6 +625,7 @@ def find_next_opportunities(signals, n_days=45):
             "wom_lr":    round(wom_lr, 4),
             "hol_lr":    round(hol_lr, 4),
             "cal_lr":    round(cal_lr, 4),
+            "macro":     macro,
             "reasons":   reasons,
         })
 
@@ -576,6 +711,88 @@ def load_holiday_effects():
         return {}
 
 
+def load_backtest():
+    """嵌入 backtest.py 的回测结果（如已运行）"""
+    try:
+        with open(PROC_DIR / "backtest_results.json", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def load_walk_forward():
+    """嵌入 walk_forward.py 的滚动验证汇总（如已运行）"""
+    try:
+        with open(PROC_DIR / "walk_forward_results.json", encoding="utf-8") as f:
+            wf = json.load(f)
+        tech = {k: v for k, v in wf.get("optimized_lr", {}).get("factors", {}).items()
+                if isinstance(v, dict) and "lr" in v}
+        return {
+            "folds": [
+                {
+                    "train": f["train"],
+                    "test":  f["test"],
+                    "baseline_wr": f["baseline_wr"],
+                    "tier4_wr":   f["performance"].get("tier4_plus", {}).get("win_rate"),
+                    "tier4_diff": f["performance"].get("tier4_plus", {}).get("diff"),
+                    "tier4_sig":  f["performance"].get("tier4_plus", {}).get("significant"),
+                }
+                for f in wf.get("folds", [])
+            ],
+            "summary": wf.get("summary", {}),
+            "optimized_lr_key_factors": {
+                k: {"lr": v["lr"], "wr": round(v["win_rate"]*100, 1), "n": v["n"]}
+                for k, v in tech.items()
+                if abs(v["lr"] - 1) > 0.02
+            },
+        }
+    except Exception:
+        return {}
+
+
+def load_calibration():
+    """从回测校准曲线构造「模型概率 → 实际20日胜率」映射点（用于校准显示）"""
+    try:
+        with open(PROC_DIR / "backtest_results.json", encoding="utf-8") as f:
+            bt = json.load(f)
+        bt = bt.get("NASDAQ", bt)   # 新格式按指数分组，旧格式为平铺
+        cal = bt.get("calibration_20d", [])
+        pts = sorted((c["prob_mid"], c["actual_wr_20d"] / 100)
+                     for c in cal if c.get("n", 0) >= 50)
+        return pts
+    except Exception:
+        return []
+
+
+def calibrate_prob(p, pts):
+    """分段线性插值：原始概率 → 历史同档位实际胜率"""
+    if not pts or p is None:
+        return None
+    xs = [x for x, _ in pts]
+    ys = [y for _, y in pts]
+    return round(float(np.interp(p, xs, ys)), 4)
+
+
+def load_live_tracking():
+    """嵌入实盘预测追踪汇总（track_predictions.py 生成）"""
+    try:
+        with open(PROC_DIR / "prediction_log_summary.json", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _clean(o):
+    """递归把 NaN/Inf 换成 null，保证输出是合法 JSON（前端无需再做正则修补）"""
+    if isinstance(o, dict):
+        return {k: _clean(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [_clean(v) for v in o]
+    if isinstance(o, float) and (o != o or o in (float("inf"), float("-inf"))):
+        return None
+    return o
+
+
 if __name__ == "__main__":
     result = build()
 
@@ -586,8 +803,19 @@ if __name__ == "__main__":
     # 嵌入事件研究结果
     result["event_study"] = load_event_study()
 
-    # 未来最佳入场/离场窗口
-    result["next_opportunities"] = find_next_opportunities(result["daily_signals"], n_days=45)
+    # 未来最佳入场/离场窗口（两个指数各一份）
+    result["next_opportunities"] = find_next_opportunities(
+        result["daily_signals"], n_days=45, priors=NASDAQ_PRIOR)
+    result["next_opportunities_sp500"] = find_next_opportunities(
+        result["daily_signals_sp500"], n_days=45, priors=SP500_PRIOR)
+
+    # 宏观事件日历（未来90天内的 CPI/FOMC，以美东日期为准）
+    _today = us_today()
+    result["macro_calendar"] = [
+        {"date": d, "label": lbl}
+        for d, lbl in sorted(MACRO_EVENTS.items())
+        if _today <= date.fromisoformat(d) <= _today + timedelta(days=90)
+    ]
 
     # 年份规律统计
     result["year_patterns"] = load_year_patterns()
@@ -595,7 +823,30 @@ if __name__ == "__main__":
     # 假日效应详细统计
     result["holiday_detail"] = load_holiday_effects()
 
+    # 回测与滚动验证（唯一写入者：其他脚本只写 processed/，由这里统一嵌入）
+    backtest = load_backtest()
+    if backtest:
+        result["backtest"] = backtest
+    walk_forward = load_walk_forward()
+    if walk_forward:
+        result["walk_forward"] = walk_forward
+
+    # 概率校准：原始概率 → 历史同档位实际20日胜率
+    cal_pts = load_calibration()
+    if cal_pts:
+        result["calibration_points"] = [{"prob": x, "actual_wr": y} for x, y in cal_pts]
+        for idx in result.get("indices", {}):
+            result["indices"][idx]["prob_cal"] = calibrate_prob(
+                result["indices"][idx]["prob"], cal_pts)
+
+    # 实盘预测追踪
+    tracking = load_live_tracking()
+    if tracking:
+        result["live_tracking"] = tracking
+
     out = WEB_DIR / "signals.json"
     with open(out, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-    print("[OK] signals.json 已更新（含买卖时机）")
+        json.dump(_clean(result), f, ensure_ascii=False,
+                  separators=(",", ":"), allow_nan=False)
+    print(f"[OK] signals.json 已更新（含买卖时机/回测/滚动验证，"
+          f"{out.stat().st_size//1024}KB）")

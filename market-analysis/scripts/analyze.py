@@ -20,7 +20,14 @@ def load():
     return df[ASSETS].dropna(how="all")
 
 def pct_returns(df):
-    return df.pct_change().dropna()
+    """按资产各自的有效行情计算收益，再对齐到 NASDAQ 交易日。
+
+    不能直接 df.pct_change().dropna()：ETH 2017 年才有数据，整行 dropna
+    会把 2017 年之前所有 NASDAQ 历史一起丢掉；BTC 的周末行还会给
+    NASDAQ 制造大量 0% 假收益。
+    """
+    ret = pd.DataFrame({a: df[a].dropna().pct_change() for a in df.columns})
+    return ret.reindex(df["NASDAQ"].dropna().index)
 
 # ── 1. 全期相关性矩阵 ─────────────────────────────────────────────
 def full_correlation(ret):
@@ -34,14 +41,17 @@ def rolling_correlation(ret, window=90):
     result = pd.DataFrame(index=ret.index)
     base = "NASDAQ"
     for col in [c for c in ASSETS if c != base]:
-        result[f"NASDAQ_vs_{col}"] = ret[base].rolling(window).corr(ret[col])
+        # 成对取双方都有数据的日子再滚动，避免零星缺口把整个窗口变 NaN
+        pair = ret[[base, col]].dropna()
+        result[f"NASDAQ_vs_{col}"] = pair[base].rolling(window).corr(pair[col])
     result.to_csv(PROC_DIR / "rolling_correlation_90d.csv")
     print("✓ 滚动90天相关性")
     return result
 
 # ── 3. 月度收益统计 ───────────────────────────────────────────────
 def monthly_stats(ret):
-    monthly = (1 + ret).resample("ME").prod() - 1
+    # min_count=1：资产尚未上市的月份保持 NaN，而不是变成 0% 假收益
+    monthly = (1 + ret).resample("ME").prod(min_count=1) - 1
     rows = []
     for asset in ASSETS:
         s = monthly[asset].dropna()
@@ -63,7 +73,9 @@ def monthly_stats(ret):
 
 # ── 4. 年度收益（按资产） ─────────────────────────────────────────
 def annual_returns(prices):
-    annual = prices.resample("YE").last().pct_change().dropna()
+    # dropna(how="all") 而非 dropna()：ETH 2017 年才有数据，
+    # 整行 dropna 会把更早年份的 NASDAQ 年度收益全部丢掉
+    annual = prices.resample("YE").last().pct_change().dropna(how="all")
     annual.index = annual.index.year
     annual.index.name = "year"
     annual.to_csv(PROC_DIR / "annual_returns.csv")
@@ -160,8 +172,8 @@ def run_all():
     full_correlation(ret)
     rolling_correlation(ret)
     monthly_stats(ret)
-    annual_returns(prices)
-    presidential_cycle(annual_returns(prices))
+    annual = annual_returns(prices)
+    presidential_cycle(annual)
     volatility_regimes(ret)
     halving_analysis(prices)
     black_swan_analysis(prices)

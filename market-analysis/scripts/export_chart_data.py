@@ -1,10 +1,10 @@
 """
 export_chart_data.py
-把所有图表所需数据打包成 docs/ 下的 JSON 文件，解决 GitHub Pages 无法访问 data/ 目录的问题。
+把所有图表所需数据打包成 web/ 下的 JSON 文件（run_all.py 会统一镜像到部署目录 docs/）。
 
 输出：
-  docs/prices.json       — 归一化价格走势（周采样，2015+）
-  docs/charts_extra.json — 相关性/GARCH/Granger/月度/年度数据
+  web/prices.json       — 归一化价格走势（周采样，2015+）
+  web/charts_extra.json — 相关性/GARCH/Granger/月度/年度数据
 """
 
 import pandas as pd
@@ -14,8 +14,8 @@ from pathlib import Path
 
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
-DOCS_DIR = Path(__file__).parent.parent.parent / "docs"
-DOCS_DIR.mkdir(exist_ok=True)
+WEB_DIR  = Path(__file__).parent.parent / "web"
+WEB_DIR.mkdir(exist_ok=True)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -65,7 +65,7 @@ def export_prices():
         print(f"  {asset}: {len(col)} 周，起点 {first_valid.date()}")
 
     out = {"dates": dates, "assets": series}
-    path = DOCS_DIR / "prices.json"
+    path = WEB_DIR / "prices.json"
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     print(f"  -> {path}  ({path.stat().st_size // 1024} KB)\n")
@@ -146,7 +146,7 @@ def export_charts_extra():
         out["dom_stats"] = nd.to_dict(orient="records")
         print(f"  dom_stats: {len(nd)} 行")
 
-    path = DOCS_DIR / "charts_extra.json"
+    path = WEB_DIR / "charts_extra.json"
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     print(f"  -> {path}  ({path.stat().st_size // 1024} KB)\n")
@@ -156,4 +156,4 @@ def export_charts_extra():
 if __name__ == "__main__":
     export_prices()
     export_charts_extra()
-    print("[OK] 所有图表数据已导出到 docs/")
+    print("[OK] 所有图表数据已导出到 web/")

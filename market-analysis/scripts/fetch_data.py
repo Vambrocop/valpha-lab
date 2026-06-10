@@ -10,6 +10,7 @@ import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 from pathlib import Path
+from datetime import date, timedelta
 
 RAW_DIR = Path(__file__).parent.parent / "data" / "raw"
 RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -32,7 +33,23 @@ TICKERS = {
 }
 
 START = "2000-01-01"   # 含2000年互联网泡沫 + 2008年金融危机
-END   = "2026-06-05"
+END   = (date.today() + timedelta(days=1)).isoformat()  # 永远取到最新一天
+
+# ── 个股观察池：七姐妹 + 优质龙头（可自行增删）──────────────────
+STOCK_TICKERS = {
+    "AAPL":  "AAPL",   # 苹果
+    "MSFT":  "MSFT",   # 微软
+    "GOOGL": "GOOGL",  # 谷歌
+    "AMZN":  "AMZN",   # 亚马逊
+    "NVDA":  "NVDA",   # 英伟达
+    "META":  "META",   # Meta
+    "TSLA":  "TSLA",   # 特斯拉
+    "AVGO":  "AVGO",   # 博通
+    "TSM":   "TSM",    # 台积电
+    "COST":  "COST",   # 好市多
+    "LLY":   "LLY",    # 礼来
+    "BRK-B": "BRK-B",  # 伯克希尔
+}
 
 def _get_close(ticker, name):
     df = yf.download(ticker, start=START, end=END, auto_adjust=True, progress=False)
@@ -73,7 +90,7 @@ def fetch_fred():
         try:
             print(f"  下载 {name} (FRED:{series})...")
             url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}"
-            r = requests.get(url, timeout=15)
+            r = requests.get(url, timeout=30)
             r.raise_for_status()
             df = pd.read_csv(io.StringIO(r.text))
             df.columns = ["Date", name]
@@ -85,7 +102,14 @@ def fetch_fred():
             df.to_csv(RAW_DIR / f"{name}.csv")
             print(f"    → {len(df)} 行（月频）")
         except Exception as e:
-            print(f"    ⚠ {name} 失败: {e}")
+            # 下载失败时回退到上次缓存的 CSV，保证 combined_prices 列不缺失
+            cache = RAW_DIR / f"{name}.csv"
+            if cache.exists():
+                df = pd.read_csv(cache, index_col="Date", parse_dates=True).squeeze()
+                frames[name] = df.astype(float)
+                print(f"    ⚠ {name} 下载失败，使用缓存（截至 {df.index[-1].date()}）: {e}")
+            else:
+                print(f"    ⚠ {name} 失败且无缓存: {e}")
     return frames
 
 # ── 合并所有数据（日频，月频向前填充） ────────────────────────────
@@ -110,11 +134,29 @@ def merge_all(yahoo_frames, fred_frames):
     print(f"\n合并完成 → {RAW_DIR / 'combined_prices.csv'}  ({combined.shape})")
     return combined
 
+def fetch_stocks():
+    """个股观察池单独存 stocks_prices.csv，不混入 combined_prices（宏观/指数数据集）"""
+    print("\n=== 个股观察池 ===")
+    frames = {}
+    for name, ticker in STOCK_TICKERS.items():
+        print(f"  下载 {name} ({ticker})...")
+        s = _get_close(ticker, name)
+        if s is not None:
+            frames[name] = s
+            print(f"    → {len(s)} 行")
+    if frames:
+        df = pd.concat(list(frames.values()), axis=1).sort_index()
+        df.index.name = "Date"
+        df.to_csv(RAW_DIR / "stocks_prices.csv")
+        print(f"  → stocks_prices.csv  ({df.shape})")
+    return frames
+
 def fetch_all():
     print("=== Yahoo Finance ===")
     yahoo = fetch_yahoo()
     print("\n=== FRED 宏观数据 ===")
     fred  = fetch_fred()
+    fetch_stocks()
     return merge_all(yahoo, fred)
 
 if __name__ == "__main__":

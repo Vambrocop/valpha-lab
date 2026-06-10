@@ -70,13 +70,33 @@ def build_feature_df():
     print("构建特征数据集...")
     prices = pd.read_csv(RAW_DIR / "combined_prices.csv",
                          index_col="Date", parse_dates=True).ffill()
-    sp_long = pd.read_csv(RAW_DIR / "SP500_long.csv",
+    # 特征基于纳指 → 前向收益也用纳指（不再用标普验证纳指信号）
+    sp_long = pd.read_csv(RAW_DIR / "NASDAQ_COMP_long.csv",
                           index_col=0, parse_dates=True).squeeze().dropna()
     sp_long = sp_long[sp_long > 0].sort_index()
 
     # 日频收益
     ret = prices.pct_change()
-    sp_ret = ret["SP500"].dropna()
+
+    # ── 预计算所有滚动指标（循环内只做索引，避免 O(n²)）──────────
+    ind = {}
+    for asset in ["NASDAQ", "BTC", "DXY"]:
+        if asset not in prices.columns:
+            continue
+        p = prices[asset]
+        ind[asset] = {
+            "ma50":  p.rolling(50).mean(),
+            "ma200": p.rolling(200).mean(),
+            "r20":   p.pct_change(20),
+        }
+    rsi_nasdaq = vol_nasdaq = None
+    if "NASDAQ" in ret.columns:
+        r = ret["NASDAQ"]
+        gain = r.clip(lower=0).rolling(14).mean()
+        loss = (-r.clip(upper=0)).rolling(14).mean()
+        rsi_nasdaq = 100 - 100 / (1 + gain / (loss + 1e-10))
+        vol_nasdaq = r.rolling(20).std() * np.sqrt(252)
+    dxy_tr = prices["DXY"].pct_change(20) if "DXY" in prices.columns else None
 
     rows = []
     dates = prices.index
@@ -95,37 +115,25 @@ def build_feature_df():
         # ── 技术特征（二值化）────────────────────────────────────
         feats = {}
 
-        for asset in ["NASDAQ", "BTC", "DXY"]:
-            if asset not in prices.columns:
-                continue
+        for asset, d in ind.items():
             p = prices[asset]
-            ma50  = p.rolling(50).mean()
-            ma200 = p.rolling(200).mean()
-            r20   = p.pct_change(20)
-            rsi_r = ret[asset] if asset in ret.columns else pd.Series(dtype=float)
+            ma50, ma200, r20 = d["ma50"].iloc[i], d["ma200"].iloc[i], d["r20"].iloc[i]
+            feats[f"{asset}_above_ma200"] = int(p.iloc[i] > ma200) if not pd.isna(ma200) else None
+            feats[f"{asset}_above_ma50"]  = int(p.iloc[i] > ma50)  if not pd.isna(ma50)  else None
+            feats[f"{asset}_mom20_pos"]   = int(r20 > 0.05)  if not pd.isna(r20) else None
+            feats[f"{asset}_mom20_neg"]   = int(r20 < -0.05) if not pd.isna(r20) else None
 
-            feats[f"{asset}_above_ma200"] = int(p.iloc[i] > ma200.iloc[i]) if not pd.isna(ma200.iloc[i]) else None
-            feats[f"{asset}_above_ma50"]  = int(p.iloc[i] > ma50.iloc[i])  if not pd.isna(ma50.iloc[i])  else None
-            feats[f"{asset}_mom20_pos"]   = int(r20.iloc[i] > 0.05) if not pd.isna(r20.iloc[i]) else None
-            feats[f"{asset}_mom20_neg"]   = int(r20.iloc[i] < -0.05) if not pd.isna(r20.iloc[i]) else None
+        if rsi_nasdaq is not None:
+            rv = rsi_nasdaq.iloc[i]
+            feats["nasdaq_rsi_overbought"] = int(rv > 75) if not pd.isna(rv) else None
+            feats["nasdaq_rsi_oversold"]   = int(rv < 35) if not pd.isna(rv) else None
+        if vol_nasdaq is not None:
+            vv = vol_nasdaq.iloc[i]
+            feats["nasdaq_high_vol"] = int(vv > 0.25) if not pd.isna(vv) else None
+            feats["nasdaq_low_vol"]  = int(vv < 0.15) if not pd.isna(vv) else None
 
-            if asset == "NASDAQ" and len(rsi_r) > 0:
-                gain = rsi_r.clip(lower=0).rolling(14).mean()
-                loss = (-rsi_r.clip(upper=0)).rolling(14).mean()
-                rsi  = 100 - 100 / (1 + gain / (loss + 1e-10))
-                rv   = rsi.iloc[i] if i < len(rsi) else np.nan
-                feats["nasdaq_rsi_overbought"] = int(rv > 75) if not pd.isna(rv) else None
-                feats["nasdaq_rsi_oversold"]   = int(rv < 35) if not pd.isna(rv) else None
-
-            if asset == "NASDAQ":
-                vol20 = ret[asset].rolling(20).std() * np.sqrt(252) if asset in ret.columns else pd.Series()
-                vv = vol20.iloc[i] if i < len(vol20) else np.nan
-                feats["nasdaq_high_vol"] = int(vv > 0.25) if not pd.isna(vv) else None
-                feats["nasdaq_low_vol"]  = int(vv < 0.15) if not pd.isna(vv) else None
-
-        if "DXY" in prices.columns:
-            dxy_tr = prices["DXY"].pct_change(20)
-            dv = dxy_tr.iloc[i] if i < len(dxy_tr) else np.nan
+        if dxy_tr is not None:
+            dv = dxy_tr.iloc[i]
             feats["dxy_rising"]  = int(dv > 0.01)  if not pd.isna(dv) else None
             feats["dxy_falling"] = int(dv < -0.01) if not pd.isna(dv) else None
 
@@ -183,7 +191,8 @@ CALENDAR_FEATURES = {
 def learn_lrs(train_df):
     """从训练集经验性地估计每个特征的LR"""
     base_wr = float(train_df["fwd_up_20d"].mean())
-    learned = {"base_win_rate": round(base_wr, 4), "factors": {}}
+    learned = {"base_win_rate": round(base_wr, 4),
+               "n_total": int(len(train_df)), "factors": {}}
 
     # 技术因子（二值）
     for col, name in BINARY_FEATURES:
@@ -243,15 +252,18 @@ def score_row(row, lrs_dict):
     likelihoods.append(w_lr)
 
     # 技术因子 LR
+    n_total = lrs_dict.get("n_total", 0)
     for col, _ in BINARY_FEATURES:
         val = row.get(col)
         if val == 1 and col in factors:
             likelihoods.append(factors[col]["lr"])
         elif val == 0 and col in factors:
-            # 反面：wr_neg ≈ 2*base - wr_pos（近似）
-            inv_wr = 2 * base_wr - factors[col]["win_rate"]
-            inv_lr = inv_wr / base_wr if base_wr > 0 else 1.0
-            likelihoods.append(max(inv_lr, 0.5))
+            # 反面：由全概率公式精确还原 wr_neg = (base - p1*wr_pos) / (1-p1)
+            p1 = factors[col]["n"] / n_total if n_total > 0 else 0.5
+            if p1 < 1.0:
+                inv_wr = (base_wr - p1 * factors[col]["win_rate"]) / (1 - p1)
+                inv_lr = inv_wr / base_wr if base_wr > 0 else 1.0
+                likelihoods.append(max(inv_lr, 0.5))
 
     return bayesian_prob(base_wr, likelihoods)
 
@@ -372,6 +384,7 @@ def run():
         "folds": fold_results,
         "optimized_lr": optimized_lrs,
         "summary": {
+            "index":   "NASDAQ",
             "n_folds": len(fold_results),
             "mean_tier4_advantage_pp": round(float(np.mean(tier4_diffs)), 2) if tier4_diffs else None,
             "n_significant_folds":     sum(tier4_sigs),
@@ -382,36 +395,7 @@ def run():
     out = PROC_DIR / "walk_forward_results.json"
     with open(out, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
-    print(f"\n[OK] 结果写入 {out}")
-
-    # 把汇总嵌入 signals.json
-    sig_path = WEB_DIR / "signals.json"
-    with open(sig_path, encoding="utf-8") as f:
-        sig_data = json.load(f)
-
-    sig_data["walk_forward"] = {
-        "folds": [
-            {
-                "train": f["train"],
-                "test":  f["test"],
-                "baseline_wr": f["baseline_wr"],
-                "tier4_wr":   f["performance"].get("tier4_plus", {}).get("win_rate"),
-                "tier4_diff": f["performance"].get("tier4_plus", {}).get("diff"),
-                "tier4_sig":  f["performance"].get("tier4_plus", {}).get("significant"),
-            }
-            for f in fold_results
-        ],
-        "summary": output["summary"],
-        "optimized_lr_key_factors": {
-            k: {"lr": v["lr"], "wr": round(v["win_rate"]*100,1), "n": v["n"]}
-            for k, v in tech.items()
-            if abs(v["lr"] - 1) > 0.02
-        },
-    }
-
-    with open(sig_path, "w", encoding="utf-8") as f:
-        json.dump(sig_data, f, ensure_ascii=False, indent=2)
-    print(f"[OK] walk_forward 写入 signals.json")
+    print(f"\n[OK] 结果写入 {out}（重跑 build_signals.py 后嵌入 signals.json）")
 
     return output
 

@@ -12,7 +12,8 @@ backtest.py — 贝叶斯信号系统历史回测验证
   5. t检验：各档位与基准的差异是否显著
 
 输出：
-  web/signals.json 中的 backtest 字段
+  data/processed/backtest_results.json
+  （由 build_signals.py 嵌入 signals.json 的 backtest 字段）
 """
 
 import pandas as pd
@@ -28,23 +29,17 @@ WEB_DIR  = Path(__file__).parent.parent / "web"
 HORIZONS = [1, 5, 10, 20, 30]   # 前向天数
 
 
-def run_backtest():
-    print("=== 贝叶斯信号回测验证 ===\n")
-
-    # ── 加载信号 ──────────────────────────────────────────────────
-    sig_path = WEB_DIR / "signals.json"
-    with open(sig_path, encoding="utf-8") as f:
-        sig_data = json.load(f)
-    daily = sig_data["daily_signals"]
+def run_backtest(daily, long_csv, label):
+    """用「信号对应指数自身」的长历史验证（纳指信号→纳指收益，标普→标普）"""
+    print(f"=== 贝叶斯信号回测验证（{label}）===\n")
     print(f"  信号数量：{len(daily)} 天")
 
-    # ── 加载 S&P 500（长历史，1928+）──────────────────────────────
-    sp_path = RAW_DIR / "SP500_long.csv"
-    sp = pd.read_csv(sp_path, index_col=0, parse_dates=True).squeeze()
+    # ── 加载该指数长历史 ──────────────────────────────────────────
+    sp = pd.read_csv(RAW_DIR / long_csv, index_col=0, parse_dates=True).squeeze()
     sp = sp.sort_index().dropna()
     # 只保留日频价格（去掉非交易日的 NaN）
     sp = sp[sp > 0]
-    print(f"  S&P 500：{sp.index[0].date()} – {sp.index[-1].date()}，{len(sp)} 行\n")
+    print(f"  {label}：{sp.index[0].date()} – {sp.index[-1].date()}，{len(sp)} 行\n")
 
     # ── 构建每日记录 ───────────────────────────────────────────────
     records = []
@@ -76,7 +71,14 @@ def run_backtest():
     df = pd.DataFrame(records).dropna(subset=[f"ret_{h}d" for h in HORIZONS])
     print(f"  可回测记录：{len(df)} 天（含完整前向数据）\n")
 
-    results = {}
+    results = {
+        # 方法论提示：前向窗口逐日采样，相邻样本高度重叠（20日窗口共享19天），
+        # 有效样本量约为名义值的1/20，p值偏乐观；显著性仅作参考。
+        # 另注意：先验/LR由全历史估计，本回测属样本内验证；
+        # 真实样本外表现以 walk_forward 结果为准。
+        "index": label,
+        "method_note": "样本内验证；重叠窗口t检验p值偏乐观，样本外表现见walk_forward",
+    }
 
     # ── 1. 全样本基准 ──────────────────────────────────────────────
     print("=== 基准（全样本）===")
@@ -194,16 +196,20 @@ def run_backtest():
 
 
 if __name__ == "__main__":
-    results = run_backtest()
-
-    # 把回测结果嵌入 signals.json
-    sig_path = WEB_DIR / "signals.json"
-    with open(sig_path, encoding="utf-8") as f:
+    with open(WEB_DIR / "signals.json", encoding="utf-8") as f:
         sig_data = json.load(f)
 
-    sig_data["backtest"] = results
+    results = {
+        "NASDAQ": run_backtest(sig_data["daily_signals"],
+                               "NASDAQ_COMP_long.csv", "NASDAQ"),
+    }
+    sp_daily = sig_data.get("daily_signals_sp500")
+    if sp_daily:
+        results["SP500"] = run_backtest(sp_daily, "SP500_long.csv", "SP500")
 
-    with open(sig_path, "w", encoding="utf-8") as f:
-        json.dump(sig_data, f, ensure_ascii=False, indent=2)
+    # 写入 processed/，由 build_signals.py 统一嵌入 signals.json
+    out = PROC_DIR / "backtest_results.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
 
-    print(f"\n[OK] 回测结果已写入 signals.json")
+    print(f"\n[OK] 回测结果已写入 {out}（重跑 build_signals.py 后生效）")

@@ -1,7 +1,8 @@
 """
 build_dashboard.py
 生成单页HTML仪表盘，可直接托管到 GitHub Pages
-运行：python build_dashboard.py → ../web/index.html
+运行：python build_dashboard.py → ../web/charts.html
+（旧版9图统计页；主仪表盘 web/index.html 为手工维护，勿用脚本覆盖）
 """
 
 import pandas as pd
@@ -322,9 +323,11 @@ def build_html():
 </body>
 </html>"""
 
-    out = WEB_DIR / "index.html"
+    # 注意：写 charts.html 而不是 index.html！
+    # web/index.html 是手工维护的主仪表盘，曾经被这个脚本覆盖过
+    out = WEB_DIR / "charts.html"
     out.write_text(html, encoding="utf-8")
-    print(f"✓ 仪表盘生成：{out}")
+    print(f"✓ 旧版统计图表页生成：{out}")
     return out
 
 if __name__ == "__main__":

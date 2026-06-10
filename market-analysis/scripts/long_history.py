@@ -37,7 +37,8 @@ def download_long_history():
     frames = {}
     for name, ticker in tickers.items():
         try:
-            df = yf.download(ticker, start="1920-01-01", end="2026-06-05",
+            df = yf.download(ticker, start="1920-01-01",
+                             end=(pd.Timestamp.today() + pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
                              auto_adjust=True, progress=False)
             if df.empty:
                 print(f"  ⚠ {name} 无数据"); continue

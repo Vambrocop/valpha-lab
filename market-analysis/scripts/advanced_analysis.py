@@ -248,7 +248,11 @@ def build_features(prices, ret):
     df["is_monday"]     = (df.index.dayofweek == 0).astype(int)
 
     # 目标变量：NASDAQ下个月是否上涨
-    df["target"] = (ret["NASDAQ"].shift(-20).rolling(20).sum() > 0).astype(int)
+    # 先剔除前向窗口不完整的尾部行：NaN > 0 会变成 False，
+    # 直接 astype(int) 会把最后约40行错误标成「下跌」且 dropna 查不出来
+    fwd = ret["NASDAQ"].shift(-20).rolling(20).sum().reindex(df.index)
+    df = df[fwd.notna()].copy()
+    df["target"] = (fwd[fwd.notna()] > 0).astype(int)
 
     return df.dropna()
 
