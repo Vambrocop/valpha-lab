@@ -2524,6 +2524,30 @@ function etToLocalStr(h, m) {
 }
 
 // ═══════════════════════════════════════════════════════
+//  每日盘后简报（brief.json，云端规则化生成）
+// ═══════════════════════════════════════════════════════
+async function loadBriefPanel() {
+  const el = document.getElementById("brief-content");
+  if (!el) return;
+  try {
+    const r = await fetch("brief.json?_=" + Date.now());
+    const b = await r.json();
+    const up = document.getElementById("brief-updated");
+    if (up && b.generated) up.textContent = `生成于 ${b.generated} · 模型v${b.model_version||""}`;
+    el.innerHTML = (b.lines || []).map(l => {
+      const m = l.match(/^【(.+?)】(.*)$/);
+      if (!m) return `<div>${l}</div>`;
+      const warn = m[2].includes("⚠");
+      return `<div style="padding:.18rem 0;">
+        <span style="color:var(--muted);font-size:0.72rem;">【${m[1]}】</span>
+        <span style="${warn ? "color:#e67e22;" : ""}">${m[2]}</span></div>`;
+    }).join("");
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--muted)">简报未生成（跑一次流水线即可）</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
 //  今日市场要闻（news.json，由 AI 监控循环 / 手工更新）
 // ═══════════════════════════════════════════════════════
 async function loadNewsPanel() {
@@ -2740,6 +2764,7 @@ init().then(() => {
   loadStocksPanel();
   loadOvernightPanel();
   loadNewsPanel();
+  loadBriefPanel();
   fetchFearAndGreed();
   safeRender(renderSPCXDetail,      "SPCXDetail");
   // Sync SPCX inputs with localStorage

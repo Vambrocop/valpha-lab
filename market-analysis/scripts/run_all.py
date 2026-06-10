@@ -33,6 +33,9 @@ steps = [
     ("信号嵌入回测结果",   "build_signals.py"),   # 第二遍：嵌入最新回测/验证/追踪
     ("导出图表数据",       "export_chart_data.py"),
     ("导出个股数据",       "export_stocks.py"),
+    ("市场要闻RSS",        "fetch_news.py"),
+    ("每日盘后简报",       "daily_brief.py"),
+    ("发布前自检",         "verify_output.py"),   # 失败则终止，不发布坏数据
 ]
 
 full_steps = [
