@@ -15,6 +15,7 @@ track_predictions.py — 实盘预测追踪（模型的"成绩单"）
 import pandas as pd
 import json
 from pathlib import Path
+from util_time import is_final_trading_day
 
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
@@ -42,10 +43,13 @@ def main():
     if "daily_signals_sp500" in sig:
         streams["SP500"] = sig["daily_signals_sp500"]
 
-    # ── 1. 追加最新预测 ───────────────────────────────────────────
+    # ── 1. 追加最新预测（只记官方收盘日的信号，盘中临时信号会抖动）──
     new_rows = []
     for idx, daily in streams.items():
-        d = list(daily)[-1]
+        finals = [k for k in daily if is_final_trading_day(k)]
+        if not finals:
+            continue
+        d = finals[-1]
         s = daily[d]
         # 注意 astype(str)：CSV 读回后 "2.0" 会变成浮点，直接比较永远 False
         dup = bool(len(log) and ((log["signal_date"].astype(str) == d) &
@@ -84,6 +88,10 @@ def main():
                 continue
             for h, col in [(1, "ret_1d"), (5, "ret_5d"), (20, "ret_20d")]:
                 if pd.isna(r[col]) and p + h < len(s):
+                    # 终点必须是官方收盘价，否则盘中临时价会永久污染成绩单
+                    end_day = s.index[p + h].strftime("%Y-%m-%d")
+                    if not is_final_trading_day(end_day):
+                        continue
                     log.at[i, col] = round(float(s.iloc[p + h] / s.iloc[p] - 1) * 100, 3)
                     n_filled += 1
     if n_filled:

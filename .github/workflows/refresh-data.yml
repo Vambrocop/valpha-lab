@@ -14,6 +14,11 @@ permissions:
   contents: write
   issues: write   # 信号告警建 Issue → GitHub 自动邮件通知
 
+# 同一时间只跑一个实例：防止小时任务互相踩、与本地推送竞争
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -53,4 +58,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet || git commit -m "chore: auto-refresh market data [skip ci]"
-          git push
+          # 远端可能有本地推送的新提交：rebase 后再推，失败重试一次
+          git pull --rebase --autostash origin main || true
+          git push || (git pull --rebase --autostash origin main && git push)

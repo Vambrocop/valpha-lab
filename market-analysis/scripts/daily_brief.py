@@ -29,6 +29,8 @@ def main():
     perf = []
     for name, label in [("NASDAQ", "纳指"), ("SP500", "标普"),
                         ("VIX", "VIX"), ("BTC", "BTC")]:
+        if name not in prices.columns:
+            continue
         s = prices[name].dropna()
         if len(s) < 2:
             continue
@@ -51,7 +53,12 @@ def main():
 
     # ── 3. 风险状态（VIX期限结构 + 波动率） ───────────────────────
     risk = []
-    v, v3 = prices["VIX"].dropna(), prices.get("VIX3M", pd.Series()).dropna()
+    # 成对对齐再取最后一行：两列分别 dropna 会比较不同日期的值（缓存回退时尤甚）
+    v = v3 = pd.Series(dtype=float)
+    if "VIX" in prices.columns and "VIX3M" in prices.columns:
+        pair = prices[["VIX", "VIX3M"]].dropna()
+        if len(pair):
+            v, v3 = pair["VIX"], pair["VIX3M"]
     if len(v) and len(v3):
         if v.iloc[-1] >= v3.iloc[-1]:
             risk.append(f"⚠ VIX期限结构倒挂（{v.iloc[-1]:.1f} ≥ {v3.iloc[-1]:.1f}）——恐慌状态，"

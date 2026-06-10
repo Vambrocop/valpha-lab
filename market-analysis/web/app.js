@@ -44,8 +44,7 @@ async function init() {
   try {
     const r = await fetch("signals.json?_=" + Date.now());
     const txt = await r.text();
-    // signals.json may contain NaN (invalid JSON) from Python's json.dump default
-    SIGNALS = JSON.parse(txt.replace(/:\s*NaN\b/g, ': null'));
+    SIGNALS = JSON.parse(txt);   // 后端已保证严格合法 JSON（_clean + allow_nan=False）
     const genDate = new Date(SIGNALS.generated);
     const daysDiff = Math.floor((Date.now() - genDate) / 86400000);
     const staleHtml = daysDiff > 3
@@ -111,12 +110,11 @@ function tier(p) {
 // ═══════════════════════════════════════════════════════
 //  日期选择器
 // ═══════════════════════════════════════════════════════
-// 用本地日期（不用 UTC），解决澳洲等 UTC+ 时区跨日问题
+// 交易日的「今天」一律以美东为准：澳洲/亚洲访问者本地日期比美国快一天，
+// 用本地日期会把还没发生的交易日当成今天（en-CA 格式正好是 YYYY-MM-DD）
 function localDateStr(d) {
-  d = d || new Date();
-  return d.getFullYear() + '-' +
-         String(d.getMonth()+1).padStart(2,'0') + '-' +
-         String(d.getDate()).padStart(2,'0');
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit" }).format(d || new Date());
 }
 
 function initDatePicker() {
@@ -1976,8 +1974,9 @@ function renderSentimentPanel() {
     </div>`;
   }
 
-  // VIX: annualize the 20-day realized vol to get a rough proxy
-  const vixProxy = nasVol ? +(nasVol * Math.sqrt(252) * 100).toFixed(1) : null;
+  // nasdaq_vol 在 build_signals 里已经年化过（std*sqrt252），这里只换百分比
+  // ——之前重复年化导致显示 276 并永远"极度恐慌"
+  const vixProxy = nasVol ? +(nasVol * 100).toFixed(1) : null;
   const vixZones = [
     {from:0,   to:15,  color:"#f1c40f", label:"过度乐观 ⚠️"},
     {from:15,  to:20,  color:"#2ecc71", label:"正常"},
@@ -2735,6 +2734,12 @@ async function loadReportPanel() {
 // ═══════════════════════════════════════════════════════
 //  今日市场要闻（news.json，由 AI 监控循环 / 手工更新）
 // ═══════════════════════════════════════════════════════
+// HTML 转义：RSS 标题来自外部源，必须当不可信数据处理（防 XSS）
+function esc(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 async function loadNewsPanel() {
   const el = document.getElementById("news-list");
   if (!el) return;
@@ -2755,9 +2760,9 @@ async function loadNewsPanel() {
       <div style="display:flex;gap:.45rem;align-items:flex-start;">
         <span style="color:${color};flex-shrink:0;">${sym}</span>
         <div>
-          <div style="font-weight:600;line-height:1.4;">${n.title}</div>
-          ${n.note ? `<div style="color:var(--muted);font-size:0.72rem;margin-top:.15rem;line-height:1.5;">${n.note}</div>` : ""}
-          <div style="color:var(--muted);font-size:0.65rem;margin-top:.15rem;">${n.time}${n.source ? " · " + n.source : ""}</div>
+          <div style="font-weight:600;line-height:1.4;">${esc(n.title)}</div>
+          ${n.note ? `<div style="color:var(--muted);font-size:0.72rem;margin-top:.15rem;line-height:1.5;">${esc(n.note)}</div>` : ""}
+          <div style="color:var(--muted);font-size:0.65rem;margin-top:.15rem;">${esc(n.time)}${n.source ? " · " + esc(n.source) : ""}</div>
         </div>
       </div>
     </div>`;

@@ -7,8 +7,11 @@ import json
 import sys
 import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-WEB_DIR = Path(__file__).parent.parent / "web"
+WEB_DIR  = Path(__file__).parent.parent / "web"
+PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
+US_TODAY = datetime.datetime.now(ZoneInfo("America/New_York")).date()
 errors = []
 
 
@@ -38,11 +41,15 @@ try:
                 if datetime.date.fromisoformat(k).weekday() >= 5]
     check(not weekends, f"无周末污染数据（发现 {len(weekends)} 条）")
     gen = datetime.date.fromisoformat(sig["generated"])
-    age = (datetime.date.today() - gen).days
-    check(age <= 4, f"数据新鲜（generated={sig['generated']}，{age}天前）")
+    age = (US_TODAY - gen).days
+    check(age <= 4, f"数据新鲜（generated={sig['generated']}，美东{age}天前）")
     last = max(sig["daily_signals"])
-    check((datetime.date.today() - datetime.date.fromisoformat(last)).days <= 6,
+    check((US_TODAY - datetime.date.fromisoformat(last)).days <= 6,
           f"信号覆盖到近期（最新 {last}）")
+    check(len(sig.get("macro_calendar", [])) > 0,
+          "宏观日历非空（空了说明 MACRO_EVENTS 需要补来年日程）")
+    vol = list(sig["daily_signals"].values())[-1].get("nasdaq_vol", 0)
+    check(0 <= vol < 1.5, f"波动率量纲正常（{vol}，应为年化小数）")
 except Exception as e:
     errors.append(f"signals.json 解析失败: {e}")
     print(f"  ✗ signals.json 解析失败: {e}")
@@ -57,6 +64,21 @@ for f in ["prices.json", "charts_extra.json", "stocks.json",
     except Exception as e:
         errors.append(f"{f} 非法: {e}")
         print(f"  ✗ {f} 非法: {e}")
+
+# 4. 账本完整性（append-only 数据的硬约束）
+try:
+    import csv
+    for fname, keys in [("paper_ledger.csv", ("date", "strategy")),
+                        ("prediction_log.csv", ("signal_date", "index", "model_version"))]:
+        p = PROC_DIR / fname
+        if p.exists():
+            with open(p, encoding="utf-8") as fh:
+                rows = list(csv.DictReader(fh))
+            seen = [tuple(str(r[k]) for k in keys) for r in rows]
+            dup = len(seen) - len(set(seen))
+            check(dup == 0, f"{fname} 无重复键（发现 {dup} 条重复）")
+except Exception as e:
+    errors.append(f"账本检查失败: {e}")
 
 if errors:
     print(f"\n[FAIL] {len(errors)} 项检查未通过，拒绝发布")

@@ -518,6 +518,8 @@ def build():
             d: {"prob": s["prob"], "tier": s["tier"], "ret": s["ret"]}
             for d, s in streams["SP500"].items()
         },
+        # 完整 SP500 记录（含技术因子）仅供后续内部计算用，序列化前弹出
+        "_sp500_full": streams["SP500"],
     }
 
     print(f"[OK] 信号计算完成 (NASDAQ {len(signals)} 天 / SP500 {len(streams['SP500'])} 天)")
@@ -581,24 +583,29 @@ def find_next_opportunities(signals, n_days=45, priors=None):
         priors = MONTHLY_PRIOR
     today = us_today()
 
-    # 从最新信号提取技术因子LR（冻结）
+    # 从最新信号提取技术因子LR（冻结）——与每日信号同源：经验LR（收缩后）
     latest = list(signals.values())[-1]
     tech_lrs = []
 
     nasdaq_ma200 = latest.get("nasdaq_ma200", 1)
-    tech_lrs.append(1.15 if nasdaq_ma200 == 1 else 0.85)
+    tech_lrs.append(_learned_on("NASDAQ_above_ma200", 1.15) if nasdaq_ma200 == 1
+                    else _learned_off("NASDAQ_above_ma200", 0.85))
 
     btc_mom = latest.get("btc_mom20", 0) or 0
-    tech_lrs.append(1.12 if btc_mom > 0.05 else (0.90 if btc_mom < -0.05 else 1.0))
+    tech_lrs.append(_learned_on("BTC_mom20_pos", 1.12) if btc_mom > 0.05
+                    else (_learned_on("BTC_mom20_neg", 0.90) if btc_mom < -0.05 else 1.0))
 
     dxy = latest.get("dxy_trend", 0) or 0
-    tech_lrs.append(0.88 if dxy > 0.01 else (1.12 if dxy < -0.01 else 1.0))
+    tech_lrs.append(_learned_on("dxy_rising", 0.88) if dxy > 0.01
+                    else (_learned_on("dxy_falling", 1.12) if dxy < -0.01 else 1.0))
 
     nasdaq_vol = latest.get("nasdaq_vol", 0.20) or 0.20
-    tech_lrs.append(0.85 if nasdaq_vol > 0.25 else (1.10 if nasdaq_vol < 0.15 else 1.0))
+    tech_lrs.append(_learned_on("nasdaq_high_vol", 0.85) if nasdaq_vol > 0.25
+                    else (_learned_on("nasdaq_low_vol", 1.10) if nasdaq_vol < 0.15 else 1.0))
 
     nasdaq_rsi = latest.get("nasdaq_rsi", 50) or 50
-    tech_lrs.append(0.85 if nasdaq_rsi > 75 else (1.10 if nasdaq_rsi < 35 else 1.0))
+    tech_lrs.append(_learned_on("nasdaq_rsi_overbought", 0.85) if nasdaq_rsi > 75
+                    else (_learned_on("nasdaq_rsi_oversold", 1.10) if nasdaq_rsi < 35 else 1.0))
 
     forecast = []
     d = today + timedelta(days=1)
@@ -839,10 +846,12 @@ if __name__ == "__main__":
     result["event_study"] = load_event_study()
 
     # 未来最佳入场/离场窗口（两个指数各一份，约半年=130个交易日）
+    # SP500 用完整记录（瘦身版没有技术因子，会退化成中性占位值）
+    _sp500_full = result.pop("_sp500_full", result["daily_signals_sp500"])
     result["next_opportunities"] = find_next_opportunities(
         result["daily_signals"], n_days=130, priors=NASDAQ_PRIOR)
     result["next_opportunities_sp500"] = find_next_opportunities(
-        result["daily_signals_sp500"], n_days=130, priors=SP500_PRIOR)
+        _sp500_full, n_days=130, priors=SP500_PRIOR)
 
     # 宏观事件日历（未来90天内的 CPI/FOMC，以美东日期为准）
     _today = us_today()

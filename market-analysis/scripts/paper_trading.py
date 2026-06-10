@@ -13,6 +13,7 @@ paper_trading.py — 多策略模拟盘（四个"基金经理"同台竞技）
 import pandas as pd
 import json
 from pathlib import Path
+from util_time import is_final_trading_day
 
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
@@ -37,7 +38,12 @@ def load_ledger():
     if LEDGER.exists():
         df = pd.read_csv(LEDGER)
         if "strategy" in df.columns:
-            return df.reindex(columns=COLS)
+            # 容忍 CI/本地双写合并产生的乱序与重复（merge=union 后必须去重）
+            df = (df.reindex(columns=COLS)
+                    .drop_duplicates(subset=["date", "strategy"], keep="last")
+                    .sort_values(["date", "strategy"])
+                    .reset_index(drop=True))
+            return df
     return pd.DataFrame(columns=COLS)
 
 
@@ -81,6 +87,10 @@ def main():
 
     for ts in days:
         d = ts.strftime("%Y-%m-%d")
+        # 只用官方收盘价成交：盘中临时价(美东16:05前的当日bar)一律跳过，
+        # 留给收盘后的下一次运行处理 —— 否则成交价被随机的盘中时刻锚定
+        if not is_final_trading_day(d):
+            continue
         px_ndq = float(ndq.loc[ts])
         px_map = {"NASDAQ": px_ndq}
         srow = stocks.loc[ts].dropna() if ts in stocks.index else pd.Series(dtype=float)
@@ -125,9 +135,10 @@ def main():
             elif strat == "overnight":
                 # 净值直接按隔夜段收益复利（资金始终隔夜持有、日内空仓）
                 r = ov_ret.get(ts)
-                if r is not None and not pd.isna(r):
-                    s["cash"] *= (1 + float(r) - OVERNIGHT_COST)
-                    action, note = "ROLL", f"隔夜{float(r)*100:+.2f}%-成本"
+                if r is None or pd.isna(r):
+                    continue   # 数据未到：不写账本行，等数据到了再补（否则永久丢失该日）
+                s["cash"] *= (1 + float(r) - OVERNIGHT_COST)
+                action, note = "ROLL", f"隔夜{float(r)*100:+.2f}%-成本"
 
             elif strat == "momentum":
                 # 每月首个交易日（或起跑日）调仓：6个月动量前3等权
