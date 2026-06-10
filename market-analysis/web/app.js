@@ -2523,6 +2523,38 @@ function etToLocalStr(h, m) {
     .toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+// ═══════════════════════════════════════════════════════
+//  今日市场要闻（news.json，由 AI 监控循环 / 手工更新）
+// ═══════════════════════════════════════════════════════
+async function loadNewsPanel() {
+  const el = document.getElementById("news-list");
+  if (!el) return;
+  let news;
+  try {
+    const r = await fetch("news.json?_=" + Date.now());
+    news = await r.json();
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--muted)">暂无要闻数据</div>`;
+    return;
+  }
+  const up = document.getElementById("news-updated");
+  if (up && news.updated) up.textContent = `更新 ${news.updated}`;
+  const IC = { positive: ["▲", "#2ecc71"], negative: ["▼", "#e74c3c"], neutral: ["●", "#f1c40f"] };
+  el.innerHTML = (news.items || []).map(n => {
+    const [sym, color] = IC[n.impact] || IC.neutral;
+    return `<div style="padding:.4rem 0;border-bottom:1px solid var(--border)22;">
+      <div style="display:flex;gap:.45rem;align-items:flex-start;">
+        <span style="color:${color};flex-shrink:0;">${sym}</span>
+        <div>
+          <div style="font-weight:600;line-height:1.4;">${n.title}</div>
+          ${n.note ? `<div style="color:var(--muted);font-size:0.72rem;margin-top:.15rem;line-height:1.5;">${n.note}</div>` : ""}
+          <div style="color:var(--muted);font-size:0.65rem;margin-top:.15rem;">${n.time}${n.source ? " · " + n.source : ""}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join("") || `<div style="color:var(--muted)">暂无要闻</div>`;
+}
+
 // 日历格点击 → 联动日期选择器并滚到信号表盘
 function selectForecastDay(dateStr) {
   const dp = document.getElementById("date-picker");
@@ -2707,6 +2739,7 @@ init().then(() => {
   safeRender(renderMarketClock,     "MarketClock");
   loadStocksPanel();
   loadOvernightPanel();
+  loadNewsPanel();
   fetchFearAndGreed();
   safeRender(renderSPCXDetail,      "SPCXDetail");
   // Sync SPCX inputs with localStorage
