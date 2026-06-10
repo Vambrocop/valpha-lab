@@ -2574,28 +2574,32 @@ async function loadPaperPanel() {
     const r = await fetch("paper.json?_=" + Date.now());
     p = await r.json();
   } catch(e) {
-    el.innerHTML = `<div style="color:var(--muted)">模拟盘等待首个信号日启动（自 2026-06-10 起前向实验）</div>`;
+    el.innerHTML = `<div style="color:var(--muted)">模拟盘等待首个交易日启动（自 2026-06-10 起前向实验）</div>`;
     return;
   }
-  const diff = p.current.ret_pct - p.benchmark.ret_pct;
-  const dc = diff >= 0 ? "#2ecc71" : "#e74c3c";
-  const rc = p.current.ret_pct >= 0 ? "#2ecc71" : "#e74c3c";
-  el.innerHTML = `
-    <div style="display:flex;gap:.8rem;text-align:center;margin-bottom:.5rem;">
-      <div style="flex:1;padding:.5rem;border:1px solid var(--border);border-radius:8px;">
-        <div style="color:var(--muted);font-size:0.7rem;">策略净值</div>
-        <div style="font-size:1.15rem;font-weight:800;">$${p.current.equity.toLocaleString()}</div>
-        <div style="color:${rc};font-size:0.75rem;">${p.current.ret_pct>0?"+":""}${p.current.ret_pct}%</div>
+  const strats = Object.values(p.strategies || {})
+    .sort((a, b) => b.ret_pct - a.ret_pct);
+  if (!strats.length) {
+    el.innerHTML = `<div style="color:var(--muted)">模拟盘等待首个交易日</div>`;
+    return;
+  }
+  el.innerHTML = strats.map((s, i) => {
+    const rc = s.ret_pct > 0 ? "#2ecc71" : s.ret_pct < 0 ? "#e74c3c" : "var(--muted)";
+    const medal = i === 0 && s.ret_pct > 0 ? "👑 " : "";
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;
+        padding:.45rem .55rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.4rem;">
+      <div>
+        <div style="font-weight:700;">${medal}${s.label}
+          <span style="color:${rc};font-weight:800;margin-left:.4rem;">${s.ret_pct>0?"+":""}${s.ret_pct}%</span>
+          <span style="color:var(--muted);font-size:0.72rem;margin-left:.3rem;">$${Math.round(s.equity).toLocaleString()}</span>
+        </div>
+        <div style="color:var(--muted);font-size:0.68rem;margin-top:.1rem;">${s.desc}</div>
+        <div style="font-size:0.7rem;margin-top:.1rem;">仓位：<b>${s.position}</b>
+          <span style="color:var(--muted)">· ${s.n_trades}次交易 · ${s.last_action}</span></div>
       </div>
-      <div style="flex:1;padding:.5rem;border:1px solid var(--border);border-radius:8px;">
-        <div style="color:var(--muted);font-size:0.7rem;">买入持有基准</div>
-        <div style="font-size:1.15rem;font-weight:800;">$${p.benchmark.equity.toLocaleString()}</div>
-        <div style="color:var(--muted);font-size:0.75rem;">${p.benchmark.ret_pct>0?"+":""}${p.benchmark.ret_pct}%</div>
-      </div>
-    </div>
-    <div>超额：<b style="color:${dc}">${diff>0?"+":""}${diff.toFixed(2)}pp</b>
-      · 仓位：<b>${p.current.position}</b> · 交易 ${p.n_trades} 次 · 截至 ${p.current.as_of}</div>
-    <div style="color:var(--muted);font-size:0.7rem;margin-top:.3rem;">${p.rule}</div>`;
+    </div>`;
+  }).join("") + `<div style="color:var(--muted);font-size:0.68rem;margin-top:.2rem;">
+    每个 $${p.start_capital.toLocaleString()} · 自 ${p.start_date} 同日起跑 · ${p.note}</div>`;
 }
 
 // ═══════════════════════════════════════════════════════

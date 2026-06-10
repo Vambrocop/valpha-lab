@@ -80,18 +80,23 @@ def main():
         "note": "波动率分位>80%时历史上未来20日胜率下降；倒挂期反而常接近底部（胜率64.8%）。",
     })
 
-    # ── 5. 模拟盘 ─────────────────────────────────────────────────
+    # ── 5. 模拟盘（四策略竞技）────────────────────────────────────
     try:
         with open(WEB_DIR / "paper.json", encoding="utf-8") as f:
             pp = json.load(f)
-        sections.append({
-            "title": "模拟盘 vs 买入持有",
-            "table": [{"策略净值": f"${pp['current']['equity']:,.0f}（{pp['current']['ret_pct']:+.2f}%）",
-                       "基准净值": f"${pp['benchmark']['equity']:,.0f}（{pp['benchmark']['ret_pct']:+.2f}%）",
-                       "当前仓位": pp["current"]["position"],
-                       "交易次数": pp["n_trades"]}],
-            "note": pp["rule"],
-        })
+        rows = [{"策略": s["label"],
+                 "净值": f"${s['equity']:,.0f}",
+                 "收益": f"{s['ret_pct']:+.2f}%",
+                 "仓位": s["position"],
+                 "交易": s["n_trades"]}
+                for s in sorted(pp.get("strategies", {}).values(),
+                                key=lambda x: -x["ret_pct"])]
+        if rows:
+            sections.append({
+                "title": f"模拟盘四策略竞技（自 {pp['start_date']} 各 $10,000）",
+                "table": rows,
+                "note": pp.get("note", ""),
+            })
     except Exception:
         pass
 

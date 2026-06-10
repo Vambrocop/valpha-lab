@@ -1,29 +1,79 @@
 {
  "start_date": "2026-06-10",
  "start_capital": 10000.0,
- "current": {
-  "equity": 10000.0,
-  "ret_pct": 0.0,
-  "position": "空仓（现金）",
-  "as_of": "2026-06-10"
+ "strategies": {
+  "buyhold": {
+   "label": "🐢 长持",
+   "desc": "全仓纳指，永不卖出（对照组）",
+   "equity": 10000.0,
+   "ret_pct": 0.0,
+   "position": "NASDAQ",
+   "n_trades": 1,
+   "last_action": "2026-06-10 全仓纳指@25721",
+   "curve": {
+    "dates": [
+     "2026-06-10"
+    ],
+    "equity": [
+     10000.0
+    ]
+   },
+   "as_of": "2026-06-10"
+  },
+  "trend": {
+   "label": "📈 趋势",
+   "desc": "纳指>MA200持有，跌破清仓；低频，适合6-12月持有",
+   "equity": 10000.0,
+   "ret_pct": 0.0,
+   "position": "NASDAQ",
+   "n_trades": 1,
+   "last_action": "2026-06-10 站上MA200，买入@25721",
+   "curve": {
+    "dates": [
+     "2026-06-10"
+    ],
+    "equity": [
+     10000.0
+    ]
+   },
+   "as_of": "2026-06-10"
+  },
+  "signal": {
+   "label": "🎯 信号",
+   "desc": "贝叶斯信号 tier≥4全仓 / ≤2清仓 / 3不动",
+   "equity": 10000.0,
+   "ret_pct": 0.0,
+   "position": "现金",
+   "n_trades": 0,
+   "last_action": "—",
+   "curve": {
+    "dates": [
+     "2026-06-10"
+    ],
+    "equity": [
+     10000.0
+    ]
+   },
+   "as_of": "2026-06-10"
+  },
+  "momentum": {
+   "label": "🚀 动量",
+   "desc": "观察池6月动量前3等权，每月调仓",
+   "equity": 10000.0,
+   "ret_pct": 0.0,
+   "position": "TSM+GOOGL+LLY",
+   "n_trades": 1,
+   "last_action": "2026-06-10 调仓→TSM(42%)+GOOGL(17%)+LLY(16%)",
+   "curve": {
+    "dates": [
+     "2026-06-10"
+    ],
+    "equity": [
+     10000.0
+    ]
+   },
+   "as_of": "2026-06-10"
+  }
  },
- "benchmark": {
-  "equity": 10000.0,
-  "ret_pct": 0.0,
-  "note": "同期买入持有纳指"
- },
- "n_trades": 0,
- "trades": [],
- "curve": {
-  "dates": [
-   "2026-06-10"
-  ],
-  "equity": [
-   10000.0
-  ],
-  "benchmark": [
-   10000.0
-  ]
- },
- "rule": "tier≥4全仓买入 / tier=3持仓不动 / tier≤2清仓（收盘价成交，账本不可篡改）"
+ "note": "四个策略同日起跑、收盘价机械成交、账本不可篡改。这是前向实验：时间会告诉我们哪个基金经理称职。"
 }

@@ -1,15 +1,14 @@
 """
-paper_trading.py — 虚拟模拟盘（跟随信号的纸面交易，检验模型的终极方式）
+paper_trading.py — 多策略模拟盘（四个"基金经理"同台竞技）
 
-规则（机械执行，无人为干预）：
-  - 起始资金 $10,000，标的 = 纳斯达克指数（按收盘价成交）
-  - 当日信号 tier >= 4 → 全仓买入（当日收盘价）
-  - 当日信号 tier == 3 → 保持现有仓位不动
-  - 当日信号 tier <= 2 → 清仓（当日收盘价）
-  - 信号的技术因子来自前一日收盘（无前视），日历因子当日已知 → 收盘前可执行
+每个策略 $10,000，自 2026-06-10 同日起跑，收盘价机械成交，前向实验绝不回填。
+账本 append-only 入 git，无法事后修改。
 
-账本 data/processed/paper_ledger.csv 为 append-only 且入 git——无法事后修改。
-基准：同期买入持有。输出 web/paper.json 供前端展示。
+策略（全部低频，无短线）：
+  buyhold  🐢长持：全仓纳指永不卖出（对照组）
+  trend    📈趋势：纳指收盘 > MA200 持有，跌破清仓（经典趋势过滤）
+  signal   🎯信号：贝叶斯信号 tier>=4 全仓 / tier<=2 清仓 / 3 不动
+  momentum 🚀动量：观察池6个月动量前3名等权，每月首个交易日调仓
 """
 import pandas as pd
 import json
@@ -20,109 +19,159 @@ PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 WEB_DIR  = Path(__file__).parent.parent / "web"
 LEDGER   = PROC_DIR / "paper_ledger.csv"
 
-START_DATE    = "2026-06-10"   # 模拟盘开始日（前向实验，绝不回填历史）
+START_DATE    = "2026-06-10"
 START_CAPITAL = 10000.0
 
-COLS = ["date", "action", "price", "units", "cash", "equity", "tier", "prob",
-        "model_version", "logged_at"]
+STRATS = {
+    "buyhold":  {"label": "🐢 长持",   "desc": "全仓纳指，永不卖出（对照组）"},
+    "trend":    {"label": "📈 趋势",   "desc": "纳指>MA200持有，跌破清仓；低频，适合6-12月持有"},
+    "signal":   {"label": "🎯 信号",   "desc": "贝叶斯信号 tier≥4全仓 / ≤2清仓 / 3不动"},
+    "momentum": {"label": "🚀 动量",   "desc": "观察池6月动量前3等权，每月调仓"},
+}
+COLS = ["date", "strategy", "action", "holdings", "cash", "equity", "note", "logged_at"]
 
 
 def load_ledger():
     if LEDGER.exists():
-        return pd.read_csv(LEDGER)
+        df = pd.read_csv(LEDGER)
+        if "strategy" in df.columns:
+            return df.reindex(columns=COLS)
     return pd.DataFrame(columns=COLS)
+
+
+def equity_of(holdings, cash, px_map):
+    return cash + sum(u * px_map.get(s, 0.0) for s, u in holdings.items())
 
 
 def main():
     with open(WEB_DIR / "signals.json", encoding="utf-8") as f:
         sig = json.load(f)
-    daily = sig["daily_signals"]
-    version = str(sig.get("model_version", "?"))
+    daily_sig = sig["daily_signals"]
+
     prices = pd.read_csv(RAW_DIR / "combined_prices.csv",
-                         index_col="Date", parse_dates=True)["NASDAQ"].dropna()
+                         index_col="Date", parse_dates=True)
+    ndq = prices["NASDAQ"].dropna()
+    ma200 = ndq.rolling(200).mean()
+    stocks = pd.read_csv(RAW_DIR / "stocks_prices.csv",
+                         index_col="Date", parse_dates=True)
 
     ledger = load_ledger()
-    done = set(ledger["date"].astype(str)) if len(ledger) else set()
+    # 每个策略的当前状态（重放账本最后一行）
+    state = {k: {"cash": START_CAPITAL, "holdings": {}} for k in STRATS}
+    done = {k: set() for k in STRATS}
+    for _, r in ledger.iterrows():
+        st = r["strategy"]
+        if st in state:
+            state[st] = {"cash": float(r["cash"]),
+                         "holdings": json.loads(r["holdings"])}
+            done[st].add(str(r["date"]))
 
-    # 当前状态（从账本重放）
-    cash, units = START_CAPITAL, 0.0
-    if len(ledger):
-        last = ledger.iloc[-1]
-        cash, units = float(last["cash"]), float(last["units"])
-
-    # 按日期处理 START_DATE 之后所有未处理的信号日
+    days = [d for d in ndq.index if d.strftime("%Y-%m-%d") >= START_DATE]
     new_rows = []
-    for d in sorted(k for k in daily if k >= START_DATE and k not in done):
-        ts = pd.Timestamp(d)
-        if ts not in prices.index:
-            continue
-        px = float(prices.loc[ts])
-        s = daily[d]
-        tier = int(s["tier"])
-        action = "HOLD"
-        if tier >= 4 and units == 0:
-            units = cash / px
-            cash = 0.0
-            action = "BUY"
-        elif tier <= 2 and units > 0:
-            cash = units * px
-            units = 0.0
-            action = "SELL"
-        equity = cash + units * px
-        new_rows.append({
-            "date": d, "action": action, "price": round(px, 2),
-            "units": round(units, 6), "cash": round(cash, 2),
-            "equity": round(equity, 2), "tier": tier, "prob": s["prob"],
-            "model_version": version,
-            "logged_at": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"),
-        })
-        print(f"  {d} tier{tier} {action:<4} 价格={px:.0f} 净值=${equity:,.0f}")
+
+    for ts in days:
+        d = ts.strftime("%Y-%m-%d")
+        px_ndq = float(ndq.loc[ts])
+        px_map = {"NASDAQ": px_ndq}
+        srow = stocks.loc[ts].dropna() if ts in stocks.index else pd.Series(dtype=float)
+        px_map.update({s: float(v) for s, v in srow.items()})
+
+        for strat in STRATS:
+            if d in done[strat]:
+                continue
+            s = state[strat]
+            action, note = "HOLD", ""
+
+            if strat == "buyhold":
+                if not s["holdings"]:
+                    s["holdings"] = {"NASDAQ": s["cash"] / px_ndq}
+                    s["cash"] = 0.0
+                    action, note = "BUY", f"全仓纳指@{px_ndq:.0f}"
+
+            elif strat == "trend":
+                above = px_ndq > float(ma200.loc[ts]) if not pd.isna(ma200.loc[ts]) else True
+                if above and not s["holdings"]:
+                    s["holdings"] = {"NASDAQ": s["cash"] / px_ndq}
+                    s["cash"] = 0.0
+                    action, note = "BUY", f"站上MA200，买入@{px_ndq:.0f}"
+                elif not above and s["holdings"]:
+                    s["cash"] = equity_of(s["holdings"], 0.0, px_map)
+                    s["holdings"] = {}
+                    action, note = "SELL", f"跌破MA200，清仓@{px_ndq:.0f}"
+
+            elif strat == "signal":
+                rec = daily_sig.get(d)
+                if rec:
+                    tier = int(rec["tier"])
+                    if tier >= 4 and not s["holdings"]:
+                        s["holdings"] = {"NASDAQ": s["cash"] / px_ndq}
+                        s["cash"] = 0.0
+                        action, note = "BUY", f"tier{tier}，买入@{px_ndq:.0f}"
+                    elif tier <= 2 and s["holdings"]:
+                        s["cash"] = equity_of(s["holdings"], 0.0, px_map)
+                        s["holdings"] = {}
+                        action, note = "SELL", f"tier{tier}，清仓@{px_ndq:.0f}"
+
+            elif strat == "momentum":
+                # 每月首个交易日（或起跑日）调仓：6个月动量前3等权
+                is_first = (not s["holdings"] and s["cash"] > 0) or \
+                           (ts.month != days[max(0, days.index(ts)-1)].month)
+                if is_first and len(srow) >= 3 and ts in stocks.index:
+                    pos = stocks.index.get_loc(ts)
+                    if pos >= 126:
+                        mom = (stocks.iloc[pos] / stocks.iloc[pos-126] - 1).dropna()
+                        top3 = mom.sort_values(ascending=False).head(3)
+                        cur = set(s["holdings"])
+                        if set(top3.index) != cur:
+                            total = equity_of(s["holdings"], s["cash"], px_map)
+                            s["holdings"] = {sym: (total/3) / px_map[sym]
+                                             for sym in top3.index if sym in px_map}
+                            s["cash"] = total - sum(u*px_map[sym] for sym, u in s["holdings"].items())
+                            action = "REBAL"
+                            note = "调仓→" + "+".join(f"{sym}({mom[sym]*100:.0f}%)" for sym in top3.index)
+
+            eq = equity_of(s["holdings"], s["cash"], px_map)
+            new_rows.append({
+                "date": d, "strategy": strat, "action": action,
+                "holdings": json.dumps({k: round(v, 6) for k, v in s["holdings"].items()}),
+                "cash": round(s["cash"], 2), "equity": round(eq, 2), "note": note,
+                "logged_at": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"),
+            })
+            if action != "HOLD":
+                print(f"  {d} [{strat}] {action}: {note}  净值=${eq:,.0f}")
 
     if new_rows:
         ledger = pd.concat([ledger, pd.DataFrame(new_rows)], ignore_index=True)
         ledger.to_csv(LEDGER, index=False)
 
     # ── 输出前端 JSON ──────────────────────────────────────────────
-    if not len(ledger):
-        print("[OK] 模拟盘尚无记录（等待首个信号日）")
-        return
-    last = ledger.iloc[-1]
-    px_now = float(prices.iloc[-1])
-    equity_now = float(last["cash"]) + float(last["units"]) * px_now
-    # 基准：开始日收盘全仓买入持有
-    p0 = float(prices[prices.index >= START_DATE].iloc[0])
-    bench_now = START_CAPITAL * px_now / p0
-
-    bench_curve, eq_curve, dates = [], [], []
-    for _, r in ledger.iterrows():
-        dates.append(str(r["date"]))
-        eq_curve.append(float(r["equity"]))
-        bench_curve.append(round(START_CAPITAL * float(r["price"]) / p0, 2))
-
-    trades = ledger[ledger["action"] != "HOLD"]
-    out = {
-        "start_date": START_DATE,
-        "start_capital": START_CAPITAL,
-        "current": {
-            "equity": round(equity_now, 2),
-            "ret_pct": round((equity_now / START_CAPITAL - 1) * 100, 2),
-            "position": "满仓" if float(last["units"]) > 0 else "空仓（现金）",
+    out = {"start_date": START_DATE, "start_capital": START_CAPITAL, "strategies": {}}
+    for strat, meta in STRATS.items():
+        sub = ledger[ledger["strategy"] == strat].sort_values("date")
+        if not len(sub):
+            continue
+        last = sub.iloc[-1]
+        holdings = json.loads(last["holdings"])
+        pos_desc = "现金" if not holdings else "+".join(holdings)
+        trades = sub[sub["action"] != "HOLD"]
+        out["strategies"][strat] = {
+            "label": meta["label"], "desc": meta["desc"],
+            "equity": float(last["equity"]),
+            "ret_pct": round((float(last["equity"]) / START_CAPITAL - 1) * 100, 2),
+            "position": pos_desc,
+            "n_trades": int(len(trades)),
+            "last_action": f"{trades.iloc[-1]['date']} {trades.iloc[-1]['note']}" if len(trades) else "—",
+            "curve": {"dates": sub["date"].tolist(),
+                      "equity": [float(x) for x in sub["equity"]]},
             "as_of": str(last["date"]),
-        },
-        "benchmark": {
-            "equity": round(bench_now, 2),
-            "ret_pct": round((bench_now / START_CAPITAL - 1) * 100, 2),
-            "note": "同期买入持有纳指",
-        },
-        "n_trades": int(len(trades)),
-        "trades": json.loads(trades.tail(20).to_json(orient="records")),
-        "curve": {"dates": dates, "equity": eq_curve, "benchmark": bench_curve},
-        "rule": "tier≥4全仓买入 / tier=3持仓不动 / tier≤2清仓（收盘价成交，账本不可篡改）",
-    }
+        }
+    out["note"] = ("四个策略同日起跑、收盘价机械成交、账本不可篡改。"
+                   "这是前向实验：时间会告诉我们哪个基金经理称职。")
     with open(WEB_DIR / "paper.json", "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
-    print(f"[OK] 模拟盘净值 ${equity_now:,.0f}（{out['current']['ret_pct']:+.2f}%）"
-          f" vs 基准 {out['benchmark']['ret_pct']:+.2f}% → paper.json")
+    rank = sorted(out["strategies"].items(), key=lambda kv: -kv[1]["ret_pct"])
+    print("[OK] 模拟盘：" + " | ".join(
+        f"{v['label']} {v['ret_pct']:+.2f}%" for _, v in rank) + " → paper.json")
 
 
 if __name__ == "__main__":
