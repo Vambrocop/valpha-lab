@@ -34,6 +34,13 @@ const EVENTS_CONFIG = [
 //  初始化
 // ═══════════════════════════════════════════════════════
 async function init() {
+  // 直接双击打开 HTML（file:// 协议）时 fetch 全部失败，页面会大面积空白
+  if (location.protocol === "file:") {
+    const w = document.createElement("div");
+    w.style.cssText = "background:#e74c3c;color:#fff;padding:.6rem 1rem;font-size:0.85rem;text-align:center;";
+    w.innerHTML = "⚠ 检测到直接打开文件（file://）——浏览器会拦截数据加载，大部分面板将空白。请双击 <b>启动网站.bat</b> 或访问线上页面。";
+    document.body.prepend(w);
+  }
   try {
     const r = await fetch("signals.json?_=" + Date.now());
     const txt = await r.text();
@@ -63,13 +70,9 @@ async function init() {
   renderSignalHistory();
 
   if (MV) {
+    // 只渲染默认可见的标签页；其余标签页首次打开时再渲染
+    // （Plotly 在 display:none 容器里算不出宽度，启动时全部渲染会画成一团）
     renderModelComparison();
-    renderSHAPChart();
-    renderProphetChart();
-    renderKalmanChart();
-    renderRollingBetaChart();
-    renderPathChart();
-    renderCCAChart();
   }
 
   loadLongHistory();
@@ -541,17 +544,20 @@ function switchTab(name, el) {
     const el2 = document.getElementById("tab-"+t);
     if (el2) el2.classList.remove("active");
   });
-  document.getElementById("tab-"+name)?.classList.add("active");
-  if (_mainTabRendered.has(name)) return;
-  _mainTabRendered.add(name);
-  const ph = document.getElementById("ph-"+name);
-  if (ph) ph.style.display = "none";
-  if (name === "forecast")  renderForecastChart();
-  if (name === "corr")      renderCorrChart();
-  if (name === "monthly")   renderMonthlyChart();
-  if (name === "garch")     renderGarchChart();
-  if (name === "granger")   renderGrangerChart();
-  if (name === "annual")    renderAnnualChart();
+  const pane = document.getElementById("tab-"+name);
+  pane?.classList.add("active");
+  setTimeout(() => {
+    if (_mainTabRendered.has(name)) { resizeChartsIn(pane); return; }
+    _mainTabRendered.add(name);
+    const ph = document.getElementById("ph-"+name);
+    if (ph) ph.style.display = "none";
+    if (name === "forecast")  safeRender(renderForecastChart, "Forecast");
+    if (name === "corr")      safeRender(renderCorrChart,     "Corr");
+    if (name === "monthly")   safeRender(renderMonthlyChart,  "Monthly");
+    if (name === "garch")     safeRender(renderGarchChart,    "Garch");
+    if (name === "granger")   safeRender(renderGrangerChart,  "Granger");
+    if (name === "annual")    safeRender(renderAnnualChart,   "Annual");
+  }, 0);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -779,17 +785,53 @@ function renderBearMarkets() {
 }
 
 // ── 多元分析标签切换 ──
+// 各标签页对应的渲染函数（首次打开时才渲染，保证容器可见、宽度正确）
+const MV_RENDERERS = {
+  modelcmp:   () => renderModelComparison(),
+  shap:       () => renderSHAPChart(),
+  prophet:    () => renderProphetChart(),
+  kalman:     () => renderKalmanChart(),
+  rolling:    () => renderRollingBetaChart(),
+  path:       () => renderPathChart(),
+  cca:        () => renderCCAChart(),
+  eventstudy: () => renderEventStudyChart(),
+  backtest:   () => renderBacktestCharts(),
+};
+const _mvTabRendered = new Set(["modelcmp"]);   // modelcmp 启动时已渲染
+
+// 让刚变为可见的容器里所有 Plotly 图重算尺寸（修复曾在隐藏状态下渲染的图）
+function resizeChartsIn(container) {
+  if (!container) return;
+  container.querySelectorAll(".js-plotly-plot").forEach(c => {
+    try { Plotly.Plots.resize(c); } catch(e) {}
+  });
+}
+
+// 窗口缩放时全局重算（防手机横竖屏/调窗口后图表挤压）
+let _resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    document.querySelectorAll(".js-plotly-plot").forEach(c => {
+      try { Plotly.Plots.resize(c); } catch(e) {}
+    });
+  }, 250);
+});
+
 function switchMVTab(name, el) {
   document.querySelectorAll("#mv-tabs .tab").forEach(t=>t.classList.remove("active"));
   document.querySelectorAll("[id^='mvtab-']").forEach(t=>t.classList.remove("active"));
   el.classList.add("active");
-  document.getElementById("mvtab-"+name).classList.add("active");
-  if (name === "eventstudy" && document.getElementById("chart-eventstudy").childNodes.length === 0) {
-    renderEventStudyChart();
-  }
-  if (name === "backtest" && document.getElementById("chart-backtest-tier").childNodes.length === 0) {
-    renderBacktestCharts();
-  }
+  const pane = document.getElementById("mvtab-"+name);
+  pane.classList.add("active");
+  setTimeout(() => {
+    if (!_mvTabRendered.has(name)) {
+      _mvTabRendered.add(name);
+      safeRender(MV_RENDERERS[name] || (()=>{}), "MV:"+name);
+    } else {
+      resizeChartsIn(pane);   // 已渲染过：重算尺寸，防挤压/叠加
+    }
+  }, 0);
 }
 
 // ══════════════════════════════════════════════════════
@@ -1178,8 +1220,9 @@ function switchCalTab(name, el) {
     const e = document.getElementById("caltab-"+t);
     if (e) e.classList.remove("active");
   });
-  document.getElementById("caltab-"+name)?.classList.add("active");
-  if (_calTabRendered.has(name)) return;
+  const pane = document.getElementById("caltab-"+name);
+  pane?.classList.add("active");
+  if (_calTabRendered.has(name)) { setTimeout(() => resizeChartsIn(pane), 0); return; }
   _calTabRendered.add(name);
   // setTimeout 确保浏览器 reflow 完成再让 Plotly 计算尺寸
   if (name==="digit")      setTimeout(() => safeRender(renderDigitChart,      "Digit"),      0);
@@ -2570,7 +2613,6 @@ function safeRender(fn, name) {
 init().then(() => {
   safeRender(renderDOWPanel,        "DOW");
   safeRender(renderSellPanel,       "Sell");
-  safeRender(renderEventStudyChart, "EventStudy");
   safeRender(renderOppPanel,        "Opp");
   safeRender(renderForecastChart,   "Forecast");
   safeRender(renderTodayRec,        "TodayRec");

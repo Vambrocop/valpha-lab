@@ -15,7 +15,8 @@ import json
 from pathlib import Path
 from datetime import date, timedelta
 
-WEB_DIR = Path(__file__).parent.parent / "web"
+WEB_DIR  = Path(__file__).parent.parent / "web"
+PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 START = "2000-01-01"
 END = (date.today() + timedelta(days=1)).isoformat()
 
@@ -63,6 +64,7 @@ def analyze(name, ticker):
           f"日内年化={_stats(intraday)['ann_return']}%  "
           f"整体年化={_stats(total)['ann_return']}%")
     return {
+        "_daily": overnight,   # 日频隔夜收益（写 CSV 用，不进 JSON）
         "overnight": {"cum": _cum_monthly(overnight), "stats": _stats(overnight)},
         "intraday":  {"cum": _cum_monthly(intraday),  "stats": _stats(intraday)},
         "total":     {"cum": _cum_monthly(total),     "stats": _stats(total)},
@@ -78,14 +80,23 @@ def main():
     print("=== 隔夜 vs 日内收益分解 ===")
     out = {"generated": pd.Timestamp.now().strftime("%Y-%m-%d"),
            "start": START, "indices": {}}
+    daily_series = {}
     for name, tk in TICKERS.items():
         r = analyze(name, tk)
         if r:
             out["indices"][name] = r
+            daily_series[name.split("_")[0]] = r.pop("_daily")  # 不进 JSON
     path = WEB_DIR / "overnight.json"
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     print(f"[OK] → {path}  ({path.stat().st_size // 1024} KB)")
+
+    # 日频隔夜收益序列 → processed/，供 build_signals / walk_forward 做「隔夜动量」因子
+    if daily_series:
+        df = pd.DataFrame(daily_series)
+        df.index.name = "Date"
+        df.to_csv(PROC_DIR / "overnight_daily.csv")
+        print(f"[OK] 日频隔夜收益 → overnight_daily.csv ({df.shape})")
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ TICKERS = {
     "NDX100":  "^NDX",        # 纳斯达克100（科技龙头，1985+）
     "SP500":   "^GSPC",       # 标普500
     "VIX":     "^VIX",        # 恐慌指数
+    "VIX3M":   "^VIX3M",      # 3个月VIX（与VIX的差=期限结构，倒挂=恐慌，2009+）
     "DXY":     "DX-Y.NYB",    # 美元指数
     "BTC":     "BTC-USD",     # 比特币
     "ETH":     "ETH-USD",     # 以太坊

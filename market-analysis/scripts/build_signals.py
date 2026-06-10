@@ -22,7 +22,8 @@ PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 WEB_DIR  = Path(__file__).parent.parent / "web"
 
 # 模型版本号：每次调整模型逻辑时更新，供实盘预测追踪区分新旧模型
-MODEL_VERSION = "2.0"
+# v2.1: 新增 VIX期限结构 + 隔夜动量因子
+MODEL_VERSION = "2.1"
 
 # ── 宏观事件日历（2026，官方日程）──────────────────────────────────
 # CPI：BLS 固定 8:30 ET 发布；FOMC：决议日（会议第2天）14:00 ET
@@ -300,6 +301,23 @@ def compute_technical_signals(prices, ret):
 
     df["btc_nasdaq_corr"] = ret["BTC"].rolling(60).corr(ret["NASDAQ"])
     df["dxy_trend"]       = prices["DXY"].pct_change(20)  # 美元趋势（负=利好）
+
+    # VIX期限结构：现货VIX ≥ 3月VIX = 倒挂（恐慌状态；数据2009+）
+    if "VIX" in prices.columns and "VIX3M" in prices.columns:
+        df["vix_backwardation"] = (prices["VIX"] >= prices["VIX3M"]).astype(float)
+        df.loc[prices["VIX3M"].isna(), "vix_backwardation"] = np.nan
+
+    # 隔夜动量：ETF隔夜段收益近20日累计（overnight_analysis.py 生成）
+    try:
+        ov = pd.read_csv(PROC_DIR / "overnight_daily.csv",
+                         index_col="Date", parse_dates=True)
+        mapping = {"NASDAQ": "NASDAQ100", "SP500": "SP500"}
+        for idx, col in mapping.items():
+            if col in ov.columns:
+                df[f"overnight_mom20_{idx}"] = ov[col].rolling(20).sum().reindex(df.index)
+    except Exception:
+        pass
+
     return df
 
 def _rsi(returns, period=14):
@@ -346,6 +364,10 @@ def compute_daily_signals(prices, ret, tech, trading_days, index="NASDAQ", prior
     lr_vol_low   = _learned_on("nasdaq_low_vol",  1.10)
     lr_rsi_ob    = _learned_on("nasdaq_rsi_overbought", 0.85)
     lr_rsi_os    = _learned_on("nasdaq_rsi_oversold",   1.10)
+    lr_vix_bwd   = _learned_on("vix_backwardation", 0.85)   # 倒挂=恐慌
+    lr_vix_norm  = _learned_off("vix_backwardation", 1.0)
+    lr_ov_pos    = _learned_on("overnight_mom_pos", 1.05)   # 隔夜动量
+    lr_ov_neg    = _learned_on("overnight_mom_neg", 0.95)
 
     for ts in trading_days:
         if ts not in tech.index:
@@ -395,6 +417,15 @@ def compute_daily_signals(prices, ret, tech, trading_days, index="NASDAQ", prior
         if not pd.isna(row.get(f"{index}_rsi")):
             rsi = row[f"{index}_rsi"]
             likelihoods.append(lr_rsi_ob if rsi > 75 else (lr_rsi_os if rsi < 35 else 1.0))
+
+        # 10. VIX期限结构（倒挂=市场恐慌，2009+）
+        if not pd.isna(row.get("vix_backwardation")):
+            likelihoods.append(lr_vix_bwd if row["vix_backwardation"] else lr_vix_norm)
+
+        # 11. 隔夜动量（该指数ETF隔夜段近20日累计收益）
+        ov = row.get(f"overnight_mom20_{index}")
+        if ov is not None and not pd.isna(ov):
+            likelihoods.append(lr_ov_pos if ov > 0 else (lr_ov_neg if ov < 0 else 1.0))
 
         prob = bayesian_update(prior, likelihoods)
 

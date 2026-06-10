@@ -98,6 +98,20 @@ def build_feature_df():
         vol_nasdaq = r.rolling(20).std() * np.sqrt(252)
     dxy_tr = prices["DXY"].pct_change(20) if "DXY" in prices.columns else None
 
+    # VIX期限结构（2009+）
+    vix_bwd = None
+    if "VIX" in prices.columns and "VIX3M" in prices.columns:
+        vix_bwd = (prices["VIX"] >= prices["VIX3M"]).where(prices["VIX3M"].notna())
+    # 隔夜动量（QQQ隔夜段近20日累计，overnight_analysis.py 生成）
+    ov_mom = None
+    try:
+        ov = pd.read_csv(PROC_DIR / "overnight_daily.csv",
+                         index_col="Date", parse_dates=True)
+        col = "NASDAQ100" if "NASDAQ100" in ov.columns else ov.columns[-1]
+        ov_mom = ov[col].rolling(20).sum().reindex(prices.index)
+    except Exception:
+        pass
+
     rows = []
     dates = prices.index
 
@@ -136,6 +150,14 @@ def build_feature_df():
             dv = dxy_tr.iloc[i]
             feats["dxy_rising"]  = int(dv > 0.01)  if not pd.isna(dv) else None
             feats["dxy_falling"] = int(dv < -0.01) if not pd.isna(dv) else None
+
+        if vix_bwd is not None:
+            vb = vix_bwd.iloc[i]
+            feats["vix_backwardation"] = int(bool(vb)) if not pd.isna(vb) else None
+        if ov_mom is not None:
+            om = ov_mom.iloc[i]
+            feats["overnight_mom_pos"] = int(om > 0) if not pd.isna(om) else None
+            feats["overnight_mom_neg"] = int(om < 0) if not pd.isna(om) else None
 
         # ── 前向收益 ──────────────────────────────────────────────
         pos = sp_long.index.get_loc(ts) if ts in sp_long.index else None
@@ -180,6 +202,9 @@ BINARY_FEATURES = [
     ("nasdaq_rsi_oversold",  "NASDAQ RSI超卖<35"),
     ("nasdaq_high_vol",      "NASDAQ高波动>25%"),
     ("nasdaq_low_vol",       "NASDAQ低波动<15%"),
+    ("vix_backwardation",    "VIX期限结构倒挂(恐慌)"),
+    ("overnight_mom_pos",    "隔夜动量为正(20日)"),
+    ("overnight_mom_neg",    "隔夜动量为负(20日)"),
 ]
 
 CALENDAR_FEATURES = {

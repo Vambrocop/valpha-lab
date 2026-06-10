@@ -22,6 +22,7 @@ DOCS_DIR = SCRIPTS.parent.parent / "docs"   # 仓库根 docs/，GitHub Pages 部
 steps = [
     ("下载数据",           "fetch_data.py"),
     ("下载长历史数据",     "long_history.py"),
+    ("隔夜vs日内分析",     "overnight_analysis.py"),   # 产出隔夜动量因子数据
     ("基础统计分析",       "analyze.py"),
     ("买卖时机分析",       "timing_analysis.py"),
     ("历史事件研究",       "event_study.py"),
@@ -32,7 +33,6 @@ steps = [
     ("信号嵌入回测结果",   "build_signals.py"),   # 第二遍：嵌入最新回测/验证/追踪
     ("导出图表数据",       "export_chart_data.py"),
     ("导出个股数据",       "export_stocks.py"),
-    ("隔夜vs日内分析",     "overnight_analysis.py"),
 ]
 
 full_steps = [
