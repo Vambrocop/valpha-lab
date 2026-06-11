@@ -11,6 +11,9 @@ run_all.py — 一键运行完整流水线并同步部署目录
   7. 把 web/ 镜像到仓库根 docs/（GitHub Pages 部署目录）
 
 加 --full 参数会额外跑重型 ML 分析（advanced_analysis / multivariate）。
+加 --light 参数只刷数据和信号（盘中小时级 CI 用）：跳过长历史/回测/walk-forward/
+隔夜分析等重型步骤，复用上次全量运行的 data/ 产物（CI 里靠 actions/cache 恢复；
+没有缓存时 build_signals 会退化到手设 LR，信号数字会与全量运行有出入）。
 """
 import subprocess, sys, shutil
 from pathlib import Path
@@ -46,9 +49,19 @@ full_steps = [
     ("导出多元分析数据",   "export_multivariate_json.py"),
 ]
 
+# 盘中轻量模式：只保留"数据刷新 + 信号 + 前端产物"链路，分析类产物吃缓存
+LIGHT_STEPS = {
+    "fetch_data.py", "build_signals.py", "track_predictions.py",
+    "export_chart_data.py", "export_stocks.py", "fetch_news.py",
+    "paper_trading.py", "daily_brief.py", "weekly_report.py", "verify_output.py",
+}
+
 if "--full" in sys.argv:
     # 重型分析放在导出图表数据之前
     steps = steps[:-1] + full_steps + steps[-1:]
+elif "--light" in sys.argv:
+    steps = [(label, s) for label, s in steps if s in LIGHT_STEPS]
+    print("※ light 模式：跳过长历史/回测/walk-forward/隔夜分析，复用上次全量产物")
 
 for label, script in steps:
     print(f"\n{'='*55}")

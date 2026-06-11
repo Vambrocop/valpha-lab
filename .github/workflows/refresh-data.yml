@@ -37,8 +37,22 @@ jobs:
       - name: Run tests (gate — bad code must not publish data)
         run: python -m pytest market-analysis/tests -q
 
-      - name: Run pipeline
-        run: python market-analysis/scripts/run_all.py
+      # light 运行复用上次全量运行的 data/（学习LR/回测/长历史），
+      # 否则 build_signals 退化到手设 LR，小时级信号会漂移
+      - name: Restore data cache from last run
+        uses: actions/cache@v4
+        with:
+          path: market-analysis/data
+          key: market-data-${{ github.run_id }}
+          restore-keys: market-data-
+
+      - name: Run pipeline (intraday hourly = light, pre-open/post-close = full)
+        run: |
+          if [ "${{ github.event.schedule }}" = "30 14-20 * * 1-5" ]; then
+            python market-analysis/scripts/run_all.py --light
+          else
+            python market-analysis/scripts/run_all.py
+          fi
 
       - name: Signal alerts (state changes only)
         run: python market-analysis/scripts/alert_check.py
