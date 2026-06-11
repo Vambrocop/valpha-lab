@@ -22,7 +22,7 @@ from signal_model import (
 
 
 def us_today():
-    """美东当前日期。本地时区比美东快约半天，本地日期常领先一天，
+    """美东当前日期。用户在澳洲阿德莱德(UTC+9:30)，本地日期比美国快一天，
     所有「今天/未来」的判断必须以美东交易日为准"""
     return pd.Timestamp.now(tz=ZoneInfo("America/New_York")).date()
 

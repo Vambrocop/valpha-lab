@@ -26,7 +26,8 @@ def check(cond, msg):
 # 1. 前端要拉取的文件都必须存在且非空
 for f in ["index.html", "app.js", "style.css", "signals.json", "prices.json",
           "charts_extra.json", "long_history.json", "stocks.json",
-          "overnight.json", "news.json", "signals_history.json"]:
+          "overnight.json", "news.json", "signals_history.json",
+          "plotly-cartesian-2.35.2.min.js"]:
     p = WEB_DIR / f
     check(p.exists() and p.stat().st_size > 100, f"{f} 存在且非空")
 

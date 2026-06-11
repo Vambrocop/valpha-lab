@@ -29,7 +29,7 @@ TICKERS = {
     "GOLD":    "GC=F",        # 黄金期货
     "TNX":     "^TNX",        # 10年期美债收益率
     "VNQ":     "VNQ",         # 美国REIT（房地产信托），信贷压力代理
-    "AUD":     "AUDUSD=X",    # 澳元/美元（持仓计算器以AUD计价）
+    "AUD":     "AUDUSD=X",    # 澳元/美元（用户在澳洲，持仓计算器以AUD计价）
     "CNY":     "CNY=X",       # 美元/人民币
     "NVDA":    "NVDA",        # 英伟达（AI景气个股代理）
     "SOX":     "^SOX",        # 费城半导体指数（AI/芯片景气标准指标，1994+）
