@@ -26,9 +26,13 @@ def check(cond, msg):
 # 1. 前端要拉取的文件都必须存在且非空
 for f in ["index.html", "app.js", "style.css", "signals.json", "prices.json",
           "charts_extra.json", "long_history.json", "stocks.json",
-          "overnight.json", "news.json"]:
+          "overnight.json", "news.json", "signals_history.json"]:
     p = WEB_DIR / f
     check(p.exists() and p.stat().st_size > 100, f"{f} 存在且非空")
+
+# 首屏体积守门：signals.json 发布版只含近两年（P1-3），别让它再胖回去
+check((WEB_DIR / "signals.json").stat().st_size < 800_000,
+      f"signals.json < 800KB（当前 {(WEB_DIR / 'signals.json').stat().st_size//1024}KB）")
 
 # 2. signals.json 严格合法 + 结构完整 + 无周末数据 + 不过期
 try:
@@ -56,7 +60,8 @@ except Exception as e:
 
 # 3. 其余 JSON 全部严格合法
 for f in ["prices.json", "charts_extra.json", "stocks.json",
-          "overnight.json", "news.json", "long_history.json"]:
+          "overnight.json", "news.json", "long_history.json",
+          "signals_history.json"]:
     try:
         with open(WEB_DIR / f, encoding="utf-8") as fh:
             json.load(fh)

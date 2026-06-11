@@ -196,8 +196,14 @@ def run_backtest(daily, long_csv, label):
 
 
 if __name__ == "__main__":
-    with open(WEB_DIR / "signals.json", encoding="utf-8") as f:
-        sig_data = json.load(f)
+    # 全量信号流在 processed/（signals.json 发布版只含近两年，P1-3 瘦身）
+    full = PROC_DIR / "daily_signals_full.json"
+    if full.exists():
+        with open(full, encoding="utf-8") as f:
+            sig_data = json.load(f)
+    else:
+        with open(WEB_DIR / "signals.json", encoding="utf-8") as f:
+            sig_data = json.load(f)
 
     results = {
         "NASDAQ": run_backtest(sig_data["daily_signals"],

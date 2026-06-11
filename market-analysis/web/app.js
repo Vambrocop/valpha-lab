@@ -135,6 +135,22 @@ function tier(p) {
   return 1;
 }
 
+// ── 历史信号按需加载（signals.json 只发布近两年，更早在 signals_history.json）──
+let _historyPromise = null;
+function ensureHistory() {
+  if (_historyPromise) return _historyPromise;
+  _historyPromise = fetch("signals_history.json")
+    .then(r => r.json())
+    .then(h => {
+      SIGNALS.daily_signals = { ...h.daily_signals, ...SIGNALS.daily_signals };
+      if (h.daily_signals_sp500 && SIGNALS.daily_signals_sp500)
+        SIGNALS.daily_signals_sp500 = { ...h.daily_signals_sp500, ...SIGNALS.daily_signals_sp500 };
+      SIGNALS._historyTried = true;
+    })
+    .catch(e => { console.warn("signals_history.json 加载失败", e); SIGNALS._historyTried = true; });
+  return _historyPromise;
+}
+
 // ═══════════════════════════════════════════════════════
 //  日期选择器
 // ═══════════════════════════════════════════════════════
@@ -213,7 +229,7 @@ function updateSignal(dateStr) {
     return;
   }
 
-  // ── 历史日期：从 daily_signals 取 ──
+  // ── 历史日期：从 daily_signals 取（瘦身后早于 cutoff 的按需加载）──
   const daily = SIGNALS.daily_signals;
   let key = dateStr;
   if (!daily[key]) {
@@ -221,6 +237,12 @@ function updateSignal(dateStr) {
     for(let i=0;i<7;i++) { d.setDate(d.getDate()-1); key=d.toISOString().slice(0,10); if(daily[key]) break; }
   }
   const rec = daily[key];
+  if (!rec && SIGNALS.history_cutoff && dateStr < SIGNALS.history_cutoff && !SIGNALS._historyTried) {
+    document.getElementById("signal-pct").textContent = "…";
+    document.getElementById("signal-label").textContent = "加载历史数据";
+    ensureHistory().then(() => updateSignal(dateStr));
+    return;
+  }
   if (!rec) { document.getElementById("signal-pct").textContent = "无数据"; return; }
 
   let prob = rec.prob;
@@ -1250,10 +1272,10 @@ function renderPercentileInfo(todayProb) {
             : ["历史低位","#e74c3c"];
   let html = `<span style="color:var(--muted)">强于过去一年 </span><strong style="color:${tag[1]}">${pct}%</strong><span style="color:var(--muted)"> 的交易日 · ${tag[0]}</span>`;
   if (maxForecast) {
-    html += `<br><span style="color:var(--muted)">未来半年最高：</span><strong>${(maxForecast.prob*100).toFixed(1)}%</strong><span style="color:var(--muted)"> (${maxForecast.date} ${maxForecast.dow_cn})</span>`;
+    html += `<br><span style="color:var(--muted)">未来两个月最高：</span><strong>${(maxForecast.prob*100).toFixed(1)}%</strong><span style="color:var(--muted)"> (${maxForecast.date} ${maxForecast.dow_cn})</span>`;
   }
   if (strongDays > 0) {
-    html += `<br><span style="color:var(--muted)">未来半年中 </span><strong style="color:#2ecc71">${strongDays}</strong><span style="color:var(--muted)"> 天≥60%</span>`;
+    html += `<br><span style="color:var(--muted)">未来两个月中 </span><strong style="color:#2ecc71">${strongDays}</strong><span style="color:var(--muted)"> 天≥60%</span>`;
   }
   document.getElementById("signal-percentile").innerHTML = html;
 }
@@ -1636,7 +1658,7 @@ function renderBacktestCharts() {
   const sig2 = t2?.horizons?.["5d"]?.significant;
 
   document.getElementById("backtest-insight").innerHTML =
-    `<strong>历史回测结论（2000-2026，${Object.values(SIGNALS.daily_signals).length}个交易日）：</strong><br><br>
+    `<strong>历史回测结论（2000-2026，${SIGNALS.backtest?.NASDAQ?.baseline?.["20d"]?.n ?? Object.values(SIGNALS.daily_signals).length}个交易日）：</strong><br><br>
      <span style="color:#2ecc71">▲ 第4档信号（≥60%，n=${t4?.n||0}天）：</span>
      20日实际胜率 <strong style="color:#2ecc71">${t4?.horizons?.["20d"]?.win_rate||"?"}%</strong>，
      高于全样本基准 ${base20}%（+${t4?.horizons?.["20d"]?.diff_vs_baseline||"?"}pp），

@@ -817,9 +817,36 @@ if __name__ == "__main__":
     if tracking:
         result["live_tracking"] = tracking
 
+    # ── 发布瘦身（P1-3）────────────────────────────────────────────
+    # 全量信号流给内部消费者（backtest 等）；signals.json 只发布近两年，
+    # 更早历史拆到 signals_history.json 由前端按需加载
+    HISTORY_CUTOFF = "2024-01-01"
+    with open(PROC_DIR / "daily_signals_full.json", "w", encoding="utf-8") as f:
+        json.dump(_clean({"daily_signals": result["daily_signals"],
+                          "daily_signals_sp500": result["daily_signals_sp500"]}),
+                  f, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+
+    hist = {
+        "cutoff": HISTORY_CUTOFF,
+        "daily_signals": {d: s for d, s in result["daily_signals"].items()
+                          if d < HISTORY_CUTOFF},
+        "daily_signals_sp500": {d: s for d, s in result["daily_signals_sp500"].items()
+                                if d < HISTORY_CUTOFF},
+    }
+    out_hist = WEB_DIR / "signals_history.json"
+    with open(out_hist, "w", encoding="utf-8") as f:
+        json.dump(_clean(hist), f, ensure_ascii=False,
+                  separators=(",", ":"), allow_nan=False)
+
+    result["daily_signals"] = {d: s for d, s in result["daily_signals"].items()
+                               if d >= HISTORY_CUTOFF}
+    result["daily_signals_sp500"] = {d: s for d, s in result["daily_signals_sp500"].items()
+                                     if d >= HISTORY_CUTOFF}
+    result["history_cutoff"] = HISTORY_CUTOFF
+
     out = WEB_DIR / "signals.json"
     with open(out, "w", encoding="utf-8") as f:
         json.dump(_clean(result), f, ensure_ascii=False,
                   separators=(",", ":"), allow_nan=False)
-    print(f"[OK] signals.json 已更新（含买卖时机/回测/滚动验证，"
-          f"{out.stat().st_size//1024}KB）")
+    print(f"[OK] signals.json 已更新（近两年，{out.stat().st_size//1024}KB）"
+          f"+ signals_history.json（{out_hist.stat().st_size//1024}KB）")
