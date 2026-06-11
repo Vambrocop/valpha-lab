@@ -25,38 +25,20 @@ from pathlib import Path
 from scipy import stats
 from datetime import date, timedelta
 
+# 模型核心原语统一来自 signal_model（与 build_signals.py 生产打分共用，禁止本地复制）。
+# 打分时对学到的 LR 套用与生产相同的收缩——验证的配置必须等于部署的配置。
+from signal_model import (
+    tier as _tier, bayesian_update as bayesian_prob,
+    week_of_month as _week_of_month, rsi as _rsi, shrink_lr,
+    BTC_MOM_THRESH, DXY_TREND_THRESH, VOL_HIGH, VOL_LOW,
+    RSI_OVERBOUGHT, RSI_OVERSOLD,
+)
+
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 WEB_DIR  = Path(__file__).parent.parent / "web"
 
 HORIZON = 20  # 主要关注20日前向胜率
-
-# ══════════════════════════════════════════════════════════════════
-# 工具函数
-# ══════════════════════════════════════════════════════════════════
-def _week_of_month(ts):
-    first_dow = ts.replace(day=1).weekday()
-    return (ts.day + first_dow - 1) // 7 + 1
-
-def _log_odds(p):
-    p = np.clip(p, 0.02, 0.98)
-    return np.log(p / (1 - p))
-
-def _sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
-def bayesian_prob(prior, lrs):
-    lo = _log_odds(prior)
-    for lr in lrs:
-        lo += np.log(max(lr, 0.01))
-    return float(np.clip(_sigmoid(lo), 0.02, 0.98))
-
-def _tier(p):
-    if p >= 0.80: return 5
-    if p >= 0.60: return 4
-    if p >= 0.40: return 3
-    if p >= 0.20: return 2
-    return 1
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -92,9 +74,7 @@ def build_feature_df():
     rsi_nasdaq = vol_nasdaq = None
     if "NASDAQ" in ret.columns:
         r = ret["NASDAQ"]
-        gain = r.clip(lower=0).rolling(14).mean()
-        loss = (-r.clip(upper=0)).rolling(14).mean()
-        rsi_nasdaq = 100 - 100 / (1 + gain / (loss + 1e-10))
+        rsi_nasdaq = _rsi(r, 14)
         vol_nasdaq = r.rolling(20).std() * np.sqrt(252)
     dxy_tr = prices["DXY"].pct_change(20) if "DXY" in prices.columns else None
 
@@ -134,22 +114,22 @@ def build_feature_df():
             ma50, ma200, r20 = d["ma50"].iloc[i], d["ma200"].iloc[i], d["r20"].iloc[i]
             feats[f"{asset}_above_ma200"] = int(p.iloc[i] > ma200) if not pd.isna(ma200) else None
             feats[f"{asset}_above_ma50"]  = int(p.iloc[i] > ma50)  if not pd.isna(ma50)  else None
-            feats[f"{asset}_mom20_pos"]   = int(r20 > 0.05)  if not pd.isna(r20) else None
-            feats[f"{asset}_mom20_neg"]   = int(r20 < -0.05) if not pd.isna(r20) else None
+            feats[f"{asset}_mom20_pos"]   = int(r20 > BTC_MOM_THRESH)  if not pd.isna(r20) else None
+            feats[f"{asset}_mom20_neg"]   = int(r20 < -BTC_MOM_THRESH) if not pd.isna(r20) else None
 
         if rsi_nasdaq is not None:
             rv = rsi_nasdaq.iloc[i]
-            feats["nasdaq_rsi_overbought"] = int(rv > 75) if not pd.isna(rv) else None
-            feats["nasdaq_rsi_oversold"]   = int(rv < 35) if not pd.isna(rv) else None
+            feats["nasdaq_rsi_overbought"] = int(rv > RSI_OVERBOUGHT) if not pd.isna(rv) else None
+            feats["nasdaq_rsi_oversold"]   = int(rv < RSI_OVERSOLD)   if not pd.isna(rv) else None
         if vol_nasdaq is not None:
             vv = vol_nasdaq.iloc[i]
-            feats["nasdaq_high_vol"] = int(vv > 0.25) if not pd.isna(vv) else None
-            feats["nasdaq_low_vol"]  = int(vv < 0.15) if not pd.isna(vv) else None
+            feats["nasdaq_high_vol"] = int(vv > VOL_HIGH) if not pd.isna(vv) else None
+            feats["nasdaq_low_vol"]  = int(vv < VOL_LOW)  if not pd.isna(vv) else None
 
         if dxy_tr is not None:
             dv = dxy_tr.iloc[i]
-            feats["dxy_rising"]  = int(dv > 0.01)  if not pd.isna(dv) else None
-            feats["dxy_falling"] = int(dv < -0.01) if not pd.isna(dv) else None
+            feats["dxy_rising"]  = int(dv > DXY_TREND_THRESH)  if not pd.isna(dv) else None
+            feats["dxy_falling"] = int(dv < -DXY_TREND_THRESH) if not pd.isna(dv) else None
 
         if vix_bwd is not None:
             vb = vix_bwd.iloc[i]
@@ -256,37 +236,32 @@ def learn_lrs(train_df):
 # 3. 用学到的LR在测试期生成信号并验证
 # ══════════════════════════════════════════════════════════════════
 def score_row(row, lrs_dict):
-    """用学到的LR对单行打分，返回概率"""
+    """用学到的LR对单行打分，返回概率。
+
+    所有经验 LR 都先经 shrink_lr 收缩——与 build_signals._learned_on/_learned_off
+    的生产路径一致，保证验证评估的就是部署配置。
+    """
     base_wr = lrs_dict["base_win_rate"]
     factors = lrs_dict["factors"]
     likelihoods = []
 
-    # 月度先验 LR
-    month_lrs = factors.get("month", {})
-    m_lr = month_lrs.get(str(int(row["month"])), {}).get("lr", 1.0)
-    likelihoods.append(m_lr)
-
-    # 星期 LR
-    dow_lrs = factors.get("dow", {})
-    d_lr = dow_lrs.get(str(int(row["dow"])), {}).get("lr", 1.0)
-    likelihoods.append(d_lr)
-
-    # WOM LR
-    wom_lrs = factors.get("wom", {})
-    w_lr = wom_lrs.get(str(int(row["wom"])), {}).get("lr", 1.0)
-    likelihoods.append(w_lr)
+    # 日历因子 LR（month/dow/wom，收缩后）
+    for feat, key in [("month", "month"), ("dow", "dow"), ("wom", "wom")]:
+        f = factors.get(feat, {}).get(str(int(row[key])))
+        likelihoods.append(shrink_lr(f["lr"], f["n"]) if f else 1.0)
 
     # 技术因子 LR
     n_total = lrs_dict.get("n_total", 0)
     for col, _ in BINARY_FEATURES:
         val = row.get(col)
         if val == 1 and col in factors:
-            likelihoods.append(factors[col]["lr"])
+            likelihoods.append(shrink_lr(factors[col]["lr"], factors[col]["n"]))
         elif val == 0 and col in factors:
-            # 反面：由全概率公式精确还原 wr_neg = (base - p1*wr_pos) / (1-p1)
+            # 反面：由全概率公式从收缩后的触发侧还原 wr_neg = (base - p1*wr_pos) / (1-p1)
             p1 = factors[col]["n"] / n_total if n_total > 0 else 0.5
             if p1 < 1.0:
-                inv_wr = (base_wr - p1 * factors[col]["win_rate"]) / (1 - p1)
+                wr_on  = shrink_lr(factors[col]["lr"], factors[col]["n"]) * base_wr
+                inv_wr = (base_wr - p1 * wr_on) / (1 - p1)
                 inv_lr = inv_wr / base_wr if base_wr > 0 else 1.0
                 likelihoods.append(max(inv_lr, 0.5))
 

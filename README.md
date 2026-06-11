@@ -74,4 +74,4 @@ python market-analysis/scripts/run_all.py --full  # 含重型ML分析（需 stat
 ## 免责声明
 
 仅供个人学习研究，不构成任何投资建议。所有"信号"本质是历史频率统计，
-样本外优势尚未被证实（walk-forward 结果显示 Tier≥4 平均 -1.3pp）——这正是实盘追踪存在的原因。
+样本外优势尚未被证实（walk-forward 按部署配置评估，Tier≥4 平均 -0.3pp）——这正是实盘追踪存在的原因。

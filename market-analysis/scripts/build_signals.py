@@ -11,6 +11,15 @@ from pathlib import Path
 from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 
+# 模型核心原语统一来自 signal_model（生产与 walk_forward 验证共用，禁止本地复制）
+from signal_model import (
+    tier as _tier, bayesian_update, week_of_month as _week_of_month,
+    rsi as _rsi, shrink_lr, us_holidays as _us_holidays,
+    HOLIDAY_SET as _HOLIDAY_SET, THANKSGIVING_DATES as _THANKSGIVING_DATES,
+    BTC_MOM_THRESH, DXY_TREND_THRESH, VOL_HIGH, VOL_LOW,
+    RSI_OVERBOUGHT, RSI_OVERSOLD,
+)
+
 
 def us_today():
     """美东当前日期。用户在澳洲(UTC+9:30)，本地日期比美国快一天，
@@ -101,10 +110,6 @@ DOW_LR = {
 
 # ── 月内第几周效应（Week-of-Month）─────────────────────────────
 # 基准53.2%。第1周最强（59.1%），第4周最弱（50.5%）
-def _week_of_month(ts):
-    first_dow = ts.replace(day=1).weekday()
-    return (ts.day + first_dow - 1) // 7 + 1
-
 _WOM_LR = {1: 1.112, 2: 0.996, 3: 1.015, 4: 0.950, 5: 0.992}
 
 # ── 日历异常综合似然比（税季 + 季末 + 税损）────────────────────
@@ -131,66 +136,7 @@ def _calendar_anomaly_lr(ts):
 
     return 1.0
 
-# ── 假日日历（美国股市） ──────────────────────────────────────────
-def _easter(year):
-    a = year % 19; b = year // 100; c = year % 100
-    d = b // 4; e = b % 4; f = (b + 8) // 25
-    g = (b - f + 1) // 3; h = (19*a + b - d - g + 15) % 30
-    i = c // 4; k = c % 4; l = (32 + 2*e + 2*i - h - k) % 7
-    m = (a + 11*h + 22*l) // 451
-    month = (h + l - 7*m + 114) // 31
-    day = ((h + l - 7*m + 114) % 31) + 1
-    return date(year, month, day)
-
-def _nth_weekday(year, month, weekday, n):
-    d = date(year, month, 1); count = 0
-    while True:
-        if d.weekday() == weekday:
-            count += 1
-            if count == n: return d
-        d += timedelta(days=1)
-
-def _last_weekday(year, month, weekday):
-    import calendar
-    last_day = calendar.monthrange(year, month)[1]
-    d = date(year, month, last_day)
-    while d.weekday() != weekday:
-        d -= timedelta(days=1)
-    return d
-
-def _adjust_weekend(d):
-    if d.weekday() == 5: return d - timedelta(days=1)
-    if d.weekday() == 6: return d + timedelta(days=1)
-    return d
-
-def _us_holidays(year):
-    easter = _easter(year)
-    holidays = {
-        _adjust_weekend(date(year, 1, 1)),       # New Year
-        _nth_weekday(year, 1, 0, 3),             # MLK Day
-        _nth_weekday(year, 2, 0, 3),             # Presidents Day
-        easter - timedelta(days=2),               # Good Friday
-        _last_weekday(year, 5, 0),               # Memorial Day
-        _adjust_weekend(date(year, 7, 4)),        # Independence Day
-        _nth_weekday(year, 9, 0, 1),             # Labor Day
-        _nth_weekday(year, 11, 3, 4),            # Thanksgiving
-        _adjust_weekend(date(year, 12, 25)),      # Christmas
-    }
-    # Juneteenth：NYSE 自 2022 年起 6 月 19 日休市
-    if year >= 2022:
-        holidays.add(_adjust_weekend(date(year, 6, 19)))
-    return holidays
-
-# 预生成1990-2030年假日集合
-_HOLIDAY_SET = set()
-_THANKSGIVING_DATES = set()
-for _yr in range(1990, 2031):
-    try:
-        _HOLIDAY_SET |= _us_holidays(_yr)
-        _THANKSGIVING_DATES.add(_nth_weekday(_yr, 11, 3, 4))
-    except Exception:
-        pass
-
+# ── 假日效应 LR（假日日历本身在 signal_model.py）──────────────────
 def _holiday_lr(ts):
     """返回该交易日的假日效应似然比"""
     d = ts.date()
@@ -261,8 +207,7 @@ def _load_learned_lrs():
     except Exception:
         return {}
 
-_LEARNED  = _load_learned_lrs()
-_SHRINK_N = 200   # 收缩强度：样本 n 越小，LR 越向 1（无信息）收缩
+_LEARNED = _load_learned_lrs()
 
 def _learned_on(keys, fallback):
     """因子触发时的 LR：优先用经验值（收缩后），无数据则用手设默认。
@@ -272,8 +217,7 @@ def _learned_on(keys, fallback):
     for k in keys:
         f = _LEARNED.get("factors", {}).get(k)
         if f and isinstance(f, dict) and "lr" in f:
-            n = f["n"]
-            return round(1 + (f["lr"] - 1) * n / (n + _SHRINK_N), 4)
+            return round(shrink_lr(f["lr"], f["n"]), 4)
     return fallback
 
 def _learned_off(keys, fallback):
@@ -288,7 +232,7 @@ def _learned_off(keys, fallback):
             n  = f["n"]
             p1 = n / n_total
             if 0 < p1 < 1:
-                wr_on  = (1 + (f["lr"] - 1) * n / (n + _SHRINK_N)) * base
+                wr_on  = shrink_lr(f["lr"], n) * base
                 wr_off = (base - p1 * wr_on) / (1 - p1)
                 return round(max(wr_off / base, 0.5), 4)
     return fallback
@@ -327,24 +271,6 @@ def compute_technical_signals(prices, ret):
         pass
 
     return df
-
-def _rsi(returns, period=14):
-    gain = returns.clip(lower=0).rolling(period).mean()
-    loss = (-returns.clip(upper=0)).rolling(period).mean()
-    return 100 - 100 / (1 + gain / (loss + 1e-10))
-
-# ── 贝叶斯概率融合 ────────────────────────────────────────────────
-def bayesian_update(prior, likelihoods):
-    """
-    简化贝叶斯更新：
-    posterior ∝ prior × ∏ likelihood_i
-    最后 sigmoid 压缩到 (0,1)
-    """
-    log_odds = np.log(prior / (1 - prior + 1e-10))
-    for lr in likelihoods:
-        log_odds += np.log(max(lr, 0.01))
-    prob = 1 / (1 + np.exp(-log_odds))
-    return float(np.clip(prob, 0.02, 0.98))
 
 # ── 计算每日信号 ──────────────────────────────────────────────────
 def compute_daily_signals(prices, ret, tech, trading_days, index="NASDAQ", priors=None):
@@ -409,22 +335,25 @@ def compute_daily_signals(prices, ret, tech, trading_days, index="NASDAQ", prior
         # 6. BTC动量（领先效应）
         if not pd.isna(row.get("BTC_mom20")):
             m = row["BTC_mom20"]
-            likelihoods.append(lr_btc_pos if m > 0.05 else (lr_btc_neg if m < -0.05 else 1.0))
+            likelihoods.append(lr_btc_pos if m > BTC_MOM_THRESH
+                               else (lr_btc_neg if m < -BTC_MOM_THRESH else 1.0))
 
         # 7. 美元趋势（负相关）
         if not pd.isna(row.get("dxy_trend")):
             d = row["dxy_trend"]
-            likelihoods.append(lr_dxy_up if d > 0.01 else (lr_dxy_down if d < -0.01 else 1.0))
+            likelihoods.append(lr_dxy_up if d > DXY_TREND_THRESH
+                               else (lr_dxy_down if d < -DXY_TREND_THRESH else 1.0))
 
         # 8. 指数波动率
         if not pd.isna(row.get(f"{index}_vol20")):
             v = row[f"{index}_vol20"]
-            likelihoods.append(lr_vol_high if v > 0.25 else (lr_vol_low if v < 0.15 else 1.0))
+            likelihoods.append(lr_vol_high if v > VOL_HIGH else (lr_vol_low if v < VOL_LOW else 1.0))
 
         # 9. 指数 RSI
         if not pd.isna(row.get(f"{index}_rsi")):
-            rsi = row[f"{index}_rsi"]
-            likelihoods.append(lr_rsi_ob if rsi > 75 else (lr_rsi_os if rsi < 35 else 1.0))
+            rsi_val = row[f"{index}_rsi"]
+            likelihoods.append(lr_rsi_ob if rsi_val > RSI_OVERBOUGHT
+                               else (lr_rsi_os if rsi_val < RSI_OVERSOLD else 1.0))
 
         # 10. VIX期限结构（倒挂=市场恐慌，2009+）
         if not pd.isna(row.get("vix_backwardation")):
@@ -460,13 +389,6 @@ def compute_daily_signals(prices, ret, tech, trading_days, index="NASDAQ", prior
         }
 
     return records
-
-def _tier(prob):
-    if prob >= 0.80: return 5
-    if prob >= 0.60: return 4
-    if prob >= 0.40: return 3
-    if prob >= 0.20: return 2
-    return 1
 
 # ── 当前信号（带事件调整） ────────────────────────────────────────
 def compute_current_signal(base_prob, event_keys):
@@ -596,20 +518,20 @@ def find_next_opportunities(signals, n_days=45, priors=None):
                     else _learned_off("NASDAQ_above_ma200", 0.85))
 
     btc_mom = latest.get("btc_mom20", 0) or 0
-    tech_lrs.append(_learned_on("BTC_mom20_pos", 1.12) if btc_mom > 0.05
-                    else (_learned_on("BTC_mom20_neg", 0.90) if btc_mom < -0.05 else 1.0))
+    tech_lrs.append(_learned_on("BTC_mom20_pos", 1.12) if btc_mom > BTC_MOM_THRESH
+                    else (_learned_on("BTC_mom20_neg", 0.90) if btc_mom < -BTC_MOM_THRESH else 1.0))
 
     dxy = latest.get("dxy_trend", 0) or 0
-    tech_lrs.append(_learned_on("dxy_rising", 0.88) if dxy > 0.01
-                    else (_learned_on("dxy_falling", 1.12) if dxy < -0.01 else 1.0))
+    tech_lrs.append(_learned_on("dxy_rising", 0.88) if dxy > DXY_TREND_THRESH
+                    else (_learned_on("dxy_falling", 1.12) if dxy < -DXY_TREND_THRESH else 1.0))
 
     nasdaq_vol = latest.get("nasdaq_vol", 0.20) or 0.20
-    tech_lrs.append(_learned_on("nasdaq_high_vol", 0.85) if nasdaq_vol > 0.25
-                    else (_learned_on("nasdaq_low_vol", 1.10) if nasdaq_vol < 0.15 else 1.0))
+    tech_lrs.append(_learned_on("nasdaq_high_vol", 0.85) if nasdaq_vol > VOL_HIGH
+                    else (_learned_on("nasdaq_low_vol", 1.10) if nasdaq_vol < VOL_LOW else 1.0))
 
     nasdaq_rsi = latest.get("nasdaq_rsi", 50) or 50
-    tech_lrs.append(_learned_on("nasdaq_rsi_overbought", 0.85) if nasdaq_rsi > 75
-                    else (_learned_on("nasdaq_rsi_oversold", 1.10) if nasdaq_rsi < 35 else 1.0))
+    tech_lrs.append(_learned_on("nasdaq_rsi_overbought", 0.85) if nasdaq_rsi > RSI_OVERBOUGHT
+                    else (_learned_on("nasdaq_rsi_oversold", 1.10) if nasdaq_rsi < RSI_OVERSOLD else 1.0))
 
     forecast = []
     d = today + timedelta(days=1)
