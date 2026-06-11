@@ -13,9 +13,24 @@ header h1 { font-size: 1.3rem; font-weight: 700; }
 header h1 span { color: var(--green); }
 .header-sub { color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
 
-/* ── Layout ── */
-main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; display: grid; grid-template-columns: 380px 1fr; gap: 1.5rem; }
-@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+/* ── Layout：顶层五视图（今日/计划/实验/研究/我的）── */
+main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+.view-nav { position: sticky; top: 0; z-index: 200; display: flex; gap: .35rem;
+  background: var(--bg); padding: .6rem 2rem; border-bottom: 1px solid var(--border);
+  overflow-x: auto; }
+.view-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+  padding: .45rem 1.1rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer;
+  white-space: nowrap; transition: all .15s; font-family: inherit; }
+.view-btn:hover { color: var(--text); border-color: var(--muted); }
+.view-btn.active { color: var(--blue); border-color: var(--blue); background: rgba(52,152,219,.12); font-weight: 600; }
+/* 视图内布局：panel 自适应多列；宽图表单列堆叠 */
+.view-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; align-items: start; }
+.view-stack { display: flex; flex-direction: column; gap: 1.5rem; }
+.view-stack + .view-grid, .view-grid + .view-stack { margin-top: 1.5rem; }
+@media (max-width: 900px) {
+  .view-nav { padding: .5rem .75rem; }
+  .view-grid { grid-template-columns: 1fr; }
+}
 
 /* ── Panel ── */
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
@@ -83,9 +98,11 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; display: grid; grid-t
 footer { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.78rem; border-top: 1px solid var(--border); margin-top: 1rem; }
 footer a { color: var(--green); text-decoration: none; }
 
-/* ── Tabs ── */
+/* ── Tabs（<button class="tab">，键盘可达）── */
 .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; flex-wrap: wrap; }
-.tab { padding: .5rem 1rem; font-size: 0.82rem; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; transition: color .2s; }
+.tab { padding: .5rem 1rem; font-size: 0.82rem; cursor: pointer; color: var(--muted);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  font-family: inherit; transition: color .2s; }
 .tab.active { color: var(--text); border-bottom-color: var(--green); }
 .tab-content { display: none; }
 .tab-content.active { display: block; }

@@ -2752,6 +2752,19 @@ async function loadPaperPanel() {
     </div>`;
   }).join("") + `<div style="color:var(--muted);font-size:0.68rem;margin-top:.2rem;">
     每个 $${p.start_capital.toLocaleString()} · 自 ${p.start_date} 同日起跑 · ${p.note}</div>`;
+
+  // 净值曲线（数据来自各策略 curve，积累几个交易日后才有形状）
+  const eqEl = document.getElementById("chart-equity");
+  if (!eqEl) return;
+  if (strats.some(s => (s.curve?.dates || []).length > 1)) {
+    Plotly.newPlot("chart-equity", strats.map(s => ({
+      x: s.curve.dates, y: s.curve.equity, type: "scatter", mode: "lines",
+      name: s.label,
+    })), {...DARK, yaxis:{...DARK.yaxis, title:"净值 $"}, hovermode:"x unified",
+      legend:{orientation:"h", y:1.1}}, {responsive:true});
+  } else {
+    eqEl.innerHTML = `<div style="color:var(--muted);font-size:0.78rem;display:flex;align-items:center;justify-content:center;height:100%;">📈 净值曲线将在实验积累几个交易日后出现</div>`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3019,4 +3032,69 @@ init().then(() => {
   // Digit chart is default-visible; use setTimeout so Plotly gets correct width
   _calTabRendered.add("digit");
   setTimeout(() => safeRender(renderDigitChart, "Digit"), 100);
+  safeRender(renderIPOCycle, "IPOCycle");
+  // 恢复上次浏览的视图（默认"今日"）
+  const savedView = localStorage.getItem("alpha_view");
+  if (savedView && savedView !== "today") {
+    const btn = document.querySelector(`.view-btn[data-view="${savedView}"]`);
+    if (btn) switchView(savedView, btn);
+  }
 });
+
+// ═══════════════════════════════════════════════════════
+//  顶层视图切换（今日/计划/实验/研究/我的）
+// ═══════════════════════════════════════════════════════
+const VIEWS = ["today", "plan", "lab", "research", "mine"];
+function switchView(name, btn) {
+  document.querySelectorAll(".view-nav .view-btn").forEach(b => {
+    const on = b === btn;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  VIEWS.forEach(v => {
+    const sec = document.getElementById("view-" + v);
+    if (sec) sec.style.display = (v === name) ? "" : "none";
+  });
+  localStorage.setItem("alpha_view", name);
+  // Plotly 在 display:none 里算不出宽度，切换后重算本视图全部图表
+  requestAnimationFrame(() => resizeChartsIn(document.getElementById("view-" + name)));
+}
+
+// ═══════════════════════════════════════════════════════
+//  IPO 周期视角（SPCX 面板子块）：超级IPO上市后12个月大盘最大回撤
+//  数值为历史约值（指数日线口径），用作情绪温度计而非精确统计
+// ═══════════════════════════════════════════════════════
+const MEGA_IPOS = [
+  { name:"NTT 1987-02",        mkt:"日经",   dd:-21, top:true  },
+  { name:"Blackstone 2007-06", mkt:"标普",   dd:-18, top:true  },
+  { name:"中石油A 2007-11",    mkt:"上证",   dd:-70, top:true  },
+  { name:"Visa 2008-03",       mkt:"标普",   dd:-48, top:false },
+  { name:"Glencore 2011-05",   mkt:"富时",   dd:-17, top:true  },
+  { name:"Facebook 2012-05",   mkt:"标普",   dd:-10, top:false },
+  { name:"Alibaba 2014-09",    mkt:"标普",   dd:-10, top:false },
+  { name:"Coinbase 2021-04",   mkt:"BTC",    dd:-55, top:true  },
+  { name:"Rivian 2021-11",     mkt:"纳指",   dd:-33, top:true  },
+  { name:"Google 2004-08",     mkt:"标普",   dd:-7,  top:false },
+];
+function renderIPOCycle() {
+  const el = document.getElementById("chart-ipo-cycle");
+  if (!el) return;
+  const rows = [...MEGA_IPOS].sort((a, b) => a.dd - b.dd);
+  Plotly.newPlot("chart-ipo-cycle", [{
+    type: "bar", orientation: "h",
+    y: rows.map(r => r.name), x: rows.map(r => r.dd),
+    marker: { color: rows.map(r => r.dd <= -15 ? "#e74c3c" : "#2ecc71") },
+    text: rows.map(r => `${r.dd}%（${r.mkt}）`), textposition: "auto",
+    hovertemplate: "%{y}<br>上市后12个月所在市场最大回撤 ≈ %{x}%<extra></extra>",
+  }], {...DARK, margin:{...DARK.margin, l:150},
+    xaxis:{...DARK.xaxis, title:"上市后12个月大盘最大回撤 %"}}, {responsive:true});
+  const ins = document.getElementById("ipo-cycle-insight");
+  if (ins) {
+    const bad = MEGA_IPOS.filter(r => r.dd <= -15).length;
+    ins.innerHTML = `<strong>IPO 周期视角：</strong>史上${MEGA_IPOS.length}个"超级/全民"IPO中，
+      ${bad} 个之后12个月内所在市场出现 ≥15% 回撤（NTT 1987、中石油 2007、Rivian 2021 几乎贴顶）。
+      机制真实——发行人挑估值最贵、散户最热情的时候卖股票（IPO 热度是 Baker-Wurgler 情绪指数成分）；
+      但领先期 0–18 个月不等，也有谷歌/阿里/脸书这样的平静反例。
+      <span style="color:var(--muted)">数值为历史约值。当温度计用，别当择时按钮——本站的答案永远是上面的校准概率。</span>`;
+  }
+}
