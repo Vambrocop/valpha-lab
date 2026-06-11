@@ -33,6 +33,16 @@ def load_log():
     return pd.DataFrame(columns=COLS)
 
 
+def _is_dup(log, signal_date, index, version):
+    """同日同指数同版本是否已记录。
+    注意 astype(str)：CSV 读回后 "2.0" 会变成浮点，直接比较永远 False"""
+    if not len(log):
+        return False
+    return bool(((log["signal_date"].astype(str) == signal_date) &
+                 (log["index"] == index) &
+                 (log["model_version"].astype(str) == version)).any())
+
+
 def main():
     with open(WEB_DIR / "signals.json", encoding="utf-8") as f:
         sig = json.load(f)
@@ -51,11 +61,7 @@ def main():
             continue
         d = finals[-1]
         s = daily[d]
-        # 注意 astype(str)：CSV 读回后 "2.0" 会变成浮点，直接比较永远 False
-        dup = bool(len(log) and ((log["signal_date"].astype(str) == d) &
-                                 (log["index"] == idx) &
-                                 (log["model_version"].astype(str) == version)).any())
-        if not dup:
+        if not _is_dup(log, d, idx, version):
             new_rows.append({
                 "logged_at":     pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"),
                 "signal_date":   d,
