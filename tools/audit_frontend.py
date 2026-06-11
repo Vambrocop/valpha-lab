@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-web = Path(__file__).parent.parent / "web"
+web = Path(__file__).parent.parent / "market-analysis" / "web"
 html = (web / "index.html").read_text(encoding="utf-8")
 js   = (web / "app.js").read_text(encoding="utf-8")
 css  = (web / "style.css").read_text(encoding="utf-8")

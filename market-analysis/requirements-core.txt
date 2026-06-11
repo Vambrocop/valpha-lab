@@ -1,0 +1,8 @@
+# 核心流水线 + CI 测试门禁所需（run_all.py 默认步骤）
+# 上界防 yfinance/pandas 大版本破坏性变更悄悄进 CI
+yfinance>=0.2.40,<0.3
+pandas>=2.0,<3
+numpy>=1.24,<3
+scipy>=1.10,<2
+requests>=2.31,<3
+pytest>=8,<9

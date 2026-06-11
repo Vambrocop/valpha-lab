@@ -32,7 +32,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies (core pipeline only)
-        run: pip install yfinance pandas numpy scipy requests pytest
+        run: pip install -r market-analysis/requirements-core.txt
 
       - name: Run tests (gate — bad code must not publish data)
         run: python -m pytest market-analysis/tests -q
