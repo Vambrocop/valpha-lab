@@ -165,7 +165,7 @@ def _adjust_weekend(d):
 
 def _us_holidays(year):
     easter = _easter(year)
-    return {
+    holidays = {
         _adjust_weekend(date(year, 1, 1)),       # New Year
         _nth_weekday(year, 1, 0, 3),             # MLK Day
         _nth_weekday(year, 2, 0, 3),             # Presidents Day
@@ -176,6 +176,10 @@ def _us_holidays(year):
         _nth_weekday(year, 11, 3, 4),            # Thanksgiving
         _adjust_weekend(date(year, 12, 25)),      # Christmas
     }
+    # Juneteenth：NYSE 自 2022 年起 6 月 19 日休市
+    if year >= 2022:
+        holidays.add(_adjust_weekend(date(year, 6, 19)))
+    return holidays
 
 # 预生成1990-2030年假日集合
 _HOLIDAY_SET = set()
