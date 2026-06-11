@@ -17,7 +17,7 @@ from signal_model import (
     rsi as _rsi, shrink_lr, us_holidays as _us_holidays,
     HOLIDAY_SET as _HOLIDAY_SET, THANKSGIVING_DATES as _THANKSGIVING_DATES,
     BTC_MOM_THRESH, DXY_TREND_THRESH, VOL_HIGH, VOL_LOW,
-    RSI_OVERBOUGHT, RSI_OVERSOLD,
+    RSI_OVERBOUGHT, RSI_OVERSOLD, TIER_THRESHOLDS,
 )
 
 
@@ -427,6 +427,8 @@ def build():
     output = {
         "generated": pd.Timestamp.now().strftime("%Y-%m-%d"),
         "model_version": MODEL_VERSION,
+        # 档位阈值唯一来源（前端 tier()/图例据此渲染）
+        "tier_thresholds": TIER_THRESHOLDS,
         # 兼容字段：latest_* 指 NASDAQ 主信号流
         "latest_prob": round(base_prob, 4),
         "latest_tier": _tier(base_prob),
@@ -771,13 +773,14 @@ if __name__ == "__main__":
     # 嵌入事件研究结果
     result["event_study"] = load_event_study()
 
-    # 未来最佳入场/离场窗口（两个指数各一份，约半年=130个交易日）
+    # 未来最佳入场/离场窗口（两个指数各一份，40个交易日≈两个月）
+    # 上限40：技术因子LR是冻结的当前值，再往后外推就不诚实了（ROADMAP P1-2）
     # SP500 用完整记录（瘦身版没有技术因子，会退化成中性占位值）
     _sp500_full = result.pop("_sp500_full", result["daily_signals_sp500"])
     result["next_opportunities"] = find_next_opportunities(
-        result["daily_signals"], n_days=130, priors=NASDAQ_PRIOR)
+        result["daily_signals"], n_days=40, priors=NASDAQ_PRIOR)
     result["next_opportunities_sp500"] = find_next_opportunities(
-        _sp500_full, n_days=130, priors=SP500_PRIOR)
+        _sp500_full, n_days=40, priors=SP500_PRIOR)
 
     # 宏观事件日历（未来90天内的 CPI/FOMC，以美东日期为准）
     _today = us_today()

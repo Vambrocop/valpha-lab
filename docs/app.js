@@ -8,12 +8,38 @@ let selectedDate = null;
 let activeEvents = new Set();
 
 const TIER_META = {
-  5: { label:"强势入场", stars:"★★★★★", color:"#27ae60", desc:"季节性、技术面、宏观全面支撑，历史上此类信号后20天平均涨幅最大" },
-  4: { label:"适合入场", stars:"★★★★☆", color:"#2ecc71", desc:"多数指标偏多，可按计划正常仓位入场" },
-  3: { label:"中性观望", stars:"★★★☆☆", color:"#f1c40f", desc:"信号混合，建议小仓位试探或等待更明确信号" },
-  2: { label:"谨慎等待", stars:"★★☆☆☆", color:"#e67e22", desc:"偏空信号为主，建议观望，不宜重仓" },
-  1: { label:"极高风险", stars:"★☆☆☆☆", color:"#e74c3c", desc:"多重负面因素叠加，历史上此类时期平均亏损，建议规避" },
+  5: { label:"强势入场", stars:"★★★★★", color:"#27ae60", short:"季节 + 技术 + 宏观全面支撑",
+       desc:"季节性、技术面、宏观全面支撑，历史上此类信号后20天平均涨幅最大" },
+  4: { label:"适合入场", stars:"★★★★☆", color:"#2ecc71", short:"多数指标偏多，可正常仓位",
+       desc:"多数指标偏多，可按计划正常仓位入场" },
+  3: { label:"中性观望", stars:"★★★☆☆", color:"#f1c40f", short:"信号混合，小仓位或等待",
+       desc:"信号混合，建议小仓位试探或等待更明确信号" },
+  2: { label:"谨慎等待", stars:"★★☆☆☆", color:"#e67e22", short:"偏空信号为主，建议观望",
+       desc:"偏空信号为主，建议观望，不宜重仓" },
+  1: { label:"极高风险", stars:"★☆☆☆☆", color:"#e74c3c", short:"多重负面因素叠加，规避",
+       desc:"多重负面因素叠加，历史上此类时期平均亏损，建议规避" },
 };
+
+// 档位阈值：唯一来源是 signals.json（build_signals 从 signal_model.TIER_THRESHOLDS 下发）
+const TIER_FALLBACK = { 5:0.80, 4:0.60, 3:0.40, 2:0.20 };
+function tierThresholds() { return SIGNALS?.tier_thresholds || TIER_FALLBACK; }
+
+function renderTierLegend() {
+  const el = document.getElementById("tier-legend");
+  if (!el) return;
+  const th = tierThresholds();
+  const bounds = { 5:"100%", 4:Math.round(th[5]*100)+"%", 3:Math.round(th[4]*100)+"%",
+                   2:Math.round(th[3]*100)+"%", 1:Math.round(th[2]*100)+"%" };
+  el.innerHTML = [5,4,3,2,1].map(t => {
+    const m = TIER_META[t];
+    const lo = t === 1 ? "0%" : Math.round(th[t]*100)+"%";
+    return `<div class="tier-row" style="background:${m.color}10">
+      <div class="tier-badge" style="background:${m.color};color:${t===3?"#000":"#fff"}">${t}</div>
+      <div><strong style="color:${m.color}">${m.label}</strong> ${lo}–${bounds[t]}<br>
+        <span style="color:var(--muted);font-size:0.75rem">${m.short}</span></div>
+    </div>`;
+  }).join("");
+}
 
 const EVENTS_CONFIG = [
   { key:"war",        label:"战争爆发",   dot:"#e74c3c" },
@@ -64,6 +90,7 @@ async function init() {
   }
 
   buildEventGrid();
+  renderTierLegend();
   initDatePicker();
   renderPriceChart();
   renderSignalHistory();
@@ -103,8 +130,9 @@ function buildDemoSignals() {
 }
 
 function tier(p) {
-  if(p>=0.80) return 5; if(p>=0.60) return 4;
-  if(p>=0.40) return 3; if(p>=0.20) return 2; return 1;
+  const th = tierThresholds();
+  for (const t of [5,4,3,2]) if (p >= th[t]) return t;
+  return 1;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -120,7 +148,7 @@ function localDateStr(d) {
 function initDatePicker() {
   const dp = document.getElementById("date-picker");
   const today = localDateStr();
-  const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 185);  // 约半年前瞻
+  const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 60);  // 前瞻40个交易日≈2个月
   dp.value = today;
   dp.max   = localDateStr(maxDate);
   dp.min   = "2015-01-01";
@@ -153,7 +181,7 @@ function updateSignal(dateStr) {
       document.getElementById("signal-stars").textContent = "—";
       document.getElementById("insight-box").innerHTML =
         `<strong>${dateStr}</strong><br>该日期超出预测范围（至 ${allFc[allFc.length-1]?.date||"—"}）。<br>
-         <span style="color:var(--muted);font-size:0.78rem">左侧"最佳操作窗口"显示了未来约半年的高/低概率窗口。</span>`;
+         <span style="color:var(--muted);font-size:0.78rem">"最佳操作窗口"显示未来40个交易日的高/低概率窗口；再往后技术因子外推不可靠，不提供数字。</span>`;
       document.getElementById("factor-list").innerHTML = "";
       document.getElementById("signal-percentile").innerHTML = "";
       return;

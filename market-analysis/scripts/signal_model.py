@@ -27,12 +27,14 @@ def shrink_lr(lr, n, k=SHRINK_N):
     return 1 + (lr - 1) * n / (n + k)
 
 
-# ── 档位 ──────────────────────────────────────────────────────────
+# ── 档位（阈值随 signals.json 下发，前端不得另抄一份）──────────────
+TIER_THRESHOLDS = {5: 0.80, 4: 0.60, 3: 0.40, 2: 0.20}
+
+
 def tier(prob):
-    if prob >= 0.80: return 5
-    if prob >= 0.60: return 4
-    if prob >= 0.40: return 3
-    if prob >= 0.20: return 2
+    for t in (5, 4, 3, 2):
+        if prob >= TIER_THRESHOLDS[t]:
+            return t
     return 1
 
 

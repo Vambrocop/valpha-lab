@@ -69,7 +69,7 @@
 
     <!-- 模拟盘（$10,000 机械跟随信号，账本不可篡改） -->
     <div class="panel">
-      <div class="panel-title">💰 模拟盘 · 四策略竞技</div>
+      <div class="panel-title">💰 模拟盘 · 五策略竞技</div>
       <div id="paper-content" style="font-size:0.8rem;line-height:1.6;"></div>
     </div>
 
@@ -164,7 +164,7 @@
 
     <!-- 未来最佳入场/减仓窗口（动态预测） -->
     <div class="panel" id="opp-panel">
-      <div class="panel-title">🎯 接下来最佳操作窗口 <span style="color:var(--muted);font-size:0.72rem;font-weight:400;">未来45个交易日</span></div>
+      <div class="panel-title">🎯 接下来最佳操作窗口 <span style="color:var(--muted);font-size:0.72rem;font-weight:400;">未来40个交易日</span></div>
       <div style="font-size:0.8rem;color:var(--green);font-weight:600;margin-bottom:.4rem;">▲ 最佳买入窗口（概率最高）</div>
       <div class="opp-list" id="opp-entry-list"></div>
       <div style="font-size:0.8rem;color:#e74c3c;font-weight:600;margin:1rem 0 .4rem;">▼ 最弱 / 适合减仓（概率最低）</div>
@@ -172,31 +172,10 @@
       <div class="opp-note" id="opp-note"></div>
     </div>
 
-    <!-- 档位说明 -->
+    <!-- 档位说明（阈值与档位来自 signals.json，JS 渲染，避免多处抄写） -->
     <div class="panel">
       <div class="panel-title">五档入场等级</div>
-      <div class="tier-legend">
-        <div class="tier-row" style="background:rgba(39,174,96,.08)">
-          <div class="tier-badge" style="background:#27ae60;color:#fff">5</div>
-          <div><strong style="color:#27ae60">强势入场</strong> 80–100%<br><span style="color:var(--muted);font-size:0.75rem">季节 + 技术 + 宏观全面支撑</span></div>
-        </div>
-        <div class="tier-row" style="background:rgba(46,204,113,.06)">
-          <div class="tier-badge" style="background:var(--green);color:#fff">4</div>
-          <div><strong style="color:var(--green)">适合入场</strong> 60–80%<br><span style="color:var(--muted);font-size:0.75rem">多数指标偏多，可正常仓位</span></div>
-        </div>
-        <div class="tier-row" style="background:rgba(241,196,15,.06)">
-          <div class="tier-badge" style="background:var(--yellow);color:#000">3</div>
-          <div><strong style="color:var(--yellow)">中性观望</strong> 40–60%<br><span style="color:var(--muted);font-size:0.75rem">信号混合，小仓位或等待</span></div>
-        </div>
-        <div class="tier-row" style="background:rgba(230,126,34,.06)">
-          <div class="tier-badge" style="background:var(--orange);color:#fff">2</div>
-          <div><strong style="color:var(--orange)">谨慎等待</strong> 20–40%<br><span style="color:var(--muted);font-size:0.75rem">偏空信号为主，建议观望</span></div>
-        </div>
-        <div class="tier-row" style="background:rgba(231,76,60,.06)">
-          <div class="tier-badge" style="background:var(--red);color:#fff">1</div>
-          <div><strong style="color:var(--red)">极高风险</strong> 0–20%<br><span style="color:var(--muted);font-size:0.75rem">多重负面因素叠加，规避</span></div>
-        </div>
-      </div>
+      <div class="tier-legend" id="tier-legend"></div>
     </div>
 
   </div>
@@ -207,7 +186,7 @@
     <!-- 未来60天信号日历 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        📅 未来60天信号预览 <span class="badge">交易日 · 颜色=入场档位</span>
+        📅 未来40个交易日信号预览 <span class="badge">技术因子冻结当前值 · 颜色=入场档位</span>
       </div>
       <div id="forecast-calendar" style="min-height:60px;"></div>
     </div>

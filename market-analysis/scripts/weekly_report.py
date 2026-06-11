@@ -80,7 +80,7 @@ def main():
         "note": "波动率分位>80%时历史上未来20日胜率下降；倒挂期反而常接近底部（胜率64.8%）。",
     })
 
-    # ── 5. 模拟盘（四策略竞技）────────────────────────────────────
+    # ── 5. 模拟盘（五策略竞技）────────────────────────────────────
     try:
         with open(WEB_DIR / "paper.json", encoding="utf-8") as f:
             pp = json.load(f)
@@ -93,7 +93,7 @@ def main():
                                 key=lambda x: -x["ret_pct"])]
         if rows:
             sections.append({
-                "title": f"模拟盘四策略竞技（自 {pp['start_date']} 各 $10,000）",
+                "title": f"模拟盘五策略竞技（自 {pp['start_date']} 各 $10,000）",
                 "table": rows,
                 "note": pp.get("note", ""),
             })

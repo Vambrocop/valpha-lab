@@ -194,7 +194,7 @@ def main():
                       "equity": [float(x) for x in sub["equity"]]},
             "as_of": str(last["date"]),
         }
-    out["note"] = ("四个策略同日起跑、收盘价机械成交、账本不可篡改。"
+    out["note"] = ("五个策略同日起跑、收盘价机械成交、账本不可篡改。"
                    "这是前向实验：时间会告诉我们哪个基金经理称职。")
     with open(WEB_DIR / "paper.json", "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
