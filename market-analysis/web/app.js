@@ -41,19 +41,21 @@ function renderTierLegend() {
   }).join("");
 }
 
+// subjective:true = 该事件 LR 是主观估计，无历史样本支撑（P2-5 尸检结论）；
+// 其余来自 event_study 数据驱动（仍是小样本/样本内，但至少有实证依据）。
 const EVENTS_CONFIG = [
   { key:"war",        label:"战争爆发",   dot:"#e74c3c" },
   { key:"pandemic",   label:"疫情封锁",   dot:"#c0392b" },
   { key:"trade_war",  label:"贸易战升级", dot:"#d35400" },
   { key:"fed_hike",   label:"意外加息",   dot:"#9b59b6" },
   { key:"fed_cut",    label:"降息",       dot:"#27ae60" },
-  { key:"gold_spike", label:"黄金暴涨",   dot:"#f1c40f" },
-  { key:"oil_spike",  label:"油价暴涨",   dot:"#e67e22" },
+  { key:"gold_spike", label:"黄金暴涨",   dot:"#f1c40f", subjective:true },
+  { key:"oil_spike",  label:"油价暴涨",   dot:"#e67e22", subjective:true },
   { key:"vix_spike",  label:"VIX恐慌↑",  dot:"#e74c3c" },
-  { key:"halving",    label:"BTC减半",    dot:"#f39c12" },
+  { key:"halving",    label:"BTC减半",    dot:"#f39c12", subjective:true },
   { key:"ai_boom",    label:"AI重大利好", dot:"#1abc9c" },
-  { key:"ipo_boom",   label:"大型IPO潮",  dot:"#3498db" },
-  { key:"election",   label:"选举不确定", dot:"#3498db" },
+  { key:"ipo_boom",   label:"大型IPO潮",  dot:"#3498db", subjective:true },
+  { key:"election",   label:"选举不确定", dot:"#3498db", subjective:true },
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -453,10 +455,11 @@ function renderFactors(rec, finalProb) {
 function buildEventGrid() {
   const grid = document.getElementById("event-grid");
   grid.innerHTML = EVENTS_CONFIG.map(e => `
-    <label class="event-item" id="ev-${e.key}" onclick="toggleEvent('${e.key}',this)">
+    <label class="event-item" id="ev-${e.key}" onclick="toggleEvent('${e.key}',this)"
+      ${e.subjective ? 'style="opacity:.6" title="主观估计·无历史样本支撑（未经验证）"' : 'title="来自事件研究的数据驱动估计（小样本）"'}>
       <input type="checkbox">
       <span class="event-dot" style="background:${e.dot}"></span>
-      ${e.label}
+      ${e.label}${e.subjective ? ' <span style="font-size:0.6rem;color:var(--muted);">主观?</span>' : ''}
     </label>
   `).join("");
 }
