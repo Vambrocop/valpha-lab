@@ -536,8 +536,11 @@ function renderDipGuide() {
     hovertemplate:"<b>%{x}</b><br>平均恢复 %{y} 天<extra></extra>",
   }], {
     ...DARK, margin:{t:10,b:40,l:45,r:10},
-    yaxis:{...DARK.yaxis, title:"平均恢复天数"},
-    xaxis:{...DARK.xaxis},
+    // y 轴顶部留 18% 余量，给最高柱(700天)的 outside 文字留位置
+    yaxis:{...DARK.yaxis, title:"平均恢复天数", range:[0, 700*1.18]},
+    // 必须强制分类轴："-5%" 会被 Plotly 自动当数字解析（parseFloat 截断），
+    // "-40%+" 解析失败 → 整根柱子凭空消失 + translate(NaN) 报错
+    xaxis:{...DARK.xaxis, type:"category"},
   }, {responsive:true});
 
   // VIX水平→未来3个月胜率
@@ -556,7 +559,7 @@ function renderDipGuide() {
   }], {
     ...DARK, margin:{t:10,b:40,l:40,r:10},
     yaxis:{...DARK.yaxis, title:"3个月胜率%", range:[45,100]},
-    xaxis:{...DARK.xaxis},
+    xaxis:{...DARK.xaxis, type:"category"},   // "15-20" 会被自动解析成数字 15，同 dip 图
     shapes:[{type:"line",x0:-0.5,x1:4.5,y0:58,y1:58,line:{color:"#555",dash:"dot",width:1}}],
   }, {responsive:true});
 

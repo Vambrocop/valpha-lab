@@ -67,7 +67,8 @@ def export_prices():
     out = {"dates": dates, "assets": series}
     path = WEB_DIR / "prices.json"
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+        json.dump(_clean(out), f, ensure_ascii=False, separators=(",", ":"),
+                  allow_nan=False)
     print(f"  -> {path}  ({path.stat().st_size // 1024} KB)\n")
     return out
 
@@ -80,6 +81,19 @@ def _safe_csv(path, **kwargs):
         return pd.read_csv(path, **kwargs)
     except Exception:
         return pd.DataFrame()
+
+
+def _clean(o):
+    """NaN/Inf → None（裸 NaN 是非法 JSON，浏览器 JSON.parse 直接抛错，整文件作废）"""
+    if isinstance(o, dict):
+        return {k: _clean(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [_clean(v) for v in o]
+    if isinstance(o, (np.floating, np.integer)):
+        o = o.item()
+    if isinstance(o, float) and (o != o or o in (float("inf"), float("-inf"))):
+        return None
+    return o
 
 
 def export_charts_extra():
@@ -148,7 +162,8 @@ def export_charts_extra():
 
     path = WEB_DIR / "charts_extra.json"
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+        json.dump(_clean(out), f, ensure_ascii=False, separators=(",", ":"),
+                  allow_nan=False)   # 裸 NaN 会让浏览器整文件解析失败
     print(f"  -> {path}  ({path.stat().st_size // 1024} KB)\n")
     return out
 

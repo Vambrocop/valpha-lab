@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alpha Lab | 美股入场信号分析</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='85'%3E%E2%AC%A1%3C/text%3E%3C/svg%3E">
 <!-- cartesian 部分包（~1.4MB，全包3.6MB）：本站只用 scatter/bar/heatmap。
      同源自托管而非 cdn.plot.ly：中国访客访问境外 CDN 不可靠，挂了会全站无图 -->
 <script src="plotly-cartesian-2.35.2.min.js"></script>
@@ -492,6 +493,60 @@
       <div class="panel-title">🚀 SpaceX SPCX · IPO追踪</div>
       <div id="spcx-tracker"></div>
     </div>
+
+    <!-- 澳洲CGT税务计算器（与 SPCX 追踪同排，避免整行只有一张卡） -->
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        🇦🇺 澳洲CGT资本利得税计算器 <span class="badge">仅供参考 · 建议咨询会计师</span>
+      </div>
+      <div class="cgt-grid">
+        <div class="cgt-field">
+          <label class="cgt-label">资产名称</label>
+          <select class="cgt-input" id="cgt-asset" onchange="prefillCGT()">
+            <option value="">— 选择或自定义 —</option>
+            <option value="BTC">BTC 比特币</option>
+            <option value="ETH">ETH 以太坊</option>
+            <option value="XLM">XLM 恒星币</option>
+            <option value="DOGE">DOGE 狗狗币</option>
+            <option value="HOME">HOME DeFi.app</option>
+            <option value="SPCX">SPCX SpaceX</option>
+            <option value="custom">自定义资产</option>
+          </select>
+        </div>
+        <div class="cgt-field">
+          <label class="cgt-label">卖出数量</label>
+          <input class="cgt-input" type="number" id="cgt-qty" min="0" step="any" placeholder="例如：100">
+        </div>
+        <div class="cgt-field">
+          <label class="cgt-label">买入均价 (AUD/个)</label>
+          <input class="cgt-input" type="number" id="cgt-buy-aud" min="0" step="any" placeholder="买入时AUD单价">
+        </div>
+        <div class="cgt-field">
+          <label class="cgt-label">卖出价格 (AUD/个)</label>
+          <input class="cgt-input" type="number" id="cgt-sell-aud" min="0" step="any" placeholder="卖出时AUD单价">
+        </div>
+        <div class="cgt-field">
+          <label class="cgt-label">买入日期</label>
+          <input class="cgt-input" type="date" id="cgt-buy-date">
+        </div>
+        <div class="cgt-field">
+          <label class="cgt-label">边际税率 (%) <span class="tip" data-tip="澳洲个人所得税边际税率：$0-18,200免税；$18,201-45,000税率19%；$45,001-120,000税率32.5%；$120,001-180,000税率37%；$180,001+税率45%。加Medicare征费2%。">ⓘ</span></label>
+          <select class="cgt-input" id="cgt-tax-rate">
+            <option value="0">0%（年收入 < A$18,200）</option>
+            <option value="19">19%（A$18,201–45,000）</option>
+            <option value="32.5" selected>32.5%（A$45,001–120,000）</option>
+            <option value="37">37%（A$120,001–180,000）</option>
+            <option value="45">45%（A$180,001+）</option>
+          </select>
+        </div>
+      </div>
+      <button class="cgt-btn" onclick="calculateCGT()">📊 计算税务</button>
+      <div id="cgt-result"></div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:.65rem;line-height:1.5;">
+        ⚠️ 仅为估算参考，不构成税务建议。加密货币每次交易（包括换币）均为CGT事件。
+        若年收入较低，加密亏损可抵扣资本利得。建议咨询注册会计师（CPA/Tax Agent）。
+      </div>
+    </div>
   </div>
 
   <div class="view-stack" style="margin-top:1.5rem;">
@@ -566,59 +621,6 @@
       <div id="portfolio-signal" style="margin-top:.6rem;"></div>
     </div>
 
-    <!-- 澳洲CGT税务计算器 -->
-    <div class="chart-wrap" style="padding:1.25rem;">
-      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🇦🇺 澳洲CGT资本利得税计算器 <span class="badge">仅供参考 · 建议咨询会计师</span>
-      </div>
-      <div class="cgt-grid">
-        <div class="cgt-field">
-          <label class="cgt-label">资产名称</label>
-          <select class="cgt-input" id="cgt-asset" onchange="prefillCGT()">
-            <option value="">— 选择或自定义 —</option>
-            <option value="BTC">BTC 比特币</option>
-            <option value="ETH">ETH 以太坊</option>
-            <option value="XLM">XLM 恒星币</option>
-            <option value="DOGE">DOGE 狗狗币</option>
-            <option value="HOME">HOME DeFi.app</option>
-            <option value="SPCX">SPCX SpaceX</option>
-            <option value="custom">自定义资产</option>
-          </select>
-        </div>
-        <div class="cgt-field">
-          <label class="cgt-label">卖出数量</label>
-          <input class="cgt-input" type="number" id="cgt-qty" min="0" step="any" placeholder="例如：100">
-        </div>
-        <div class="cgt-field">
-          <label class="cgt-label">买入均价 (AUD/个)</label>
-          <input class="cgt-input" type="number" id="cgt-buy-aud" min="0" step="any" placeholder="买入时AUD单价">
-        </div>
-        <div class="cgt-field">
-          <label class="cgt-label">卖出价格 (AUD/个)</label>
-          <input class="cgt-input" type="number" id="cgt-sell-aud" min="0" step="any" placeholder="卖出时AUD单价">
-        </div>
-        <div class="cgt-field">
-          <label class="cgt-label">买入日期</label>
-          <input class="cgt-input" type="date" id="cgt-buy-date">
-        </div>
-        <div class="cgt-field">
-          <label class="cgt-label">边际税率 (%) <span class="tip" data-tip="澳洲个人所得税边际税率：$0-18,200免税；$18,201-45,000税率19%；$45,001-120,000税率32.5%；$120,001-180,000税率37%；$180,001+税率45%。加Medicare征费2%。">ⓘ</span></label>
-          <select class="cgt-input" id="cgt-tax-rate">
-            <option value="0">0%（年收入 < A$18,200）</option>
-            <option value="19">19%（A$18,201–45,000）</option>
-            <option value="32.5" selected>32.5%（A$45,001–120,000）</option>
-            <option value="37">37%（A$120,001–180,000）</option>
-            <option value="45">45%（A$180,001+）</option>
-          </select>
-        </div>
-      </div>
-      <button class="cgt-btn" onclick="calculateCGT()">📊 计算税务</button>
-      <div id="cgt-result"></div>
-      <div style="font-size:0.72rem;color:var(--muted);margin-top:.65rem;line-height:1.5;">
-        ⚠️ 仅为估算参考，不构成税务建议。加密货币每次交易（包括换币）均为CGT事件。
-        若年收入较低，加密亏损可抵扣资本利得。建议咨询注册会计师（CPA/Tax Agent）。
-      </div>
-    </div>
   </div>
 </section>
 

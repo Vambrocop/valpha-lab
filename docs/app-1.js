@@ -94,16 +94,18 @@ async function init() {
   buildEventGrid();
   renderTierLegend();
   initDatePicker();
-  renderPriceChart();
-  renderSignalHistory();
+  // 研究视图的图表全部懒渲染（lazyRender 定义在 app-5.js；init 由 app-5 调用，此时已就绪）
+  lazyRender("chart-price", renderPriceChart, "PriceChart");
+  lazyRender("chart-signal-history", renderSignalHistory, "SignalHistory");
 
   if (MV) {
-    // 只渲染默认可见的标签页；其余标签页首次打开时再渲染
-    // （Plotly 在 display:none 容器里算不出宽度，启动时全部渲染会画成一团）
-    renderModelComparison();
+    // 默认标签页懒渲染；其余 MV 标签页首次点击时再渲染
+    lazyRender("chart-modelcmp", renderModelComparison, "ModelCmp");
   }
 
-  loadLongHistory();
+  // loadLongHistory 渲染 3 张图：任意一张接近视口即触发（观察器按批去重，只跑一次）
+  ["chart-longmonthly", "chart-holiday", "chart-bearmarkets"]
+    .forEach(id => lazyRender(id, loadLongHistory, "LongHistory"));
 }
 
 // ═══════════════════════════════════════════════════════

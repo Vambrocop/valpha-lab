@@ -50,10 +50,24 @@ if _node:
 else:
     print("  · 跳过 app-*.js 语法检查（环境无 node）")
 
+# 1c. 全部 web JSON 必须是"浏览器级"严格 JSON。
+#     注意：Python json.load 默认放行 NaN/Infinity（它们是非法 JSON），
+#     而浏览器 JSON.parse 会拒绝整个文件——曾导致 charts_extra.json 5 张图全空。
+def _reject_const(c):
+    raise ValueError(f"非法 JSON 常量 {c}（浏览器无法解析）")
+
+for jf in sorted(WEB_DIR.glob("*.json")):
+    try:
+        with open(jf, encoding="utf-8") as fh:
+            json.load(fh, parse_constant=_reject_const)
+        check(True, f"{jf.name} 严格 JSON")
+    except Exception as e:
+        check(False, f"{jf.name} 严格 JSON —— {e}")
+
 # 2. signals.json 严格合法 + 结构完整 + 无周末数据 + 不过期
 try:
     with open(WEB_DIR / "signals.json", encoding="utf-8") as fh:
-        sig = json.load(fh)   # 严格解析：NaN 会直接报错
+        sig = json.load(fh)   # 注：NaN 检查由上方 1c 节统一负责（json.load 默认放行 NaN）
     for key in ["daily_signals", "daily_signals_sp500", "indices",
                 "next_opportunities", "macro_calendar", "model_version"]:
         check(key in sig, f"signals.json 含 {key}")

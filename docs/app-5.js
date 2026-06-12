@@ -64,6 +64,34 @@ function safeRender(fn, name) {
   try { fn(); } catch(e) { console.warn("renderError ["+name+"]:", e); }
 }
 
+// ── IntersectionObserver 懒渲染 ──
+// Plotly 在 display:none 容器里画图会按默认 700px 宽计算（甚至给文字标签算出 NaN 坐标），
+// 之前靠切视图后 Plots.resize 补救。懒渲染让隐藏视图的图表在首次可见时才画，一次画对，
+// 顺带省掉首屏 10+ 张看不见的图的渲染时间。
+const _lazyJobs = new Map();   // containerId -> {fn, name}
+const _lazyObserver = new IntersectionObserver(entries => {
+  const fired = new Set();     // 同一批回调里多个容器共用一个渲染函数时只跑一次
+  for (const en of entries) {
+    if (!en.isIntersecting) continue;
+    const job = _lazyJobs.get(en.target.id);
+    if (!job) continue;
+    _lazyJobs.delete(en.target.id);
+    _lazyObserver.unobserve(en.target);
+    if (fired.has(job.fn)) continue;
+    fired.add(job.fn);
+    safeRender(job.fn, job.name);
+  }
+}, { rootMargin: "250px" });
+
+function lazyRender(containerId, fn, name) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  // offsetParent 为 null = 自己或祖先 display:none（隐藏视图）→ 挂观察器等可见
+  if (el.offsetParent !== null) { safeRender(fn, name); return; }
+  _lazyJobs.set(containerId, { fn, name });
+  _lazyObserver.observe(el);
+}
+
 // 启动渲染序列。抽成具名函数以支持"🔄 手动刷新"：所有渲染器都是幂等覆盖，
 // 重新 init()（拉最新 JSON）后再跑一遍即完成无整页刷新的数据更新。
 function renderAll() {
@@ -75,21 +103,21 @@ function renderAll() {
   safeRender(renderForecastCalendar,"ForecastCal");
   safeRender(renderSentimentPanel,  "Sentiment");
   safeRender(renderEconCalendar,    "EconCal");
-  safeRender(renderDipGuide,        "DipGuide");
+  lazyRender("chart-dip-recovery",  renderDipGuide, "DipGuide");
   safeRender(renderSPCXTracker,     "SPCX");
-  safeRender(renderPredictionAccuracy, "PredAccuracy");
+  lazyRender("chart-accuracy",      renderPredictionAccuracy, "PredAccuracy");
   safeRender(renderIndicesCompare,  "IndicesCompare");
   safeRender(renderLiveTracking,    "LiveTracking");
   safeRender(renderMarketClock,     "MarketClock");
   loadStocksPanel();
-  loadOvernightPanel();
+  lazyRender("chart-overnight",     loadOvernightPanel, "Overnight");
   loadNewsPanel();
   loadBriefPanel();
   loadPaperPanel();
   loadReportPanel();
   safeRender(renderBenchmark,       "Benchmark");
   fetchFearAndGreed();
-  safeRender(renderSPCXDetail,      "SPCXDetail");
+  lazyRender("chart-spcx-ipo",      renderSPCXDetail, "SPCXDetail");
   // Sync SPCX inputs with localStorage
   const savedShares = localStorage.getItem("spcx_shares");
   const savedPrice  = localStorage.getItem("spcx_price");
@@ -97,15 +125,14 @@ function renderAll() {
   if (savedPrice)  { const el = document.getElementById("spcx-price-input");  if (el) el.value = savedPrice; }
   renderPortfolioTable(0.71);  // render with fallback rate; user can refresh for live prices
   _mainTabRendered.add("forecast");
-  // Digit chart is default-visible; use setTimeout so Plotly gets correct width
-  _calTabRendered.add("digit");
-  setTimeout(() => safeRender(renderDigitChart, "Digit"), 100);
-  safeRender(renderIPOCycle, "IPOCycle");
-  safeRender(renderFactorAudit, "FactorAudit");
-  safeRender(renderVolModel, "VolModel");
-  safeRender(renderMarketStructure, "MarketStructure");
-  safeRender(renderEventImpact, "EventImpact");
-  safeRender(renderQuantMethodology, "QuantMethodology");
+  _calTabRendered.add("digit");  // digit 是日历组默认标签，由懒渲染负责首画
+  lazyRender("chart-digit", renderDigitChart, "Digit");
+  lazyRender("chart-ipo-cycle", renderIPOCycle, "IPOCycle");
+  lazyRender("factor-audit", renderFactorAudit, "FactorAudit");
+  lazyRender("vol-model", renderVolModel, "VolModel");
+  lazyRender("market-structure", renderMarketStructure, "MarketStructure");
+  lazyRender("event-impact", renderEventImpact, "EventImpact");
+  lazyRender("quant-methodology", renderQuantMethodology, "QuantMethodology");
   // 恢复上次浏览的视图（默认"今日"）；手动刷新时 savedView==当前视图，顺带触发图表重算尺寸
   const savedView = localStorage.getItem("alpha_view");
   if (savedView && savedView !== "today") {
