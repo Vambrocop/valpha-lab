@@ -27,9 +27,13 @@ from datetime import date, timedelta
 
 # 模型核心原语统一来自 signal_model（与 build_signals.py 生产打分共用，禁止本地复制）。
 # 打分时对学到的 LR 套用与生产相同的收缩——验证的配置必须等于部署的配置。
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+
 from signal_model import (
     tier as _tier, bayesian_update as bayesian_prob,
     week_of_month as _week_of_month, rsi as _rsi, shrink_lr,
+    build_design_matrix,
     BTC_MOM_THRESH, DXY_TREND_THRESH, VOL_HIGH, VOL_LOW,
     RSI_OVERBOUGHT, RSI_OVERSOLD,
 )
@@ -268,6 +272,59 @@ def score_row(row, lrs_dict):
     return bayesian_prob(base_wr, likelihoods)
 
 
+# ══════════════════════════════════════════════════════════════════
+# P2-2 候选模型：L2 逻辑回归（与朴素贝叶斯同折对决，数据决定 v3.0 用谁）
+# ══════════════════════════════════════════════════════════════════
+def fit_logit(train_df):
+    X, cols = build_design_matrix(train_df)
+    y = train_df["fwd_up_20d"].astype(int).values
+    m = LogisticRegression(C=1.0, solver="lbfgs", max_iter=2000)  # 默认 L2
+    m.fit(X, y)
+    return m, cols
+
+
+def block_bootstrap_diff(sel, y, block=20, B=2000, seed=42):
+    """循环块自助（块长=前向窗口20日）：Tier≥4 子集胜率 - 全体胜率 的 CI 与 p 值。
+
+    P2-4：重叠20日窗口让 t 检验 p 值乐观约一个数量级，这里按日序列整块重采样，
+    保留序列相关结构。p 值 = 自助分布穿越 0 的双侧份额（CI 反演法）。
+    """
+    sel = np.asarray(sel, dtype=bool)
+    y = np.asarray(y, dtype=float)
+    n = len(y)
+    if n == 0 or sel.sum() < 10:
+        return None
+    rng = np.random.default_rng(seed)
+    n_blocks = int(np.ceil(n / block))
+    diffs = []
+    for _ in range(B):
+        starts = rng.integers(0, n, n_blocks)
+        idx = np.concatenate([(s + np.arange(block)) % n for s in starts])[:n]
+        ys, ss = y[idx], sel[idx]
+        if ss.sum() == 0:
+            continue
+        diffs.append(ys[ss].mean() - ys.mean())
+    diffs = np.array(diffs)
+    obs = float(y[sel].mean() - y.mean())
+    lo, hi = np.percentile(diffs, [2.5, 97.5])
+    p = 2 * min(float((diffs <= 0).mean()), float((diffs >= 0).mean()))
+    return {"diff": round(obs * 100, 2),
+            "ci95": [round(lo * 100, 2), round(hi * 100, 2)],
+            "p_boot": round(min(p, 1.0), 4)}
+
+
+def evaluate_probs(test_df, probs, label):
+    """对任一模型的测试期概率算统一指标：AUC + Tier≥4 块自助评估"""
+    y = test_df["fwd_up_20d"].astype(int).values
+    out = {"auc": round(float(roc_auc_score(y, probs)), 4) if len(set(y)) > 1 else None}
+    sel = np.array([_tier(p) >= 4 for p in probs])
+    out["n_tier4"] = int(sel.sum())
+    bb = block_bootstrap_diff(sel, y)
+    if bb:
+        out["tier4_boot"] = bb
+    return out
+
+
 def evaluate_on_test(test_df, lrs_dict):
     """在测试期计算各档位实际胜率"""
     probs = test_df.apply(lambda r: score_row(r, lrs_dict), axis=1)
@@ -322,9 +379,12 @@ def run():
     df = build_feature_df()
 
     fold_results = []
-    print("\n=== Walk-Forward 滚动验证 ===")
-    print(f"{'训练期':<18}{'测试期':<14}{'基准WR':>8}{'Tier4 WR':>10}{'差距':>7}{'p值':>8}{'显著':>6}")
-    print("-" * 75)
+    naive_pool, logit_pool, y_pool = [], [], []
+    coef_signs, coef_values = [], []
+    print("\n=== Walk-Forward 滚动验证：朴素贝叶斯 vs 逻辑回归（P2 对决）===")
+    print(f"{'测试期':<12}{'基准WR':>8}{'NB diff':>10}{'NB p_boot':>10}"
+          f"{'LR diff':>10}{'LR p_boot':>10}{'NB AUC':>8}{'LR AUC':>8}")
+    print("-" * 80)
 
     for (train_start, train_end, test_end) in FOLDS:
         train = df[(df["year"] >= train_start) & (df["year"] <  train_end)].copy()
@@ -336,23 +396,36 @@ def run():
         lrs = learn_lrs(train)
         perf = evaluate_on_test(test, lrs)
 
-        t4 = perf.get("tier4_plus", {})
-        base = perf["baseline_wr"]
-        wr4  = t4.get("win_rate", float("nan"))
-        diff = t4.get("diff", float("nan"))
-        pval = t4.get("p_value", float("nan"))
-        sig  = "[*]" if t4.get("significant") else "   "
+        # ── 双模型同折对决：统一用 AUC + Tier≥4 块自助评估 ──────────
+        naive_probs = test.apply(lambda r: score_row(r, lrs), axis=1).values
+        logit, logit_cols = fit_logit(train)
+        Xt, _ = build_design_matrix(test)
+        logit_probs = logit.predict_proba(Xt)[:, 1]
+        y_test = test["fwd_up_20d"].astype(int).values
 
-        print(f"  {train_start}-{train_end:<6}  {train_end}-{test_end:<6}  "
-              f"{base:>7.1f}%  {wr4:>9.1f}%  {diff:>+6.1f}pp  {pval:>7.4f}  {sig}")
+        duel = {"naive": evaluate_probs(test, naive_probs, "naive"),
+                "logit": evaluate_probs(test, logit_probs, "logit")}
+
+        naive_pool.append(naive_probs); logit_pool.append(logit_probs); y_pool.append(y_test)
+        coef_signs.append(dict(zip(logit_cols, np.sign(logit.coef_[0]))))
+        coef_values.append(dict(zip(logit_cols, logit.coef_[0])))
+
+        def _fmt(bb):
+            return (f"{bb['diff']:>+9.1f}pp{bb['p_boot']:>10.3f}" if bb
+                    else f"{'n<10':>11}{'—':>10}")
+        print(f"  {train_end}-{test_end:<6}{perf['baseline_wr']:>7.1f}%"
+              f"{_fmt(duel['naive'].get('tier4_boot'))}"
+              f"{_fmt(duel['logit'].get('tier4_boot'))}"
+              f"{duel['naive']['auc']:>8.3f}{duel['logit']['auc']:>8.3f}")
 
         fold_results.append({
             "train": f"{train_start}-{train_end}",
             "test":  f"{train_end}-{test_end}",
             "n_train": len(train),
             "n_test":  len(test),
-            "baseline_wr": base,
+            "baseline_wr": perf["baseline_wr"],
             "performance": perf,
+            "duel": duel,
         })
 
     # ── 全量数据学习最优LR（用于实际部署）──────────────────────────
@@ -379,6 +452,64 @@ def run():
         print(f"  Tier≥4 样本外平均优势：{np.mean(tier4_diffs):+.1f}pp")
         print(f"  显著折数：{sum(tier4_sigs)} / {len(tier4_sigs)}")
 
+    # ── P2 对决汇总：拼接全部测试折 = 2012-2024 连续样本外序列 ──────
+    y_all = np.concatenate(y_pool)
+    nb_all = np.concatenate(naive_pool)
+    lg_all = np.concatenate(logit_pool)
+    duel_summary = {}
+    for name, probs in [("naive", nb_all), ("logit", lg_all)]:
+        sel = np.array([_tier(p) >= 4 for p in probs])
+        duel_summary[name] = {
+            "auc_pooled": round(float(roc_auc_score(y_all, probs)), 4),
+            "n_tier4": int(sel.sum()),
+            "tier4_boot": block_bootstrap_diff(sel, y_all),
+            "mean_auc_folds": round(float(np.mean(
+                [f["duel"][name]["auc"] for f in fold_results])), 4),
+        }
+    print(f"\n=== 拼接样本外对决（2012-2024，n={len(y_all)}）===")
+    for name, s in duel_summary.items():
+        bb = s["tier4_boot"] or {}
+        print(f"  {name:>6}: AUC={s['auc_pooled']:.3f}  Tier≥4 diff={bb.get('diff','—')}pp  "
+              f"CI95={bb.get('ci95','—')}  p_boot={bb.get('p_boot','—')}  n_t4={s['n_tier4']}")
+
+    # ── 样本外校准（P2-3 地基）：测试折预测按分位分箱 → 实际20日胜率 ──
+    oos_cal = {}
+    for name, probs in [("naive", nb_all), ("logit", lg_all)]:
+        qs = np.quantile(probs, np.linspace(0, 1, 8))
+        rows = []
+        for i in range(7):
+            m = (probs >= qs[i]) & (probs <= qs[i + 1] if i == 6 else probs < qs[i + 1])
+            if m.sum() < 30:
+                continue
+            rows.append({"prob_mean": round(float(probs[m].mean()), 4),
+                         "actual_wr": round(float(y_all[m].mean()), 4),
+                         "n": int(m.sum())})
+        oos_cal[name] = rows
+
+    # ── 系数稳定性（P2-5 地基）：跨折符号一致的特征才值得信 ─────────
+    feats = list(coef_values[0].keys())
+    stability = []
+    for c in feats:
+        vals = [cv[c] for cv in coef_values]
+        signs = [cs[c] for cs in coef_signs]
+        stability.append({
+            "feature": c,
+            "mean_coef": round(float(np.mean(vals)), 4),
+            "sign_consistent": bool(len(set(s for s in signs if s != 0)) <= 1),
+            "n_folds": len(vals),
+        })
+    stability.sort(key=lambda r: -abs(r["mean_coef"]))
+    consistent = [r for r in stability if r["sign_consistent"] and abs(r["mean_coef"]) > 0.02]
+    print(f"\n  跨折符号一致且 |coef|>0.02 的特征（{len(consistent)} 个）：")
+    for r in consistent[:10]:
+        print(f"    {r['feature']:<26} coef={r['mean_coef']:+.3f}")
+
+    # ── 全量数据逻辑回归（若 v3.0 采纳，这就是部署系数）──────────────
+    logit_full, full_cols = fit_logit(full_train)
+    logit_full_coefs = {c: round(float(v), 4)
+                        for c, v in zip(full_cols, logit_full.coef_[0])}
+    logit_full_coefs["_intercept"] = round(float(logit_full.intercept_[0]), 4)
+
     # ── 写入结果 ────────────────────────────────────────────────────
     output = {
         "folds": fold_results,
@@ -389,7 +520,12 @@ def run():
             "mean_tier4_advantage_pp": round(float(np.mean(tier4_diffs)), 2) if tier4_diffs else None,
             "n_significant_folds":     sum(tier4_sigs),
             "horizon_days":            HORIZON,
-        }
+        },
+        # ── P2 对决产物 ──
+        "duel_summary": duel_summary,
+        "oos_calibration": oos_cal,
+        "logit_coef_stability": stability,
+        "logit_full_coefs": logit_full_coefs,
     }
 
     out = PROC_DIR / "walk_forward_results.json"

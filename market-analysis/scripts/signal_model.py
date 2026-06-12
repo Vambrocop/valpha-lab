@@ -66,6 +66,41 @@ def rsi(returns, period=14):
     return 100 - 100 / (1 + gain / (loss + 1e-10))
 
 
+# ── 逻辑回归设计矩阵（P2-2 候选模型，生产与验证共用）────────────────
+# 列名与 walk_forward.build_feature_df 的输出对齐；生产端接入时必须产出同名列
+LOGIT_BINARY = [
+    "NASDAQ_above_ma200", "NASDAQ_mom20_pos", "NASDAQ_mom20_neg",
+    "BTC_above_ma200", "BTC_mom20_pos", "BTC_mom20_neg",
+    "dxy_rising", "dxy_falling",
+    "nasdaq_rsi_overbought", "nasdaq_rsi_oversold",
+    "nasdaq_high_vol", "nasdaq_low_vol",
+    "vix_backwardation", "overnight_mom_pos", "overnight_mom_neg",
+]
+
+
+def build_design_matrix(df):
+    """月/星期/月内周 one-hot + 二值技术因子 → (X, 列名)。
+
+    缺失值视为"未触发"(0)——与朴素贝叶斯路径跳过该因子的语义一致。
+    全套 one-hot 加截距共线没关系：L2 正则（ridge）天然处理。
+    """
+    cols, mats = [], []
+    n = len(df)
+    for m in range(1, 13):
+        cols.append(f"month_{m}"); mats.append((df["month"] == m).astype(float).values)
+    for d in range(0, 5):
+        cols.append(f"dow_{d}"); mats.append((df["dow"] == d).astype(float).values)
+    for w in range(1, 6):
+        cols.append(f"wom_{w}"); mats.append((df["wom"] == w).astype(float).values)
+    for c in LOGIT_BINARY:
+        cols.append(c)
+        if c in df.columns:
+            mats.append(df[c].fillna(0).astype(float).values)
+        else:
+            mats.append(np.zeros(n))
+    return np.column_stack(mats), cols
+
+
 # ── 美股假日日历 ──────────────────────────────────────────────────
 def _easter(year):
     a = year % 19; b = year // 100; c = year % 100
