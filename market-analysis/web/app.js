@@ -2760,13 +2760,28 @@ function renderStockChart(sym) {
 //  操作计划：对未来选定日期给出 买入时段/持有期/卖出提醒
 // ═══════════════════════════════════════════════════════
 // 把美东 h:m 换算成访问者本地时间字符串（自动适配任何时区+夏令时）
-function etToLocalStr(h, m) {
+// 时间显示时区：默认 ET（美东统一），可随时切换到 LOCAL（访问者本地）。
+let TZ_MODE = (typeof localStorage !== "undefined" && localStorage.getItem("tz_mode")) || "ET";
+function toggleTZMode() {
+  TZ_MODE = TZ_MODE === "ET" ? "LOCAL" : "ET";
+  try { localStorage.setItem("tz_mode", TZ_MODE); } catch (e) {}
+  renderMarketClock();
+  if (selectedDate) updateSignal(selectedDate);   // 刷新操作计划里的时段
+}
+function _pad2(n) { return String(n).padStart(2, "0"); }
+// 把美东 h:m 换算成访问者本地时间（同一瞬间两时区钟面差固定，自动含夏令时）
+function etToLocalConv(h, m) {
   const now = new Date();
   const etNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
   const offsetMs = now - etNow;
   const t = new Date(etNow); t.setHours(h, m, 0, 0);
   return new Date(t.getTime() + offsetMs)
     .toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+// 模式感知的"美东时段"字符串：ET 模式只显示美东；LOCAL 模式附带本地换算
+function tzRange(h1, m1, h2, m2) {
+  const et = `美东 ${_pad2(h1)}:${_pad2(m1)}–${_pad2(h2)}:${_pad2(m2)}`;
+  return TZ_MODE === "ET" ? et : `${et}（你的 ${etToLocalConv(h1, m1)}–${etToLocalConv(h2, m2)}）`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3038,12 +3053,12 @@ function renderTradePlan(fc, allFc) {
     <div style="font-weight:700;color:${action[1]};margin-bottom:.3rem;">${fc.date}（${fc.dow_cn}）${action[0]}</div>`;
 
   if (t >= 3) {
-    html += `🕐 <b>买入时段</b>：尾盘 美东15:00–16:00 = 你的时间 <b>${etToLocalStr(15,0)}–${etToLocalStr(16,0)}</b><br>
+    html += `🕐 <b>买入时段</b>：尾盘 <b>${tzRange(15,0,16,0)}</b><br>
       <span style="color:var(--muted)">依据隔夜收益异象（QQQ隔夜段年化+11%，日内段-2%）：避免开盘追高，接近收盘买入以捕获隔夜段。</span><br>
       📦 <b>持有期</b>：信号验证窗口为20个交易日（约1个月），短于此噪音大于信号。<br>
-      🕐 <b>卖出时段</b>：如需卖出，开盘后首小时（美东9:30–10:30 = 你的 ${etToLocalStr(9,30)}–${etToLocalStr(10,30)}）历史上更有利（隔夜涨幅已落袋）。<br>`;
+      🕐 <b>卖出时段</b>：如需卖出，开盘后首小时（${tzRange(9,30,10,30)}）历史上更有利（隔夜涨幅已落袋）。<br>`;
   } else {
-    html += `<span style="color:var(--muted)">该日日历因子偏弱。如已持仓且计划减仓，开盘时段（你的 ${etToLocalStr(9,30)}–${etToLocalStr(10,30)}）通常优于尾盘。</span><br>`;
+    html += `<span style="color:var(--muted)">该日日历因子偏弱。如已持仓且计划减仓，开盘时段（${tzRange(9,30,10,30)}）通常优于尾盘。</span><br>`;
   }
   if (weakDays.length) {
     html += `⚠ 持有期内偏弱日：${weakDays.map(d => `${d.date.slice(5)}(${d.dow_cn})`).join("、")} —— 临近时复查信号<br>`;
@@ -3073,17 +3088,6 @@ function renderMarketClock() {
   const openMin = 9 * 60 + 30, closeMin = 16 * 60;
   const isOpen = isWeekday && etMinutes >= openMin && etMinutes < closeMin;
 
-  // 把「美东今天的 9:30 / 16:00」换算成浏览器本地时间显示
-  function etToLocal(h, m) {
-    // 用 ET 当前时刻与本地时刻的偏移推算（同一瞬间两个时区的钟面差是固定的）
-    const local = new Date();
-    const etNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-    const offsetMs = local - etNow;   // 本地钟面比美东钟面快多少
-    const etTarget = new Date(etNow); etTarget.setHours(h, m, 0, 0);
-    const t = new Date(etTarget.getTime() + offsetMs);
-    return t.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
-  }
-  const localOpen = etToLocal(9, 30), localClose = etToLocal(16, 0);
   const status = isOpen
     ? `<span style="color:#2ecc71;font-weight:700;">● 开盘中</span>`
     : `<span style="color:var(--muted);font-weight:700;">○ 休市</span>`;
@@ -3095,14 +3099,18 @@ function renderMarketClock() {
     const left = openMin - etMinutes;
     countdown = `距开盘 ${Math.floor(left/60)}小时${left%60}分`;
   }
+  const tzBtn = `<button onclick="toggleTZMode()" title="切换页面时间显示：美东统一 / 你的本地"
+    style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+    padding:1px 7px;border-radius:5px;font-size:0.68rem;cursor:pointer;">
+    🕐 ${TZ_MODE === "ET" ? "美东" : "本地"}时间 ⇄</button>`;
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.3rem;">
       <span>${status} <span style="color:var(--muted)">${countdown}</span></span>
-      <span style="color:var(--muted)">美东 ${etFmt.format(now)}</span>
+      <span style="color:var(--muted)">美东 ${etFmt.format(now)} ${tzBtn}</span>
     </div>
     <div style="color:var(--muted);margin-top:.25rem;">
-      常规时段 美东9:30–16:00 = 你的时间 <b style="color:var(--text)">${localOpen}–${localClose}</b>
-      <span style="font-size:0.68rem">（自动换算·含夏令时）</span>
+      常规时段 <b style="color:var(--text)">${tzRange(9,30,16,0)}</b>
+      <span style="font-size:0.68rem">${TZ_MODE === "ET" ? "（页面时间已统一为美东·含夏令时）" : "（已换算为你的本地·含夏令时）"}</span>
     </div>
     ${sessionTip()}`;
 
