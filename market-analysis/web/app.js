@@ -3137,6 +3137,7 @@ init().then(() => {
   setTimeout(() => safeRender(renderDigitChart, "Digit"), 100);
   safeRender(renderIPOCycle, "IPOCycle");
   safeRender(renderFactorAudit, "FactorAudit");
+  safeRender(renderVolModel, "VolModel");
   // 恢复上次浏览的视图（默认"今日"）
   const savedView = localStorage.getItem("alpha_view");
   if (savedView && savedView !== "today") {
@@ -3232,6 +3233,44 @@ function renderFactorAudit() {
       <strong>换靶子探针：</strong>方向 AUC 跨 regime 摆动（2012-2024 拼接 <b>${dirAuc ?? "?"}</b>，单一 2024-2026 ${probe.direction_auc_holdout ?? "?"}）——
       这种不稳定本身就是非平稳性；波动率 AUC <b style="color:#2ecc71">${volAuc ?? "?"}</b> 更高（单点 holdout，仍需多 regime 复核）。
       <b>数据倾向：把 ML/深度学习力气投向"预测波动率/市场状态"，而非"预测涨跌方向"。</b>
+    </div>`;
+}
+
+// ── 波动率状态预测原型（P2-6，研究面板）──
+function renderVolModel() {
+  const el = document.getElementById("vol-model");
+  if (!el) return;
+  const v = SIGNALS?.vol_model;
+  if (!v) { el.innerHTML = `<span style="color:var(--muted)">运行一次完整流水线后显示</span>`; return; }
+  const ho = v.holdout_auc, vix = v.holdout_vix_only_auc, dir = v.direction_auc_reference, gain = v.holdout_model_gain_over_vix;
+  const bar = (auc, label, color) => {
+    const pct = auc == null ? 0 : Math.max(0, Math.min(100, ((auc - 0.5) / 0.5) * 100));
+    return `<div style="margin:.35rem 0;">
+      <div style="display:flex;justify-content:space-between;font-size:0.78rem;">
+        <span>${label}</span><span style="font-weight:700;color:${color}">${auc != null ? Number(auc).toFixed(3) : "—"}</span></div>
+      <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;"></div></div>
+    </div>`;
+  };
+  const imps = (v.importances || []).slice(0, 6).map(i =>
+    `<tr style="border-top:1px solid var(--border)33;"><td style="padding:.2rem .5rem;">${esc(i.feature)}</td>
+     <td style="padding:.2rem .5rem;text-align:right;color:${i.importance>0?"#2ecc71":"var(--muted)"}">${i.importance>0?"+":""}${Number(i.importance)}</td></tr>`).join("");
+  el.innerHTML = `
+    <div style="color:var(--muted);font-size:0.78rem;line-height:1.6;margin-bottom:.6rem;">
+      靶子：${esc(v.target||"")}。模型：${esc(v.model||"")}。<br>${esc(v.method||"")}
+    </div>
+    ${bar(ho, "波动率·模型(12特征) · 2024-2026终审", "#3498db")}
+    ${bar(vix, "波动率·只看当日VIX(无模型) · 终审", "#9b59b6")}
+    ${bar(dir, "对照：涨跌方向", "#e74c3c")}
+    <div style="font-size:0.74rem;color:var(--muted);margin:.3rem 0 .6rem;">条形=AUC相对0.5(随机)的优势。
+      扩窗CV 均值 ${v.cv_mean_auc ?? "?"}（正类占比 2.5%~66% 不均，偏乐观，故头条用较均衡的 holdout）。</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.2rem;">holdout 排列重要性（哪个特征真带信息）</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.78rem;"><tbody>${imps}</tbody></table>
+    <div class="insight" style="margin-top:.7rem;">
+      <strong>波动率（${ho!=null?Number(ho).toFixed(2):"?"}）远比方向（${dir!=null?Number(dir).toFixed(2):"?"}）可测——但模型只比"裸看 VIX"高 ${gain ?? "?"}。</strong><br>
+      可预测性<b>几乎全来自 VIX 已经把未来波动定价了</b>，12 特征的梯度提升树没加什么（重要性里 VIX 一家独大）。
+      真正的启示是两层：<b>① 选对靶子</b>（波动率可测、方向不可测）；<b>② 市场已把容易的部分定价</b>，复杂模型 ≠ 优势。
+      <span style="color:var(--muted)">${esc(v.note||"")}</span>
     </div>`;
 }
 
