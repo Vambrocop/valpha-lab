@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 const SPCX_LISTING_DATE = "2026-06-12";
 const SPCX_ISSUE_USD    = 135;
+const SPCX_MY_SHARES    = 16;   // 站长实际获配股数（localStorage 未填时的默认值）
 
 function renderSPCXTracker() {
   const el = document.getElementById("spcx-tracker");
@@ -14,7 +15,7 @@ function renderSPCXTracker() {
   const listDt  = new Date(2026, 5, 12); // June 12 local time
   const daysLeft = Math.max(0, Math.ceil((listDt - new Date()) / 86400000));
 
-  const savedShares = +(localStorage.getItem("spcx_shares") || 0);
+  const savedShares = +(localStorage.getItem("spcx_shares") || SPCX_MY_SHARES);
   const savedPrice  = +(localStorage.getItem("spcx_price")  || 0);
   const savedCostAUD= +(localStorage.getItem("spcx_cost_aud")|| 0);
 
@@ -158,7 +159,7 @@ function updateSPCXCalc() {
   if (sharesIn) { localStorage.setItem("spcx_shares", sharesIn); renderSPCXTracker(); }
   if (priceIn)  { localStorage.setItem("spcx_price",  priceIn);  renderSPCXTracker(); }
 
-  const shares = sharesIn || +(localStorage.getItem("spcx_shares")||0);
+  const shares = sharesIn || +(localStorage.getItem("spcx_shares")||SPCX_MY_SHARES);
   const price  = priceIn  || +(localStorage.getItem("spcx_price") ||0);
   const rate   = _portAudRate || 0.64;
 
@@ -190,6 +191,82 @@ function updateSPCXCalc() {
     </div>
     ${currAUD > 0 && gainPct > 5 ? `<div style="font-size:0.78rem;color:var(--muted)">卖一半可入袋 <strong style="color:#2ecc71">A$${halfProfit.toFixed(0)}</strong></div>` : ""}
     ${recHtml}`;
+}
+
+// ── SPCX 监视卡：流水线价格 + 解禁/税务倒计时（数据来自 stocks.json.spcx，CI 每30分钟刷新）──
+function _spcxDaysFrom(listDt, days) {
+  const d = new Date(listDt.getTime() + days * 86400000);
+  return d;
+}
+function renderSPCXMonitor() {
+  const el = document.getElementById("spcx-monitor");
+  if (!el) return;
+  const sp = STOCKS?.spcx;
+  const listDt = new Date(2026, 5, 12);
+  const now = new Date();
+  const daysListed = Math.max(1, Math.floor((now - listDt) / 86400000) + 1);  // 上市日=第1天
+
+  // ① 流水线价格卡（同源数据，国内访客可用；浏览器 Yahoo 仅作手动备用）
+  let priceHtml;
+  if (sp && sp.last) {
+    const up = sp.vs_issue_pct >= 0;
+    priceHtml = `
+      <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:baseline;">
+        <span style="font-size:1.3rem;font-weight:800;">US$${sp.last.toFixed(2)}</span>
+        <span style="font-weight:700;color:${up?'#2ecc71':'#e74c3c'}">${up?'+':''}${sp.vs_issue_pct.toFixed(1)}% vs 发行价</span>
+        ${sp.chg_1d != null ? `<span style="color:${sp.chg_1d>=0?'#2ecc71':'#e74c3c'};font-size:0.8rem">日 ${sp.chg_1d>=0?'+':''}${sp.chg_1d}%</span>` : ""}
+        <span style="color:var(--muted);font-size:0.72rem">数据日 ${sp.date} · 区间 ${sp.low}–${sp.high}</span>
+      </div>`;
+    // 用户没手填过价格时，自动用流水线价格算盈亏
+    const inp = document.getElementById("spcx-price-input");
+    if (inp && !inp.value && !+(localStorage.getItem("spcx_price") || 0)) {
+      inp.value = sp.last.toFixed(2);
+      updateSPCXCalc();
+    }
+  } else {
+    priceHtml = `<span style="color:var(--muted);font-size:0.8rem">流水线尚无 SPCX 收盘数据（上市首日收盘后出现；盘中可点上方"获取价格"手动取）</span>`;
+  }
+
+  // ② 解禁/里程碑倒计时（S-1 披露的分级释放 + CGT 12个月折扣日）
+  const milestones = [
+    { d: 70,  label: "解禁 7%（第70天）" },
+    { d: 90,  label: "解禁 7%（第90天）" },
+    { d: 105, label: "解禁 7%（第105天）" },
+    { d: 120, label: "解禁 7%（第120天）" },
+    { d: 135, label: "解禁 7%（第135天）" },
+    { d: 180, label: "全面解禁（第180天）" },
+    { d: 366, label: "马斯克持有承诺到期" },
+    { d: 367, label: "🇦🇺 CGT 50%折扣生效（持有满12个月后卖出）" },
+  ].map(m => {
+    const dt = _spcxDaysFrom(listDt, m.d);
+    const left = Math.ceil((dt - now) / 86400000);
+    return { ...m, dt, left };
+  });
+  const next = milestones.find(m => m.left > 0);
+  const rows = milestones.map(m => {
+    const passed = m.left <= 0;
+    const isNext = m === next;
+    const dateStr = `${m.dt.getFullYear()}-${String(m.dt.getMonth()+1).padStart(2,"0")}-${String(m.dt.getDate()).padStart(2,"0")}`;
+    return `<div style="display:flex;justify-content:space-between;gap:.5rem;padding:.18rem 0;font-size:0.78rem;
+                 ${passed ? "color:var(--muted);text-decoration:line-through;" : ""}
+                 ${isNext ? "font-weight:700;" : ""}">
+      <span>${isNext ? "→ " : ""}${m.label}</span>
+      <span style="white-space:nowrap;${isNext ? "color:#f1c40f;" : "color:var(--muted);"}">${dateStr}${passed ? "" : ` · ${m.left}天`}</span>
+    </div>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div style="background:var(--surface2);border-radius:7px;padding:.75rem .9rem;margin-bottom:1rem;">
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.35rem;">📡 SPCX 监视 · 上市第 ${daysListed} 天 · 流水线自动更新（盘中约30分钟一次）</div>
+      ${priceHtml}
+      <div style="margin-top:.65rem;border-top:1px solid var(--border);padding-top:.5rem;">
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.25rem;">⏳ 供给压力与税务时点（S-1 披露 + 澳洲 CGT）</div>
+        ${rows}
+      </div>
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:.45rem;">
+        解禁 = 潜在卖压时点（历史上解禁前后波动常放大，但方向不可预测）；CGT 日期按上市日申购计，实际以你的成交日为准。非投资建议。
+      </div>
+    </div>`;
 }
 
 // Try to fetch SPCX price from Yahoo Finance
@@ -493,6 +570,7 @@ async function loadStocksPanel() {
   const first = Object.keys(STOCKS.stocks)[0];
   if (first) renderStockChart(first);
   renderGamePanel();   // 用户模拟盘需要最新股价
+  renderSPCXMonitor(); // SPCX 监视卡依赖 STOCKS.spcx
 }
 
 function renderStocksTable() {
@@ -912,40 +990,50 @@ function renderTradePlan(fc, allFc) {
 // ═══════════════════════════════════════════════════════
 //  市场时钟：美东开收盘 ↔ 本地时间对照（自动处理夏令时）
 // ═══════════════════════════════════════════════════════
+// ── 时钟工具：美东秒级状态 + 任意时区 HH:MM:SS（Intl 自动处理夏令时，本地时区由浏览器自带，无需 IP）──
+const _CLOCK_CN_DOW = { Mon:"周一", Tue:"周二", Wed:"周三", Thu:"周四", Fri:"周五", Sat:"周六", Sun:"周日" };
+function _clockState(now) {
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York",
+    hour: "numeric", minute: "numeric", second: "numeric", weekday: "short", hour12: false })
+    .formatToParts(now).reduce((a, x) => (a[x.type] = x.value, a), {});
+  const etSec = (parseInt(p.hour) % 24) * 3600 + parseInt(p.minute) * 60 + parseInt(p.second);
+  const isWeekday = !["Sat", "Sun"].includes(p.weekday);
+  const openSec = (9 * 60 + 30) * 60, closeSec = 16 * 3600;
+  const isOpen = isWeekday && etSec >= openSec && etSec < closeSec;
+  let countdown = "";
+  const fmtLeft = s => (s >= 3600 ? Math.floor(s / 3600) + "小时" : "") +
+                       Math.floor((s % 3600) / 60) + "分" + String(s % 60).padStart(2, "0") + "秒";
+  if (isOpen) countdown = "距收盘 " + fmtLeft(closeSec - etSec);
+  else if (isWeekday && etSec < openSec) countdown = "距开盘 " + fmtLeft(openSec - etSec);
+  return { p, etSec, isWeekday, isOpen, openSec, closeSec, countdown };
+}
+function _fmtHMS(tz, now) {
+  return new Intl.DateTimeFormat("zh-CN", { timeZone: tz,
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
+}
+const _LOCAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+const _LOCAL_CITY = (_LOCAL_TZ.split("/").pop() || "本地").replace(/_/g, " ");
+
 function renderMarketClock() {
   const el = document.getElementById("market-clock");
   if (!el) return;
   const now = new Date();
-  // 美东当前时间（Intl 自动处理 EST/EDT）
-  const etFmt = new Intl.DateTimeFormat("zh-CN", { timeZone: "America/New_York",
-    hour: "2-digit", minute: "2-digit", weekday: "short", hour12: false });
-  const etParts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York",
-    hour: "numeric", minute: "numeric", weekday: "short", hour12: false })
-    .formatToParts(now).reduce((a, p) => (a[p.type] = p.value, a), {});
-  const etMinutes = parseInt(etParts.hour) * 60 + parseInt(etParts.minute);
-  const isWeekday = !["Sat", "Sun"].includes(etParts.weekday);
-  const openMin = 9 * 60 + 30, closeMin = 16 * 60;
-  const isOpen = isWeekday && etMinutes >= openMin && etMinutes < closeMin;
+  const st = _clockState(now);
 
-  const status = isOpen
+  const status = st.isOpen
     ? `<span style="color:#2ecc71;font-weight:700;">● 开盘中</span>`
     : `<span style="color:var(--muted);font-weight:700;">○ 休市</span>`;
-  let countdown = "";
-  if (isOpen) {
-    const left = closeMin - etMinutes;
-    countdown = `距收盘 ${Math.floor(left/60)}小时${left%60}分`;
-  } else if (isWeekday && etMinutes < openMin) {
-    const left = openMin - etMinutes;
-    countdown = `距开盘 ${Math.floor(left/60)}小时${left%60}分`;
-  }
   const tzBtn = `<button onclick="toggleTZMode()" title="切换页面时间显示：美东统一 / 你的本地"
     style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);
     padding:1px 7px;border-radius:5px;font-size:0.68rem;cursor:pointer;">
     🕐 ${TZ_MODE === "ET" ? "美东" : "本地"}时间 ⇄</button>`;
+  // 本地时区与美东一致时（美国东部访客）不重复显示第二个钟
+  const localClock = _LOCAL_TZ === "America/New_York" ? "" :
+    ` · ${_LOCAL_CITY} <b style="color:var(--text);font-variant-numeric:tabular-nums;" id="clock-local">${_fmtHMS(_LOCAL_TZ, now)}</b>`;
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.3rem;">
-      <span>${status} <span style="color:var(--muted)">${countdown}</span></span>
-      <span style="color:var(--muted)">美东 ${etFmt.format(now)} ${tzBtn}</span>
+      <span>${status} <span style="color:var(--muted);font-variant-numeric:tabular-nums;" id="clock-countdown">${st.countdown}</span></span>
+      <span style="color:var(--muted)">美东 ${_CLOCK_CN_DOW[st.p.weekday] || ""} <b style="color:var(--text);font-variant-numeric:tabular-nums;" id="clock-et">${_fmtHMS("America/New_York", now)}</b>${localClock} ${tzBtn}</span>
     </div>
     <div style="color:var(--muted);margin-top:.25rem;">
       常规时段 <b style="color:var(--text)">${tzRange(9,30,16,0)}</b>
@@ -956,19 +1044,32 @@ function renderMarketClock() {
   // 盘中情境建议（基于隔夜收益异象）
   function sessionTip() {
     let tip = "";
-    if (isOpen && etMinutes < openMin + 45) {
+    const etMin = Math.floor(st.etSec / 60), openMin = st.openSec / 60, closeMin = st.closeSec / 60;
+    if (st.isOpen && etMin < openMin + 45) {
       tip = "🔔 开盘初段（首45分钟）波动最大，历史上不宜追高——日内段长期收益≈0";
-    } else if (isOpen && etMinutes >= closeMin - 60) {
+    } else if (st.isOpen && etMin >= closeMin - 60) {
       tip = "🔔 尾盘时段——按信号执行买入的优选窗口（捕获隔夜段收益）";
-    } else if (isOpen) {
+    } else if (st.isOpen) {
       tip = "🔔 盘中：当日数据为临时价，正式信号以收盘后刷新为准";
-    } else if (isWeekday && etMinutes < openMin) {
+    } else if (st.isWeekday && etMin < openMin) {
       tip = "🔔 未开盘。如计划买入，统计上尾盘买入优于开盘追高";
     }
     return tip ? `<div style="color:#f1c40f;font-size:0.72rem;margin-top:.3rem;">${tip}</div>` : "";
   }
 }
+// 每秒只更新时间/倒计时文本（不重建 DOM，按钮可正常点击）；开/收盘状态翻转由 30 秒全量重渲染兜底
+function _marketClockTick() {
+  const et = document.getElementById("clock-et");
+  if (!et) return;
+  const now = new Date();
+  et.textContent = _fmtHMS("America/New_York", now);
+  const lt = document.getElementById("clock-local");
+  if (lt) lt.textContent = _fmtHMS(_LOCAL_TZ, now);
+  const cd = document.getElementById("clock-countdown");
+  if (cd) cd.textContent = _clockState(now).countdown;
+}
 setInterval(renderMarketClock, 30000);
+setInterval(_marketClockTick, 1000);
 
 // ═══════════════════════════════════════════════════════
 //  隔夜 vs 日内收益分解

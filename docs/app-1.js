@@ -708,7 +708,9 @@ function switchTab(name, el) {
 function renderDOWPanel() {
   if (!SIGNALS || !SIGNALS.dow) return;
   const dow = SIGNALS.dow;  // [{dow,day_name,win_rate,avg_return}]
-  const todayDow = new Date().getDay() - 1;  // 0=Mon
+  // "今天"按美东交易日算：阿德莱德等东半球访客的本地日期常比美东快一天，直接用 getDay() 会标错
+  const etWd = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(new Date());
+  const todayDow = ["Mon","Tue","Wed","Thu","Fri"].indexOf(etWd);  // 0=Mon；周末=-1（不标）
   const maxWR = Math.max(...dow.map(d => d.win_rate));
   const minWR = Math.min(...dow.map(d => d.win_rate));
 

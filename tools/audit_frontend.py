@@ -12,9 +12,11 @@ css  = (web / "style.css").read_text(encoding="utf-8")
 html_ids = set(re.findall(r'id="([^"]+)"', html))
 js_get   = set(re.findall(r'getElementById\(["\']([^"\']+)["\']\)', js))
 js_get  |= set(re.findall(r'Plotly\.newPlot\(["\']([^"\']+)["\']', js))
+# JS 模板字符串里 innerHTML 动态创建的 ID（如时钟的 clock-et）不算缺失
+js_dyn_ids = set(re.findall(r'id="([^"]+)"', js)) | set(re.findall(r"id='([^']+)'", js))
 
 print("=== JS 引用但 HTML 中不存在的 ID（导致面板渲染不出来）===")
-missing = sorted(i for i in js_get if i not in html_ids and "-" in i)
+missing = sorted(i for i in js_get if i not in html_ids and i not in js_dyn_ids and "-" in i)
 for i in missing:
     print(" ", i)
 if not missing:

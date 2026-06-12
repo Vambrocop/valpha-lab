@@ -113,7 +113,8 @@ footer a { color: var(--green); text-decoration: none; }
 .tab-content.active { display: block; }
 
 /* ── DOW Grid ── */
-.dow-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: .5rem; }
+/* auto-fit：面板窄时卡片换行而不是溢出裁切（PC 三列布局下 5 张卡挤不下） */
+.dow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: .5rem; }
 .dow-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: .75rem .5rem; text-align: center; transition: border-color .3s; }
 .dow-card.best { border-color: var(--green); }
 .dow-card.worst { border-color: var(--red); }

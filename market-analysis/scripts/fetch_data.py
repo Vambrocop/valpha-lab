@@ -52,6 +52,7 @@ STOCK_TICKERS = {
     "COST":  "COST",   # 好市多
     "LLY":   "LLY",    # 礼来
     "BRK-B": "BRK-B",  # 伯克希尔
+    "SPCX":  "SPCX",   # SpaceX（2026-06-12 上市；历史不足260天，由 export_stocks 专属块处理）
 }
 
 def _cache_fallback(name):
@@ -77,6 +78,17 @@ def _get_close(ticker, name):
         print(f"  ⚠ {name} 下载异常：{e}")
         return _cache_fallback(name)
     if df.empty:
+        # 新上市股票 yf.download(start=2000年) 常返回空，但 Ticker().history 拿得到
+        try:
+            hist = yf.Ticker(ticker).history(period="3mo", auto_adjust=True)
+            if not hist.empty:
+                s = hist["Close"].dropna().rename(name)
+                s.index = pd.to_datetime(s.index.tz_localize(None).date)
+                print(f"    （Ticker.history 回退，{len(s)} 行）")
+                s.to_csv(RAW_DIR / f"{name}.csv")     # 写缓存，与主路径同款兜底
+                return s
+        except Exception:
+            pass
         return _cache_fallback(name)   # 限流/ticker变更/宕机 → 回退缓存而非掉列
     col = df["Close"]
     if isinstance(col, pd.DataFrame):

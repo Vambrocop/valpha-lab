@@ -91,6 +91,35 @@ def _weekly_norm(s, start):
     }
 
 
+# ── SPCX（SpaceX，2026-06-12 上市）────────────────────────────
+# 新股历史不足 260 天进不了常规观察池（_stats 直接返回 None），
+# 单独导出一个轻量块供"我的"视图 SPCX 监视卡使用。
+SPCX_ISSUE_USD = 135.0
+
+def _spcx_block(stocks):
+    if "SPCX" not in stocks.columns:
+        return None
+    s = stocks["SPCX"].dropna()
+    if not len(s):
+        return None
+    out = {
+        "last":         round(float(s.iloc[-1]), 2),
+        "date":         s.index[-1].strftime("%Y-%m-%d"),
+        "issue":        SPCX_ISSUE_USD,
+        "vs_issue_pct": round(float((s.iloc[-1] / SPCX_ISSUE_USD - 1) * 100), 2),
+        "days_listed":  int(len(s)),
+        "high":         round(float(s.max()), 2),
+        "low":          round(float(s.min()), 2),
+        "series": {
+            "dates":  [d.strftime("%Y-%m-%d") for d in s.index],
+            "values": [round(float(v), 2) for v in s],
+        },
+    }
+    if len(s) >= 2:
+        out["chg_1d"] = round(float((s.iloc[-1] / s.iloc[-2] - 1) * 100), 2)
+    return out
+
+
 def main():
     stocks = pd.read_csv(RAW_DIR / "stocks_prices.csv",
                          index_col="Date", parse_dates=True)
@@ -112,7 +141,13 @@ def main():
         if series:
             out["indices"][idx] = series
 
+    out["spcx"] = _spcx_block(stocks)
+    if out["spcx"]:
+        print(f"  SPCX   SpaceX 最新={out['spcx']['last']}  vs发行价={out['spcx']['vs_issue_pct']:+.1f}%")
+
     for sym in stocks.columns:
+        if sym == "SPCX":
+            continue  # 专属块已处理，不进常规观察池
         s = stocks[sym]
         stats = _stats(s, bench_ret)
         series = _weekly_norm(s, start)
