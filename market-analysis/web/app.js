@@ -3146,6 +3146,66 @@ function renderOvernight(name, btn) {
   }
 }
 
+// ═══════════════════════════════════════════════════════
+//  Benchmark 记分卡（SIGNALS.benchmark）
+//  每个模型 vs 它的诚实基线：硬基线 · 样本外/前向 · 前向不足不判输赢
+// ═══════════════════════════════════════════════════════
+function renderBenchmark() {
+  const el = document.getElementById("benchmark");
+  if (!el) return;
+  const bm = SIGNALS && SIGNALS.benchmark;
+  if (!bm || !Array.isArray(bm.rows) || !bm.rows.length) {
+    el.innerHTML = `<span style="color:var(--muted)">运行一次完整流水线后显示</span>`;
+    return;
+  }
+  // verdict → 颜色（✅绿 / ➖黄 / ❌红 / ⏳灰；数据缺失也用灰）
+  const VC = {
+    "✅打败": "#2ecc71", "➖持平": "#f1c40f",
+    "❌未达": "#e74c3c", "⏳数据不足": "#8b949e", "数据缺失": "#8b949e",
+  };
+  const fmt = v => (v === null || v === undefined) ? "—" : esc(String(Number(v)));
+  const fmtDelta = v => {
+    if (v === null || v === undefined) return "—";
+    const n = Number(v);
+    return esc((n > 0 ? "+" : "") + n);
+  };
+  const rows = bm.rows.map(r => {
+    const color = VC[r.verdict] || "#8b949e";
+    return `<tr style="border-top:1px solid var(--border)33;" title="${esc(r.note)}">
+      <td style="padding:.3rem .5rem;">${esc(r.name)}</td>
+      <td style="padding:.3rem .5rem;color:var(--muted);">${esc(r.metric)}</td>
+      <td style="padding:.3rem .5rem;text-align:right;">${fmt(r.model_value)}</td>
+      <td style="padding:.3rem .5rem;text-align:right;color:var(--muted);">${esc(r.baseline_label)} ${fmt(r.baseline_value)}</td>
+      <td style="padding:.3rem .5rem;text-align:right;">${fmtDelta(r.delta)}</td>
+      <td style="padding:.3rem .5rem;text-align:center;"><span style="color:${color};font-weight:600;">${esc(r.verdict)}</span></td>
+      <td style="padding:.3rem .5rem;color:var(--muted);font-size:0.72rem;">${esc(r.basis)}</td>
+    </tr>`;
+  }).join("");
+  const s = bm.summary || {};
+  el.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="color:var(--muted);font-size:0.72rem;">
+        <th style="padding:.3rem .5rem;text-align:left;">项目</th>
+        <th style="padding:.3rem .5rem;text-align:left;">指标</th>
+        <th style="padding:.3rem .5rem;text-align:right;">模型值</th>
+        <th style="padding:.3rem .5rem;text-align:right;">基线</th>
+        <th style="padding:.3rem .5rem;text-align:right;">差值</th>
+        <th style="padding:.3rem .5rem;text-align:center;">判定</th>
+        <th style="padding:.3rem .5rem;text-align:left;">依据</th>
+      </tr></thead><tbody>${rows}</tbody>
+    </table>
+    <div style="display:flex;gap:.65rem;flex-wrap:wrap;margin-top:.7rem;font-size:0.72rem;color:var(--muted);">
+      <span>✅ 打败 ${Number(s.beats ?? 0)}</span>
+      <span>➖ 持平 ${Number(s.ties ?? 0)}</span>
+      <span>❌ 未达 ${Number(s.loses ?? 0)}</span>
+      <span>⏳ 数据不足 ${Number(s.insufficient ?? 0)}</span>
+    </div>
+    <div class="insight" style="margin-top:.85rem;">
+      <strong>${esc(bm.headline)}</strong><br>
+      <span style="color:var(--muted);font-size:0.75rem;">原则：${esc(bm.principle)}</span>
+    </div>`;
+}
+
 function safeRender(fn, name) {
   try { fn(); } catch(e) { console.warn("renderError ["+name+"]:", e); }
 }
@@ -3171,6 +3231,7 @@ init().then(() => {
   loadBriefPanel();
   loadPaperPanel();
   loadReportPanel();
+  safeRender(renderBenchmark,       "Benchmark");
   fetchFearAndGreed();
   safeRender(renderSPCXDetail,      "SPCXDetail");
   // Sync SPCX inputs with localStorage
