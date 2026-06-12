@@ -4,7 +4,9 @@ from pathlib import Path
 
 web = Path(__file__).parent.parent / "market-analysis" / "web"
 html = (web / "index.html").read_text(encoding="utf-8")
-js   = (web / "app.js").read_text(encoding="utf-8")
+_parts = sorted(web.glob("app-*.js"))  # app-1..5.js（拆分后的有序经典脚本）
+js   = "".join(p.read_text(encoding="utf-8") for p in _parts) if _parts \
+       else (web / "app.js").read_text(encoding="utf-8")
 css  = (web / "style.css").read_text(encoding="utf-8")
 
 html_ids = set(re.findall(r'id="([^"]+)"', html))

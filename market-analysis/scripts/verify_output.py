@@ -24,7 +24,8 @@ def check(cond, msg):
 
 
 # 1. 前端要拉取的文件都必须存在且非空
-for f in ["index.html", "app.js", "style.css", "signals.json", "prices.json",
+for f in ["index.html", "app-1.js", "app-2.js", "app-3.js", "app-4.js",
+          "app-5.js", "style.css", "signals.json", "prices.json",
           "charts_extra.json", "long_history.json", "stocks.json",
           "overnight.json", "news.json", "signals_history.json",
           "plotly-cartesian-2.35.2.min.js"]:
@@ -34,6 +35,20 @@ for f in ["index.html", "app.js", "style.css", "signals.json", "prices.json",
 # 首屏体积守门：signals.json 发布版只含近两年（P1-3），别让它再胖回去
 check((WEB_DIR / "signals.json").stat().st_size < 800_000,
       f"signals.json < 800KB（当前 {(WEB_DIR / 'signals.json').stat().st_size//1024}KB）")
+
+# 1b. 拆分后的前端脚本语法守门：每个 app-*.js 过 node --check
+#     （app.js 拆成 5 个有序经典脚本后，一处语法错会整站白屏 → 上线前拦住）
+import shutil, subprocess
+_node = shutil.which("node")
+if _node:
+    for jf in sorted(WEB_DIR.glob("app-*.js")):
+        r = subprocess.run([_node, "--check", str(jf)],
+                           capture_output=True, text=True)
+        check(r.returncode == 0,
+              f"{jf.name} 语法合法" + ("" if r.returncode == 0
+                                      else f"（{r.stderr.strip().splitlines()[-1] if r.stderr.strip() else 'parse error'}）"))
+else:
+    print("  · 跳过 app-*.js 语法检查（环境无 node）")
 
 # 2. signals.json 严格合法 + 结构完整 + 无周末数据 + 不过期
 try:

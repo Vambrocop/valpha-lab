@@ -81,9 +81,16 @@ print(f"\n{'='*55}")
 print(f"  ▶  同步部署目录  web/ → {DOCS_DIR}")
 print(f"{'='*55}")
 DOCS_DIR.mkdir(exist_ok=True)
+web_names = set()
 for f in WEB_DIR.iterdir():
     if f.is_file():
         shutil.copy2(f, DOCS_DIR / f.name)
+        web_names.add(f.name)
         print(f"  ✓ {f.name}")
+# 清理 docs/ 里 web/ 已不存在的部署文件（如拆分后残留的旧 app.js）；保留 .nojekyll 等点文件
+for f in DOCS_DIR.iterdir():
+    if f.is_file() and not f.name.startswith(".") and f.name not in web_names:
+        f.unlink()
+        print(f"  ✗ 清理残留 {f.name}")
 
 print("\n✓ 全部完成！打开 web/index.html 查看仪表盘，git push 后部署生效")

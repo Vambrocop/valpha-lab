@@ -66,7 +66,7 @@ market-analysis/scripts/run_all.py     ← 一键流水线
 docs/  ← GitHub Pages 部署目录（纯静态：HTML + JSON）
 ```
 
-- 前端：单页应用（`index.html` + `app.js` + `style.css`），Plotly 图表，无框架无构建
+- 前端：单页应用（`index.html` + `app-1.js`…`app-5.js` + `style.css`），Plotly 图表，无框架无构建（5 个脚本是同一份逻辑按 section 拆开的有序经典脚本，顺序不可重排）
 - 数据全部预计算成 JSON，页面零后端
 
 ## 本地运行

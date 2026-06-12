@@ -623,6 +623,13 @@
   &nbsp;·&nbsp; 数据来源：Yahoo Finance &nbsp;·&nbsp; 仅供个人学习，不构成投资建议
 </footer>
 
-<script src="app.js"></script>
+<!-- app.js 已按模块拆成 5 个有序经典脚本（共享全局作用域，onclick 处理器照常可用）。
+     顺序至关重要，不可重排：app-5 含 init().then 引导，依赖前 4 个已加载。
+     拼回 app-1..5 === 原 app.js（逐字节）。改代码后跑 tools/audit_frontend.py 校验。 -->
+<script src="app-1.js"></script>
+<script src="app-2.js"></script>
+<script src="app-3.js"></script>
+<script src="app-4.js"></script>
+<script src="app-5.js"></script>
 </body>
 </html>
