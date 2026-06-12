@@ -77,6 +77,103 @@ def _purge(train, boundary_date, all_dates):
     return train[train.index < cutoff]
 
 
+def _gb():
+    return HistGradientBoostingClassifier(max_depth=3, learning_rate=0.05,
+                                          max_iter=300, l2_regularization=1.0,
+                                          random_state=42)
+
+
+# ── 配对 AUC 差的循环块自助（block_bootstrap_diff 算的是比例差，不能复用）──
+def block_bootstrap_auc_diff(y, sa, sb, block=HORIZON, B=2000, seed=42):
+    """AUC(sa) − AUC(sb) 的 CI/p_boot。同一重采样索引同时算两档，保留 20 日重叠序列相关。"""
+    y = np.asarray(y, float); sa = np.asarray(sa, float); sb = np.asarray(sb, float)
+    n = len(y)
+    if n < block * 3 or len(np.unique(y)) < 2:
+        return None
+    rng = np.random.default_rng(seed)
+    n_blocks = int(np.ceil(n / block))
+    obs = float(roc_auc_score(y, sa) - roc_auc_score(y, sb))
+    diffs = []
+    for _ in range(B):
+        starts = rng.integers(0, n, n_blocks)
+        idx = np.concatenate([(s + np.arange(block)) % n for s in starts])[:n]
+        yi = y[idx]
+        if len(np.unique(yi)) < 2:
+            continue
+        diffs.append(roc_auc_score(yi, sa[idx]) - roc_auc_score(yi, sb[idx]))
+    diffs = np.array(diffs)
+    lo, hi = np.percentile(diffs, [2.5, 97.5])
+    p = 2 * min(float((diffs <= 0).mean()), float((diffs >= 0).mean()))
+    return {"diff": round(obs, 4), "ci95": [round(float(lo), 4), round(float(hi), 4)],
+            "p_boot": round(min(p, 1.0), 4)}
+
+
+# 波动率"升/降"靶子的特征（波动动态：当前波动、短长波动比、VIX 期限结构/变化）
+DIR_FEATURES = ["rv20", "rv5", "rv60", "rv_ratio", "vix", "vix_term", "vix_chg5"]
+
+
+def vol_direction_experiment(f, all_dates):
+    """靶子改成「未来20日已实现波动 vs 当前（升=1/降=0）」——VIX 没直接定价升降，
+    基线第一次面对一个它不必然赢的对手。拼接所有 purged 测试折算样本外 AUC。"""
+    feats = [c for c in DIR_FEATURES if c in f.columns]
+    Y, S_model, S_naive, S_vix, RV, FWD = [], [], [], [], [], []
+    for (tr_end, te_end) in FOLDS:
+        tr = f[f["year"] < tr_end]
+        te = f[(f["year"] >= tr_end) & (f["year"] < te_end)]
+        if len(tr) < 300 or len(te) < 60:
+            continue
+        tr = _purge(tr, te.index.min(), all_dates)
+        ytr = (tr["fwd_rv20"] > tr["rv20"]).astype(int)
+        yte = (te["fwd_rv20"] > te["rv20"]).astype(int)
+        if ytr.nunique() < 2 or yte.nunique() < 2:
+            continue
+        m = _gb(); m.fit(tr[feats], ytr)
+        Y.append(yte.values)
+        S_model.append(m.predict_proba(te[feats])[:, 1])
+        S_naive.append((-te["rv20"]).values)   # 与标签自指：rv20 同时在标签两侧
+        S_vix.append(te["vix"].values)
+        RV.append(te["rv20"].values); FWD.append(te["fwd_rv20"].values)
+    if not Y:
+        return None
+    y = np.concatenate(Y); sm = np.concatenate(S_model)
+    sn = np.concatenate(S_naive); sv = np.concatenate(S_vix)
+    rv = np.concatenate(RV); fwd = np.concatenate(FWD)
+    auc_m = float(roc_auc_score(y, sm)); auc_n = float(roc_auc_score(y, sn))
+    auc_v = float(roc_auc_score(y, sv))
+
+    # ── 机械假象地板：把 fwd 打乱（毁掉一切真实"当前→未来"关系），重算基线 AUC。
+    # 因 rv20 同时是分数与标签边界，即使无任何真信号，-rv20 对 (fwd>rv20) 仍有高 AUC。
+    rng = np.random.default_rng(0)
+    null_aucs = []
+    for _ in range(80):
+        y_null = (rng.permutation(fwd) > rv).astype(int)
+        if len(np.unique(y_null)) > 1:
+            null_aucs.append(roc_auc_score(y_null, sn))
+    mech_null = round(float(np.mean(null_aucs)), 4) if null_aucs else None
+
+    bb = block_bootstrap_auc_diff(y, sm, sn)   # 模型 vs 自指基线（唯一可解释量）
+    print(f"\n=== 波动率升/降靶子（拼接样本外 n={len(y)}，正类{y.mean()*100:.1f}%）===")
+    print(f"  模型 AUC={auc_m:.3f}  自指基线={auc_n:.3f}  VIX={auc_v:.3f}  机械假象地板={mech_null}")
+    if bb:
+        print(f"  模型−基线 = {bb['diff']:+.3f}  CI95={bb['ci95']}  p_boot={bb['p_boot']}（唯一可解释量）")
+    return {
+        "target": "未来20日已实现波动 vs 当前（升=1/降=0）",
+        "n_pooled": int(len(y)), "pos_pct": round(float(y.mean()) * 100, 1),
+        "pooled_auc_model": round(auc_m, 4),
+        "pooled_auc_naive_meanrev": round(auc_n, 4),
+        "pooled_auc_vix": round(auc_v, 4),
+        "mechanical_null_auc": mech_null,
+        "model_vs_naive": bb,
+        "features": feats,
+        "note": ("⚠ 关键修正（Opus 审查）：rv20 同时出现在标签两侧（fwd_rv20>rv20）又当特征/分数，"
+                 f"造成机械自指——把未来打乱后基线 AUC 仍≈{mech_null}（机械地板），说明 0.72/0.75 这种绝对 AUC "
+                 "大半是假象、不可交易。唯一可解释的是模型 vs 同样自指的基线之差，"
+                 f"= {bb['diff'] if bb else '—'}（CI 跨 0、p={bb['p_boot'] if bb else '—'}，不显著）。"
+                 "诚实结论：连波动率升降，用机械公平的对比也没找到稳健可利用的信号——均值回归大半是自指假象。"
+                 "另注：这是同一数据上多次重选靶子的第 N 次，p 值未做多重比较校正，属探索性。"),
+    }
+
+
 def run():
     f = build_features()
     feats = [c for c in FEATURES if c in f.columns]
@@ -85,10 +182,6 @@ def run():
     hold = f[f["year"] >= HOLDOUT_START]
     print(f"波动率原型：特征 {len(feats)} 个，dev {len(dev)} 天，holdout {len(hold)} 天")
 
-    def _gb():
-        return HistGradientBoostingClassifier(max_depth=3, learning_rate=0.05,
-                                              max_iter=300, l2_regularization=1.0,
-                                              random_state=42)
 
     # ── 扩窗 CV（每折阈值只用训练集中位数）──────────────────────────
     # 同时记录 VIX-only 基线（仅用当日 VIX 排序）——若模型不显著优于它，
@@ -175,6 +268,8 @@ def run():
         "folds": fold_rows,
         "direction_auc_reference": dir_auc,
         "importances": importances,
+        # v3.0-B：换靶子到"波动率升/降方向"（VIX 没直接定价的维度）
+        "vol_direction": vol_direction_experiment(f, all_dates),
         "note": ("关键诚实点：波动率确实比方向可测得多，但模型仅比'只看当日VIX'的基线高约 "
                  f"{gain}——可预测性几乎全来自 VIX 已经把未来波动定价了，12 特征的梯度提升树没加什么。"
                  "结论不是'ML 厉害'，而是'选对靶子 + 市场已把容易的部分定价'。"

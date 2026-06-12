@@ -3391,6 +3391,7 @@ function renderVolModel() {
   const v = SIGNALS?.vol_model;
   if (!v) { el.innerHTML = `<span style="color:var(--muted)">运行一次完整流水线后显示</span>`; return; }
   const ho = v.holdout_auc, vix = v.holdout_vix_only_auc, dir = v.direction_auc_reference, gain = v.holdout_model_gain_over_vix;
+  const vd = v.vol_direction;
   const bar = (auc, label, color) => {
     const pct = auc == null ? 0 : Math.max(0, Math.min(100, ((auc - 0.5) / 0.5) * 100));
     return `<div style="margin:.35rem 0;">
@@ -3407,17 +3408,31 @@ function renderVolModel() {
     <div style="color:var(--muted);font-size:0.78rem;line-height:1.6;margin-bottom:.6rem;">
       靶子：${esc(v.target||"")}。模型：${esc(v.model||"")}。<br>${esc(v.method||"")}
     </div>
-    ${bar(ho, "波动率·模型(12特征) · 2024-2026终审", "#3498db")}
-    ${bar(vix, "波动率·只看当日VIX(无模型) · 终审", "#9b59b6")}
-    ${bar(dir, "对照：涨跌方向", "#e74c3c")}
+    ${vd ? `
+    <div style="font-size:0.82rem;font-weight:700;margin:.2rem 0 .3rem;">① 波动率会"升还是降"？（一个被审查纠正的诚实教训）</div>
+    ${bar(vd.mechanical_null_auc, "机械假象地板（打乱未来后基线仍有的 AUC）", "#e67e22")}
+    ${bar(vd.pooled_auc_naive_meanrev, "自指基线(-当前波动)：大半是上面的假象", "#9b59b6")}
+    ${bar(vd.pooled_auc_model, "模型(波动动态特征)：坐在同一假象台座上", "#8b949e")}
+    <div class="insight" style="margin:.5rem 0 1rem;">
+      <strong>⚠ 这里差点上当：rv20 同时在标签两侧（fwd&gt;rv20）又当特征，制造<b style="color:#e67e22">机械自指假象</b>——把未来打乱、毁掉一切真信号后，基线 AUC 仍≈${Number(vd.mechanical_null_auc).toFixed(2)}。</strong>
+      所以 ${Number(vd.pooled_auc_model).toFixed(2)}/${Number(vd.pooled_auc_naive_meanrev).toFixed(2)} 这种"高 AUC"<b>大半是假象、不可交易</b>。
+      唯一可解释的是模型 vs 同样自指基线之差 ${vd.model_vs_naive ? `= <b>${vd.model_vs_naive.diff>0?"+":""}${vd.model_vs_naive.diff}</b>（CI ${JSON.stringify(vd.model_vs_naive.ci95)}，p=${vd.model_vs_naive.p_boot}，<b>不显著</b>）` : ""}。
+      <b>诚实结论：连波动率升降，用机械公平的对比也没找到稳健可利用信号。</b>
+      <span style="color:var(--muted)">${esc(vd.note||"")}</span>
+    </div>` : ""}
+
+    <div style="font-size:0.82rem;font-weight:700;margin:.2rem 0 .3rem;">② 对照：预测波动率"绝对水平"（VIX 必然赢=同义反复）</div>
+    ${bar(ho, "波动率水平·模型(12特征) · 终审", "#8b949e")}
+    ${bar(vix, "波动率水平·只看VIX · 终审", "#9b59b6")}
+    ${bar(dir, "对照：涨跌方向（不可测）", "#e74c3c")}
     <div style="font-size:0.74rem;color:var(--muted);margin:.3rem 0 .6rem;">条形=AUC相对0.5(随机)的优势。
-      扩窗CV 均值 ${v.cv_mean_auc ?? "?"}（正类占比 2.5%~66% 不均，偏乐观，故头条用较均衡的 holdout）。</div>
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.2rem;">holdout 排列重要性（哪个特征真带信息）</div>
+      水平靶子上模型只比裸看 VIX 高 ${gain ?? "?"}——VIX 就是波动率水平的市场报价，赢是同义反复，信息量低。</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.2rem;">holdout 排列重要性（水平靶子）</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.78rem;"><tbody>${imps}</tbody></table>
     <div class="insight" style="margin-top:.7rem;">
-      <strong>波动率（${ho!=null?Number(ho).toFixed(2):"?"}）远比方向（${dir!=null?Number(dir).toFixed(2):"?"}）可测——但模型只比"裸看 VIX"高 ${gain ?? "?"}。</strong><br>
-      可预测性<b>几乎全来自 VIX 已经把未来波动定价了</b>，12 特征的梯度提升树没加什么（重要性里 VIX 一家独大）。
-      真正的启示是两层：<b>① 选对靶子</b>（波动率可测、方向不可测）；<b>② 市场已把容易的部分定价</b>，复杂模型 ≠ 优势。
+      <strong>总结：波动率比涨跌方向可测得多；但要问对问题。</strong><br>
+      预测<b>波动"水平"</b>→ VIX 必然赢（同义反复）；预测<b>波动"升降"</b>→ VIX 失效，真信号在<b>均值回归</b>里，
+      模型只能再多挤出一丝且不 robust。启示：<b>选对靶子 + 市场已把容易的部分定价</b>，复杂模型很难再加价值。
       <span style="color:var(--muted)">${esc(v.note||"")}</span>
     </div>`;
 }
