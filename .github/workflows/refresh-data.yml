@@ -62,9 +62,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ -f market-analysis/alert.md ]; then
+            # label 不存在时 issue create 会整体失败且被 ||true 吞掉 → 先幂等建 label；
+            # --assignee 保证触发"参与通知"邮件（仅靠 bot 建 issue 不一定发邮件）
+            gh label create alert --color D93F0B --description "信号告警" || true
             gh issue create \
               --title "📣 信号告警 $(date -u +%Y-%m-%d)" \
               --body-file market-analysis/alert.md \
+              --assignee Vambrocop \
               --label alert || true
             rm market-analysis/alert.md
           fi
