@@ -2659,8 +2659,56 @@ function renderStocksTable() {
     </tr>${rows}</table>`;
 }
 
+// ── 个股分析卡（可复用模板：趋势/动量/波动/回撤/系统性，描述性非预测）──
+function renderStockScorecard(sym) {
+  const el = document.getElementById("stock-scorecard");
+  if (!el || !STOCKS?.stocks?.[sym]) return;
+  const s = STOCKS.stocks[sym], st = s.stats;
+  // 每个维度：标签 + 值 + 解读带（颜色+一句话），全部基于历史统计，不预测
+  const band = (cond, txt, color) => `<span style="color:${color}">${txt}</span>`;
+  const trend = st.dist_ma200 == null ? ["—", "var(--muted)", "数据不足"]
+    : st.dist_ma200 > 15 ? [`+${st.dist_ma200}%`, "#e67e22", "强多头但偏离均线远，回踩风险升高"]
+    : st.dist_ma200 > 0 ? [`+${st.dist_ma200}%`, "#2ecc71", "站上200日线，多头趋势"]
+    : [`${st.dist_ma200}%`, "#e74c3c", "跌破200日线，趋势转弱"];
+  const rsiB = st.rsi14 > 70 ? ["超买", "#e74c3c"] : st.rsi14 < 30 ? ["超卖", "#2ecc71"] : ["中性", "var(--text)"];
+  const volB = st.vol_pctile_1y == null ? ["—", "var(--muted)"]
+    : st.vol_pctile_1y > 80 ? [`第${st.vol_pctile_1y}百分位·异常高`, "#e74c3c"]
+    : st.vol_pctile_1y < 20 ? [`第${st.vol_pctile_1y}百分位·异常平静`, "#3498db"]
+    : [`第${st.vol_pctile_1y}百分位·常态`, "var(--text)"];
+  const r2 = st.r2_nasdaq_1y;
+  const r2B = r2 == null ? ["—", "var(--muted)", ""]
+    : r2 > 0.5 ? [`${Math.round(r2*100)}%`, "#3498db", "波动主要由大盘驱动（系统性，分散作用小）"]
+    : [`${Math.round(r2*100)}%`, "#9b59b6", "波动多为个股特有（独立逻辑，需看公司基本面）"];
+  const rv = st.ret_vol_1y;
+  const cell = (label, valHtml, note) => `
+    <div style="background:var(--surface2);border-radius:7px;padding:.55rem .7rem;">
+      <div style="font-size:0.68rem;color:var(--muted);">${label}</div>
+      <div style="font-size:0.95rem;font-weight:700;margin:.1rem 0;">${valHtml}</div>
+      <div style="font-size:0.68rem;color:var(--muted);line-height:1.4;">${note}</div>
+    </div>`;
+  el.innerHTML = `
+    <div style="font-size:0.82rem;font-weight:700;margin-bottom:.5rem;">📊 ${sym} ${s.label} · 个股分析卡
+      <span style="font-size:0.66rem;color:var(--muted);font-weight:400;">截至 ${st.date}</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;">
+      ${cell("趋势（距200日线）", band(0, trend[0], trend[1]), trend[2])}
+      ${cell("动量 RSI14 / 距52周高", `${st.rsi14} <span style="font-size:0.7rem;color:${rsiB[1]}">${rsiB[0]}</span> · ${st.from_high_52w}%`,
+             st.range_pctile_52w!=null?`位于52周区间第 ${st.range_pctile_52w} 百分位`:"")}
+      ${cell("波动率状态", `${st.vol20_ann}% · <span style="font-size:0.7rem;color:${volB[1]}">${volB[0]}</span>`,
+             "年化20日波动 vs 自身近一年")}
+      ${cell("最大回撤 / 风险调整", `${st.max_dd}% · ${rv!=null?"性价比"+rv:"—"}`,
+             rv!=null?(rv>1?"近1年收益/波动>1，性价比尚可":"近1年风险调整后一般"):"")}
+      ${cell("β / 系统性占比 R²", `β ${st.beta_nasdaq_1y ?? "—"} · R² ${r2B[0]}`, r2B[2])}
+      ${cell("收益（YTD / 1年）", `${st.ytd!=null?st.ytd+"%":"—"} / ${st.chg_1y!=null?st.chg_1y+"%":"—"}`, "")}
+    </div>
+    <div style="font-size:0.68rem;color:var(--muted);margin-top:.5rem;line-height:1.5;">
+      ⚠ 这是<b>描述性</b>分析卡（趋势/动量/波动/回撤/系统性现状），不预测涨跌——
+      与本站结论一致：个股方向同样不可靠预测。用它快速体检一只股的<b>当前状态与风险画像</b>，不当买卖信号。
+    </div>`;
+}
+
 function renderStockChart(sym) {
   if (!STOCKS?.stocks?.[sym]) return;
+  renderStockScorecard(sym);
   const s = STOCKS.stocks[sym];
   const traces = [{
     x: s.series.dates, y: s.series.values, name: `${sym} ${s.label}`,

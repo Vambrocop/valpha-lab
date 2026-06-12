@@ -52,12 +52,35 @@ def _stats(s, bench_ret):
         "rsi14":       round(float(_rsi(ret).iloc[-1]), 1),
         "vol20_ann":   round(float(ret.rolling(20).std().iloc[-1] * np.sqrt(252) * 100), 1),
     }
-    # 与纳指的1年期 beta / 相关性（按共同交易日对齐）
+
+    # ── 个股分析模板的标准维度（描述性，非预测）──────────────────────
+    # 趋势强度：距MA200百分比（>0 多头排列，越大越强/越可能超买）
+    ma200 = s.rolling(200).mean().iloc[-1]
+    out["dist_ma200"] = round(float((s.iloc[-1] / ma200 - 1) * 100), 1) if not np.isnan(ma200) else None
+    # 波动率分位：当前20日波动在自身近一年中的百分位（>80=异常高波动）
+    vol20 = (ret.rolling(20).std() * np.sqrt(252)).dropna()
+    if len(vol20) > 60:
+        out["vol_pctile_1y"] = round(float((vol20.tail(252) < vol20.iloc[-1]).mean() * 100))
+    # 最大回撤（整段历史，风险体感）
+    dd = s / s.cummax() - 1
+    out["max_dd"] = round(float(dd.min() * 100), 1)
+    # 52周区间位置（0=贴近一年最低，100=贴近一年最高）
+    hi, lo = s.tail(252).max(), s.tail(252).min()
+    out["range_pctile_52w"] = round(float((s.iloc[-1] - lo) / (hi - lo) * 100)) if hi > lo else None
+    # 粗略风险调整收益：近1年收益 / 年化波动（>1 性价比好；非夏普但同向）
+    if len(s) > 253:
+        r1y = s.iloc[-1] / s.iloc[-253] - 1
+        v1y = float(ret.tail(252).std() * np.sqrt(252))
+        out["ret_vol_1y"] = round(float(r1y / v1y), 2) if v1y > 0 else None
+
+    # 与纳指的1年期 beta / 相关性 / 系统性占比（按共同交易日对齐）
     pair = pd.concat([ret, bench_ret], axis=1, join="inner").dropna().tail(252)
     if len(pair) > 60:
         cov = pair.cov()
+        corr = float(pair.corr().iloc[0, 1])
         out["beta_nasdaq_1y"] = round(float(cov.iloc[0, 1] / cov.iloc[1, 1]), 2)
-        out["corr_nasdaq_1y"] = round(float(pair.corr().iloc[0, 1]), 2)
+        out["corr_nasdaq_1y"] = round(corr, 2)
+        out["r2_nasdaq_1y"] = round(corr * corr, 2)   # 波动有多少由大盘解释（系统性 vs 个股特有）
     return out
 
 
