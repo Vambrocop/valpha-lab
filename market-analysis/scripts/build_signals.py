@@ -857,7 +857,8 @@ if __name__ == "__main__":
 
     # 研究面板产物（不进信号链路）：因子尸检 + 波动率原型 + 市场结构
     for _key, _fn in [("factor_audit", "factor_pruning.json"), ("vol_model", "vol_model.json"),
-                      ("market_structure", "market_structure.json"), ("benchmark", "benchmark.json")]:
+                      ("market_structure", "market_structure.json"), ("benchmark", "benchmark.json"),
+                      ("v3_sparse", "v3_sparse.json")]:
         try:
             with open(PROC_DIR / _fn, encoding="utf-8") as _f:
                 result[_key] = json.load(_f)

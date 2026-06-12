@@ -227,10 +227,17 @@ function renderSPCXMonitor() {
   const awaitingFirstTrade = q && q.price === SPCX_ISSUE_USD &&
         ((q.vol === 0) || tradeStale || q.prev_close == null);
   if (q && q.price && awaitingFirstTrade && daysListed <= 1) {
+    // 有活的订单簿时展示 bid/ask 中值指示价（明确标注非成交价）
+    const mid = q.bid && q.ask ? (q.bid + q.ask) / 2 : null;
+    const midHtml = mid ? `
+        <span style="font-size:1.25rem;font-weight:800;">≈US$${mid.toFixed(2)}</span>
+        <span style="font-weight:700;color:${mid>=SPCX_ISSUE_USD?'#2ecc71':'#e74c3c'}">${mid>=SPCX_ISSUE_USD?'+':''}${((mid/SPCX_ISSUE_USD-1)*100).toFixed(1)}% vs 发行价</span>
+        <span style="color:var(--muted);font-size:0.72rem">订单簿指示价（bid ${q.bid} / ask ${q.ask} 中值）· 非成交价</span>` : "";
     priceHtml = `
       <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:baseline;">
-        <span style="font-size:1.05rem;font-weight:700;color:#f1c40f;">⏳ 等待首笔成交</span>
-        <span style="color:var(--muted);font-size:0.78rem">发行价 US$135 · IPO 开盘竞价中——超大型 IPO 首笔成交常在开盘后 1–3 小时，券商 App 显示的是竞价指示价。成交后此处 10 分钟内自动更新。</span>
+        ${midHtml}
+        <span style="font-size:0.95rem;font-weight:700;color:#f1c40f;">⏳ 等待首笔成交确认</span>
+        <span style="color:var(--muted);font-size:0.74rem">超大型 IPO 首笔成交常在开盘后 1–3 小时进入公开行情源；确认后此处自动切换为成交价。</span>
       </div>`;
   } else if (q && q.price) {
     const vsIssue = (q.price / SPCX_ISSUE_USD - 1) * 100;

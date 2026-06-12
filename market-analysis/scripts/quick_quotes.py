@@ -42,6 +42,24 @@ def _quote_from_meta(meta):
     return q
 
 
+def _nasdaq_bid_ask(symbol):
+    """Nasdaq 官方 API 的实时 bid/ask——IPO 首日 Yahoo 最后成交价滞后数小时，
+    但订单簿是活的：bid/ask 中值可作'指示价'诚实展示（明确标注非成交价）。"""
+    url = f"https://api.nasdaq.com/api/quote/{symbol}/info?assetclass=stocks"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "application/json"})
+    d = json.load(urllib.request.urlopen(req, timeout=15))
+    p = d.get("data", {}).get("primaryData", {}) or {}
+
+    def _num(s):
+        try:
+            return float(str(s).replace("$", "").replace(",", ""))
+        except (ValueError, TypeError):
+            return None
+    return {"bid": _num(p.get("bidPrice")), "ask": _num(p.get("askPrice"))}
+
+
 def _quote_fallback(symbol):
     import yfinance as yf
     fi = yf.Ticker(symbol).fast_info
@@ -71,6 +89,14 @@ def main():
                 q = _quote_fallback(tk)
             except Exception as e:
                 print(f"  ! {name} fallback: {e}")
+        if q and name == "SPCX":
+            # IPO 期间补充订单簿指示价（成交价滞后时前端展示 bid/ask 中值）
+            try:
+                ba = _nasdaq_bid_ask(tk)
+                if ba.get("bid") and ba.get("ask"):
+                    q["bid"], q["ask"] = ba["bid"], ba["ask"]
+            except Exception as e:
+                print(f"  · SPCX bid/ask 不可用: {e}")
         if q:
             out["quotes"][name] = q
             age = ""
