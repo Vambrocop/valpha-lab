@@ -3186,6 +3186,7 @@ init().then(() => {
   safeRender(renderIPOCycle, "IPOCycle");
   safeRender(renderFactorAudit, "FactorAudit");
   safeRender(renderVolModel, "VolModel");
+  safeRender(renderMarketStructure, "MarketStructure");
   // 恢复上次浏览的视图（默认"今日"）
   const savedView = localStorage.getItem("alpha_view");
   if (savedView && savedView !== "today") {
@@ -3319,6 +3320,82 @@ function renderVolModel() {
       可预测性<b>几乎全来自 VIX 已经把未来波动定价了</b>，12 特征的梯度提升树没加什么（重要性里 VIX 一家独大）。
       真正的启示是两层：<b>① 选对靶子</b>（波动率可测、方向不可测）；<b>② 市场已把容易的部分定价</b>，复杂模型 ≠ 优势。
       <span style="color:var(--muted)">${esc(v.note||"")}</span>
+    </div>`;
+}
+
+// ── 市场结构解释（PCA + 相关性体制 + 因果回路）──
+function renderMarketStructure() {
+  const el = document.getElementById("market-structure");
+  if (!el) return;
+  const ms = SIGNALS?.market_structure;
+  if (!ms) { el.innerHTML = `<span style="color:var(--muted)">运行一次完整流水线后显示</span>`; return; }
+
+  // 近零载荷归零，避免 "-0" 显示
+  const ld = x => Math.abs(x) < 0.005 ? 0 : Number(x);
+  // PCA：主成分解释力 + 载荷（前5）
+  const pcs = (ms.pca?.components || []).map(c => {
+    const load = c.loadings.slice(0, 5).map(l => {
+      const val = ld(l.loading);
+      const col = val > 0 ? "#2ecc71" : val < 0 ? "#e74c3c" : "var(--muted)";
+      return `<span style="color:${col};margin-right:.5rem;">${esc(l.label)} ${val>0?"+":""}${val}</span>`;
+    }).join("");
+    return `<div style="margin:.3rem 0;">
+      <div style="font-size:0.78rem;"><b>PC${c.pc}</b> 解释 <b>${Number(c.explained_pct)}%</b> 共同变动</div>
+      <div style="font-size:0.74rem;line-height:1.6;">${load}</div></div>`;
+  }).join("");
+
+  // 相关性体制：按 |shift| 排序。高亮门槛 0.4（>3×SE，超出噪声带才标记）
+  const se = ms.corr_se ?? 0.13;
+  const cr = [...(ms.correlation_regime || [])].sort((a,b)=>Math.abs(b.shift)-Math.abs(a.shift));
+  const crRows = cr.map(r => {
+    const big = Math.abs(r.shift) >= 0.4;
+    const sc = r.shift > 0 ? "#2ecc71" : "#e74c3c";
+    return `<tr style="border-top:1px solid var(--border)33;${big?"background:rgba(241,196,15,.06);":""}">
+      <td style="padding:.22rem .5rem;">${esc(r.pair)}</td>
+      <td style="padding:.22rem .5rem;text-align:right;">${r.recent_60d>0?"+":""}${Number(r.recent_60d)}</td>
+      <td style="padding:.22rem .5rem;text-align:right;color:var(--muted);">${r.full_history>0?"+":""}${Number(r.full_history)}<span style="font-size:0.62rem;">·${r.full_years}y</span></td>
+      <td style="padding:.22rem .5rem;text-align:right;color:${sc};font-weight:${big?700:400};">${r.shift>0?"+":""}${Number(r.shift)}${big?" ⚠":""}</td>
+    </tr>`;
+  }).join("");
+
+  // 因果回路（定性系统动力学）：两个核心反馈环
+  const loop = (title, color, nodes, kind) => `
+    <div style="border:1px solid ${color}44;border-radius:8px;padding:.6rem .8rem;background:${color}0d;">
+      <div style="font-size:0.78rem;font-weight:700;color:${color};margin-bottom:.3rem;">${title}</div>
+      <div style="font-size:0.76rem;line-height:1.7;">${nodes.join(' <span style="color:'+color+'">→</span> ')}
+        <span style="color:${color}">↻</span></div>
+      <div style="font-size:0.68rem;color:var(--muted);margin-top:.25rem;">${kind}</div>
+    </div>`;
+
+  el.innerHTML = `
+    <div style="color:var(--muted);font-size:0.78rem;line-height:1.6;margin-bottom:.6rem;">${esc(ms.window||"")}</div>
+    <div style="font-size:0.8rem;font-weight:600;margin-bottom:.3rem;">① 主成分分析（PCA）：市场的共同因子</div>
+    ${pcs}
+    <div style="font-size:0.72rem;color:var(--muted);margin:.3rem 0 .8rem;">${esc(ms.pca?.pc1_note||"")}</div>
+
+    <div style="font-size:0.8rem;font-weight:600;margin-bottom:.3rem;">② 相关性体制：近60日 vs 各对完整历史
+      <span style="font-size:0.66rem;color:var(--muted);font-weight:400;">⚠ 60日为小样本，标准误≈±${se}，单格变化≥0.4(高亮)才超出噪声带</span></div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.76rem;">
+      <thead><tr style="color:var(--muted);font-size:0.7rem;">
+        <th style="text-align:left;padding:.22rem .5rem;">资产对</th><th style="text-align:right;padding:.22rem .5rem;">近60日</th>
+        <th style="text-align:right;padding:.22rem .5rem;">完整历史</th><th style="text-align:right;padding:.22rem .5rem;">变化</th></tr></thead>
+      <tbody>${crRows}</tbody>
+    </table>
+
+    <div style="font-size:0.8rem;font-weight:600;margin:.85rem 0 .4rem;">③ 因果回路：波动生态的反馈结构（定性·系统动力学）</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.5rem;">
+      ${loop("波动聚集 · 平衡环", "#3498db",
+             ["波动↑","风险厌恶↑","抛售/对冲","波动更高","随后均值回归","波动↓"], "balancing：波动有记忆但会回落，是可预测性来源")}
+      ${loop("强平螺旋 · 增强环", "#e74c3c",
+             ["价格↓","保证金不足","被迫卖出","价格更↓"], "reinforcing：危机时正反馈，相关性趋同、分散失效")}
+    </div>
+
+    <div class="insight" style="margin-top:.8rem;">
+      <strong>当前结构读数：</strong>PC1（risk-on/off）解释约 ${ms.pca?.components?.[0]?.explained_pct ?? "?"}% 的跨资产共动——
+      一个"风险偏好"开关解释了最大一块共同变动。高亮行（|变化|≥0.4，超出 60 日噪声带）<b>值得留意但仍需更长窗口确认</b>：
+      例如纳指–黄金转正、纳指–利率/美元转负，<i>可能</i>暗示市场转向"利率/流动性主导"（降息预期来时股和黄金齐涨）——
+      但 60 日样本噪声大，这是假设不是定论。
+      <span style="color:var(--muted)">${esc(ms.note||"")}</span>
     </div>`;
 }
 

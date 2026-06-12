@@ -855,8 +855,9 @@ if __name__ == "__main__":
     result["horizon_note"] = "概率含义：未来20个交易日收盘高于今日的概率"
     result["model_status_note"] = "实验性信号：walk-forward 块自助验证未发现样本外优势"
 
-    # 因子样本外尸检（P2-5）+ 波动率原型（P2-6）：研究面板用，不进信号链路
-    for _key, _fn in [("factor_audit", "factor_pruning.json"), ("vol_model", "vol_model.json")]:
+    # 研究面板产物（不进信号链路）：因子尸检 + 波动率原型 + 市场结构
+    for _key, _fn in [("factor_audit", "factor_pruning.json"), ("vol_model", "vol_model.json"),
+                      ("market_structure", "market_structure.json")]:
         try:
             with open(PROC_DIR / _fn, encoding="utf-8") as _f:
                 result[_key] = json.load(_f)

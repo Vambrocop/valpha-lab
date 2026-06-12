@@ -34,6 +34,7 @@ steps = [
     ("滚动样本外验证",     "walk_forward.py"),
     ("因子样本外尸检",     "factor_pruning.py"),   # P2-5：因子记分卡 + 靶子探针（研究面板）
     ("波动率状态原型",     "vol_model.py"),        # P2-6：高信噪比靶子（研究面板）
+    ("市场结构解释",       "market_structure.py"), # PCA共动 + 相关性体制（研究面板）
     ("实盘预测追踪",       "track_predictions.py"),
     ("信号嵌入回测结果",   "build_signals.py"),   # 第二遍：嵌入最新回测/验证/追踪
     ("导出图表数据",       "export_chart_data.py"),
