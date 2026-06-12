@@ -16,7 +16,12 @@
     <h1>⬡ <span>Alpha Lab</span> — 美股入场信号</h1>
     <div class="header-sub">纳指 · 标普 · 个股 · 加密 | 贝叶斯信号 + 实盘问责 + 五策略模拟盘 | 仅供学习研究</div>
   </div>
-  <div style="color:var(--muted);font-size:0.8rem;" id="updated-time">—</div>
+  <div style="display:flex;align-items:center;gap:.55rem;">
+    <div style="color:var(--muted);font-size:0.8rem;" id="updated-time">—</div>
+    <button onclick="refreshData(this)" title="重新拉取全部数据并刷新页面内容（不丢失当前位置）"
+      style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
+      padding:.3rem .7rem;border-radius:6px;font-size:0.76rem;cursor:pointer;white-space:nowrap;">🔄 刷新</button>
+  </div>
 </header>
 
 <nav class="view-nav" role="tablist" aria-label="主导航">

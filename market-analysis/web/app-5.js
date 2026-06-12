@@ -64,7 +64,9 @@ function safeRender(fn, name) {
   try { fn(); } catch(e) { console.warn("renderError ["+name+"]:", e); }
 }
 
-init().then(() => {
+// 启动渲染序列。抽成具名函数以支持"🔄 手动刷新"：所有渲染器都是幂等覆盖，
+// 重新 init()（拉最新 JSON）后再跑一遍即完成无整页刷新的数据更新。
+function renderAll() {
   safeRender(renderDOWPanel,        "DOW");
   safeRender(renderSellPanel,       "Sell");
   safeRender(renderOppPanel,        "Opp");
@@ -104,13 +106,36 @@ init().then(() => {
   safeRender(renderMarketStructure, "MarketStructure");
   safeRender(renderEventImpact, "EventImpact");
   safeRender(renderQuantMethodology, "QuantMethodology");
-  // 恢复上次浏览的视图（默认"今日"）
+  // 恢复上次浏览的视图（默认"今日"）；手动刷新时 savedView==当前视图，顺带触发图表重算尺寸
   const savedView = localStorage.getItem("alpha_view");
   if (savedView && savedView !== "today") {
     const btn = document.querySelector(`.view-btn[data-view="${savedView}"]`);
     if (btn) switchView(savedView, btn);
   }
-});
+}
+init().then(renderAll);
+
+// ── 🔄 手动刷新：重新拉取全部 JSON 并重渲染（不整页刷新，滚动位置和视图保留）──
+let _refreshing = false;
+async function refreshData(btn) {
+  if (_refreshing) return;
+  _refreshing = true;
+  if (btn) btn.textContent = "⏳";
+  try {
+    // 清空懒渲染缓存，已打开过的子标签下次点击时用新数据重画
+    try { _calTabRendered.clear(); } catch(e) {}
+    try { _mainTabRendered.clear(); } catch(e) {}
+    try { if (typeof _mvTabRendered !== "undefined") _mvTabRendered.clear(); } catch(e) {}
+    await init();
+    renderAll();
+    if (btn) { btn.textContent = "✓ 已更新"; setTimeout(() => btn.textContent = "🔄 刷新", 2000); }
+  } catch(e) {
+    console.warn("refreshData 失败", e);
+    if (btn) { btn.textContent = "✗ 失败"; setTimeout(() => btn.textContent = "🔄 刷新", 2500); }
+  } finally {
+    _refreshing = false;
+  }
+}
 
 // ═══════════════════════════════════════════════════════
 //  顶层视图切换（今日/计划/实验/研究/我的）
