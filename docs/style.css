@@ -26,6 +26,11 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 /* 视图内布局：panel 自适应多列；宽图表单列堆叠 */
 .view-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; align-items: start; }
 .view-stack { display: flex; flex-direction: column; gap: 1.5rem; }
+/* 每个标签顶部的一行导言：告诉访客这一屏是干嘛的 */
+.view-intro { color: var(--muted); font-size: 0.82rem; line-height: 1.5; margin-bottom: 1.25rem;
+  padding: .6rem .9rem; background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--blue); border-radius: 0 8px 8px 0; }
+.view-intro b { color: var(--text); }
 .view-stack + .view-grid, .view-grid + .view-stack { margin-top: 1.5rem; }
 @media (max-width: 900px) {
   .view-nav { padding: .5rem .75rem; }

@@ -31,6 +31,7 @@
 
 <!-- ════════ 今日：现在该不该动手 ════════ -->
 <section id="view-today">
+  <div class="view-intro">📊 <b>今日：现在该不该动手。</b>信号、每日简报、风险红绿灯、卖出评估——一屏看完当下状态。⚠ 信号为实验性，方向不可靠预测，仅供参考。</div>
   <div class="view-grid">
 
     <!-- 日期选择 + 信号表盘 -->
@@ -112,6 +113,7 @@
 
 <!-- ════════ 计划：未来的操作窗口 ════════ -->
 <section id="view-plan" style="display:none">
+  <div class="view-intro">🗓 <b>计划：未来的操作窗口。</b>日历概率、最佳/最弱时点、经济事件——提前知道哪几天值得留意。日历效应样本内成立，样本外仅供参考。</div>
   <div class="view-stack">
     <!-- 未来40个交易日信号日历 -->
     <div class="chart-wrap" style="padding:1.25rem;">
@@ -187,6 +189,18 @@
 
 <!-- ════════ 实验：模型问责与模拟盘 ════════ -->
 <section id="view-lab" style="display:none">
+  <div class="view-intro">🧪 <b>实验：模型问责。</b>每个模型 vs 它的诚实基线，模拟盘前向竞技，append-only 成绩单无法事后美化——这里只讲"说了什么、对了没有"。</div>
+
+  <!-- Benchmark 记分卡置顶：全局诚实总览 -->
+  <div class="view-stack" style="margin-bottom:1.5rem;">
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        🎯 Benchmark 记分卡 <span class="badge">每个模型 vs 诚实基线 · 硬基线不self-deception</span>
+      </div>
+      <div id="benchmark" style="font-size:0.8rem;"></div>
+    </div>
+  </div>
+
   <div class="view-grid">
     <!-- 模拟盘（$10,000 机械跟随信号，账本不可篡改） -->
     <div class="panel">
@@ -226,19 +240,12 @@
       </div>
       <div id="report-content" style="font-size:0.8rem;"></div>
     </div>
-
-    <!-- Benchmark 记分卡：每个模型 vs 它的诚实基线（聚合） -->
-    <div class="chart-wrap" style="padding:1.25rem;">
-      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🎯 Benchmark 记分卡 <span class="badge">每个模型 vs 诚实基线 · 硬基线不self-deception</span>
-      </div>
-      <div id="benchmark" style="font-size:0.8rem;"></div>
-    </div>
   </div>
 </section>
 
 <!-- ════════ 研究：图表库 ════════ -->
 <section id="view-research" style="display:none">
+  <div class="view-intro">🔬 <b>研究：分清真规律 vs 幻觉。</b>能用的（波动率/隔夜异象/相关性体制/事件影响）与不可测的（短期方向，因子尸检证明）——都老实摊开，再加传统图表库。</div>
   <div class="view-stack">
 
     <!-- 因子样本外尸检（P2-5）：这个项目最诚实的一页 -->
@@ -461,6 +468,7 @@
 
 <!-- ════════ 我的：个人工具（数据只存浏览器本地） ════════ -->
 <section id="view-mine" style="display:none">
+  <div class="view-intro">💼 <b>我的：个人工具。</b>持仓盈亏、澳洲 CGT 税务、SpaceX 追踪——数据只存你浏览器本地，不上传。含站长个人观点（已明确标注，非模型信号）。</div>
   <div class="view-grid">
     <!-- SpaceX IPO 追踪器 -->
     <div class="panel" id="spcx-panel">
