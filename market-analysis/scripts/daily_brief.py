@@ -44,19 +44,28 @@ def main():
     idx = sig.get("indices", {})
     base_rate = sig.get("base_rate_20d", 0.62)
     base_rate_pct = round(base_rate * 100)
+    flat = sig.get("calibration_flat", False)
     sig_parts = []
     for k, label in [("NASDAQ", "纳指"), ("SP500", "标普")]:
         s = idx.get(k, {})
         if s:
             raw_pct = round(s["prob"] * 100)
-            if s.get("prob_cal") is not None:
+            if flat:
+                # 校准曲线压平=模型无样本外区分度，原始概率只是内部分，不当"概率"展示
+                sig_parts.append(f"{label}（原始打分{raw_pct}%）")
+            elif s.get("prob_cal") is not None:
                 cal_pct = round(s["prob_cal"] * 100)
                 sig_parts.append(f"{label} 20日上涨概率 {cal_pct}%（校准，原始{raw_pct}%）")
             else:
                 sig_parts.append(f"{label} 20日上涨概率 {raw_pct}%（原始）")
     if sig_parts:
-        base_note = f"基率 {base_rate_pct}% · 实验性信号"
-        lines.append("【信号】" + "；".join(sig_parts) + f"｜{base_note}")
+        if flat:
+            # 用无条件基率 base_rate_20d（非 PAV 压平值，后者是测试窗均值会偏高）
+            lines.append("【信号】" + "、".join(sig_parts) +
+                         f"｜模型无样本外区分度：未来20日上涨概率≈基率 {base_rate_pct}% · 实验性信号")
+        else:
+            lines.append("【信号】" + "；".join(sig_parts) +
+                         f"｜基率 {base_rate_pct}% · 实验性信号")
 
     # ── 3. 风险状态（VIX期限结构 + 波动率） ───────────────────────
     risk = []

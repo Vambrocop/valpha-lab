@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 # 模型核心原语统一来自 signal_model（生产与 walk_forward 验证共用，禁止本地复制）
 from signal_model import (
     tier as _tier, bayesian_update, week_of_month as _week_of_month,
-    rsi as _rsi, shrink_lr, us_holidays as _us_holidays,
+    rsi as _rsi, shrink_lr, us_holidays as _us_holidays, pav_monotonic,
     HOLIDAY_SET as _HOLIDAY_SET, THANKSGIVING_DATES as _THANKSGIVING_DATES,
     BTC_MOM_THRESH, DXY_TREND_THRESH, VOL_HIGH, VOL_LOW,
     RSI_OVERBOUGHT, RSI_OVERSOLD, TIER_THRESHOLDS,
@@ -738,7 +738,10 @@ def load_calibration():
                 if "prob_mean" in item and "actual_wr" in item
             )
             if pts:
-                return pts
+                # 样本外校准曲线常非单调甚至倒挂（模型高分→实际低胜率）。
+                # 原始插值会把"反向信号"当真展示；PAV 单调化把无区分度的段
+                # 坍缩成≈基率的平台，是当前证据下唯一诚实的映射。
+                return pav_monotonic(pts)
     except Exception:
         pass
 
@@ -825,10 +828,15 @@ if __name__ == "__main__":
     if walk_forward:
         result["walk_forward"] = walk_forward
 
-    # 概率校准：原始概率 → 历史同档位实际20日胜率
+    # 概率校准：原始概率 → 样本外实际20日胜率（PAV 单调化后）
     cal_pts = load_calibration()
     if cal_pts:
         result["calibration_points"] = [{"prob": x, "actual_wr": y} for x, y in cal_pts]
+        # 校准曲线被 PAV 压平 = 模型无样本外区分度（校准胜率跨度 < 1pp）。
+        # 1pp 是刻意设的经济意义下限，不是浮点舍入容差：跨度再小的"单调"也无操作价值。
+        # 此时不给"档位"这种暗示把握度的标签，前端改为"基率框架"展示。
+        ys = [y for _, y in cal_pts]
+        result["calibration_flat"] = bool(max(ys) - min(ys) < 0.01)
         for idx in result.get("indices", {}):
             prob_cal = calibrate_prob(result["indices"][idx]["prob"], cal_pts)
             result["indices"][idx]["prob_cal"] = prob_cal

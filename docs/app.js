@@ -278,12 +278,32 @@ function updateSignal(dateStr) {
 }
 
 function renderSignalMeter(prob, rec) {
+  const rawPct = Math.round(prob * 100);
+  const baseRate = SIGNALS?.base_rate_20d;
+  const ring = document.getElementById("signal-ring");
+
+  // 校准曲线被 PAV 压平 = 模型无样本外区分度。此时不显示"档位/星级"这种
+  // 暗示把握度的标签，改为中性"基率框架"——这是当前证据下唯一诚实的展示。
+  if (SIGNALS?.calibration_flat) {
+    // 大数字用无条件基率（base_rate_20d），不是 PAV 压平值（那是测试窗均值，会偏高几个点）
+    const flatPct = baseRate ?? 0.62;
+    ring.className = "signal-ring tier-3";   // 黄=中性，不绿不红
+    document.getElementById("signal-pct").textContent  = Math.round(flatPct * 100) + "%";
+    document.getElementById("signal-label").textContent = "≈基率";
+    document.getElementById("signal-stars").textContent = "—";
+    document.getElementById("signal-desc").innerHTML =
+      `<span style="color:var(--muted);font-size:0.72rem">模型原始打分 ${rawPct}%，但样本外无区分度：` +
+      `无论打分高低，未来20日上涨概率都≈基率 ${Math.round(flatPct*100)}%。当温度计看，别当把握度。</span>`;
+    renderSignalMeterTail(prob, rec, { color: "#f1c40f",
+      desc: "walk-forward 块自助验证未发现样本外优势，故不显示档位。" });
+    return;
+  }
+
   // 用校准概率决定档位、颜色、星级、标签；回退到原始概率
   const calProb = calibrateProb(prob);
   const displayProb = calProb !== null ? calProb : prob;
   const t = tier(displayProb);
   const meta = TIER_META[t];
-  const ring = document.getElementById("signal-ring");
 
   ring.className = "signal-ring tier-" + t;
   document.getElementById("signal-pct").textContent   = Math.round(displayProb*100) + "%";
@@ -291,12 +311,15 @@ function renderSignalMeter(prob, rec) {
   document.getElementById("signal-stars").textContent  = meta.stars;
 
   // 小字说明：原始输出、20日窗口、基率
-  const rawPct = Math.round(prob * 100);
-  const baseRate = SIGNALS?.base_rate_20d;
   const baseRatePart = baseRate != null ? ` · 基率 ${Math.round(baseRate * 100)}%` : "";
   document.getElementById("signal-desc").innerHTML =
     `<span style="color:var(--muted);font-size:0.72rem">原始模型输出 ${rawPct}% · 未来20日窗口${baseRatePart}</span>`;
 
+  renderSignalMeterTail(prob, rec, { color: meta.color, desc: meta.desc });
+}
+
+// 信号环以下的解释区（日期徽章/季节先验/事件叠加/模型状态），档位与基率两种展示共用
+function renderSignalMeterTail(prob, rec, opts) {
   const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
   const today = localDateStr();
   const isToday = selectedDate === today;
@@ -310,7 +333,7 @@ function renderSignalMeter(prob, rec) {
     ? `<span style="background:#3498db22;color:#3498db;border-radius:4px;padding:1px 6px;font-size:0.78rem">📡 预测</span>`
     : "";
   const evText = activeEvents.size > 0
-    ? `<br>叠加事件调整后 → <strong style="color:${meta.color}">${Math.round(prob*100)}%</strong>`
+    ? `<br>叠加事件调整后 → <strong style="color:${opts.color}">${Math.round(prob*100)}%</strong>`
     : "";
   const forecastReasons = isForecast && rec._reasons?.length
     ? `<br>日历因子：${rec._reasons.join("、")}`
@@ -323,19 +346,19 @@ function renderSignalMeter(prob, rec) {
     <strong>${selectedDate}</strong>${nearestNote} ${dateBadge}（${MONTH[rec.month]}）<br>
     季节先验：${Math.round(rec.prior*100)}%${forecastReasons}
     ${evText}${techNote}<br>
-    ${meta.desc}
+    ${opts.desc}
   `;
 
   // model_status_note：muted 小字，仅当字段存在时（动态插入 #signal-percentile 之后）
   const statusNote = SIGNALS?.model_status_note;
-  if (!renderSignalMeter._statusEl) {
+  if (!renderSignalMeterTail._statusEl) {
     const el = document.createElement("div");
     el.id = "signal-model-status";
     const percEl = document.getElementById("signal-percentile");
     if (percEl && percEl.parentNode) percEl.parentNode.insertBefore(el, percEl.nextSibling);
-    renderSignalMeter._statusEl = el;
+    renderSignalMeterTail._statusEl = el;
   }
-  const statusEl = renderSignalMeter._statusEl;
+  const statusEl = renderSignalMeterTail._statusEl;
   if (statusEl) {
     statusEl.innerHTML = statusNote
       ? `<span style="font-size:0.7rem;color:var(--muted);">${statusNote}</span>`
@@ -1299,6 +1322,12 @@ function renderEventStudyChart() {
 // ── 百分位信息 ──
 function renderPercentileInfo(todayProb) {
   if (!SIGNALS || !SIGNALS.daily_signals) return;
+  // 模型无样本外区分度时，"强于过去X%交易日"是把原始打分当把握度卖——隐藏
+  if (SIGNALS.calibration_flat) {
+    document.getElementById("signal-percentile").innerHTML =
+      `<span style="color:var(--muted);font-size:0.78rem">样本外无区分度，不展示强弱百分位（详见"实验"标签的验证）</span>`;
+    return;
+  }
   const allProbs = Object.values(SIGNALS.daily_signals).map(d => d.prob);
   const last252  = allProbs.slice(-252);
   const below    = last252.filter(p => p < todayProb).length;
@@ -1742,6 +1771,21 @@ function renderTodayRec(adjustedProb) {
     if (!rec) { el.innerHTML = ""; return; }
     prob = adjustedProb !== undefined ? adjustedProb : rec.prob;
   }
+
+  // 模型无样本外区分度时，不输出"档位/买卖"建议——否则与中性信号环自相矛盾
+  if (SIGNALS.calibration_flat) {
+    const br = Math.round((SIGNALS.base_rate_20d ?? 0.62) * 100);
+    el.innerHTML = `
+      <div style="background:rgba(241,196,15,.07);border:1px solid #f1c40f44;border-radius:8px;padding:.85rem 1rem;">
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.3rem;">今日操作建议</div>
+        <div style="font-size:1.05rem;font-weight:700;color:#f1c40f">⏸ 无样本外优势 · 不输出档位</div>
+        <div style="font-size:0.8rem;color:var(--text);margin-top:.4rem;line-height:1.55">
+          walk-forward 块自助验证未发现该信号有样本外区分度——任意一天的 20 日上涨概率都≈基率 ${br}%。
+          这是实验性研究工具，不构成择时建议。</div>
+      </div>`;
+    return;
+  }
+
   tierNum = tier(prob);
 
   const map = {
@@ -2505,7 +2549,20 @@ function renderIndicesCompare() {
   if (!el || !SIGNALS?.indices) return;
   const TC = { 5:"#27ae60", 4:"#2ecc71", 3:"#f1c40f", 2:"#e67e22", 1:"#e74c3c" };
   const NAMES = { NASDAQ:"纳斯达克", SP500:"标普500" };
+  const flat = SIGNALS.calibration_flat;
+  const br = Math.round((SIGNALS.base_rate_20d ?? 0.62) * 100);
   el.innerHTML = Object.entries(SIGNALS.indices).map(([idx, s]) => {
+    // 无样本外区分度：中性卡片，只显示原始打分（不给档位/校准概率，避免假把握度）
+    if (flat) {
+      const c = "#f1c40f";
+      return `<div style="flex:1;text-align:center;padding:.6rem .4rem;border:1px solid ${c}33;border-radius:8px;background:${c}0d;">
+        <div style="font-size:0.78rem;color:var(--muted);">${NAMES[idx]||idx}</div>
+        <div style="font-size:1.35rem;font-weight:800;color:${c};">≈${br}%</div>
+        <div style="font-size:0.66rem;color:var(--muted);">基率·无区分度</div>
+        <div style="font-size:0.68rem;color:var(--muted);margin-top:.1rem;">原始打分 ${(s.prob*100).toFixed(1)}%</div>
+        <div style="font-size:0.65rem;color:var(--muted);margin-top:.2rem;">截至 ${s.date||""}</div>
+      </div>`;
+    }
     // 主显示：校准概率（prob_cal）与 tier_cal；校准值缺失时回退原始
     const calProb = s.prob_cal != null ? s.prob_cal : s.prob;
     const calTier = s.tier_cal != null ? s.tier_cal : s.tier;

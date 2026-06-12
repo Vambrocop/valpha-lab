@@ -101,6 +101,32 @@ def build_design_matrix(df):
     return np.column_stack(mats), cols
 
 
+def pav_monotonic(points):
+    """Pool-Adjacent-Violators：把校准点列强制为非降。
+
+    校准曲线若倒挂（高分反而低胜率），直接插值等于部署未经验证的"反向模型"；
+    PAV 会把无真实区分度的曲线坍缩成平坦线（≈样本外基率），这是诚实的退化。
+    points: [(prob, wr), ...] 按 prob 升序。返回同长度、wr 非降的点列。
+    """
+    if not points:
+        return points
+    xs = [p for p, _ in points]
+    blocks = [[wr, 1] for _, wr in points]   # [块均值, 块权重]；初始每点权重=1
+    i = 0
+    while i < len(blocks) - 1:
+        if blocks[i][0] > blocks[i + 1][0] + 1e-12:   # 违反非降 → 合并相邻块
+            weight = blocks[i][1] + blocks[i + 1][1]
+            mean = (blocks[i][0] * blocks[i][1] + blocks[i + 1][0] * blocks[i + 1][1]) / weight
+            blocks[i:i + 2] = [[mean, weight]]
+            i = max(i - 1, 0)   # 回退一格：新均值可能又低于左邻块
+        else:
+            i += 1
+    ys = []
+    for mean, weight in blocks:
+        ys.extend([mean] * weight)
+    return list(zip(xs, [round(y, 4) for y in ys]))
+
+
 # ── 美股假日日历 ──────────────────────────────────────────────────
 def _easter(year):
     a = year % 19; b = year // 100; c = year % 100
