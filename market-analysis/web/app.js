@@ -3171,6 +3171,8 @@ function renderBenchmark() {
       <span>❌ 未达 ${Number(s.loses ?? 0)}</span>
       <span>⏳ 数据不足 ${Number(s.insufficient ?? 0)}</span>
     </div>
+    ${bm.drift ? `<div style="margin-top:.5rem;font-size:0.75rem;color:${(bm.drift.degraded_count||0)>0?"#e74c3c":"var(--muted)"};">
+      📡 漂移监控：${esc(bm.drift.status)}${(bm.drift.changes||[]).length?"（"+bm.drift.changes.map(c=>esc(c.name)+":"+esc(c.from)+"→"+esc(c.to)).join("；")+"）":""}</div>` : ""}
     <div class="insight" style="margin-top:.85rem;">
       <strong>${esc(bm.headline)}</strong><br>
       <span style="color:var(--muted);font-size:0.75rem;">原则：${esc(bm.principle)}</span>

@@ -297,6 +297,34 @@ def build(today=None):
     }
 
 
+# ── 漂移监控：与上次快照比，发现 verdict 退化就告警（⑤）────────────
+# 越靠前越好：打败 > 持平 > 数据不足 > 未达 > 缺失
+VERDICT_RANK = {V_BEATS: 4, V_TIE: 3, V_INSUF: 2, V_LOSE: 1, V_MISS: 0}
+
+
+def detect_drift(card):
+    """对比上一条历史快照，标出哪些项较上次退化/改进。数据攒够后这就是'结论是否仍成立'的哨兵。"""
+    hist = _load(HISTORY_PATH)
+    if not isinstance(hist, list) or not hist:
+        return {"status": "首次记录，无历史可比", "changes": [], "degraded_count": 0}
+    prev = hist[-1]
+    prev_v = prev.get("verdicts", {})
+    changes = []
+    for r in card["rows"]:
+        was, now = prev_v.get(r["name"]), r["verdict"]
+        if was and was != now:
+            direction = "improved" if VERDICT_RANK.get(now, 0) > VERDICT_RANK.get(was, 0) else "degraded"
+            changes.append({"name": r["name"], "from": was, "to": now, "direction": direction})
+    degraded = [c for c in changes if c["direction"] == "degraded"]
+    return {
+        "since": prev.get("date"),
+        "changes": changes,
+        "degraded_count": len(degraded),
+        "status": (f"⚠ 较 {prev.get('date')} 有 {len(degraded)} 项退化" if degraded
+                   else ("较上次有改进" if changes else f"与 {prev.get('date')} 一致，无漂移")),
+    }
+
+
 # ── history：append + 按 date 去重保留最新 ────────────────────────
 def update_history(card):
     hist = _load(HISTORY_PATH)
@@ -360,12 +388,14 @@ def print_table(card):
 
 def main():
     card = build()
+    card["drift"] = detect_drift(card)   # 先比对（用 append 之前的历史），再写盘
     out = PROC_DIR / "benchmark.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         json.dump(card, f, ensure_ascii=False, indent=2)
     update_history(card)
     print_table(card)
+    print(f"  漂移：{card['drift']['status']}")
     print(f"\n[OK] 已写出 {out}")
     print(f"[OK] 已追加快照 {HISTORY_PATH}")
 
