@@ -311,8 +311,23 @@ function renderSPCXMonitor() {
         <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.25rem;">⏳ 供给压力与税务时点（S-1 披露 + 澳洲 CGT）</div>
         ${rows}
       </div>
+      ${sp?.supply ? `
+      <div style="margin-top:.55rem;border-top:1px solid var(--border);padding-top:.5rem;font-size:0.76rem;">
+        <span style="color:var(--muted)">📦 供给面：</span>
+        IPO 实际新发 ≈5.56亿股（<b>占总股本仅 ~7.5%</b>，筹码稀缺的来源）
+        ${sp.supply.float_pct != null ? ` · Yahoo 流通口径 ${sp.supply.float_pct}%<span style="color:var(--muted);font-size:0.68rem">（含锁定股，勿当可交易量）</span>` : ""}
+        ${sp.supply.short_pct_float != null ? ` · 做空占流通 <b>${sp.supply.short_pct_float}%</b>` : ""}
+        ${sp.supply.inst_held_pct != null ? ` · 机构持仓 <b>${sp.supply.inst_held_pct}%</b>` : ""}
+      </div>` : ""}
+      <div style="margin-top:.55rem;background:var(--surface);border-radius:6px;padding:.5rem .7rem;font-size:0.74rem;line-height:1.6;color:var(--muted);">
+        <b style="color:var(--text)">解禁怎么读（解禁 ≠ 必然抛售）：</b>解禁只是"可以卖"，会不会卖看持有人结构——
+        <b>早期 VC 基金</b>有结构性卖出动机（基金到期要回收资金分给 LP）；<b>员工</b>有分散化动机（财富集中单一股票）；
+        <b>马斯克</b>承诺持 366 天且为保控制权基本不会卖。学术证据（Field &amp; Hanka，约2,000家IPO样本）：
+        解禁日平均异常收益约 <b style="color:#e74c3c">-1.5%</b>，幅度不大但方向稳定；SpaceX 的<b>分级解禁</b>（5×7%）
+        正是为了把冲击摊平。真正值得盯的信号：每波解禁前后的<b>成交量放大</b>与<b>借券费率变化</b>，而非解禁日本身。
+      </div>
       <div style="color:var(--muted);font-size:0.7rem;margin-top:.45rem;">
-        解禁 = 潜在卖压时点（历史上解禁前后波动常放大，但方向不可预测）；CGT 日期按上市日申购计，实际以你的成交日为准。非投资建议。
+        CGT 日期按上市日申购计，实际以你的成交日为准。非投资建议。
       </div>
     </div>`;
 }

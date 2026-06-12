@@ -117,6 +117,32 @@ def _spcx_block(stocks):
     }
     if len(s) >= 2:
         out["chg_1d"] = round(float((s.iloc[-1] / s.iloc[-2] - 1) * 100), 2)
+
+    # 供给面慢变量（流通盘/做空/机构持仓）——上市初期 Yahoo 可能尚未填充，None 时前端隐藏
+    try:
+        import math
+        import yfinance as yf
+        info = yf.Ticker("SPCX").get_info() or {}
+
+        def _num(k, scale=1.0):
+            v = info.get(k)
+            if isinstance(v, (int, float)) and math.isfinite(v):
+                return round(float(v) * scale, 2)
+            return None
+        supply = {
+            "shares_outstanding": _num("sharesOutstanding"),
+            "float_shares":       _num("floatShares"),
+            "short_pct_float":    _num("shortPercentOfFloat", 100),
+            "inst_held_pct":      _num("heldPercentInstitutions", 100),
+            "insider_held_pct":   _num("heldPercentInsiders", 100),
+        }
+        if any(v is not None for v in supply.values()):
+            if supply["float_shares"] and supply["shares_outstanding"]:
+                supply["float_pct"] = round(
+                    supply["float_shares"] / supply["shares_outstanding"] * 100, 1)
+            out["supply"] = supply
+    except Exception as e:
+        print(f"  · SPCX 供给面数据不可用: {e}")
     return out
 
 
