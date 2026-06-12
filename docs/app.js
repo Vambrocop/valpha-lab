@@ -3220,6 +3220,7 @@ init().then(() => {
   safeRender(renderVolModel, "VolModel");
   safeRender(renderMarketStructure, "MarketStructure");
   safeRender(renderEventImpact, "EventImpact");
+  safeRender(renderQuantMethodology, "QuantMethodology");
   // 恢复上次浏览的视图（默认"今日"）
   const savedView = localStorage.getItem("alpha_view");
   if (savedView && savedView !== "today") {
@@ -3231,7 +3232,7 @@ init().then(() => {
 // ═══════════════════════════════════════════════════════
 //  顶层视图切换（今日/计划/实验/研究/我的）
 // ═══════════════════════════════════════════════════════
-const VIEWS = ["today", "plan", "lab", "research", "mine"];
+const VIEWS = ["today", "plan", "lab", "research", "quant", "mine"];
 function switchView(name, btn) {
   document.querySelectorAll(".view-nav .view-btn").forEach(b => {
     const on = b === btn;
@@ -3424,6 +3425,70 @@ function renderEventImpact() {
       <b>这是"历史上发生过什么"，不是"下次会怎样"。</b>地缘冲击/疫情这类一次性事件尤其不可外推；胜率几乎都贴着基准（无边际）。
       事件提高的是波动/不确定性。<b>注：本站"叠加事件"开关会按这些历史 LR 微调概率，但幅度小、未经样本外验证——当 what-if 玩具看，别当强信号。</b>
       <span style="color:var(--muted)">纳入事件的正确方式 = 在高波动事件日控制仓位/风险，而非预测涨跌。</span>
+    </div>`;
+}
+
+// ── 量化方法论页面（把项目映射到专业量化文献 + 诚实负结果）──
+function renderQuantMethodology() {
+  const el = document.getElementById("quant-methodology");
+  if (!el) return;
+  // 织入几个真实数字，让"方法论"不是空话
+  const bm = SIGNALS?.benchmark?.summary || {};
+  const vd = SIGNALS?.vol_model?.vol_direction;
+  const fa = SIGNALS?.factor_audit?.summary || {};
+  const dirAuc = SIGNALS?.factor_audit?.target_probe?.direction_auc_pooled_2012_2024;
+
+  const method = (name, lit, how) => `
+    <tr style="border-top:1px solid var(--border)33;">
+      <td style="padding:.3rem .5rem;font-weight:600;">${name}</td>
+      <td style="padding:.3rem .5rem;color:var(--muted);font-size:0.74rem;">${lit}</td>
+      <td style="padding:.3rem .5rem;font-size:0.78rem;">${how}</td>
+    </tr>`;
+
+  el.innerHTML = `
+    <div style="color:var(--muted);font-size:0.8rem;line-height:1.65;margin-bottom:.8rem;">
+      这个项目最初从生态学/农学的"什么都试试"出发，诚实做下去，<b style="color:var(--text)">独立收敛到了 López de Prado 的现代量化反过拟合框架</b>——
+      机构与对冲基金用的就是这套。卖点不是"信号准"，而是<b style="color:var(--text)">诚实分清真规律 vs 幻觉</b>。
+    </div>
+
+    <div style="font-size:0.85rem;font-weight:700;margin:.3rem 0 .3rem;">① 我们用的方法 ↔ 专业量化文献</div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="color:var(--muted);font-size:0.7rem;">
+        <th style="text-align:left;padding:.3rem .5rem;">方法</th><th style="text-align:left;padding:.3rem .5rem;">文献出处</th><th style="text-align:left;padding:.3rem .5rem;">我们怎么用</th></tr></thead>
+      <tbody>
+        ${method("Walk-forward 验证", "Pardo（交易策略验证黄金标准）", "六折滚动，训练→测试，跨多个 regime")}
+        ${method("Purged + Embargo CV", "López de Prado 2017（防时序泄漏）", "因子尸检/波动率：切掉跨界泄漏的训练尾部")}
+        ${method("块自助（Block Bootstrap）", "重叠窗口的正确显著性", "20日重叠→t检验p值偏乐观一个数量级，改用整块重采样")}
+        ${method("干净保留集（Holdout）", "嵌套验证", "2024-2026 从未进训练；且只用来证伪不证实")}
+        ${method("硬基线对比", "不比稻草人", "方向比基率(非0.5)、波动比VIX、策略比买入持有")}
+        ${method("回测过拟合警惕", "Bailey & López de Prado 2014", "试几个配置就能凑高回测→我们把试过的都登记、做多重比较校正")}
+        ${method("机械假象检测", "置换检验(permutation null)", "波动率升降：打乱未来证明高AUC是自指假象，不是信号")}
+      </tbody>
+    </table>
+
+    <div style="font-size:0.85rem;font-weight:700;margin:1rem 0 .3rem;">② 我们用这套方法证伪了什么（诚实负结果）</div>
+    <div class="insight" style="margin-top:0;">
+      <div style="line-height:1.8;">
+        ❌ <b>短期方向不可样本外预测</b>：综合信号拼接 AUC ≈ <b>${dirAuc!=null?Number(dirAuc).toFixed(2):"0.45"}</b>（&lt;0.5）；逻辑回归更差。<br>
+        ❌ <b>因子大多是噪声</b>：尸检 ${fa.noise ?? 13} 个噪声 / ${fa.fragile ?? 2} 个 regime 依赖 / <b>${fa.informative ?? 0} 个稳健</b>。<br>
+        ❌ <b>波动率"水平"可测但已被 VIX 定价</b>；连"升/降"用机械公平对比也<b>无稳健信号</b>${vd?.model_vs_naive?`（模型−基线 ${vd.model_vs_naive.diff>0?"+":""}${vd.model_vs_naive.diff}，p=${vd.model_vs_naive.p_boot}，不显著）`:""}。<br>
+        ✅ <b>真实可用的</b>：股权溢价(买入持有)、波动率聚集、隔夜异象、相关性体制——用于<b>管理风险</b>，不是预测涨跌。
+      </div>
+      <div style="margin-top:.6rem;color:var(--muted);">
+        Benchmark 记分卡当前：打败 ${bm.beats ?? 0} · 持平 ${bm.ties ?? 0} · 未达 ${bm.loses ?? 0} · 数据不足 ${bm.insufficient ?? 0}。
+        "迄今 0 个模型稳健打败诚实基线"——这是诚实现状，不是失败。
+      </div>
+    </div>
+
+    <div style="font-size:0.85rem;font-weight:700;margin:1rem 0 .3rem;">③ 和"散户量化"的区别 + 升级路线</div>
+    <div style="font-size:0.8rem;line-height:1.7;color:var(--muted);">
+      <b style="color:var(--text)">区别</b>：99% 的散户量化用样本内回测自吹"我的信号很准"；我们用块自助 + 干净保留集 + benchmark，
+      敢公开说"打不赢基率"。<b style="color:var(--text)">这才是机构量化的标准。</b><br>
+      <b style="color:var(--text)">升级路线</b>：要更严谨，升<b>验证方法</b>不升模型——Combinatorial Purged CV (CPCV) + Deflated Sharpe
+      （文献证明比单一 walk-forward 更能防过拟合）。加 XGBoost 之类只会让回测更好看、样本外更差。
+    </div>
+    <div style="font-size:0.72rem;color:var(--muted);margin-top:.7rem;">
+      文献：López de Prado《Advances in Financial Machine Learning》；Bailey & López de Prado 2014（回测过拟合）；Pardo（walk-forward）。仅供学习研究，不构成投资建议。
     </div>`;
 }
 

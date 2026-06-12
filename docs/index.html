@@ -24,6 +24,7 @@
   <button class="view-btn" role="tab" aria-selected="false" data-view="plan"     onclick="switchView('plan',this)">🗓 计划</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="lab"      onclick="switchView('lab',this)">🧪 实验</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="research" onclick="switchView('research',this)">🔬 研究</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="quant"    onclick="switchView('quant',this)">🎓 量化</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="mine"     onclick="switchView('mine',this)">💼 我的</button>
 </nav>
 
@@ -465,6 +466,19 @@
 </section>
 
 <!-- ════════ 我的：个人工具（数据只存浏览器本地） ════════ -->
+<!-- ════════ 量化：方法论（把项目映射到专业量化文献） ════════ -->
+<section id="view-quant" style="display:none">
+  <div class="view-intro">🎓 <b>量化方法论：这是不是"真量化"？</b>是——而且是当代最严谨的一派。这一屏把项目用的每个方法映射到专业量化文献，并坦白我们用它证伪了什么。</div>
+  <div class="view-stack">
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        🎓 量化方法论一览 <span class="badge">López de Prado 框架 · 诚实负结果</span>
+      </div>
+      <div id="quant-methodology" style="font-size:0.82rem;"></div>
+    </div>
+  </div>
+</section>
+
 <section id="view-mine" style="display:none">
   <div class="view-intro">💼 <b>我的：个人工具。</b>持仓盈亏、澳洲 CGT 税务、SpaceX 追踪——数据只存你浏览器本地，不上传。含站长个人观点（已明确标注，非模型信号）。</div>
   <div class="view-grid">
