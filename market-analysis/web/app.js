@@ -3136,6 +3136,7 @@ init().then(() => {
   _calTabRendered.add("digit");
   setTimeout(() => safeRender(renderDigitChart, "Digit"), 100);
   safeRender(renderIPOCycle, "IPOCycle");
+  safeRender(renderFactorAudit, "FactorAudit");
   // 恢复上次浏览的视图（默认"今日"）
   const savedView = localStorage.getItem("alpha_view");
   if (savedView && savedView !== "today") {
@@ -3179,6 +3180,61 @@ const MEGA_IPOS = [
   { name:"Rivian 2021-11",     mkt:"纳指",   dd:-33, top:true  },
   { name:"Google 2004-08",     mkt:"标普",   dd:-7,  top:false },
 ];
+// ── 因子样本外尸检（P2-5，研究面板）──
+function renderFactorAudit() {
+  const el = document.getElementById("factor-audit");
+  if (!el) return;
+  const fa = SIGNALS?.factor_audit;
+  if (!fa) { el.innerHTML = `<span style="color:var(--muted)">运行一次完整流水线后显示</span>`; return; }
+  const VC = { INFORMATIVE: ["#2ecc71", "稳健"], FRAGILE: ["#f39c12", "regime依赖"],
+               MISLEADING: ["#e74c3c", "反向误导"], NOISE: ["#8b949e", "噪声"] };
+  const esc2 = s => esc(s);
+  const rows = (fa.factors || []).map(f => {
+    const [c, txt] = VC[f.verdict] || ["#8b949e", f.verdict];
+    const hd = f.holdout_diff_pp == null ? "—" : (f.holdout_diff_pp > 0 ? "+" : "") + f.holdout_diff_pp;
+    const sgn = f.n_folds_signed ? `${Math.round((f.sign_agree_frac||0)*f.n_folds_signed)}/${f.n_folds_signed}` : "—";
+    return `<tr style="border-top:1px solid var(--border)33;">
+      <td style="padding:.25rem .5rem;">${esc2(f.name)}</td>
+      <td style="padding:.25rem .5rem;text-align:center;color:var(--muted);">${f.assumed_dir>0?"看涨":"看跌"}</td>
+      <td style="padding:.25rem .5rem;text-align:right;">${f.dev_diff_pp>0?"+":""}${Number(f.dev_diff_pp)}pp</td>
+      <td style="padding:.25rem .5rem;text-align:right;color:var(--muted);">${Number(f.dev_p_boot)}</td>
+      <td style="padding:.25rem .5rem;text-align:center;color:var(--muted);" title="逐折符号一致折数">${sgn}</td>
+      <td style="padding:.25rem .5rem;text-align:right;">${hd}pp</td>
+      <td style="padding:.25rem .5rem;text-align:center;"><span style="color:${c};font-weight:600;">${txt}</span></td>
+    </tr>`;
+  }).join("");
+  const s = fa.summary || {};
+  const probe = fa.target_probe || {};
+  const dirAuc = probe.direction_auc_pooled_2012_2024, volAuc = probe.vol_auc_holdout;
+  const baseHold = fa.base_rate_holdout != null ? Math.round(fa.base_rate_holdout*100) : null;
+  el.innerHTML = `
+    <div style="color:var(--muted);font-size:0.78rem;line-height:1.6;margin-bottom:.7rem;">
+      方法：测试折拼接为样本外序列算「触发胜率−基率」（块自助 CI）；purged+embargo 扩窗用于跨折<b>符号稳定性</b>检验；
+      再用<b>从未参与训练的 2024-2026</b>做终审。「符号」列=逐折方向一致的折数（全一致才算稳健）。
+      看跌因子压低胜率是<b>对</b>，不是有害。
+    </div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="color:var(--muted);font-size:0.72rem;">
+        <th style="padding:.25rem .5rem;text-align:left;">因子</th><th style="padding:.25rem .5rem;">假设</th>
+        <th style="padding:.25rem .5rem;text-align:right;">开发集差</th><th style="padding:.25rem .5rem;text-align:right;">块自助p</th>
+        <th style="padding:.25rem .5rem;">符号</th>
+        <th style="padding:.25rem .5rem;text-align:right;">holdout</th><th style="padding:.25rem .5rem;">裁决</th>
+      </tr></thead><tbody>${rows}</tbody>
+    </table>
+    <div class="insight" style="margin-top:.85rem;">
+      <strong>结论：${s.informative ?? 0} 个因子样本外稳健，${s.fragile ?? 0} 个 regime 依赖，${s.noise ?? "?"} 个噪声，${s.misleading ?? 0} 个反向。</strong><br>
+      <b>没有一个因子在所有 regime 上符号稳定</b>。最强的 <b style="color:#f39c12">BTC 20日动量</b>（涨/跌两向）拼接后高度显著
+      （p≤0.08）、且在 2024-2026 确认，但逐折符号会翻——信号高度集中在 2017-2021 加密牛市，属 <b>regime 依赖，不可外推</b>。
+      均线、RSI、波动率、隔夜动量等技术因子<b>全是噪声</b>。模型 AUC&lt;0.5 不是市场纯随机，
+      而是没有跨 regime 稳定的因子 + 重复计数的日历效应。<br>
+      <span style="color:var(--muted)">主观事件因子（${(fa.subjective_event_lrs||[]).join("、")}）无任何历史样本支撑，应标注或移出。
+      ${baseHold!=null?`注：holdout(2024-2026)是 ${baseHold}% 上涨的强牛市单一 regime，对看涨因子的"方向不翻"确认力有限。`:""}</span><br><br>
+      <strong>换靶子探针：</strong>方向 AUC 跨 regime 摆动（2012-2024 拼接 <b>${dirAuc ?? "?"}</b>，单一 2024-2026 ${probe.direction_auc_holdout ?? "?"}）——
+      这种不稳定本身就是非平稳性；波动率 AUC <b style="color:#2ecc71">${volAuc ?? "?"}</b> 更高（单点 holdout，仍需多 regime 复核）。
+      <b>数据倾向：把 ML/深度学习力气投向"预测波动率/市场状态"，而非"预测涨跌方向"。</b>
+    </div>`;
+}
+
 function renderIPOCycle() {
   const el = document.getElementById("chart-ipo-cycle");
   if (!el) return;

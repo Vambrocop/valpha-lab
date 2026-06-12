@@ -855,6 +855,13 @@ if __name__ == "__main__":
     result["horizon_note"] = "概率含义：未来20个交易日收盘高于今日的概率"
     result["model_status_note"] = "实验性信号：walk-forward 块自助验证未发现样本外优势"
 
+    # 因子样本外尸检（P2-5，研究面板用，不进信号链路）
+    try:
+        with open(PROC_DIR / "factor_pruning.json", encoding="utf-8") as _f:
+            result["factor_audit"] = json.load(_f)
+    except Exception:
+        pass
+
     # 实盘预测追踪
     tracking = load_live_tracking()
     if tracking:
