@@ -54,11 +54,30 @@ STOCK_TICKERS = {
     "BRK-B": "BRK-B",  # 伯克希尔
 }
 
+def _cache_fallback(name):
+    """Yahoo 失败/限流时回退上次缓存的 CSV（与 FRED 同款），避免列静默消失。"""
+    cache = RAW_DIR / f"{name}.csv"
+    if cache.exists():
+        try:
+            s = pd.read_csv(cache, index_col=0, parse_dates=True).squeeze("columns")
+            s = s.dropna()
+            if len(s):
+                print(f"  ⚠ {name} Yahoo 无数据，使用缓存（截至 {s.index[-1].date()}）")
+                return s.rename(name)
+        except Exception:
+            pass
+    print(f"  ⚠ {name} 无数据且无缓存，跳过")
+    return None
+
+
 def _get_close(ticker, name):
-    df = yf.download(ticker, start=START, end=END, auto_adjust=True, progress=False)
+    try:
+        df = yf.download(ticker, start=START, end=END, auto_adjust=True, progress=False)
+    except Exception as e:
+        print(f"  ⚠ {name} 下载异常：{e}")
+        return _cache_fallback(name)
     if df.empty:
-        print(f"  ⚠ {name} 无数据，跳过")
-        return None
+        return _cache_fallback(name)   # 限流/ticker变更/宕机 → 回退缓存而非掉列
     col = df["Close"]
     if isinstance(col, pd.DataFrame):
         col = col.iloc[:, 0]

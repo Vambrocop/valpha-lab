@@ -386,8 +386,9 @@
     <!-- 高级多元分析 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🔬 高级统计分析 <span class="badge">CCA · SHAP · Kalman · Prophet · 路径分析 · 事件研究</span>
+        🔬 高级统计分析 <span class="badge">📸 研究快照·非实时（需本地 --full 刷新）· CCA/SHAP/Kalman/Prophet</span>
       </div>
+      <div style="font-size:0.72rem;color:#e67e22;margin:-.5rem 0 .8rem;">⚠ 本组为重型 ML 研究快照，CI 不自动刷新（缺重型依赖），数据可能滞后数日；仅作方法演示，不当实时信号。事件研究结论请看"今日"标签的 🗓 事件影响一览。</div>
       <div class="tabs" id="mv-tabs" role="tablist">
         <button class="tab active" role="tab" onclick="switchMVTab('modelcmp',this)">模型对比</button>
         <button class="tab" role="tab" onclick="switchMVTab('shap',this)">SHAP因子</button>
@@ -396,17 +397,12 @@
         <button class="tab" role="tab" onclick="switchMVTab('rolling',this)">滚动β系数</button>
         <button class="tab" role="tab" onclick="switchMVTab('path',this)">路径分析</button>
         <button class="tab" role="tab" onclick="switchMVTab('cca',this)">CCA/RDA</button>
-        <button class="tab" role="tab" onclick="switchMVTab('eventstudy',this)">事件研究</button>
         <button class="tab" role="tab" onclick="switchMVTab('backtest',this)">回测验证</button>
       </div>
       <div class="tab-content" id="mvtab-backtest">
         <div id="chart-backtest-tier" style="height:300px;"></div>
         <div id="chart-backtest-cal" style="height:260px;margin-top:.5rem;"></div>
         <div class="insight" id="backtest-insight" style="margin-top:.75rem;"></div>
-      </div>
-      <div class="tab-content" id="mvtab-eventstudy">
-        <div id="chart-eventstudy" style="height:360px;"></div>
-        <div class="insight" id="eventstudy-insight" style="margin-top:.75rem;"></div>
       </div>
       <div class="tab-content active" id="mvtab-modelcmp">
         <div id="chart-modelcmp" style="height:360px;"></div>

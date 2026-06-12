@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import json
 from pathlib import Path
+from signal_model import rsi as _rsi   # 原语唯一来源（删除本地重复实现）
 
 RAW_DIR = Path(__file__).parent.parent / "data" / "raw"
 WEB_DIR = Path(__file__).parent.parent / "web"
@@ -21,12 +22,6 @@ LABELS = {
 MAG7 = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA"]
 
 YEARS_OF_SERIES = 3   # 走势图年数（周线）
-
-
-def _rsi(returns, period=14):
-    gain = returns.clip(lower=0).rolling(period).mean()
-    loss = (-returns.clip(upper=0)).rolling(period).mean()
-    return 100 - 100 / (1 + gain / (loss + 1e-10))
 
 
 def _stats(s, bench_ret):

@@ -929,7 +929,6 @@ const MV_RENDERERS = {
   rolling:    () => renderRollingBetaChart(),
   path:       () => renderPathChart(),
   cca:        () => renderCCAChart(),
-  eventstudy: () => renderEventStudyChart(),
   backtest:   () => renderBacktestCharts(),
 };
 const _mvTabRendered = new Set(["modelcmp"]);   // modelcmp 启动时已渲染
@@ -1255,73 +1254,8 @@ function renderOppPanel() {
   document.getElementById("opp-note").innerHTML =
     `<span style="color:var(--muted)">技术信号冻结为今日值；日历因子（星期/假日/月份/税季）精确预测。</span>`;
 }
-
-// ── 事件研究图表 ──
-function renderEventStudyChart() {
-  const es = SIGNALS && SIGNALS.event_study;
-  if (!es || Object.keys(es).length === 0) return;
-
-  const items = Object.values(es).sort((a,b) => a.avg_return - b.avg_return);
-  const labels  = items.map(d => d.significant ? d.label + " *" : d.label);
-  const returns = items.map(d => d.avg_return);
-  const lrs     = items.map(d => d.lr);
-  const ns      = items.map(d => d.n);
-  const ps      = items.map(d => d.p_value);
-  const baseAvg = items.length > 0 ? items[0].base_avg : 0;
-
-  const colors = returns.map(v => v >= 0 ? "#2ecc71" : "#e74c3c");
-
-  Plotly.newPlot("chart-eventstudy", [
-    {
-      type: "bar", orientation: "h",
-      x: returns, y: labels,
-      marker: { color: colors },
-      text: returns.map((v,i) => `LR=${lrs[i].toFixed(3)}  p=${ps[i].toFixed(3)}  n=${ns[i]}`),
-      textposition: "outside",
-      cliponaxis: false,
-      hovertemplate: "<b>%{y}</b><br>30日均收益: %{x:.1f}%<br>%{text}<extra></extra>",
-    },
-    {
-      type: "scatter", mode: "lines",
-      x: [baseAvg, baseAvg], y: [labels[0], labels[labels.length-1]],
-      line: { color: "#8b949e", dash: "dot", width: 1.5 },
-      name: `随机基准 ${baseAvg.toFixed(1)}%`, hoverinfo: "skip",
-    }
-  ], {
-    ...DARK,
-    xaxis: {...DARK.xaxis, title: "事件后30日累计收益 (%)", zeroline:true, zerolinecolor:"#444"},
-    margin: {t:20, b:60, l:130, r:130},
-    showlegend: true,
-    legend: {x:0.6, y:0.05, bgcolor:"transparent"},
-    annotations: [
-      {x: baseAvg, y: labels.length-0.5,
-       text: `基准 ${baseAvg.toFixed(1)}%`, showarrow: false,
-       font: {color:"#8b949e", size:10}, xanchor:"left"}
-    ]
-  }, {responsive:true});
-
-  const sigItems  = items.filter(d => d.significant);
-  const hikeFinding = es["fed_hike_first"];
-  const warFinding  = es["geopolitical_shock"];
-  const cutFinding  = es["fed_cut_first"];
-
-  let insight = `<strong>事件研究法（Event Study）</strong> — 事件后30个交易日累计收益，与500次随机窗口比较。<br>
-    <span style="color:#8b949e;font-size:0.79rem">* = 统计显著（p&lt;0.10）</span><br><br>`;
-
-  if (hikeFinding && hikeFinding.significant) {
-    insight += `<span style="color:#e74c3c">▼ 首次加息</span>：事件后30日均亏 <strong>${hikeFinding.avg_return.toFixed(1)}%</strong>，LR=${hikeFinding.lr}（<strong>p=${hikeFinding.p_value}</strong>，唯一显著结论）。靴子落地并不总是利好。<br>`;
-  }
-  if (warFinding) {
-    insight += `<span style="color:#2ecc71">▲ 地缘冲击</span>：平均30日收益 <strong>+${warFinding.avg_return.toFixed(1)}%</strong>，LR=${warFinding.lr}——市场往往在30天内完全消化恐慌。<br>`;
-  }
-  if (cutFinding) {
-    insight += `<span style="color:#f1c40f">△ 首次降息</span>：LR=${cutFinding.lr}，30日均收益 ${cutFinding.avg_return.toFixed(1)}%——"降息=利好"是误解，因为降息时往往经济已走弱（"买预期卖事实"）。<br>`;
-  }
-  insight += `<span style="color:var(--muted);font-size:0.78rem">方法：取每类事件历史发生日，计算事后30交易日累计收益，t检验验证与随机窗口的差异。</span><br>
-    <span style="color:#e67e22;font-size:0.78rem">⚠ 诚实警告：这些事件 <b>n 极小</b>（首次加息 n=5、疫情 n=2），是<b>样本内</b>统计、重叠窗口 t 检验 p 值偏乐观——"历史上发生过什么"，不是"下次会怎样"，不可外推。详见"研究"标签的"🗓 事件影响一览"。</span>`;
-
-  document.getElementById("eventstudy-insight").innerHTML = insight;
-}
+// 旧"事件研究图表"已删除（裸 p 值 + 方向红绿色违反诚实铁律）；
+// 事件结论以"今日"标签的"🗓 事件影响一览"(renderEventImpact) 为唯一口径。
 
 // ── 百分位信息 ──
 function renderPercentileInfo(todayProb) {

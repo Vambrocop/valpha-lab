@@ -71,6 +71,22 @@ for f in ["prices.json", "charts_extra.json", "stocks.json",
         errors.append(f"{f} 非法: {e}")
         print(f"  ✗ {f} 非法: {e}")
 
+# 3b. 关键数据列完整性（yfinance 部分失败会静默掉列 → 残缺站点）
+try:
+    import pandas as pd
+    cp = pd.read_csv(PROC_DIR.parent / "raw" / "combined_prices.csv",
+                     index_col="Date", parse_dates=True)
+    KEY_COLS = ["NASDAQ", "SP500", "VIX", "VIX3M", "BTC", "DXY", "HY_SPREAD"]
+    missing_cols = [c for c in KEY_COLS if c not in cp.columns]
+    check(not missing_cols, f"关键列齐全（缺失：{missing_cols or '无'}）")
+    if not missing_cols:
+        stale = [c for c in KEY_COLS if cp[c].dropna().empty
+                 or (US_TODAY - cp[c].dropna().index[-1].date()).days > 6]
+        check(not stale, f"关键列近期有值（疑似过期/全空：{stale or '无'}）")
+except Exception as e:
+    errors.append(f"列完整性检查失败: {e}")
+    print(f"  ✗ 列完整性检查失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv
