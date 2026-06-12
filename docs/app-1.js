@@ -473,9 +473,16 @@ function toggleEvent(key, el) {
 // ═══════════════════════════════════════════════════════
 //  图表
 // ═══════════════════════════════════════════════════════
-const DARK = { paper_bgcolor:"transparent", plot_bgcolor:"transparent",
-  font:{color:"#e6edf3",size:11}, xaxis:{gridcolor:"#30363d",zerolinecolor:"#30363d"},
-  yaxis:{gridcolor:"#30363d",zerolinecolor:"#30363d"}, margin:{t:30,b:40,l:50,r:20} };
+// DARK 必须每次返回全新对象：Plotly.newPlot 会把推断结果（type:"date"/range 等）
+// 回写进传入的 layout——共享同一个对象会被首张日期轴图污染，后续数字轴图全坏
+// （症状：x 轴显示 Jan 1970 时间戳、translate(NaN,...) 报错）。getter 让全部
+// `...DARK` / `...DARK.xaxis` 调用零改动地各拿一份副本。
+function _darkLayout() {
+  return { paper_bgcolor:"transparent", plot_bgcolor:"transparent",
+    font:{color:"#e6edf3",size:11}, xaxis:{gridcolor:"#30363d",zerolinecolor:"#30363d"},
+    yaxis:{gridcolor:"#30363d",zerolinecolor:"#30363d"}, margin:{t:30,b:40,l:50,r:20} };
+}
+Object.defineProperty(globalThis, "DARK", { get: _darkLayout });
 
 async function loadCSV(path) {
   try {
