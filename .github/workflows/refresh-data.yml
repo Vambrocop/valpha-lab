@@ -6,8 +6,8 @@ on:
     - cron: "30 21 * * 1-5"
     # 开盘前补一刀：13:00 UTC ≈ 美东 9:00，接住 Yahoo 迟到的日线
     - cron: "0 13 * * 1-5"
-    # 盘中每小时刷新（14:30–20:30 UTC ≈ 美东 10:30–16:30），页面始终接近实时
-    - cron: "30 14-20 * * 1-5"
+    # 盘中每 30 分钟刷新（14:00–20:30 UTC ≈ 美东 10:00–16:30），页面更接近实时
+    - cron: "0,30 14-20 * * 1-5"
   workflow_dispatch: {}   # 手动触发按钮（Actions 页面随时点）
 
 permissions:
@@ -46,9 +46,9 @@ jobs:
           key: market-data-${{ github.run_id }}
           restore-keys: market-data-
 
-      - name: Run pipeline (intraday hourly = light, pre-open/post-close = full)
+      - name: Run pipeline (intraday 30-min = light, pre-open/post-close = full)
         run: |
-          if [ "${{ github.event.schedule }}" = "30 14-20 * * 1-5" ]; then
+          if [ "${{ github.event.schedule }}" = "0,30 14-20 * * 1-5" ]; then
             python market-analysis/scripts/run_all.py --light
           else
             python market-analysis/scripts/run_all.py
