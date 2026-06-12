@@ -2199,24 +2199,26 @@ function renderSPCXTracker() {
         value="${savedShares||""}" oninput="saveSPCXData('shares',this.value)">
       ${savedShares > 0 ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:.35rem">
         ≈ A$${issueAUD.toFixed(0)}（按发行价US$135 · AUD/USD≈${_portAudRate.toFixed(3)}）</div>` : ""}
-      <div class="spcx-decision-box" style="background:rgba(52,152,219,.1);border-left:3px solid var(--blue);">
-        <strong style="color:var(--blue)">上市前建议：</strong><br>
+      <div class="spcx-decision-box" style="background:rgba(155,89,182,.1);border-left:3px solid var(--purple);">
+        <strong style="color:var(--purple)">🧭 站长个人观点</strong>
+        <span style="font-size:0.68rem;color:var(--muted)">· 非模型信号 · 仅个人看法</span><br>
         1. 分配结果出来后填写实际获得股数<br>
-        2. 上市当天开盘价通常高于发行价（高关注度IPO平均+20-40%）<br>
-        3. 建议策略：<strong>卖一半锁利润，留一半长持</strong>
+        2. 高关注度 IPO 上市首日常高于发行价（历史差异极大，见详情面板的首日分布图）<br>
+        3. 我个人会：<strong>卖一半锁利润，留一半长持</strong>
+        <div style="font-size:0.66rem;color:var(--muted);margin-top:.3rem">⚠ 这是我的主观判断，不是数据信号；你的剧本可不同</div>
       </div>`;
     return;
   }
 
-  // Post-listing
+  // Post-listing —— 以下是站长个人剧本（第一人称），非模型信号
   let decisionHtml = "";
   if (savedPrice > 0) {
-    if (gainPct > 50)      decisionHtml = `<span style="color:#f1c40f">🔥 溢价${gainPct.toFixed(0)}%！建议立即卖出至少一半，锁定利润</span>`;
-    else if (gainPct > 25) decisionHtml = `<span style="color:#2ecc71">✅ 溢价${gainPct.toFixed(0)}%，可卖出1/3-1/2，其余长持</span>`;
-    else if (gainPct > 10) decisionHtml = `<span style="color:#2ecc71">📈 溢价${gainPct.toFixed(0)}%，可持有等待更高位再卖</span>`;
-    else if (gainPct > 0)  decisionHtml = `<span style="color:#f1c40f">⏸ 小幅溢价，持有观察后续走势</span>`;
-    else if (gainPct > -15)decisionHtml = `<span style="color:#e67e22">⚠️ 轻微破发，建议持有等待反弹</span>`;
-    else                   decisionHtml = `<span style="color:#e74c3c">🔴 大幅破发，考虑止损或长期持有</span>`;
+    if (gainPct > 50)      decisionHtml = `<span style="color:#f1c40f">🔥 溢价${gainPct.toFixed(0)}%：我会卖出至少一半锁利润</span>`;
+    else if (gainPct > 25) decisionHtml = `<span style="color:#2ecc71">溢价${gainPct.toFixed(0)}%：我会卖 1/3–1/2，其余长持</span>`;
+    else if (gainPct > 10) decisionHtml = `<span style="color:#2ecc71">溢价${gainPct.toFixed(0)}%：我会先持有，等更高位再减</span>`;
+    else if (gainPct > 0)  decisionHtml = `<span style="color:#f1c40f">⏸ 小幅溢价：我会持有观察</span>`;
+    else if (gainPct > -15)decisionHtml = `<span style="color:#e67e22">轻微破发：我会持有等反弹</span>`;
+    else                   decisionHtml = `<span style="color:#e74c3c">大幅破发：我会重新评估，倾向长期持有</span>`;
   }
 
   el.innerHTML = `
@@ -2237,8 +2239,9 @@ function renderSPCXTracker() {
       <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">盈亏</span><br>
         <strong style="color:${plAUD>=0?'#2ecc71':'#e74c3c'}">${plAUD>=0?'+':''}A$${plAUD.toFixed(0)}<br>${plPct>=0?'+':''}${plPct.toFixed(1)}%</strong></div>
     </div>
-    <div class="spcx-decision-box" style="background:rgba(46,204,113,.08);border-left:3px solid var(--green);">
-      ${decisionHtml}
+    <div class="spcx-decision-box" style="background:rgba(155,89,182,.08);border-left:3px solid var(--purple);">
+      <strong style="color:var(--purple);font-size:0.72rem">🧭 站长个人剧本</strong>
+      <span style="font-size:0.66rem;color:var(--muted)">· 非模型信号</span><br>${decisionHtml}
     </div>` : `<div style="font-size:0.78rem;color:var(--muted);margin-top:.5rem">填写股数和价格查看盈亏</div>`}`;
 }
 
@@ -2274,9 +2277,31 @@ function renderSPCXDetail() {
   }, {responsive:true});
 
   document.getElementById("spcx-decision-detail").innerHTML =
-    `<strong>首日操作历史规律：</strong>高关注度科技IPO首日平均涨幅 <span style="color:#2ecc71">+30–60%</span>，但差异极大（-8% 到 +113%）。<br>
-     <strong>建议策略：</strong>开盘溢价 >25% → 卖出一半锁利润；溢价 <10% → 可全部持有等待中期涨势；<strong>破发不要恐慌</strong>（SpaceX基本面极强，有长期持有价值）。<br>
-     <span style="color:var(--muted);font-size:0.78rem">数据来源：公开上市公告。非投资建议，仅供参考。</span>`;
+    `<div style="font-size:0.78rem;line-height:1.6;">
+       <strong>首日历史规律（客观）：</strong>高关注度科技 IPO 首日涨幅历史上差异极大（-8% 到 +113%，见左图）。
+       这是历史分布，不代表 SPCX 会怎样。
+     </div>
+
+     <div style="margin-top:.75rem;background:rgba(155,89,182,.08);border-left:3px solid var(--purple);border-radius:0 6px 6px 0;padding:.6rem .8rem;">
+       <strong style="color:var(--purple)">🧭 站长个人剧本</strong>
+       <span style="font-size:0.68rem;color:var(--muted)">· 非模型信号 · 仅个人看法</span><br>
+       <span style="font-size:0.8rem;line-height:1.6;">溢价 &gt;25% → 我会卖一半锁利润；溢价 &lt;10% → 我会先全持等中期；破发我不恐慌（我个人看好长期）。
+       <span style="color:var(--muted);font-size:0.7rem;">⚠ 这是我的主观判断，不是数据信号，你的剧本可不同。</span></span>
+     </div>
+
+     <div style="margin-top:.75rem;font-size:0.78rem;line-height:1.65;">
+       <strong>🧭 纳入与解禁机制（客观）：</strong><br>
+       <b>纳指100 快速纳入</b>：常规在 12 月年度重构纳入（需约 3 个月 seasoning），但纳斯达克
+       <b>2026-05 生效的 "Fast Entry" 规则</b>允许总市值排名进前 40（约 ≥$1000 亿）的超大型新股豁免 seasoning，
+       公告后约 <b>15 个交易日</b>在年度重构外快速纳入——<b>SpaceX 体量（约 $1.75 万亿）符合，大概率走这条快速通道</b>。
+       （研究普遍发现：纳入效应近年减弱、且常在公告时被提前定价，不宜当择时信号。）<br>
+       <b>标普500</b>：由委员会自由裁量（无"够格即纳入"），硬门槛含 <b>最近季度 GAAP 净利为正且最近四季合计为正 + 流通股≥50% + 市值门槛</b>。
+       SpaceX 流通比例低（仅售约 5.56 亿股、马斯克锁 366 天 + 高投票权），<b>短期进标普门槛很高</b>。<br>
+       <b>解禁（已披露，分级释放）</b>：S-1（2026-05-20）列明非单一 180 天，而是 <b>分阶段</b>：
+       Q2 财报后早期投资者可卖 20%（股价触发条件下再加 10%）；IPO 后第 <b>70/90/105/120/135 天各释放 7%</b>；
+       Q3 财报后再 28%；<b>第 180 天后不受限</b>。<b>马斯克及部分核心投资者承诺持有 ≥366 天</b>。这些是真实的供给压力时点。
+     </div>
+     <div style="color:var(--muted);font-size:0.72rem;margin-top:.5rem;">机制为公开规则/已披露文件的客观说明（截至 2026-06）；个人剧本为站长主观看法。均非投资建议。</div>`;
 
   updateSPCXCalc();
 }
