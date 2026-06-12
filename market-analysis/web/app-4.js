@@ -193,7 +193,17 @@ function updateSPCXCalc() {
     ${recHtml}`;
 }
 
-// ── SPCX 监视卡：流水线价格 + 解禁/税务倒计时（数据来自 stocks.json.spcx，CI 每30分钟刷新）──
+// ── 盘中轻量报价（quotes.json，CI 每10分钟）──
+let QUOTES = null;
+async function loadQuotes() {
+  try {
+    const r = await fetch("quotes.json?_=" + Date.now());
+    if (r.ok) QUOTES = await r.json();
+  } catch(e) { /* 文件可能尚未生成，靠 stocks.json 兜底 */ }
+  renderSPCXMonitor();
+}
+
+// ── SPCX 监视卡：盘中报价(10分钟) > 流水线收盘价(30分钟) + 解禁/税务倒计时 ──
 function _spcxDaysFrom(listDt, days) {
   const d = new Date(listDt.getTime() + days * 86400000);
   return d;
@@ -206,25 +216,42 @@ function renderSPCXMonitor() {
   const now = new Date();
   const daysListed = Math.max(1, Math.floor((now - listDt) / 86400000) + 1);  // 上市日=第1天
 
-  // ① 流水线价格卡（同源数据，国内访客可用；浏览器 Yahoo 仅作手动备用）
-  let priceHtml;
-  if (sp && sp.last) {
+  // ① 价格卡：盘中报价(quotes.json, ~10分钟) 优先，流水线收盘(stocks.json) 兜底。同源数据，国内访客可用。
+  const q = QUOTES?.quotes?.SPCX;
+  let priceHtml, autoPrice = null;
+  if (q && q.price) {
+    const vsIssue = (q.price / SPCX_ISSUE_USD - 1) * 100;
+    const up = vsIssue >= 0;
+    const genT = QUOTES.generated
+      ? new Date(QUOTES.generated).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) : "";
+    autoPrice = q.price;
+    priceHtml = `
+      <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:baseline;">
+        <span style="font-size:1.3rem;font-weight:800;">US$${q.price.toFixed(2)}</span>
+        <span style="font-weight:700;color:${up?'#2ecc71':'#e74c3c'}">${up?'+':''}${vsIssue.toFixed(1)}% vs 发行价</span>
+        ${q.chg_pct != null ? `<span style="color:${q.chg_pct>=0?'#2ecc71':'#e74c3c'};font-size:0.8rem">日内 ${q.chg_pct>=0?'+':''}${q.chg_pct}%</span>` : ""}
+        <span style="color:var(--muted);font-size:0.72rem">盘中报价 · ${genT} 更新</span>
+      </div>`;
+  } else if (sp && sp.last) {
     const up = sp.vs_issue_pct >= 0;
+    autoPrice = sp.last;
     priceHtml = `
       <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:baseline;">
         <span style="font-size:1.3rem;font-weight:800;">US$${sp.last.toFixed(2)}</span>
         <span style="font-weight:700;color:${up?'#2ecc71':'#e74c3c'}">${up?'+':''}${sp.vs_issue_pct.toFixed(1)}% vs 发行价</span>
         ${sp.chg_1d != null ? `<span style="color:${sp.chg_1d>=0?'#2ecc71':'#e74c3c'};font-size:0.8rem">日 ${sp.chg_1d>=0?'+':''}${sp.chg_1d}%</span>` : ""}
-        <span style="color:var(--muted);font-size:0.72rem">数据日 ${sp.date} · 区间 ${sp.low}–${sp.high}</span>
+        <span style="color:var(--muted);font-size:0.72rem">收盘数据 ${sp.date} · 区间 ${sp.low}–${sp.high}</span>
       </div>`;
-    // 用户没手填过价格时，自动用流水线价格算盈亏
+  } else {
+    priceHtml = `<span style="color:var(--muted);font-size:0.8rem">尚无 SPCX 数据（上市首个交易时段后出现；盘中可点上方"获取价格"手动取）</span>`;
+  }
+  // 用户没手填过价格时，自动用最新价算盈亏
+  if (autoPrice != null) {
     const inp = document.getElementById("spcx-price-input");
     if (inp && !inp.value && !+(localStorage.getItem("spcx_price") || 0)) {
-      inp.value = sp.last.toFixed(2);
+      inp.value = autoPrice.toFixed(2);
       updateSPCXCalc();
     }
-  } else {
-    priceHtml = `<span style="color:var(--muted);font-size:0.8rem">流水线尚无 SPCX 收盘数据（上市首日收盘后出现；盘中可点上方"获取价格"手动取）</span>`;
   }
 
   // ② 解禁/里程碑倒计时（S-1 披露的分级释放 + CGT 12个月折扣日）

@@ -117,6 +117,7 @@ function renderAll() {
   loadReportPanel();
   safeRender(renderBenchmark,       "Benchmark");
   fetchFearAndGreed();
+  loadQuotes();   // 盘中轻量报价（10分钟级），SPCX 监视卡优先消费
   lazyRender("chart-spcx-ipo",      renderSPCXDetail, "SPCXDetail");
   // Sync SPCX inputs with localStorage
   const savedShares = localStorage.getItem("spcx_shares");

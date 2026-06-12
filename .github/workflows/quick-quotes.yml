@@ -1,0 +1,49 @@
+name: Quick quotes (intraday)
+
+on:
+  schedule:
+    # 美东盘中每 10 分钟（13:30-20:00 UTC ≈ 夏令时 9:30-16:00 ET）。
+    # 注：GitHub 定时高峰期可能延迟几分钟，10 分钟是名义节奏。
+    - cron: "*/10 13-20 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+# 与 refresh-data 不同组：报价任务可被新实例顶掉（最新报价才有意义）
+concurrency:
+  group: quick-quotes
+  cancel-in-progress: true
+
+jobs:
+  quotes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install yfinance only
+        run: pip install --quiet yfinance
+
+      - name: Fetch quotes
+        run: python market-analysis/scripts/quick_quotes.py
+
+      - name: Commit & push (rebase-retry, races with refresh-data are expected)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/quotes.json market-analysis/web/quotes.json
+          if git diff --cached --quiet; then
+            echo "quotes unchanged, skip commit"
+            exit 0
+          fi
+          git commit -m "data: intraday quotes"
+          for i in 1 2 3; do
+            if git push; then exit 0; fi
+            git pull --rebase
+          done
+          git push
