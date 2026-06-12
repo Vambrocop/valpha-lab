@@ -193,7 +193,7 @@ function updateSPCXCalc() {
     ${recHtml}`;
 }
 
-// ── 盘中轻量报价（quotes.json，CI 每10分钟）──
+// ── 盘中轻量报价（quotes.json，CI 每10分钟产出；页面每5分钟自动重拉）──
 let QUOTES = null;
 async function loadQuotes() {
   try {
@@ -202,6 +202,7 @@ async function loadQuotes() {
   } catch(e) { /* 文件可能尚未生成，靠 stocks.json 兜底 */ }
   renderSPCXMonitor();
 }
+setInterval(loadQuotes, 5 * 60 * 1000);   // IPO 首笔成交等场景：无需手动刷新自动上墙
 
 // ── SPCX 监视卡：盘中报价(10分钟) > 流水线收盘价(30分钟) + 解禁/税务倒计时 ──
 function _spcxDaysFrom(listDt, days) {
@@ -219,18 +220,31 @@ function renderSPCXMonitor() {
   // ① 价格卡：盘中报价(quotes.json, ~10分钟) 优先，流水线收盘(stocks.json) 兜底。同源数据，国内访客可用。
   const q = QUOTES?.quotes?.SPCX;
   let priceHtml, autoPrice = null;
-  if (q && q.price) {
+  // 占位价识别：成交量为 0，或"最后成交时间"早于今天且价格还钉在发行价
+  // ——大型 IPO 开盘竞价常持续 1-3 小时，期间行情源只有发行价占位，不是真成交
+  const tradeMs = q?.ts ? q.ts * 1000 : null;
+  const tradeStale = tradeMs != null && (Date.now() - tradeMs > 20 * 3600 * 1000);
+  const awaitingFirstTrade = q && q.price === SPCX_ISSUE_USD &&
+        ((q.vol === 0) || tradeStale || q.prev_close == null);
+  if (q && q.price && awaitingFirstTrade && daysListed <= 1) {
+    priceHtml = `
+      <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:baseline;">
+        <span style="font-size:1.05rem;font-weight:700;color:#f1c40f;">⏳ 等待首笔成交</span>
+        <span style="color:var(--muted);font-size:0.78rem">发行价 US$135 · IPO 开盘竞价中——超大型 IPO 首笔成交常在开盘后 1–3 小时，券商 App 显示的是竞价指示价。成交后此处 10 分钟内自动更新。</span>
+      </div>`;
+  } else if (q && q.price) {
     const vsIssue = (q.price / SPCX_ISSUE_USD - 1) * 100;
     const up = vsIssue >= 0;
-    const genT = QUOTES.generated
-      ? new Date(QUOTES.generated).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) : "";
+    const tradeT = tradeMs
+      ? new Date(tradeMs).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
+      : (QUOTES.generated ? new Date(QUOTES.generated).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) : "");
     autoPrice = q.price;
     priceHtml = `
       <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:baseline;">
         <span style="font-size:1.3rem;font-weight:800;">US$${q.price.toFixed(2)}</span>
         <span style="font-weight:700;color:${up?'#2ecc71':'#e74c3c'}">${up?'+':''}${vsIssue.toFixed(1)}% vs 发行价</span>
         ${q.chg_pct != null ? `<span style="color:${q.chg_pct>=0?'#2ecc71':'#e74c3c'};font-size:0.8rem">日内 ${q.chg_pct>=0?'+':''}${q.chg_pct}%</span>` : ""}
-        <span style="color:var(--muted);font-size:0.72rem">盘中报价 · ${genT} 更新</span>
+        <span style="color:var(--muted);font-size:0.72rem">盘中报价 · 成交 ${tradeT}</span>
       </div>`;
   } else if (sp && sp.last) {
     const up = sp.vs_issue_pct >= 0;
