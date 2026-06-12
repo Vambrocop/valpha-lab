@@ -134,6 +134,7 @@ function renderAll() {
   lazyRender("market-structure", renderMarketStructure, "MarketStructure");
   lazyRender("event-impact", renderEventImpact, "EventImpact");
   lazyRender("quant-methodology", renderQuantMethodology, "QuantMethodology");
+  lazyRender("chart-horizon", renderHorizonView, "Horizon");
   // 恢复上次浏览的视图（默认"今日"）；手动刷新时 savedView==当前视图，顺带触发图表重算尺寸
   const savedView = localStorage.getItem("alpha_view");
   if (savedView && savedView !== "today") {
@@ -142,6 +143,104 @@ function renderAll() {
   }
 }
 init().then(renderAll);
+
+// ═══════════════════════════════════════════════════════
+//  ⏳ 长期视角：持有期基率统计（SIGNALS.horizon_stats）
+// ═══════════════════════════════════════════════════════
+const _HZ_ORDER = ["6mo", "1y", "3y", "5y", "10y"];
+const _HZ_CN = { "6mo": "6个月", "1y": "1年", "3y": "3年", "5y": "5年", "10y": "10年" };
+const _HZ_COLORS = { SP500: "#3498db", NASDAQ: "#2ecc71", SOX: "#e67e22" };
+
+function renderHorizonView() {
+  const hs = SIGNALS?.horizon_stats;
+  if (!hs?.indices) return;
+
+  // ① 分组柱状图：P(涨) by 持有期 × 指数
+  const traces = Object.entries(hs.indices).map(([key, idx]) => ({
+    type: "bar", name: `${idx.label}（${idx.start.slice(0,4)}起）`,
+    x: _HZ_ORDER.filter(h => idx.horizons[h]).map(h => _HZ_CN[h]),
+    y: _HZ_ORDER.filter(h => idx.horizons[h]).map(h => +(idx.horizons[h].p_positive * 100).toFixed(1)),
+    marker: { color: _HZ_COLORS[key] || "#888" },
+    text: _HZ_ORDER.filter(h => idx.horizons[h]).map(h => (idx.horizons[h].p_positive * 100).toFixed(0) + "%"),
+    textposition: "outside", cliponaxis: false,
+    hovertemplate: "<b>%{x}</b> " + idx.label + "<br>历史上涨概率 %{y}%<extra></extra>",
+  }));
+  Plotly.newPlot("chart-horizon", traces, {
+    ...DARK, barmode: "group",
+    yaxis: { ...DARK.yaxis, title: "历史上涨概率 (%)", range: [0, 108] },
+    xaxis: { ...DARK.xaxis, type: "category" },
+    legend: { orientation: "h", y: 1.08 },
+    margin: { t: 30, b: 40, l: 55, r: 15 },
+    shapes: [{ type: "line", x0: -0.5, x1: 4.5, y0: 50, y1: 50,
+               line: { color: "#888", dash: "dot", width: 1 } }],
+    annotations: [{ x: 4.4, y: 52, text: "抛硬币线", showarrow: false,
+                    font: { color: "#888", size: 10 } }],
+  }, { responsive: true });
+
+  // ② 每指数明细表
+  const fm = v => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+  const tables = Object.values(hs.indices).map(idx => {
+    const rows = _HZ_ORDER.filter(h => idx.horizons[h]).map(h => {
+      const r = idx.horizons[h];
+      const pc = r.p_positive >= 0.9 ? "#27ae60" : r.p_positive >= 0.75 ? "#2ecc71"
+               : r.p_positive >= 0.65 ? "#f1c40f" : "#e67e22";
+      return `<tr style="border-top:1px solid var(--border)33;">
+        <td style="padding:.3rem .5rem;font-weight:600;">${_HZ_CN[h]}</td>
+        <td style="padding:.3rem .5rem;text-align:right;color:${pc};font-weight:700;">${(r.p_positive*100).toFixed(0)}%</td>
+        <td style="padding:.3rem .5rem;text-align:right;">${fm(r.ann_median)}</td>
+        <td style="padding:.3rem .5rem;text-align:right;color:var(--muted);">${fm(r.ann_p25)} ~ ${fm(r.ann_p75)}</td>
+        <td style="padding:.3rem .5rem;text-align:right;color:#e74c3c;">${fm(r.worst_total)}</td>
+        <td style="padding:.3rem .5rem;text-align:right;color:var(--muted);">${(r.p_loss_gt_20*100).toFixed(0)}%</td>
+      </tr>`;
+    }).join("");
+    return `<div style="margin-bottom:1rem;">
+      <div style="font-size:0.85rem;font-weight:700;margin-bottom:.3rem;">
+        ${idx.label} <span style="color:var(--muted);font-weight:400;font-size:0.72rem;">${idx.start.slice(0,4)}–${idx.end.slice(0,4)} · ${idx.years}年</span></div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+        <thead><tr style="color:var(--muted);">
+          <th style="text-align:left;padding:.25rem .5rem;">持有期</th>
+          <th style="text-align:right;padding:.25rem .5rem;">P(涨)</th>
+          <th style="text-align:right;padding:.25rem .5rem;">年化中位</th>
+          <th style="text-align:right;padding:.25rem .5rem;">年化 25~75 分位</th>
+          <th style="text-align:right;padding:.25rem .5rem;">最差总回报</th>
+          <th style="text-align:right;padding:.25rem .5rem;">P(亏&gt;20%)</th>
+        </tr></thead><tbody>${rows}</tbody></table></div>`;
+  }).join("");
+  document.getElementById("horizon-tables").innerHTML = tables;
+
+  document.getElementById("horizon-honesty").innerHTML =
+    `<strong>读这张表的正确姿势：</strong>${(hs.honesty || []).map(h => `<br>· ${h}`).join("")}`;
+
+  renderHorizonStocks();
+}
+
+// 观察池长期质量表（依赖 STOCKS，可能晚于本视图渲染 → 两边都调一次，幂等）
+function renderHorizonStocks() {
+  const el = document.getElementById("horizon-stocks");
+  if (!el || !STOCKS?.stocks) return;
+  const rows = Object.entries(STOCKS.stocks).map(([sym, s]) => {
+    const st = s.stats;
+    const c = v => v == null ? "—"
+      : `<span style="color:${v >= 0 ? "#2ecc71" : "#e74c3c"}">${v > 0 ? "+" : ""}${v}%</span>`;
+    return `<tr style="border-top:1px solid var(--border)33;">
+      <td style="padding:.3rem .5rem;font-weight:600;">${sym}<span style="color:var(--muted);font-weight:400;font-size:0.68rem;"> ${s.label}</span></td>
+      <td style="padding:.3rem .5rem;text-align:right;">${c(st.ytd)}</td>
+      <td style="padding:.3rem .5rem;text-align:right;">${c(st.chg_1y)}</td>
+      <td style="padding:.3rem .5rem;text-align:right;">${c(st.from_high_52w)}</td>
+      <td style="padding:.3rem .5rem;text-align:right;color:var(--muted);">${st.vol20_ann}%</td>
+      <td style="padding:.3rem .5rem;text-align:center;">${st.above_ma200 ? '<span style="color:#2ecc71">✓</span>' : '<span style="color:#e74c3c">✗</span>'}</td>
+    </tr>`;
+  }).join("");
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+    <thead><tr style="color:var(--muted);">
+      <th style="text-align:left;padding:.25rem .5rem;">股票</th>
+      <th style="text-align:right;padding:.25rem .5rem;">YTD</th>
+      <th style="text-align:right;padding:.25rem .5rem;">近1年</th>
+      <th style="text-align:right;padding:.25rem .5rem;">距52周高点</th>
+      <th style="text-align:right;padding:.25rem .5rem;">年化波动</th>
+      <th style="text-align:center;padding:.25rem .5rem;">MA200上方</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
 
 // ── 🔄 手动刷新：重新拉取全部 JSON 并重渲染（不整页刷新，滚动位置和视图保留）──
 let _refreshing = false;
@@ -168,7 +267,7 @@ async function refreshData(btn) {
 // ═══════════════════════════════════════════════════════
 //  顶层视图切换（今日/计划/实验/研究/我的）
 // ═══════════════════════════════════════════════════════
-const VIEWS = ["today", "plan", "lab", "research", "quant", "mine"];
+const VIEWS = ["today", "plan", "longterm", "lab", "research", "quant", "mine"];
 function switchView(name, btn) {
   document.querySelectorAll(".view-nav .view-btn").forEach(b => {
     const on = b === btn;

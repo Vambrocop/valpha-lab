@@ -28,6 +28,7 @@
 <nav class="view-nav" role="tablist" aria-label="主导航">
   <button class="view-btn active" role="tab" aria-selected="true"  data-view="today"    onclick="switchView('today',this)">📊 今日</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="plan"     onclick="switchView('plan',this)">🗓 计划</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="longterm" onclick="switchView('longterm',this)">⏳ 长期</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="lab"      onclick="switchView('lab',this)">🧪 实验</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="research" onclick="switchView('research',this)">🔬 研究</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="quant"    onclick="switchView('quant',this)">🎓 量化</button>
@@ -197,6 +198,34 @@
 </section>
 
 <!-- ════════ 实验：模型问责与模拟盘 ════════ -->
+<!-- ════════ 长期：持有期基率统计（统计学的正确用法）════════ -->
+<section id="view-longterm" style="display:none">
+  <div class="view-intro">⏳ <b>长期视角：持有 N 年的历史结果分布。</b>不预测明天涨跌（已被我们自己的实验证伪），
+    只回答一个可验证的问题：历史上任意一天买入并持有 6个月/1年/3年/5年/10年，结果分布长什么样。
+    持有期越长、上涨概率越高——这是全站最稳健的统计规律。</div>
+  <div class="view-stack">
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        ⏳ 持有期 vs 上涨概率 <span class="badge">标普98年 · 纳指55年 · SOX 26年 · 滚动重叠窗口</span>
+      </div>
+      <div id="chart-horizon" style="height:300px;"></div>
+      <div id="horizon-tables" style="margin-top:1rem;"></div>
+      <div class="insight" id="horizon-honesty" style="margin-top:.85rem;"></div>
+    </div>
+
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        🏷 观察池长期质量一览 <span class="badge">描述性指标 · 质量≠预测</span>
+      </div>
+      <div id="horizon-stocks" style="overflow-x:auto;"></div>
+      <div style="color:var(--muted);font-size:0.74rem;margin-top:.6rem;line-height:1.5;">
+        以上为描述性现状（趋势/波动/距高点），不构成对未来的预测。我们的实验结论：没人能稳定预测哪只个股跑赢——
+        对长期持有者，证据支持的做法是<b>指数为主、单只个股不超过组合 5-10%</b>。
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="view-lab" style="display:none">
   <div class="view-intro">🧪 <b>实验：模型问责。</b>每个模型 vs 它的诚实基线，模拟盘前向竞技，append-only 成绩单无法事后美化——这里只讲"说了什么、对了没有"。</div>
 

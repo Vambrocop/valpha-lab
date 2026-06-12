@@ -619,6 +619,7 @@ async function loadStocksPanel() {
   if (first) renderStockChart(first);
   renderGamePanel();   // 用户模拟盘需要最新股价
   renderSPCXMonitor(); // SPCX 监视卡依赖 STOCKS.spcx
+  if (typeof renderHorizonStocks === "function") renderHorizonStocks();  // 长期页质量表
 }
 
 function renderStocksTable() {
