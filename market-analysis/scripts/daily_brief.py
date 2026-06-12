@@ -42,14 +42,21 @@ def main():
 
     # ── 2. 信号状态 ───────────────────────────────────────────────
     idx = sig.get("indices", {})
+    base_rate = sig.get("base_rate_20d", 0.62)
+    base_rate_pct = round(base_rate * 100)
     sig_parts = []
     for k, label in [("NASDAQ", "纳指"), ("SP500", "标普")]:
         s = idx.get(k, {})
         if s:
-            cal = f"（校准后{ s['prob_cal']*100:.0f}%）" if s.get("prob_cal") else ""
-            sig_parts.append(f"{label} {s['prob']*100:.1f}%{cal} 第{s['tier']}档·{TIER_CN.get(s['tier'],'')}")
+            raw_pct = round(s["prob"] * 100)
+            if s.get("prob_cal") is not None:
+                cal_pct = round(s["prob_cal"] * 100)
+                sig_parts.append(f"{label} 20日上涨概率 {cal_pct}%（校准，原始{raw_pct}%）")
+            else:
+                sig_parts.append(f"{label} 20日上涨概率 {raw_pct}%（原始）")
     if sig_parts:
-        lines.append("【信号】" + "；".join(sig_parts))
+        base_note = f"基率 {base_rate_pct}% · 实验性信号"
+        lines.append("【信号】" + "；".join(sig_parts) + f"｜{base_note}")
 
     # ── 3. 风险状态（VIX期限结构 + 波动率） ───────────────────────
     risk = []

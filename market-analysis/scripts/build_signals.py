@@ -721,7 +721,28 @@ def load_walk_forward():
 
 
 def load_calibration():
-    """从回测校准曲线构造「模型概率 → 实际20日胜率」映射点（用于校准显示）"""
+    """从样本外校准构造「模型概率 → 实际20日胜率」映射点。
+    优先读 walk_forward_results.json 的 oos_calibration.naive；
+    失败时回退到回测校准逻辑（backtest_results.json）。
+    返回按 prob_mean 升序的 [(prob_mean, actual_wr)] 点列。
+    """
+    # ── 优先：样本外校准（walk-forward OOS）─────────────────────────
+    try:
+        with open(PROC_DIR / "walk_forward_results.json", encoding="utf-8") as f:
+            wf = json.load(f)
+        naive = wf.get("oos_calibration", {}).get("naive", [])
+        if naive:
+            pts = sorted(
+                (item["prob_mean"], item["actual_wr"])
+                for item in naive
+                if "prob_mean" in item and "actual_wr" in item
+            )
+            if pts:
+                return pts
+    except Exception:
+        pass
+
+    # ── 回退：回测校准（backtest_results.json）───────────────────────
     try:
         with open(PROC_DIR / "backtest_results.json", encoding="utf-8") as f:
             bt = json.load(f)
@@ -809,8 +830,22 @@ if __name__ == "__main__":
     if cal_pts:
         result["calibration_points"] = [{"prob": x, "actual_wr": y} for x, y in cal_pts]
         for idx in result.get("indices", {}):
-            result["indices"][idx]["prob_cal"] = calibrate_prob(
-                result["indices"][idx]["prob"], cal_pts)
+            prob_cal = calibrate_prob(result["indices"][idx]["prob"], cal_pts)
+            result["indices"][idx]["prob_cal"] = prob_cal
+            # tier_cal：用校准概率算档位；校准失败时回退到原始概率的档位
+            result["indices"][idx]["tier_cal"] = _tier(
+                prob_cal if prob_cal is not None else result["indices"][idx]["prob"])
+
+    # ── 展示层元数据（P2-3）────────────────────────────────────────
+    # base_rate_20d：walk-forward 无条件基率（读失败回退 0.62）
+    try:
+        with open(PROC_DIR / "walk_forward_results.json", encoding="utf-8") as _f:
+            _wf = json.load(_f)
+        result["base_rate_20d"] = _wf.get("optimized_lr", {}).get("base_win_rate", 0.62)
+    except Exception:
+        result["base_rate_20d"] = 0.62
+    result["horizon_note"] = "概率含义：未来20个交易日收盘高于今日的概率"
+    result["model_status_note"] = "实验性信号：walk-forward 块自助验证未发现样本外优势"
 
     # 实盘预测追踪
     tracking = load_live_tracking()

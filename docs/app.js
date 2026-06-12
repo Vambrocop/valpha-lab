@@ -135,6 +135,24 @@ function tier(p) {
   return 1;
 }
 
+// 样本外校准插值：模型原始概率 → 历史同档位实际胜率（OOS）
+// 点列来自 SIGNALS.calibration_points（按 prob 升序），端点夹紧
+function calibrateProb(p) {
+  const pts = SIGNALS?.calibration_points;
+  if (!pts || !pts.length || p == null) return null;
+  const xs = pts.map(d => d.prob);
+  const ys = pts.map(d => d.actual_wr);
+  if (p <= xs[0]) return Math.round(ys[0] * 100) / 100;
+  if (p >= xs[xs.length - 1]) return Math.round(ys[xs.length - 1] * 100) / 100;
+  for (let i = 0; i < xs.length - 1; i++) {
+    if (p >= xs[i] && p <= xs[i + 1]) {
+      const t = (p - xs[i]) / (xs[i + 1] - xs[i]);
+      return Math.round((ys[i] + t * (ys[i + 1] - ys[i])) * 10000) / 10000;
+    }
+  }
+  return null;
+}
+
 // ── 历史信号按需加载（signals.json 只发布近两年，更早在 signals_history.json）──
 let _historyPromise = null;
 function ensureHistory() {
@@ -260,15 +278,24 @@ function updateSignal(dateStr) {
 }
 
 function renderSignalMeter(prob, rec) {
-  const t = tier(prob);
+  // 用校准概率决定档位、颜色、星级、标签；回退到原始概率
+  const calProb = calibrateProb(prob);
+  const displayProb = calProb !== null ? calProb : prob;
+  const t = tier(displayProb);
   const meta = TIER_META[t];
   const ring = document.getElementById("signal-ring");
 
   ring.className = "signal-ring tier-" + t;
-  document.getElementById("signal-pct").textContent   = Math.round(prob*100) + "%";
+  document.getElementById("signal-pct").textContent   = Math.round(displayProb*100) + "%";
   document.getElementById("signal-label").textContent  = meta.label;
   document.getElementById("signal-stars").textContent  = meta.stars;
-  document.getElementById("signal-desc").textContent   = "";
+
+  // 小字说明：原始输出、20日窗口、基率
+  const rawPct = Math.round(prob * 100);
+  const baseRate = SIGNALS?.base_rate_20d;
+  const baseRatePart = baseRate != null ? ` · 基率 ${Math.round(baseRate * 100)}%` : "";
+  document.getElementById("signal-desc").innerHTML =
+    `<span style="color:var(--muted);font-size:0.72rem">原始模型输出 ${rawPct}% · 未来20日窗口${baseRatePart}</span>`;
 
   const MONTH = ["","1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
   const today = localDateStr();
@@ -298,6 +325,22 @@ function renderSignalMeter(prob, rec) {
     ${evText}${techNote}<br>
     ${meta.desc}
   `;
+
+  // model_status_note：muted 小字，仅当字段存在时（动态插入 #signal-percentile 之后）
+  const statusNote = SIGNALS?.model_status_note;
+  if (!renderSignalMeter._statusEl) {
+    const el = document.createElement("div");
+    el.id = "signal-model-status";
+    const percEl = document.getElementById("signal-percentile");
+    if (percEl && percEl.parentNode) percEl.parentNode.insertBefore(el, percEl.nextSibling);
+    renderSignalMeter._statusEl = el;
+  }
+  const statusEl = renderSignalMeter._statusEl;
+  if (statusEl) {
+    statusEl.innerHTML = statusNote
+      ? `<span style="font-size:0.7rem;color:var(--muted);">${statusNote}</span>`
+      : "";
+  }
 }
 
 function renderFactors(rec, finalProb) {
@@ -2463,15 +2506,18 @@ function renderIndicesCompare() {
   const TC = { 5:"#27ae60", 4:"#2ecc71", 3:"#f1c40f", 2:"#e67e22", 1:"#e74c3c" };
   const NAMES = { NASDAQ:"纳斯达克", SP500:"标普500" };
   el.innerHTML = Object.entries(SIGNALS.indices).map(([idx, s]) => {
-    const c = TC[s.tier] || "#f1c40f";
-    const cal = s.prob_cal != null
-      ? `<div style="font-size:0.7rem;color:var(--muted);" title="按历史回测同档位的实际20日胜率校准">校准后 ${(s.prob_cal*100).toFixed(1)}%</div>`
+    // 主显示：校准概率（prob_cal）与 tier_cal；校准值缺失时回退原始
+    const calProb = s.prob_cal != null ? s.prob_cal : s.prob;
+    const calTier = s.tier_cal != null ? s.tier_cal : s.tier;
+    const c = TC[calTier] || "#f1c40f";
+    const rawNote = s.prob_cal != null
+      ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:.1rem;" title="模型原始输出（未校准）">原始 ${(s.prob*100).toFixed(1)}%</div>`
       : "";
     return `<div style="flex:1;text-align:center;padding:.6rem .4rem;border:1px solid ${c}44;border-radius:8px;background:${c}11;">
       <div style="font-size:0.78rem;color:var(--muted);">${NAMES[idx]||idx}</div>
-      <div style="font-size:1.35rem;font-weight:800;color:${c};">${(s.prob*100).toFixed(1)}%</div>
-      <div style="font-size:0.72rem;color:${c};">第${s.tier}档</div>
-      ${cal}
+      <div style="font-size:1.35rem;font-weight:800;color:${c};">${(calProb*100).toFixed(1)}%</div>
+      <div style="font-size:0.72rem;color:${c};">第${calTier}档</div>
+      ${rawNote}
       <div style="font-size:0.65rem;color:var(--muted);margin-top:.2rem;">截至 ${s.date||""}</div>
     </div>`;
   }).join("");
