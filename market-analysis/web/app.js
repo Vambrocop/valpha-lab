@@ -1314,7 +1314,8 @@ function renderEventStudyChart() {
   if (cutFinding) {
     insight += `<span style="color:#f1c40f">△ 首次降息</span>：LR=${cutFinding.lr}，30日均收益 ${cutFinding.avg_return.toFixed(1)}%——"降息=利好"是误解，因为降息时往往经济已走弱（"买预期卖事实"）。<br>`;
   }
-  insight += `<span style="color:var(--muted);font-size:0.78rem">方法：取每类事件历史发生日，计算事后30交易日累计收益，t检验验证与随机窗口的差异。</span>`;
+  insight += `<span style="color:var(--muted);font-size:0.78rem">方法：取每类事件历史发生日，计算事后30交易日累计收益，t检验验证与随机窗口的差异。</span><br>
+    <span style="color:#e67e22;font-size:0.78rem">⚠ 诚实警告：这些事件 <b>n 极小</b>（首次加息 n=5、疫情 n=2），是<b>样本内</b>统计、重叠窗口 t 检验 p 值偏乐观——"历史上发生过什么"，不是"下次会怎样"，不可外推。详见"研究"标签的"🗓 事件影响一览"。</span>`;
 
   document.getElementById("eventstudy-insight").innerHTML = insight;
 }
@@ -3273,6 +3274,7 @@ init().then(() => {
   safeRender(renderFactorAudit, "FactorAudit");
   safeRender(renderVolModel, "VolModel");
   safeRender(renderMarketStructure, "MarketStructure");
+  safeRender(renderEventImpact, "EventImpact");
   // 恢复上次浏览的视图（默认"今日"）
   const savedView = localStorage.getItem("alpha_view");
   if (savedView && savedView !== "today") {
@@ -3406,6 +3408,62 @@ function renderVolModel() {
       可预测性<b>几乎全来自 VIX 已经把未来波动定价了</b>，12 特征的梯度提升树没加什么（重要性里 VIX 一家独大）。
       真正的启示是两层：<b>① 选对靶子</b>（波动率可测、方向不可测）；<b>② 市场已把容易的部分定价</b>，复杂模型 ≠ 优势。
       <span style="color:var(--muted)">${esc(v.note||"")}</span>
+    </div>`;
+}
+
+// ── 事件影响一览（整合宏观日历 + 历史事件研究 + 诚实框架）──
+function renderEventImpact() {
+  const el = document.getElementById("event-impact");
+  if (!el || !SIGNALS) return;
+  const cal = SIGNALS.macro_calendar || [];
+  const es = SIGNALS.event_study || {};
+  const today = localDateStr();
+
+  // ① 即将到来的调度型事件（宏观日历）——放大波动、方向无稳定偏向
+  const upcoming = cal.filter(e => e.date >= today).slice(0, 8).map(e => {
+    const d = new Date(e.date + "T00:00:00");
+    const days = Math.round((d - new Date(today + "T00:00:00")) / 86400000);
+    return `<div style="display:flex;justify-content:space-between;gap:.5rem;padding:.25rem .5rem;border-top:1px solid var(--border)33;">
+      <span>${esc(e.date)} <span style="color:var(--muted);font-size:0.72rem;">${days<=0?"今天":"约"+days+"天后"}</span></span>
+      <span style="color:var(--text);font-size:0.78rem;">${esc(e.label)}</span></div>`;
+  }).join("") || `<div style="color:var(--muted);font-size:0.78rem;padding:.3rem .5rem;">近期无已排程宏观事件</div>`;
+
+  // ② 历史事件类型反应——诚实呈现：小样本、样本内，去掉绿红方向色与裸 p 值
+  // （绿红色=暗示可预测方向，裸 p 值=被读成"显著信号"，都违反铁律；胜率带基准对照）
+  const rows = Object.entries(es).map(([k, v]) => {
+    const ar = v.avg_return, smallN = (v.n || 0) < 15;
+    return `<tr style="border-top:1px solid var(--border)33;">
+      <td style="padding:.25rem .5rem;">${esc(v.label || k)}</td>
+      <td style="padding:.25rem .5rem;text-align:center;color:${smallN?"#e67e22":"var(--muted)"};" title="样本量">n=${esc(v.n)}${smallN?" ⚠":""}</td>
+      <td style="padding:.25rem .5rem;text-align:right;color:var(--text);">${ar>0?"+":""}${esc(ar)}%</td>
+      <td style="padding:.25rem .5rem;text-align:right;color:var(--muted);">${esc(v.win_rate)}% <span style="font-size:0.66rem;">(基准${esc(v.base_win_rate)}%)</span></td>
+    </tr>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div style="color:var(--muted);font-size:0.78rem;line-height:1.6;margin-bottom:.6rem;">
+      "如何把指数级事件纳入考虑"的诚实答案：<b>调度型事件（FOMC/CPI/非农）当天放大波动、方向无稳定偏向；
+      历史冲击事件后市场反应样本太小、且是样本内统计，不能当预测。</b>事件影响的是<b>波动/不确定性</b>，不是可交易的方向。
+    </div>
+
+    <div style="font-size:0.8rem;font-weight:600;margin-bottom:.2rem;">① 即将到来的调度型事件（波动放大日）</div>
+    <div style="margin-bottom:.8rem;">${upcoming}
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:.3rem;">→ 纳入方式：这些天<b>避免重仓新开/加杠杆</b>，等尘埃落定，而不是猜方向。</div>
+    </div>
+
+    <div style="font-size:0.8rem;font-weight:600;margin-bottom:.2rem;">② 历史冲击事件后 30 日反应（样本内统计）</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.76rem;">
+      <thead><tr style="color:var(--muted);font-size:0.7rem;">
+        <th style="text-align:left;padding:.25rem .5rem;">事件类型</th><th style="padding:.25rem .5rem;">样本</th>
+        <th style="text-align:right;padding:.25rem .5rem;">30日均涨跌</th><th style="text-align:right;padding:.25rem .5rem;">胜率 vs 基准</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <div class="insight" style="margin-top:.85rem;">
+      <strong>诚实警告：</strong>上表多数事件 <b>n 极小</b>（如首次加息 n=5、疫情 n=2），且是<b>样本内</b>统计、重叠窗口 p 值偏乐观——
+      <b>这是"历史上发生过什么"，不是"下次会怎样"。</b>地缘冲击/疫情这类一次性事件尤其不可外推；胜率几乎都贴着基准（无边际）。
+      事件提高的是波动/不确定性。<b>注：本站"叠加事件"开关会按这些历史 LR 微调概率，但幅度小、未经样本外验证——当 what-if 玩具看，别当强信号。</b>
+      <span style="color:var(--muted)">纳入事件的正确方式 = 在高波动事件日控制仓位/风险，而非预测涨跌。</span>
     </div>`;
 }
 
