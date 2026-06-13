@@ -157,6 +157,12 @@ function renderAll() {
     document.querySelectorAll(".tip.tip-show").forEach(t => { if (t !== tip) t.classList.remove("tip-show"); });
     if (tip) tip.classList.toggle("tip-show");
   });
+
+  // 标题层级 a11y：面板标题/图表头原为无语义 <div>，全页仅 1 个 <h1> → 读屏无法按标题导航。
+  // 补 role=heading + aria-level=2（覆盖 7 视图所有静态标题，含隐藏视图）。纯 ARIA，零视觉变化。
+  document.querySelectorAll(".panel-title, .chart-header").forEach(h => {
+    if (!h.hasAttribute("role")) { h.setAttribute("role", "heading"); h.setAttribute("aria-level", "2"); }
+  });
 }
 init().then(renderAll);
 
