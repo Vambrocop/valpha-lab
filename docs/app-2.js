@@ -488,6 +488,42 @@ async function loadRiskDashboard() {
     <div style="font-size:0.73rem;color:var(--muted);margin-top:.6rem;line-height:1.55">${RISK_DASH.caveat || ""}</div>`;
 }
 
+// ── 📐 收益区间（方法E 保形预测）：同源消费 conformal.json ──
+let CONFORMAL = null;
+async function loadConformal() {
+  const el = document.getElementById("conformal");
+  if (!el) return;
+  try {
+    const r = await fetch("conformal.json?_=" + Date.now());
+    if (r.ok) CONFORMAL = await r.json();
+  } catch (e) { /* 文件可能尚未生成 */ }
+  if (!CONFORMAL?.horizons) {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">保形预测数据尚未生成（下次全量流水线后出现）</span>`;
+    return;
+  }
+  const HN = { 5: "~1周 (5日)", 20: "~1月 (20日)", 60: "~3月 (60日)" };
+  const rows = CONFORMAL.horizons.map(h => {
+    const b90 = (h.bands || []).find(b => b.level === 0.90) || {};
+    const b80 = (h.bands || []).find(b => b.level === 0.80) || {};
+    const cov = b90.empirical_coverage;
+    const cc = (cov != null && Math.abs(cov - 0.90) <= 0.03) ? "#2ecc71" : "#e67e22";
+    const fmt = b => b.lower_pct == null ? "—" : `${b.lower_pct}% ~ +${b.upper_pct}%`;
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:.3rem .4rem;color:var(--muted)">${HN[h.horizon_days] || h.horizon_days + "日"}</td>
+      <td style="padding:.3rem .4rem;text-align:center;color:var(--muted)">${fmt(b80)}</td>
+      <td style="padding:.3rem .4rem;text-align:center;font-weight:600">${fmt(b90)}</td>
+      <td style="padding:.3rem .4rem;text-align:right;color:${cc}">${cov != null ? (cov * 100).toFixed(0) + "%" : "—"}<span style="color:var(--muted);font-size:0.66rem"> (n=${b90.n_test ?? "?"})</span></td>
+    </tr>`;
+  }).join("");
+  el.innerHTML = `
+    <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:.5rem">${CONFORMAL.caveat || ""}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+      <tr style="color:var(--muted);font-size:0.7rem"><td style="padding:.2rem .4rem">期限</td><td style="text-align:center;padding:.2rem .4rem">80% 区间</td><td style="text-align:center;padding:.2rem .4rem">90% 区间</td><td style="text-align:right;padding:.2rem .4rem">经验覆盖(名义90%)</td></tr>
+      ${rows}
+    </table>
+    <div style="font-size:0.72rem;color:var(--muted);margin-top:.4rem">${CONFORMAL.source} ${CONFORMAL.data_start}–${CONFORMAL.data_end}；旧${(CONFORMAL.cal_frac * 100).toFixed(0)}%校准/新${(100 - CONFORMAL.cal_frac * 100).toFixed(0)}%测试。经验覆盖≈名义 → 区间可信。</div>`;
+}
+
 function renderDigitChart() {
   const yp = SIGNALS?.year_patterns;
   if (!yp?.decade_digit) return;

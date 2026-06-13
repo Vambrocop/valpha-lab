@@ -116,6 +116,20 @@ except Exception as e:
     errors.append(f"列完整性检查失败: {e}")
     print(f"  ✗ 列完整性检查失败: {e}")
 
+# 3c. 保形预测产物形状（方法E：每期限有区间且 lower<upper；存在才查，缺失不致命）
+try:
+    cf_path = WEB_DIR / "conformal.json"
+    if cf_path.exists():
+        with open(cf_path, encoding="utf-8") as fh:
+            cf = json.load(fh)
+        hs = cf.get("horizons", [])
+        bad = [h.get("horizon_days") for h in hs for b in h.get("bands", [])
+               if b.get("lower_pct") is None or b["lower_pct"] >= b["upper_pct"]]
+        check(len(hs) > 0 and not bad, f"conformal.json 形状正常（坏区间：{bad or '无'}）")
+except Exception as e:
+    errors.append(f"conformal 形状检查失败: {e}")
+    print(f"  ✗ conformal 形状检查失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv
