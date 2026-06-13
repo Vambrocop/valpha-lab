@@ -46,16 +46,25 @@
 来源 `REVIEW.md`(2026-06-12 双审)。Fable 承重原则：**升级验证方法(CPCV/Deflated Sharpe)，不加模型**。
 - A–E 自检：FDR=多重比较校正(Fable 正点名)✓；事件因果/风险仪表盘=诚实测量,非信号模型 ✓。均属 Fable 认可的"诚实统计"道，不违"不加模型"。
 
-10. **Fable 头号升级尚未做：CPCV(组合净化交叉验证) + Deflated Sharpe**。比 C/D/E 更贴 Fable"升级验证"的本意。
-    *推荐*：升到高优先，排在 D/E 之前或并行。
-11. **Fable HIGH ① 诚实性回退**：核对旧事件面板是否仍带裸 p 值/方向红绿色、多元分析图是否标"快照/非实时"。
-    *推荐*：下一轮先**核对+修**(Fable 评:半天、零风险、直击立身之本)，优先于 C。
-12. **Fable HIGH ② 数据健壮性**：fetch_data 缓存兜底(似已有 _cache_fallback)、verify_output 列完整性检查——核对状态，缺则补。
+10. **Fable 头号升级 CPCV/Deflated Sharpe —— 评估后：literal DSR 不适配本项目（我与 Fable 此处相左，已告知用户）**。
+    原因：DSR 收缩的是"策略夏普"，但本项目**从不维护夏普策略**（靠 AUC/命中率的零结果立诚实，从没追过回测夏普）——没有夏普可 deflate。这是项目**正直的体现，不是缺陷**。
+    *我的推荐（细节调整，守 Fable 的 Bailey&LdP 反过拟合精神）*：把"按试验数收缩"的同一原理用在**项目真有的指标=因子选择的 AUC**（factor_pruning 试了 N 个因子→最佳因子 AUC 是否超过 max-of-N-随机的期望）。这是 A(FDR) 向因子层的自然延伸。
+    **待你拍板**：(a) 做这个"因子-AUC deflation"适配；(b) 认定"无夏普可 defl"=已满足精神、跳过；(c) 仅在量化方法论页做 DSR 公式讲解。CPCV 同理较重，先 scope。
+11. ~~Fable HIGH ① 诚实性回退~~ **✅ 已核对=已完成**：旧 `renderEventStudyChart` 已删(app-2.js:287 注释为证)，新 `renderEventImpact` 已去裸 p/方向色，多元图已标"📸 研究快照·非实时"(index.html:425)。无需再改。
+12. ~~Fable HIGH ② 数据健壮性~~ **✅ 已核对=已完成**：fetch_data 有 `_cache_fallback`；verify_output §3b 查 KEY_COLS 齐全 + 末值非 NaN/不过期。无需再改。
+    → 结论：REVIEW.md(2026-06-12) 的 HIGH 项均已闭环、大半被后续提交超越。**Fable 唯一仍开放的高价值项 = CPCV + Deflated Sharpe(见 #10)** → 升为 loop 下一项。
 
 ## G. 指标候选
 
 13. **VXN − VIX 价差**(你 2026-06-13 问的)：纳指100 vs 标普 隐含波动率之差 = 相对风险/科技压力的**体制指标**。
     站内已有 VIX 期限结构(vix_term)但无此跨价差。*推荐*：归 D 风险仪表盘(非方向)，`^VXN`/`^VIX` 免费，值得加。
+
+14. **A–E 数据适配现实（我作为独立审视的补充——Fable 计划是方法论层，没逐一核对本项目能拿到的数据）**：
+    - A(FDR) ✅、B(事件因果) ✅ 已落地。
+    - **D(风险仪表盘：VXN-VIX 价差 / 分位数回归尾部风险 / EVT)**：数据现成(^VXN/^VIX/收益)，最贴"测风险不测方向"，且是你点名的 VXN-VIX → **最清晰，建议下一个做**。
+    - C(RDD 指数重构)：依赖 Russell 历史排名/成员名单，免费数据**不易拿** → 先核对数据可行性再排。
+    - literal DSR 见 #10(不适配)。
+    *推荐 loop 重排*：**D(先 VXN-VIX + 分位数尾部风险) → 因子-AUC deflation(#10 适配，待你定) → E(保形) → C(待数据核对) → F(周期)**。
 
 ---
 *（loop 会持续往这里追加新决策点；C=RDD、D=风险仪表盘、E=保形预测 推进时若有岔路会记在这。）*
