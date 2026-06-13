@@ -416,7 +416,7 @@ function renderEconCalendar() {
 
 // ── 我的持仓计算器 ──
 const PORTFOLIO_KEY = "alpha_portfolio_v2";
-const COIN_IDS = { BTC:"bitcoin", ETH:"ethereum", XLM:"stellar", DOGE:"dogecoin", HOME:"defi-app", SOL:"solana", BNB:"binancecoin" };
+const COIN_IDS = { BTC:"bitcoin", ETH:"ethereum", XLM:"stellar", DOGE:"dogecoin", HOME:"home", SOL:"solana", BNB:"binancecoin" };
 let portfolioPrices = {};
 
 function loadPortfolio() {
