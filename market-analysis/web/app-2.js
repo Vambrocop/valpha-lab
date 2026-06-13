@@ -341,6 +341,53 @@ function switchCalTab(name, el) {
   if (name==="calholiday") setTimeout(() => safeRender(renderCalHolidayChart, "CalHoliday"), 0);
 }
 
+// ── 🔬 规律防伪：placebo 置换检验 + 多重检验校正(FDR) 诚实总览 ──
+// 同源消费 placebo_tests.json（placebo_test.py 产出）。被打回/无定论也是诚实结果。
+let PLACEBO = null;
+async function loadPlacebo() {
+  const el = document.getElementById("placebo-overview");
+  if (!el) return;
+  try {
+    const r = await fetch("placebo_tests.json?_=" + Date.now());
+    if (r.ok) PLACEBO = await r.json();
+  } catch (e) { /* 文件可能尚未生成 */ }
+  if (!PLACEBO?.tests) {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">placebo 数据尚未生成（下次全量流水线后出现）</span>`;
+    return;
+  }
+  const STY = { real:{c:"#2ecc71",t:"✓ 真实"}, rejected:{c:"#e74c3c",t:"✗ 未显现"},
+                inconclusive:{c:"#f1c40f",t:"— 无定论"} };
+  const rows = PLACEBO.tests.map(t => {
+    const s = STY[t.status] || STY.inconclusive;
+    const fdr = t.status === "inconclusive" ? `<span style="color:var(--muted)">FDR —</span>`
+              : t.fdr_significant_05 ? `<span style="color:#2ecc71">FDR✓</span>`
+              : `<span style="color:#e67e22">FDR✗</span>`;
+    return `<div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem;
+                 padding:.5rem .2rem .5rem .6rem;border-bottom:1px solid var(--border);border-left:3px solid ${s.c};">
+      <strong style="min-width:8.5rem">${t.panel}</strong>
+      <span style="color:${s.c};font-weight:700">${s.t}</span>
+      <span style="color:var(--muted);font-size:0.78rem">p=${t.p_value.toFixed(3)} · q=${t.q_value.toFixed(3)} ${fdr}</span>
+      <span style="color:var(--muted);font-size:0.73rem;flex-basis:100%">${t.claim}——${t.detail}（${t.scope}）</span>
+    </div>`;
+  }).join("");
+  const cnt = k => PLACEBO.tests.filter(t => t.status === k).length;
+  const fdrSurv = PLACEBO.tests.filter(t => t.fdr_significant_05).map(t => t.panel);
+  el.innerHTML = `
+    <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:.6rem;">
+      把每个"日历规律"的日期标签随机打乱 ${PLACEBO.n_perm} 次生成零分布，真实效应须超 95 分位才算"真"；
+      再用 Benjamini-Hochberg 控多重检验假发现率(FDR q 值)。
+      <b style="color:var(--text)">被打回 / 无定论也是诚实结果——本站不假装规律都成立。</b>
+    </div>
+    ${rows}
+    <div style="font-size:0.78rem;color:var(--muted);margin-top:.7rem;">
+      小结：<b style="color:#2ecc71">${cnt("real")} 真实</b> /
+      <b style="color:#f1c40f">${cnt("inconclusive")} 无定论</b>(样本太小,无权下结论) /
+      <b style="color:#e74c3c">${cnt("rejected")} 未显现</b>。
+      多重检验校正(FDR q&lt;0.05)后仍站得住：<b>${fdrSurv.join("、") || "无"}</b>。
+      <br>数据 ${PLACEBO.data?.source} ${PLACEBO.data?.start}–${PLACEBO.data?.end}，种子 ${PLACEBO.seed}（可复现）。
+    </div>`;
+}
+
 function renderDigitChart() {
   const yp = SIGNALS?.year_patterns;
   if (!yp?.decade_digit) return;
