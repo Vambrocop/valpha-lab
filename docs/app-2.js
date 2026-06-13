@@ -632,7 +632,11 @@ async function loadHonestRegistry() {
     rows.push(["事件因果 (DiD)", "反事实 + bootstrap", sig ? `${sig} 个验证事件显著（如 SVB→KRE −30%）` : "暂无显著（或样本不足）", "event-causal", sig ? "real" : "null"]);
   }
   if (cy?.result) rows.push(["市场周期", "谱 + AR1 红噪声", cy.result.significant ? "检出超红噪声周期" : "无超红噪声周期（民间周期被否）", "cycles-spectral", cy.result.significant ? "real" : "null"]);
-  if (cf?.horizons) rows.push(["收益区间", "split-conformal", "实测覆盖≈名义；给区间、不给方向", "conformal", "real"]);
+  if (cf?.horizons) {
+    const b90 = cf.horizons.flatMap(h => (h.bands || []).filter(b => b.level === 0.90));
+    const okCov = b90.length && b90.every(b => b.empirical_coverage != null && Math.abs(b.empirical_coverage - 0.90) <= 0.05);
+    rows.push(["收益区间", "split-conformal", okCov ? "实测覆盖≈名义；给区间、不给方向" : "实测覆盖偏离名义(见详情)；给区间、不给方向", "conformal", okCov ? "real" : "null"]);
+  }
   if (fx?.by_family) {
     const fam = fx.by_family.find(f => f.family === "因子AUC");
     if (fam) rows.push(["因子 alpha", "OOS 拼接 + DSR deflation", `${fam.n} 个因子 → 跨族稳健 ${fam.n_survive_by_10} 个`, "factor-audit", fam.n_survive_by_10 ? "real" : "null"]);

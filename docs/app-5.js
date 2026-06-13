@@ -141,12 +141,13 @@ function renderAll() {
   lazyRender("event-impact", renderEventImpact, "EventImpact");
   lazyRender("quant-methodology", renderQuantMethodology, "QuantMethodology");
   lazyRender("chart-horizon", renderHorizonView, "Horizon");
-  // ⑥ 登记簿页：把诚实统计面板从"研究"运行时搬到"登记簿"(零 HTML 切割、可逆；ID 不变故懒渲染照常)
+  // ⑥ 登记簿页：把诚实统计面板从"研究"运行时搬到"登记簿"。这些 id 上面已 lazyRender 观察过；
+  // appendChild 搬的是同一活节点(IntersectionObserver 跟随节点、id 不变 → 懒渲染键照常)，勿改成 clone。
   const _regHost = document.getElementById("registry-panels");
   if (_regHost) {
     ["fdr-crossfamily", "placebo-overview", "event-causal", "risk-dashboard", "conformal", "cycles-spectral", "factor-audit"].forEach(id => {
       const w = document.getElementById(id)?.closest(".chart-wrap");
-      if (w) _regHost.appendChild(w);
+      if (w && w.parentElement !== _regHost) _regHost.appendChild(w);   // 幂等:refreshData 重调时不重复搬/重排
     });
   }
   lazyRender("honest-registry", loadHonestRegistry, "Registry");   // 🧾 诚实总览自动汇总
@@ -162,11 +163,14 @@ function renderAll() {
   document.querySelectorAll(".tip").forEach(t => {
     if (!t.hasAttribute("tabindex")) t.setAttribute("tabindex", "0");
   });
-  document.addEventListener("click", (e) => {
-    const tip = e.target.closest(".tip");
-    document.querySelectorAll(".tip.tip-show").forEach(t => { if (t !== tip) t.classList.remove("tip-show"); });
-    if (tip) tip.classList.toggle("tip-show");
-  });
+  if (!renderAll._tipBound) {        // 只绑一次(renderAll 会被 refreshData 重调，否则 document 监听器累积泄漏)
+    renderAll._tipBound = true;
+    document.addEventListener("click", (e) => {
+      const tip = e.target.closest(".tip");
+      document.querySelectorAll(".tip.tip-show").forEach(t => { if (t !== tip) t.classList.remove("tip-show"); });
+      if (tip) tip.classList.toggle("tip-show");
+    });
+  }
 
   // 标题层级 a11y：面板标题/图表头原为无语义 <div>，全页仅 1 个 <h1> → 读屏无法按标题导航。
   // 补 role=heading + aria-level=2（覆盖 7 视图所有静态标题，含隐藏视图）。纯 ARIA，零视觉变化。
