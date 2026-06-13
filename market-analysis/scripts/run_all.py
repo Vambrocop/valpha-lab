@@ -25,6 +25,7 @@ DOCS_DIR = SCRIPTS.parent.parent / "docs"   # 仓库根 docs/，GitHub Pages 部
 steps = [
     ("下载数据",           "fetch_data.py"),
     ("下载长历史数据",     "long_history.py"),
+    ("规律置换检验placebo", "placebo_test.py"),         # P4-1：日历效应防伪（须在 long_history 后，复用其 SP500_long.csv）
     ("隔夜vs日内分析",     "overnight_analysis.py"),   # 产出隔夜动量因子数据
     ("基础统计分析",       "analyze.py"),
     ("买卖时机分析",       "timing_analysis.py"),
