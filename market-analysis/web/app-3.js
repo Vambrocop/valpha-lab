@@ -129,7 +129,7 @@ function renderPredictionAccuracy() {
           : r.correct ? `<span style="color:#2ecc71;font-weight:700">✓</span>`
           : `<span style="color:#e74c3c;font-weight:700">✗</span>`;
         const todayBg   = r.date === localDateStr() ? "background:rgba(52,152,219,.07);" : "";
-        return `<tr style="border-bottom:1px solid var(--border)22;${todayBg}">
+        return `<tr style="border-bottom:1px solid var(--border-faint);${todayBg}">
           <td style="${cellStyle}">${r.date} <span style="color:var(--muted);font-size:0.72rem">${DOW_CN[r.dow||0]}</span></td>
           <td style="${cellStyle}text-align:right">${signalStr}</td>
           <td style="${cellStyle}text-align:right;font-weight:700">${(r.prob*100).toFixed(1)}%</td>
@@ -401,7 +401,7 @@ function renderEconCalendar() {
     const diff = Math.round((new Date(e.date) - new Date(today)) / 86400000);
     const urgency = diff <= 3 ? "#e74c3c" : diff <= 7 ? "#e67e22" : "var(--muted)";
     const diffLabel = diff === 0 ? "今天" : diff === 1 ? "明天" : `${diff}天后`;
-    return `<div style="display:flex;align-items:flex-start;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--border)22;">
+    return `<div style="display:flex;align-items:flex-start;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--border-faint);">
       <span style="font-size:1rem;flex-shrink:0">${e.emoji}</span>
       <div style="flex:1;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -461,7 +461,7 @@ function renderPortfolioTable(audRate) {
       : `<br><span class="cost-link" onclick="setPortfolioCost(${i},'${item.ticker}')">设置成本价</span>`;
     const valStr = val ? `A$${val.toFixed(2)}` : "—";
     const pStr  = p   ? `$${p < 1 ? p.toFixed(4) : p.toFixed(2)}` : "—";
-    return `<tr style="border-bottom:1px solid var(--border)22;">
+    return `<tr style="border-bottom:1px solid var(--border-faint);">
       <td style="padding:.35rem .4rem;font-weight:600;color:var(--text)">${item.ticker}${item.note?`<br><span style="font-size:0.68rem;color:var(--muted);font-weight:400">${item.note}</span>`:""}</td>
       <td style="text-align:right;padding:.35rem .4rem;color:var(--muted)">${item.qty}</td>
       <td style="text-align:right;padding:.35rem .4rem">${pStr}</td>

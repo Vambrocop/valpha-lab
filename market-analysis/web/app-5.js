@@ -23,7 +23,7 @@ function renderBenchmark() {
   };
   const rows = bm.rows.map(r => {
     const color = VC[r.verdict] || "#8b949e";
-    return `<tr style="border-top:1px solid var(--border)33;" title="${esc(r.note)}">
+    return `<tr style="border-top:1px solid var(--border-faint);" title="${esc(r.note)}">
       <td style="padding:.3rem .5rem;">${esc(r.name)}</td>
       <td style="padding:.3rem .5rem;color:var(--muted);">${esc(r.metric)}</td>
       <td style="padding:.3rem .5rem;text-align:right;">${fmt(r.model_value)}</td>
@@ -189,7 +189,7 @@ function renderHorizonView() {
       const r = idx.horizons[h];
       const pc = r.p_positive >= 0.9 ? "#27ae60" : r.p_positive >= 0.75 ? "#2ecc71"
                : r.p_positive >= 0.65 ? "#f1c40f" : "#e67e22";
-      return `<tr style="border-top:1px solid var(--border)33;">
+      return `<tr style="border-top:1px solid var(--border-faint);">
         <td style="padding:.3rem .5rem;font-weight:600;">${_HZ_CN[h]}</td>
         <td style="padding:.3rem .5rem;text-align:right;color:${pc};font-weight:700;">${(r.p_positive*100).toFixed(0)}%</td>
         <td style="padding:.3rem .5rem;text-align:right;">${fm(r.ann_median)}</td>
@@ -227,7 +227,7 @@ function renderHorizonStocks() {
     const st = s.stats;
     const c = v => v == null ? "—"
       : `<span style="color:${v >= 0 ? "#2ecc71" : "#e74c3c"}">${v > 0 ? "+" : ""}${v}%</span>`;
-    return `<tr style="border-top:1px solid var(--border)33;">
+    return `<tr style="border-top:1px solid var(--border-faint);">
       <td style="padding:.3rem .5rem;font-weight:600;">${sym}<span style="color:var(--muted);font-weight:400;font-size:0.68rem;"> ${s.label}</span></td>
       <td style="padding:.3rem .5rem;text-align:right;">${c(st.ytd)}</td>
       <td style="padding:.3rem .5rem;text-align:right;">${c(st.chg_1y)}</td>
@@ -317,7 +317,7 @@ function renderFactorAudit() {
     const [c, txt] = VC[f.verdict] || ["#8b949e", f.verdict];
     const hd = f.holdout_diff_pp == null ? "—" : (f.holdout_diff_pp > 0 ? "+" : "") + f.holdout_diff_pp;
     const sgn = f.n_folds_signed ? `${Math.round((f.sign_agree_frac||0)*f.n_folds_signed)}/${f.n_folds_signed}` : "—";
-    return `<tr style="border-top:1px solid var(--border)33;">
+    return `<tr style="border-top:1px solid var(--border-faint);">
       <td style="padding:.25rem .5rem;">${esc2(f.name)}</td>
       <td style="padding:.25rem .5rem;text-align:center;color:var(--muted);">${f.assumed_dir>0?"看涨":"看跌"}</td>
       <td style="padding:.25rem .5rem;text-align:right;">${f.dev_diff_pp>0?"+":""}${Number(f.dev_diff_pp)}pp</td>
@@ -384,7 +384,7 @@ function renderVolModel() {
     </div>`;
   };
   const imps = (v.importances || []).slice(0, 6).map(i =>
-    `<tr style="border-top:1px solid var(--border)33;"><td style="padding:.2rem .5rem;">${esc(i.feature)}</td>
+    `<tr style="border-top:1px solid var(--border-faint);"><td style="padding:.2rem .5rem;">${esc(i.feature)}</td>
      <td style="padding:.2rem .5rem;text-align:right;color:${i.importance>0?"#2ecc71":"var(--muted)"}">${i.importance>0?"+":""}${Number(i.importance)}</td></tr>`).join("");
   el.innerHTML = `
     <div style="color:var(--muted);font-size:0.78rem;line-height:1.6;margin-bottom:.6rem;">
@@ -431,7 +431,7 @@ function renderEventImpact() {
   const upcoming = cal.filter(e => e.date >= today).slice(0, 8).map(e => {
     const d = new Date(e.date + "T00:00:00");
     const days = Math.round((d - new Date(today + "T00:00:00")) / 86400000);
-    return `<div style="display:flex;justify-content:space-between;gap:.5rem;padding:.25rem .5rem;border-top:1px solid var(--border)33;">
+    return `<div style="display:flex;justify-content:space-between;gap:.5rem;padding:.25rem .5rem;border-top:1px solid var(--border-faint);">
       <span>${esc(e.date)} <span style="color:var(--muted);font-size:0.72rem;">${days<=0?"今天":"约"+days+"天后"}</span></span>
       <span style="color:var(--text);font-size:0.78rem;">${esc(e.label)}</span></div>`;
   }).join("") || `<div style="color:var(--muted);font-size:0.78rem;padding:.3rem .5rem;">近期无已排程宏观事件</div>`;
@@ -440,7 +440,7 @@ function renderEventImpact() {
   // （绿红色=暗示可预测方向，裸 p 值=被读成"显著信号"，都违反铁律；胜率带基准对照）
   const rows = Object.entries(es).map(([k, v]) => {
     const ar = v.avg_return, smallN = (v.n || 0) < 15;
-    return `<tr style="border-top:1px solid var(--border)33;">
+    return `<tr style="border-top:1px solid var(--border-faint);">
       <td style="padding:.25rem .5rem;">${esc(v.label || k)}</td>
       <td style="padding:.25rem .5rem;text-align:center;color:${smallN?"#e67e22":"var(--muted)"};" title="样本量">n=${esc(v.n)}${smallN?" ⚠":""}</td>
       <td style="padding:.25rem .5rem;text-align:right;color:var(--text);">${ar>0?"+":""}${esc(ar)}%</td>
@@ -486,7 +486,7 @@ function renderQuantMethodology() {
   const dirAuc = SIGNALS?.factor_audit?.target_probe?.direction_auc_pooled_2012_2024;
 
   const method = (name, lit, how) => `
-    <tr style="border-top:1px solid var(--border)33;">
+    <tr style="border-top:1px solid var(--border-faint);">
       <td style="padding:.3rem .5rem;font-weight:600;">${name}</td>
       <td style="padding:.3rem .5rem;color:var(--muted);font-size:0.74rem;">${lit}</td>
       <td style="padding:.3rem .5rem;font-size:0.78rem;">${how}</td>
@@ -566,7 +566,7 @@ function renderMarketStructure() {
   const crRows = cr.map(r => {
     const big = Math.abs(r.shift) >= 0.4;
     const sc = r.shift > 0 ? "#2ecc71" : "#e74c3c";
-    return `<tr style="border-top:1px solid var(--border)33;${big?"background:rgba(241,196,15,.06);":""}">
+    return `<tr style="border-top:1px solid var(--border-faint);${big?"background:rgba(241,196,15,.06);":""}">
       <td style="padding:.22rem .5rem;">${esc(r.pair)}</td>
       <td style="padding:.22rem .5rem;text-align:right;">${r.recent_60d>0?"+":""}${Number(r.recent_60d)}</td>
       <td style="padding:.22rem .5rem;text-align:right;color:var(--muted);">${r.full_history>0?"+":""}${Number(r.full_history)}<span style="font-size:0.62rem;">·${r.full_years}y</span></td>

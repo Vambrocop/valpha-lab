@@ -1,6 +1,6 @@
 :root {
   --bg: #0d1117; --surface: #161b22; --surface2: #1c2230;
-  --border: #30363d; --text: #e6edf3; --muted: #8b949e;
+  --border: #30363d; --border-faint: rgba(255,255,255,.08); --text: #e6edf3; --muted: #8b949e;
   --green: #2ecc71; --yellow: #f1c40f; --orange: #e67e22;
   --red: #e74c3c; --blue: #3498db; --purple: #9b59b6;
 }
@@ -199,7 +199,7 @@ footer a { color: var(--green); text-decoration: none; }
 .spcx-countdown { display:flex; align-items:center; gap:.75rem; margin-bottom:.75rem; }
 .spcx-big-num { font-size:2.8rem; font-weight:800; line-height:1; color:var(--green); }
 .spcx-big-label { font-size:0.78rem; color:var(--muted); line-height:1.4; }
-.spcx-row { display:flex; justify-content:space-between; align-items:center; padding:.3rem 0; border-bottom:1px solid var(--border)22; font-size:0.82rem; }
+.spcx-row { display:flex; justify-content:space-between; align-items:center; padding:.3rem 0; border-bottom:1px solid var(--border-faint); font-size:0.82rem; }
 .spcx-row:last-child { border:none; }
 .spcx-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:5px;
   color:var(--text); padding:.35rem .65rem; font-size:0.85rem; margin-top:.35rem; }
@@ -225,7 +225,7 @@ footer a { color: var(--green); text-decoration: none; }
   font-size:0.88rem; font-weight:700; cursor:pointer; width:100%; margin-bottom:.75rem; transition:background .2s; }
 .cgt-btn:hover { background:#27ae60; }
 .cgt-result-row { display:flex; justify-content:space-between; padding:.3rem 0;
-  border-bottom:1px solid var(--border)22; font-size:0.82rem; }
+  border-bottom:1px solid var(--border-faint); font-size:0.82rem; }
 .cgt-result-row:last-child { border:none; }
 .cgt-highlight { font-size:1rem; font-weight:800; padding:.4rem 0; }
 @media (max-width:600px) { .cgt-grid { grid-template-columns:1fr; } }
@@ -234,7 +234,7 @@ footer a { color: var(--green); text-decoration: none; }
 .acc-card { background:var(--surface2); border-radius:7px; padding:.5rem .85rem; flex:1; min-width:100px; text-align:center; }
 .acc-card-num { font-size:1.4rem; font-weight:800; line-height:1.1; }
 .acc-card-label { font-size:0.7rem; color:var(--muted); margin-top:.15rem; }
-.acc-table-row { display:flex; align-items:center; gap:.5rem; padding:.3rem 0; border-bottom:1px solid var(--border)22; }
+.acc-table-row { display:flex; align-items:center; gap:.5rem; padding:.3rem 0; border-bottom:1px solid var(--border-faint); }
 .acc-table-row:last-child { border:none; }
 .acc-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
 
@@ -260,4 +260,14 @@ footer a { color: var(--green); text-decoration: none; }
   .event-grid { grid-template-columns:1fr 1fr; }
   header { padding:.75rem 1rem; flex-direction:column; align-items:flex-start; gap:.35rem; }
   header h1 { font-size:1.1rem; }
+}
+
+/* ── 键盘焦点环（鼠标点击不显示，键盘 Tab 才显示）── */
+.view-btn:focus-visible, .tab:focus-visible, .period-btn:focus-visible,
+.cgt-btn:focus-visible, button:focus-visible {
+  outline: 2px solid var(--blue); outline-offset: 2px;
+}
+/* ── 尊重"减少动态效果"系统偏好（前庭敏感用户）── */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }

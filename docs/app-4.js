@@ -666,7 +666,7 @@ function renderStocksTable() {
       ? `<span style="color:#2ecc71">✓</span>` : `<span style="color:#e74c3c">✗</span>`;
     const rsiColor = st.rsi14 > 70 ? "#e74c3c" : st.rsi14 < 30 ? "#2ecc71" : "var(--text)";
     const tag = s.is_mag7 ? `<span style="font-size:0.6rem;background:#9b59b633;color:#9b59b6;border-radius:3px;padding:0 3px;margin-left:3px;">M7</span>` : "";
-    return `<tr onclick="renderStockChart('${sym}')" style="cursor:pointer;border-bottom:1px solid var(--border)33;">
+    return `<tr onclick="renderStockChart('${sym}')" style="cursor:pointer;border-bottom:1px solid var(--border-faint);">
       <td style="padding:.35rem .5rem;font-weight:600;">${sym}${tag}<br><span style="font-size:0.68rem;color:var(--muted);">${s.label}</span></td>
       <td style="padding:.35rem .5rem;text-align:right;">$${st.last}</td>
       <td style="padding:.35rem .5rem;text-align:right;">${fmt(st.chg_1d)}</td>
@@ -979,7 +979,7 @@ async function loadReportPanel() {
     const cols = s.table?.length ? Object.keys(s.table[0]) : [];
     const head = cols.map(c => `<th style="text-align:left;padding:.3rem .6rem;color:var(--muted);font-size:0.72rem;">${c}</th>`).join("");
     const rows = (s.table || []).map(r =>
-      `<tr>${cols.map(c => `<td style="padding:.3rem .6rem;border-top:1px solid var(--border)33;">${r[c]}</td>`).join("")}</tr>`).join("");
+      `<tr>${cols.map(c => `<td style="padding:.3rem .6rem;border-top:1px solid var(--border-faint);">${r[c]}</td>`).join("")}</tr>`).join("");
     return `<div style="margin-bottom:1.1rem;">
       <div style="font-weight:700;margin-bottom:.35rem;">${s.title}</div>
       <table style="border-collapse:collapse;min-width:50%;">${head ? `<tr>${head}</tr>` : ""}${rows}</table>
@@ -1013,7 +1013,7 @@ async function loadNewsPanel() {
   const IC = { positive: ["▲", "#2ecc71"], negative: ["▼", "#e74c3c"], neutral: ["●", "#f1c40f"] };
   el.innerHTML = (news.items || []).map(n => {
     const [sym, color] = IC[n.impact] || IC.neutral;
-    return `<div style="padding:.4rem 0;border-bottom:1px solid var(--border)22;">
+    return `<div style="padding:.4rem 0;border-bottom:1px solid var(--border-faint);">
       <div style="display:flex;gap:.45rem;align-items:flex-start;">
         <span style="color:${color};flex-shrink:0;">${sym}</span>
         <div>
