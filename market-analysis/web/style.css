@@ -39,7 +39,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 
 /* ── Panel ── */
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
-.panel-title { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 1rem; }
+.panel-title { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .85rem; padding-bottom: .55rem; border-bottom: 1px solid var(--border-faint); }
 
 /* ── Signal Meter ── */
 .signal-meter { text-align: center; padding: 1.5rem 0; }
@@ -165,9 +165,9 @@ footer a { color: var(--green); text-decoration: none; }
 .tier-4 .signal-ring, .tier-5 .signal-ring { box-shadow: 0 0 24px rgba(46,204,113,.2); }
 .tier-1 .signal-ring, .tier-2 .signal-ring { box-shadow: 0 0 24px rgba(231,76,60,.15); }
 
-/* Panel header accent */
-.panel { border-top: 2px solid transparent; transition: border-color .3s; }
-.panel:hover { border-top-color: var(--border); }
+/* Panel hover：与 chart-wrap 一致的轻微浮起阴影 */
+.panel { transition: box-shadow .3s; }
+.panel:hover { box-shadow: 0 2px 16px rgba(0,0,0,.3); }
 
 /* Smooth number transitions */
 .signal-pct { transition: color .4s; }
