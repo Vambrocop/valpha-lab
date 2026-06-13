@@ -797,20 +797,20 @@ async function loadBriefPanel() {
     // 🚦 关键指标红绿灯（直接看的状态层）
     const LC = { green: "#2ecc71", yellow: "#f1c40f", red: "#e74c3c" };
     const lights = (b.lights || []).map(l =>
-      `<div title="${l.note}" style="flex:1;min-width:96px;text-align:center;padding:.35rem .2rem;
+      `<div title="${esc(l.note)}" style="flex:1;min-width:96px;text-align:center;padding:.35rem .2rem;
            border:1px solid ${LC[l.status]}55;border-radius:7px;background:${LC[l.status]}11;cursor:help;">
-        <div style="font-size:0.62rem;color:var(--muted);">${l.name}</div>
-        <div style="font-size:0.78rem;font-weight:700;color:${LC[l.status]};">●&nbsp;${l.value}</div>
+        <div style="font-size:0.62rem;color:var(--muted);">${esc(l.name)}</div>
+        <div style="font-size:0.78rem;font-weight:700;color:${LC[l.status]};">●&nbsp;${esc(l.value)}</div>
       </div>`).join("");
     const lightsHtml = lights
       ? `<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.55rem;">${lights}</div>` : "";
     el.innerHTML = lightsHtml + (b.lines || []).map(l => {
       const m = l.match(/^【(.+?)】(.*)$/);
-      if (!m) return `<div>${l}</div>`;
+      if (!m) return `<div>${esc(l)}</div>`;
       const warn = m[2].includes("⚠");
       return `<div style="padding:.18rem 0;">
-        <span style="color:var(--muted);font-size:0.72rem;">【${m[1]}】</span>
-        <span style="${warn ? "color:#e67e22;" : ""}">${m[2]}</span></div>`;
+        <span style="color:var(--muted);font-size:0.72rem;">【${esc(m[1])}】</span>
+        <span style="${warn ? "color:#e67e22;" : ""}">${esc(m[2])}</span></div>`;
     }).join("");
   } catch(e) {
     el.innerHTML = `<div style="color:var(--muted)">简报未生成（跑一次流水线即可）</div>`;
@@ -977,15 +977,15 @@ async function loadReportPanel() {
   }
   el.innerHTML = (rep.sections || []).map(s => {
     const cols = s.table?.length ? Object.keys(s.table[0]) : [];
-    const head = cols.map(c => `<th style="text-align:left;padding:.3rem .6rem;color:var(--muted);font-size:0.72rem;">${c}</th>`).join("");
+    const head = cols.map(c => `<th style="text-align:left;padding:.3rem .6rem;color:var(--muted);font-size:0.72rem;">${esc(c)}</th>`).join("");
     const rows = (s.table || []).map(r =>
-      `<tr>${cols.map(c => `<td style="padding:.3rem .6rem;border-top:1px solid var(--border-faint);">${r[c]}</td>`).join("")}</tr>`).join("");
+      `<tr>${cols.map(c => `<td style="padding:.3rem .6rem;border-top:1px solid var(--border-faint);">${esc(r[c])}</td>`).join("")}</tr>`).join("");
     return `<div style="margin-bottom:1.1rem;">
-      <div style="font-weight:700;margin-bottom:.35rem;">${s.title}</div>
+      <div style="font-weight:700;margin-bottom:.35rem;">${esc(s.title)}</div>
       <table style="border-collapse:collapse;min-width:50%;">${head ? `<tr>${head}</tr>` : ""}${rows}</table>
-      ${s.note ? `<div style="color:var(--muted);font-size:0.72rem;margin-top:.3rem;line-height:1.5;">${s.note}</div>` : ""}
+      ${s.note ? `<div style="color:var(--muted);font-size:0.72rem;margin-top:.3rem;line-height:1.5;">${esc(s.note)}</div>` : ""}
     </div>`;
-  }).join("") + `<div style="color:var(--muted);font-size:0.68rem;">生成于 ${rep.generated} · 模型 v${rep.model_version}</div>`;
+  }).join("") + `<div style="color:var(--muted);font-size:0.68rem;">生成于 ${esc(rep.generated)} · 模型 v${esc(rep.model_version)}</div>`;
 }
 
 // ═══════════════════════════════════════════════════════

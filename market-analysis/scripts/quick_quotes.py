@@ -10,6 +10,7 @@ quick_quotes.py — 盘中轻量报价（CI 每 10 分钟一刀，几秒跑完�
 import datetime
 import json
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
