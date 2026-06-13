@@ -2,7 +2,8 @@
 import numpy as np
 
 from placebo_test import (perm_test, make_ssb_stat, make_dir_diff_stat,
-                          _verdict, _group_means, MIN_GROUP_N, ALPHA)
+                          _verdict, _group_means, benjamini_hochberg,
+                          MIN_GROUP_N, ALPHA)
 
 
 def _rng(key=1):
@@ -91,3 +92,22 @@ def test_group_means_handles_empty_group():
     gm, cnt = _group_means(vals, labels, 3)
     assert cnt[1] == 0
     assert np.isclose(gm[0], 1.5) and np.isclose(gm[2], 3.0)
+
+
+# ── 多重检验校正 Benjamini-Hochberg ───────────────────────────────
+def test_bh_monotone_and_bounded():
+    q = benjamini_hochberg([0.001, 0.001, 0.029, 0.095, 0.175, 0.271])
+    assert np.all((q >= 0) & (q <= 1))
+    # q 在 p 升序上非降（单调化保证）
+    order = np.argsort([0.001, 0.001, 0.029, 0.095, 0.175, 0.271])
+    assert np.all(np.diff(q[order]) >= -1e-12)
+
+
+def test_bh_month_just_fails_at_05():
+    # 关键诚实点：月份原始 p=0.029 显著，但 6 个检验校正后 q≈0.058，q<0.05 不再成立
+    q = benjamini_hochberg([0.001, 0.029, 0.175, 0.271, 0.095, 0.001])
+    assert q[1] > 0.05 and q[1] < 0.10        # 月份(第2个)：未过 0.05，过 0.10
+
+
+def test_bh_single_pvalue_unchanged():
+    assert np.isclose(benjamini_hochberg([0.04])[0], 0.04)

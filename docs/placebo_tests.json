@@ -1,6 +1,6 @@
 {
-  "generated": "2026-06-13T06:13:40Z",
-  "method": "标签置换检验(permutation)；三态：真实/未显现/无定论(检验力不足)",
+  "generated": "2026-06-13T06:29:40Z",
+  "method": "标签置换检验(permutation)；三态：真实/未显现/无定论(检验力不足)；并做 Benjamini-Hochberg 多重检验校正(q_value)——测了多个效应需控假发现率",
   "n_perm": 1000,
   "seed": 20260613,
   "alpha": 0.05,
@@ -25,7 +25,10 @@
       "null_p95": 0.0009450828,
       "status": "real",
       "passed": true,
-      "verdict": "✓ 真实：通过 placebo (p=0.001)"
+      "verdict": "✓ 真实：通过 placebo (p=0.001)",
+      "q_value": 0.003,
+      "fdr_significant_05": true,
+      "fdr_significant_10": true
     },
     {
       "key": "month",
@@ -40,7 +43,10 @@
       "null_p95": 0.0574085137,
       "status": "real",
       "passed": true,
-      "verdict": "✓ 真实：通过 placebo (p=0.029)"
+      "verdict": "✓ 真实：通过 placebo (p=0.029)",
+      "q_value": 0.0579,
+      "fdr_significant_05": false,
+      "fdr_significant_10": true
     },
     {
       "key": "decade_digit",
@@ -55,7 +61,10 @@
       "null_p95": 0.5757426939,
       "status": "inconclusive",
       "passed": false,
-      "verdict": "— 无定论：每组样本仅 9，检验力不足 (p=0.175)"
+      "verdict": "— 无定论：每组样本仅 9，检验力不足 (p=0.175)",
+      "q_value": 0.2098,
+      "fdr_significant_05": false,
+      "fdr_significant_10": false
     },
     {
       "key": "presidential_cycle",
@@ -70,7 +79,10 @@
       "null_p95": 0.2867275382,
       "status": "inconclusive",
       "passed": false,
-      "verdict": "— 无定论：每组样本仅 24，检验力不足 (p=0.271)"
+      "verdict": "— 无定论：每组样本仅 24，检验力不足 (p=0.271)",
+      "q_value": 0.2707,
+      "fdr_significant_05": false,
+      "fdr_significant_10": false
     },
     {
       "key": "pre_holiday",
@@ -85,7 +97,10 @@
       "null_p95": 0.0012670255,
       "status": "rejected",
       "passed": false,
-      "verdict": "✗ 未显现：充分样本下仍不显著 (p=0.095)"
+      "verdict": "✗ 未显现：充分样本下仍不显著 (p=0.095)",
+      "q_value": 0.1424,
+      "fdr_significant_05": false,
+      "fdr_significant_10": false
     },
     {
       "key": "santa_claus",
@@ -100,7 +115,10 @@
       "null_p95": 0.0008179417,
       "status": "real",
       "passed": true,
-      "verdict": "✓ 真实：通过 placebo (p=0.001)"
+      "verdict": "✓ 真实：通过 placebo (p=0.001)",
+      "q_value": 0.003,
+      "fdr_significant_05": true,
+      "fdr_significant_10": true
     }
   ]
 }

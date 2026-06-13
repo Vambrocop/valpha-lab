@@ -146,6 +146,22 @@ def holiday_pre_mask(ret_index):
     return pre
 
 
+def benjamini_hochberg(pvals):
+    """Benjamini-Hochberg FDR：返回各 p 的校正 q 值（已单调化，截断到 [0,1]）。
+    多重比较封顶诚实性——逐个看 p 会随测试数膨胀假阳性；测了 m 个效应就该
+    控假发现率(FDR)，校正后再看谁真站得住。"""
+    p = np.asarray(pvals, float)
+    m = len(p)
+    if m == 0:
+        return p
+    order = np.argsort(p)
+    ranked = p[order] * m / np.arange(1, m + 1)
+    ranked = np.minimum.accumulate(ranked[::-1])[::-1]   # 单调化(从大p端往回取最小)
+    q = np.empty(m)
+    q[order] = np.clip(ranked, 0, 1)
+    return q
+
+
 # ══════════════════════════════════════════════════════════════════
 # 主流程
 # ══════════════════════════════════════════════════════════════════
@@ -225,10 +241,18 @@ def run_all():
         claim="Dec26–Jan3 区间平均看涨", stat="区间均值 - 其余均值(单边)",
         min_group_n=int(santa.sum()), detail=f"区间交易日 n={int(santa.sum())}")
 
+    # ── 多重检验校正：一共测了 m 个日历效应，用 Benjamini-Hochberg 控假发现率 ──
+    # 封顶诚实性——逐个看 p 随测试数膨胀假阳性；FDR 校正后再看谁真站得住。
+    for t, q in zip(tests, benjamini_hochberg([t["p_value"] for t in tests])):
+        t["q_value"] = round(float(q), 4)
+        t["fdr_significant_05"] = bool(q < 0.05)
+        t["fdr_significant_10"] = bool(q < 0.10)
+
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc)
                      .strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "method": "标签置换检验(permutation)；三态：真实/未显现/无定论(检验力不足)",
+        "method": "标签置换检验(permutation)；三态：真实/未显现/无定论(检验力不足)；"
+                  "并做 Benjamini-Hochberg 多重检验校正(q_value)——测了多个效应需控假发现率",
         "n_perm": N_PERM, "seed": SEED, "alpha": ALPHA, "min_group_n": MIN_GROUP_N,
         "data": {"source": "S&P 500 (^GSPC)",
                  "start": str(ret.index[0].date()), "end": str(ret.index[-1].date()),
@@ -241,13 +265,16 @@ def run_all():
             (d / "placebo_tests.json").write_text(payload, encoding="utf-8")
 
     icon = {"real": "✓ 真实", "rejected": "✗ 未显现", "inconclusive": "— 无定论"}
-    print(f"\n  {'效应':<16}{'p值':>8}  {'最小组n':>7}  结论")
+    print(f"\n  {'效应':<16}{'p值':>8}{'q值(FDR)':>10}  {'最小组n':>7}  结论")
     for t in tests:
-        print(f"  {t['panel']:<16}{t['p_value']:>8.3f}  {t['min_group_n']:>7}  {icon[t['status']]}")
+        print(f"  {t['panel']:<16}{t['p_value']:>8.3f}{t['q_value']:>10.3f}  "
+              f"{t['min_group_n']:>7}  {icon[t['status']]}")
     n_real = sum(t["status"] == "real" for t in tests)
     n_inc  = sum(t["status"] == "inconclusive" for t in tests)
+    fdr05 = [t["panel"] for t in tests if t["fdr_significant_05"]]
     print(f"\n[OK] placebo_tests.json：{n_real} 真实 / {n_inc} 无定论 / "
-          f"{len(tests)-n_real-n_inc} 未显现")
+          f"{len(tests)-n_real-n_inc} 未显现（按原始 p）")
+    print(f"     多重检验校正(BH FDR q<0.05) 后仍显著：{'、'.join(fdr05) if fdr05 else '无'}")
     return out
 
 
