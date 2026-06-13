@@ -31,6 +31,7 @@
   <button class="view-btn" role="tab" aria-selected="false" data-view="longterm" onclick="switchView('longterm',this)">⏳ 长期</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="lab"      onclick="switchView('lab',this)">🧪 实验</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="research" onclick="switchView('research',this)">🔬 研究</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="registry" onclick="switchView('registry',this)">📋 登记簿</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="quant"    onclick="switchView('quant',this)">🎓 量化</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="mine"     onclick="switchView('mine',this)">💼 我的</button>
 </nav>
@@ -278,6 +279,21 @@
       </div>
       <div id="report-content" style="font-size:0.8rem;"></div>
     </div>
+  </div>
+</section>
+
+<!-- ════════ 登记簿：诚实统计总览（试过什么·结果如何，含空/否结果） ════════ -->
+<section id="view-registry" style="display:none">
+  <div class="view-intro">📋 <b>登记簿：试过什么 · 结果如何。</b>这里集中放诚实统计方法与它们的真实结论——<b>包括没结果、被否、无定论的</b>。先看顶部自动汇总，再逐项展开。⚠ 测的是"真规律 vs 幻觉"与"风险何时更深"，<b>不预测方向</b>。</div>
+  <div class="view-stack" id="registry-panels">
+    <!-- 自动汇总表（从各方法 JSON 实时抓 verdict，含空/否） -->
+    <div class="chart-wrap" style="padding:1.25rem;">
+      <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
+        🧾 诚实总览 · 试过什么 · 结果如何 <span class="badge">自动汇总 · 含空结果/被否</span>
+      </div>
+      <div id="honest-registry"></div>
+    </div>
+    <!-- ↓ 以下诚实统计面板由 app-5.js 启动时从"研究"页运行时搬入（零 HTML 切割、可逆） -->
   </div>
 </section>
 

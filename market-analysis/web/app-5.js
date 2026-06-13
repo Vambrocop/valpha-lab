@@ -141,6 +141,15 @@ function renderAll() {
   lazyRender("event-impact", renderEventImpact, "EventImpact");
   lazyRender("quant-methodology", renderQuantMethodology, "QuantMethodology");
   lazyRender("chart-horizon", renderHorizonView, "Horizon");
+  // ⑥ 登记簿页：把诚实统计面板从"研究"运行时搬到"登记簿"(零 HTML 切割、可逆；ID 不变故懒渲染照常)
+  const _regHost = document.getElementById("registry-panels");
+  if (_regHost) {
+    ["fdr-crossfamily", "placebo-overview", "event-causal", "risk-dashboard", "conformal", "cycles-spectral", "factor-audit"].forEach(id => {
+      const w = document.getElementById(id)?.closest(".chart-wrap");
+      if (w) _regHost.appendChild(w);
+    });
+  }
+  lazyRender("honest-registry", loadHonestRegistry, "Registry");   // 🧾 诚实总览自动汇总
   // 恢复上次浏览的视图（默认"今日"）；手动刷新时 savedView==当前视图，顺带触发图表重算尺寸
   const savedView = localStorage.getItem("alpha_view");
   if (savedView && savedView !== "today") {
@@ -290,7 +299,7 @@ async function refreshData(btn) {
 // ═══════════════════════════════════════════════════════
 //  顶层视图切换（今日/计划/实验/研究/我的）
 // ═══════════════════════════════════════════════════════
-const VIEWS = ["today", "plan", "longterm", "lab", "research", "quant", "mine"];
+const VIEWS = ["today", "plan", "longterm", "lab", "research", "registry", "quant", "mine"];
 function switchView(name, btn) {
   document.querySelectorAll(".view-nav .view-btn").forEach(b => {
     const on = b === btn;

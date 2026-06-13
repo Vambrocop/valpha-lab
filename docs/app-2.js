@@ -612,6 +612,53 @@ async function loadFdrCrossfamily() {
     <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;line-height:1.55">${d.caveat}</div>`;
 }
 
+// ── 🧾 诚实总览（登记簿首屏）：从各方法 JSON 实时抓 verdict，含空/否结果 ──
+async function loadHonestRegistry() {
+  const el = document.getElementById("honest-registry");
+  if (!el) return;
+  const get = async (f) => { try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+  const [pl, fx, ev, cy, cf] = await Promise.all([
+    get("placebo_tests.json"), get("fdr_crossfamily.json"), get("event_causal.json"),
+    get("cycles.json"), get("conformal.json"),
+  ]);
+  const rows = [];
+  if (pl?.tests) {
+    const c = s => pl.tests.filter(t => t.status === s).length;
+    rows.push(["日历效应", "placebo 置换 + FDR", `${c("real")} 真 / ${c("inconclusive")} 无定论 / ${c("rejected")} 未显现（FDR 校正后更少）`, "placebo-overview", c("real") ? "real" : "null"]);
+  }
+  if (fx) rows.push(["跨族总账", "BY / BH / Bonferroni", `${fx.m_total} 项主张 → 跨族 BY 仅 ${fx.n_survive_by_10} 项扛得住（多为机械/验证）`, "fdr-crossfamily", "null"]);
+  if (ev?.events) {
+    const sig = ev.events.filter(e => e.status === "significant").length;
+    rows.push(["事件因果 (DiD)", "反事实 + bootstrap", sig ? `${sig} 个验证事件显著（如 SVB→KRE −30%）` : "暂无显著（或样本不足）", "event-causal", sig ? "real" : "null"]);
+  }
+  if (cy?.result) rows.push(["市场周期", "谱 + AR1 红噪声", cy.result.significant ? "检出超红噪声周期" : "无超红噪声周期（民间周期被否）", "cycles-spectral", cy.result.significant ? "real" : "null"]);
+  if (cf?.horizons) rows.push(["收益区间", "split-conformal", "实测覆盖≈名义；给区间、不给方向", "conformal", "real"]);
+  if (fx?.by_family) {
+    const fam = fx.by_family.find(f => f.family === "因子AUC");
+    if (fam) rows.push(["因子 alpha", "OOS 拼接 + DSR deflation", `${fam.n} 个因子 → 跨族稳健 ${fam.n_survive_by_10} 个`, "factor-audit", fam.n_survive_by_10 ? "real" : "null"]);
+  }
+  rows.push(["短期方向预测", "（红线）", "不可靠预测 → 主动不做", null, "redline"]);
+  rows.push(["v3 稀疏模型", "L1 正则实验", "假设被否（诚实 null，见 git 历史）", null, "null"]);
+
+  const TAG = { real: { t: "有信号", c: "#2ecc71" }, null: { t: "空/否", c: "#e67e22" }, redline: { t: "红线", c: "#e74c3c" } };
+  const tr = rows.map(([name, method, verdict, anchor, kind]) => {
+    const tg = TAG[kind] || TAG.null;
+    const jump = anchor ? `<a href="#" onclick="document.getElementById('${anchor}')?.scrollIntoView({behavior:'smooth',block:'center'});return false;" style="color:var(--blue);text-decoration:none">展开 ↓</a>` : "—";
+    return `<tr style="border-top:1px solid var(--border-faint)">
+      <td style="padding:.35rem .4rem;font-weight:600">${name}</td>
+      <td style="padding:.35rem .4rem;color:var(--muted);font-size:0.76rem">${method}</td>
+      <td style="padding:.35rem .4rem">${verdict}</td>
+      <td style="padding:.35rem .4rem;text-align:center"><span style="color:${tg.c};font-weight:600;font-size:0.74rem">${tg.t}</span></td>
+      <td style="padding:.35rem .4rem;text-align:center;font-size:0.76rem">${jump}</td></tr>`;
+  }).join("");
+  el.innerHTML = `
+    <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:.6rem">这张表自动汇总各方法的真实结论——<b>包括空结果、被否、无定论</b>。诚实统计的价值不在"找到规律"，而在<b>分清真规律与幻觉</b>。</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.84rem">
+      <tr class="u-cap"><td style="padding:.25rem .4rem">实验</td><td style="padding:.25rem .4rem">方法</td><td style="padding:.25rem .4rem">诚实结论</td><td style="padding:.25rem .4rem;text-align:center">判定</td><td style="padding:.25rem .4rem;text-align:center">详情</td></tr>
+      ${tr}
+    </table>`;
+}
+
 function renderDigitChart() {
   const yp = SIGNALS?.year_patterns;
   if (!yp?.decade_digit) return;
