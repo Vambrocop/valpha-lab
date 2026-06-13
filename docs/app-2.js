@@ -639,8 +639,9 @@ async function loadHonestRegistry() {
   }
   rows.push(["短期方向预测", "（红线）", "不可靠预测 → 主动不做", null, "redline"]);
   rows.push(["v3 稀疏模型", "L1 正则实验", "假设被否（诚实 null，见 git 历史）", null, "null"]);
+  rows.push(["指数纳入效应 (RDD)", "断点回归 · Russell 1000/2000 阈值", "排名运行变量为 Russell/WRDS 专有，免费拿不到（2007后 banding 又使阈值模糊）→ 诚实不做，不用劣质代理硬凑", null, "infeasible"]);
 
-  const TAG = { real: { t: "有信号", c: "#2ecc71" }, null: { t: "空/否", c: "#e67e22" }, redline: { t: "红线", c: "#e74c3c" } };
+  const TAG = { real: { t: "有信号", c: "#2ecc71" }, null: { t: "空/否", c: "#e67e22" }, redline: { t: "红线", c: "#e74c3c" }, infeasible: { t: "数据不可行", c: "#8b949e" } };
   const tr = rows.map(([name, method, verdict, anchor, kind]) => {
     const tg = TAG[kind] || TAG.null;
     const jump = anchor ? `<a href="#" onclick="document.getElementById('${anchor}')?.scrollIntoView({behavior:'smooth',block:'center'});return false;" style="color:var(--blue);text-decoration:none">展开 ↓</a>` : "—";
