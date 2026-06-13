@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from risk_dashboard import vxn_vix_spread, conditional_downside
+from risk_dashboard import vxn_vix_spread, conditional_downside, evt_tail
 
 
 def _idx(n):
@@ -49,3 +49,42 @@ def test_conditional_downside_insufficient():
     rows = conditional_downside(pd.Series(np.arange(50.0), index=idx),
                                 pd.Series(20.0, index=idx))
     assert rows == []
+
+
+# ── EVT 极值尾部风险（POT/GPD）─────────────────────────────────────
+def test_evt_fat_tail_positive_xi():
+    rng = np.random.default_rng(0)
+    ret = pd.Series(rng.standard_t(3, 6000) * 0.01, index=_idx(6000))  # t(3) 厚尾
+    r = evt_tail(ret)
+    assert r["status"] == "ok" and r["xi"] > 0                          # 厚尾 ξ>0
+
+
+def test_evt_var_es_monotone_and_es_ge_var():
+    rng = np.random.default_rng(1)
+    r = evt_tail(pd.Series(rng.standard_t(4, 6000) * 0.01, index=_idx(6000)))
+    ve = {x["level"]: x for x in r["var_es"]}
+    assert ve[0.999]["var_pct"] > ve[0.99]["var_pct"]                   # 更极端分位 VaR 更深
+    assert all(x["es_pct"] >= x["var_pct"] for x in r["var_es"])        # ES≥VaR
+
+
+def test_evt_return_period_increases_with_loss():
+    rng = np.random.default_rng(2)
+    rps = {p["loss_pct"]: p["return_period_yrs"]
+           for p in evt_tail(pd.Series(rng.standard_t(4, 6000) * 0.01, index=_idx(6000)))["return_periods"]}
+    vals = [rps[l] for l in (3.0, 5.0, 7.0, 10.0) if rps.get(l) is not None]
+    assert all(vals[i] < vals[i + 1] for i in range(len(vals) - 1))     # 跌幅越大越稀有
+
+
+def test_evt_insufficient():
+    rng = np.random.default_rng(0)
+    r = evt_tail(pd.Series(rng.normal(0, 0.01, 200), index=_idx(200)))
+    assert r["status"] == "insufficient"
+
+
+def test_evt_reports_extremal_index_and_sensitivity():
+    rng = np.random.default_rng(0)
+    r = evt_tail(pd.Series(rng.standard_t(3, 6000) * 0.01, index=_idx(6000)))
+    assert 0 < r["extremal_index"] <= 1.0                       # 极值指数 θ∈(0,1]
+    assert 1 <= r["n_clusters"] <= r["n_exceed"]                # 簇数≤超阈数
+    assert r["xi_sensitivity"] and set(r["xi_sensitivity"]) <= {"90.0", "95.0", "97.5"}
+    assert "start" in r and "end" in r                          # 数据起止可复现

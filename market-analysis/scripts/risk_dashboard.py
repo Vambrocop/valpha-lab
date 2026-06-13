@@ -14,6 +14,7 @@ import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from scipy import stats
 
 SCRIPTS  = Path(__file__).parent
 RAW_DIR  = SCRIPTS.parent / "data" / "raw"
@@ -97,6 +98,78 @@ def conditional_downside(ixic, vix, horizon=HORIZON, q=Q_TAIL, n_bins=N_BINS):
     return rows
 
 
+# ── (3) EVT 极值尾部风险：POT/GPD（测尾部多重/多久一遇，不预测时点/方向）──
+def evt_tail(returns, threshold_pct=95.0, var_levels=(0.99, 0.999),
+             loss_levels=(0.03, 0.05, 0.07, 0.10), run_gap=5):
+    """对日损失超阈值部分拟合广义帕累托(GPD/POT)，估 VaR/ES + 极端跌幅重现期。
+    ξ>0=厚尾。诚实点：极值日聚集→报极值指数 θ(越小越聚集)+阈值敏感性；
+    重现期是长期平均频率、非规律间隔。只测严重度/稀有度，不预测时点/方向。"""
+    s = returns.dropna()
+    losses = -s.values                                     # 损失=负收益(正=亏)；时间序保留(去簇要用)
+    n = len(losses)
+    if n < 1000:
+        return {"status": "insufficient"}
+
+    def _fit(thr):
+        uu = float(np.percentile(losses, thr))
+        ee = losses[losses > uu] - uu
+        if len(ee) < 50:
+            return None, uu, None
+        c, _l, b = stats.genpareto.fit(ee, floc=0.0)       # c=shape=ξ, scale=β
+        return float(c), uu, float(b)
+
+    xi, u, beta = _fit(threshold_pct)
+    if xi is None:
+        return {"status": "insufficient"}
+    exc_pos = np.where(losses > u)[0]                      # 超阈日的时间位置
+    nu = int(len(exc_pos))
+    # runs 去簇：相邻超阈日间隔 > run_gap 才算新簇 → 极值指数 θ=簇数/超阈数(越小越聚集)
+    n_clusters = 1 + int((np.diff(exc_pos) > run_gap).sum()) if nu else 0
+    theta = round(n_clusters / nu, 3) if nu else None
+
+    def _var(p):
+        if abs(xi) < 1e-8:
+            return u + beta * np.log((n / nu) / (1 - p))
+        return u + (beta / xi) * (((n / nu) * (1 - p)) ** (-xi) - 1)
+
+    var_es = []
+    for p in var_levels:
+        v = _var(p)
+        es = (v + beta - xi * u) / (1 - xi) if xi < 1 else None
+        var_es.append({"level": p, "var_pct": round(v * 100, 2),
+                       "es_pct": round(es * 100, 2) if es is not None else None})
+
+    rp = []
+    for L in loss_levels:
+        if L <= u:
+            prob = float((losses > L).mean())              # 阈下用经验频率
+        elif abs(xi) < 1e-8:
+            prob = (nu / n) * np.exp(-(L - u) / beta)
+        else:
+            base = 1 + xi * (L - u) / beta                 # ξ<0 且 L 超右端点→base≤0→不可能(None)
+            prob = (nu / n) * base ** (-1 / xi) if base > 0 else 0.0
+        yrs = (1 / (prob * 252)) if prob > 0 else None
+        rp.append({"loss_pct": round(L * 100, 1),
+                   "return_period_yrs": round(yrs, 2) if yrs else None})
+
+    xi_sens = {}                                           # 阈值敏感性：ξ 在不同阈值下是否稳定
+    for t in (90.0, 95.0, 97.5):
+        c, _u, _b = _fit(t)
+        if c is not None:
+            xi_sens[str(t)] = round(c, 3)
+
+    return {"status": "ok", "xi": round(xi, 3), "beta": round(beta, 4),
+            "threshold_loss_pct": round(u * 100, 2), "n": n, "n_exceed": nu,
+            "n_clusters": n_clusters, "extremal_index": theta, "xi_sensitivity": xi_sens,
+            "start": str(s.index[0].date()), "end": str(s.index[-1].date()),
+            "tail": ("厚尾(ξ>0,极端损失比指数更重)" if xi > 0.05 else
+                     "近指数尾(ξ≈0)" if abs(xi) <= 0.05 else "薄尾(ξ<0,损失有上界)"),
+            "var_es": var_es, "return_periods": rp,
+            "caveat": "重现期=长期平均频率、非规律间隔；极端日高度聚集(θ=极值指数,越小越聚集，"
+                      "如 2008/2020 数周内贡献大量超阈日)，可能短期连发后多年沉寂。"
+                      "ξ 对阈值敏感(见 xi_sensitivity)；样本跨多体制、假设尾部平稳。"}
+
+
 def run_all():
     print("=== 方法 D：风险仪表盘（测风险不测方向）===")
     px = _fetch(["^VXN", "^VIX", "^IXIC"])
@@ -109,16 +182,28 @@ def run_all():
     downside = (conditional_downside(px["^IXIC"], px["^VIX"])
                 if "^IXIC" in px else [])
 
+    # EVT 尾部用长历史 S&P（含 1987/2008/2020 极端日；优先复用 long_history 的缓存）
+    spf = RAW_DIR / "SP500_long.csv"
+    if spf.exists():
+        sp_ret = pd.read_csv(spf, index_col=0, parse_dates=True).iloc[:, 0].dropna().pct_change().dropna()
+    else:
+        gx = _fetch(["^GSPC"], start="1928-01-01")   # 与 SP500_long.csv 同起点，保证可复现
+        sp_ret = gx["^GSPC"].pct_change().dropna() if "^GSPC" in gx else None
+    evt = evt_tail(sp_ret) if sp_ret is not None else {"status": "insufficient"}
+
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "caveat": "风险/体制读数，非方向预测。条件下行=历史上某 VIX 档位后 20 日收益的 5% 分位，"
                   "刻画'风险何时更深'，不预测涨跌。注：前瞻窗口重叠→有效独立样本≈n/20(见 n_eff)，"
                   "尾部分位由极少数独立事件决定，勿过度解读精度(故并列 10% 分位作敏感性)。"
                   "价差分位为全历史(VXN 自~2003)、70/30 档为描述性约定、非体制调整。"
-                  "用 VIX 作全市场风险条件变量(VXN 已用于价差读数，避免循环)。",
+                  "用 VIX 作全市场风险条件变量(VXN 已用于价差读数，避免循环)。"
+                  "EVT 尾部=对历史日损失超阈值部分拟合 GPD，估极端跌幅 VaR/ES 与重现期；"
+                  "假设尾部行为平稳、外推有不确定性，只测严重度/稀有度，不测时点或方向。",
         "horizon": HORIZON, "q_tail": Q_TAIL,
         "vxn_vix_spread": spread,
         "downside_by_vix": downside,
+        "evt": evt,
     }
     payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
     for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
@@ -131,6 +216,11 @@ def run_all():
         lo, hi = downside[0], downside[-1]
         print(f"  下行尾部(20日5%分位)：VIX低档[{lo['vix_lo']}-{lo['vix_hi']}] {lo['downside_q05_pct']}%  "
               f"→ VIX高档[{hi['vix_lo']}-{hi['vix_hi']}] {hi['downside_q05_pct']}%")
+    if evt.get("status") == "ok":
+        v99 = next((x for x in evt["var_es"] if x["level"] == 0.99), {})
+        rp7 = next((r["return_period_yrs"] for r in evt["return_periods"] if r["loss_pct"] == 7.0), "?")
+        print(f"  EVT 尾部 ξ={evt['xi']}（{evt['tail']}）· 日VaR99={v99.get('var_pct')}% · "
+              f"单日跌≥7% 重现期≈{rp7} 年（n={evt['n']}）")
     print(f"[OK] risk_dashboard.json")
     return out
 

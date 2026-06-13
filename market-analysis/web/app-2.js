@@ -471,7 +471,20 @@ async function loadRiskDashboard() {
         ${rows}
       </table></div>`;
   }
-  el.innerHTML = `${spreadHtml}${ddHtml}
+  const ev = RISK_DASH.evt;
+  let evtHtml = "";
+  if (ev && ev.status === "ok") {
+    const ve = (ev.var_es || []).map(x => `VaR${(x.level * 100).toFixed(x.level >= 0.999 ? 1 : 0)}=${x.var_pct}%·ES${x.es_pct}%`).join("　");
+    const rp = (ev.return_periods || []).map(r => `<tr style="border-bottom:1px solid var(--border)"><td style="padding:.25rem .4rem;color:var(--muted)">单日跌 ≥${r.loss_pct}%</td><td style="padding:.25rem .4rem;text-align:right">${r.return_period_yrs != null ? "约每 " + r.return_period_yrs + " 年" : "—"}</td></tr>`).join("");
+    evtHtml = `<div style="margin-top:.7rem;">
+      <div style="font-size:0.76rem;color:var(--muted);margin-bottom:.3rem">极值尾部(EVT/POT)：S&P(${ev.start}–${ev.end}) 日损失拟合广义帕累托 · 尾指数 ξ=<b style="color:#e74c3c">${ev.xi}</b>（${ev.tail}）· 极值指数 θ=${ev.extremal_index}（越小越聚集）· 日 ${ve}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+        <tr style="color:var(--muted);font-size:0.7rem"><td style="padding:.2rem .4rem">极端单日跌幅</td><td style="text-align:right;padding:.2rem .4rem">平均重现期（非规律间隔）</td></tr>
+        ${rp}
+      </table>
+      ${ev.caveat ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:.3rem;line-height:1.5">⚠ ${ev.caveat}</div>` : ""}</div>`;
+  }
+  el.innerHTML = `${spreadHtml}${ddHtml}${evtHtml}
     <div style="font-size:0.73rem;color:var(--muted);margin-top:.6rem;line-height:1.55">${RISK_DASH.caveat || ""}</div>`;
 }
 
