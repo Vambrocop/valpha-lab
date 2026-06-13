@@ -1,0 +1,55 @@
+name: Weekend refresh (news + quotes)
+
+# 工作日由 refresh-data / quick-quotes 覆盖；它们都是 1-5（工作日）。
+# 周末股市休市但：① 财经新闻照常发生 ② 加密 24/7 交易。
+# 本工作流只跑轻量的 fetch_news + quick_quotes，避免周末页面"停在周五"。
+on:
+  schedule:
+    - cron: "0 13,21 * * 6,0"   # 周六(6)/周日(0) 各 13:00 与 21:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekend-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install light deps (news RSS + quotes fallback)
+        run: pip install --quiet requests yfinance
+
+      - name: Fetch news + crypto/index quotes
+        run: |
+          python market-analysis/scripts/fetch_news.py
+          python market-analysis/scripts/quick_quotes.py
+
+      - name: Mirror news to docs (fetch_news 只写 web/；quotes 已自写 docs/)
+        run: cp market-analysis/web/news.json docs/news.json
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/news.json market-analysis/web/news.json docs/quotes.json market-analysis/web/quotes.json
+          if git diff --cached --quiet; then
+            echo "weekend data unchanged, skip commit"
+            exit 0
+          fi
+          git commit -m "data: weekend news + quotes refresh [skip ci]"
+          # 远端可能有竞争提交：rebase 重试
+          for i in 1 2 3; do
+            if git push; then exit 0; fi
+            git pull --rebase --autostash origin main
+          done
+          git push
