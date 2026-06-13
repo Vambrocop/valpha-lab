@@ -193,7 +193,7 @@ footer a { color: var(--green); text-decoration: none; }
   font-size:0.75rem; white-space:normal; max-width:220px; z-index:300; color:var(--text);
   pointer-events:none; opacity:0; transition:opacity .18s; line-height:1.5; text-align:left;
   box-shadow:0 4px 16px rgba(0,0,0,.4); }
-.tip:hover::after { opacity:1; }
+.tip:hover::after, .tip.tip-show::after, .tip:focus-visible::after { opacity:1; }
 
 /* ── SpaceX IPO Tracker ── */
 .spcx-countdown { display:flex; align-items:center; gap:.75rem; margin-bottom:.75rem; }

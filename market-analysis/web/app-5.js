@@ -146,6 +146,17 @@ function renderAll() {
     const btn = document.querySelector(`.view-btn[data-view="${savedView}"]`);
     if (btn) switchView(savedView, btn);
   }
+
+  // 移动端/触屏：.tip 的 ⓘ 解释是 hover-only，触屏无 hover → 点击切换显示、点别处收起；
+  // 同时给静态 .tip 补 tabindex 使键盘可聚焦（配 style.css 的 .tip:focus-visible::after）。
+  document.querySelectorAll(".tip").forEach(t => {
+    if (!t.hasAttribute("tabindex")) t.setAttribute("tabindex", "0");
+  });
+  document.addEventListener("click", (e) => {
+    const tip = e.target.closest(".tip");
+    document.querySelectorAll(".tip.tip-show").forEach(t => { if (t !== tip) t.classList.remove("tip-show"); });
+    if (tip) tip.classList.toggle("tip-show");
+  });
 }
 init().then(renderAll);
 
