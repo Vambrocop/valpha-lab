@@ -297,20 +297,25 @@ def block_bootstrap_diff(sel, y, block=20, B=2000, seed=42):
     rng = np.random.default_rng(seed)
     n_blocks = int(np.ceil(n / block))
     diffs = []
+    n_dropped = 0                       # 重采样未抽到任何 sel 日 → diff 无定义,跳过
     for _ in range(B):
         starts = rng.integers(0, n, n_blocks)
         idx = np.concatenate([(s + np.arange(block)) % n for s in starts])[:n]
         ys, ss = y[idx], sel[idx]
         if ss.sum() == 0:
+            n_dropped += 1
             continue
         diffs.append(ys[ss].mean() - ys.mean())
     diffs = np.array(diffs)
     obs = float(y[sel].mean() - y.mean())
     lo, hi = np.percentile(diffs, [2.5, 97.5])
     p = 2 * min(float((diffs <= 0).mean()), float((diffs >= 0).mean()))
+    # n_dropped 透明化(诚实):有 sel.sum()>=10 门槛,抽到零-sel 重采样概率≈e^-10,故通常为 0;
+    # 若某用法 n_dropped 占比大,说明该 sel 太稀疏、CI 被非对称截断,需警惕(审计 B1)。
     return {"diff": round(obs * 100, 2),
             "ci95": [round(lo * 100, 2), round(hi * 100, 2)],
-            "p_boot": round(min(p, 1.0), 4)}
+            "p_boot": round(min(p, 1.0), 4),
+            "n_dropped": n_dropped, "n_used": int(len(diffs))}
 
 
 def evaluate_probs(test_df, probs, label):
