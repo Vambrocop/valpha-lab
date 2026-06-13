@@ -628,6 +628,13 @@ function renderSentimentPanel() {
     {from:5,    to:20,  color:"#2ecc71", label:"偏强"},
     {from:20,   to:999, color:"#27ae60", label:"强势"},
   ];
+  // 💵 美元强弱(DXY 趋势)——与美股通常负相关；颜色按"对股市的含义"上色(走强=承压)
+  const dxyPct = tech.dxy_trend != null ? +(tech.dxy_trend * 100).toFixed(1) : null;
+  const dxyZones = [
+    {from:-100, to:-1, color:"#2ecc71", label:"美元走弱 → 股市顺风"},
+    {from:-1,   to:1,  color:"#8b949e", label:"美元横盘"},
+    {from:1,    to:100, color:"#e67e22", label:"美元走强 → 股市承压"},
+  ];
 
   el.innerHTML = [
     gauge("VIX（波动率/恐慌指数）", vixProxy, 10, 50, vixZones, "",
@@ -636,6 +643,8 @@ function renderSentimentPanel() {
       "RSI>70超买，<30超卖；现在" + (rsi>70?"偏高，注意回调":rsi<30?"极度超卖，反弹概率大":"正常区间")),
     gauge("BTC 20日动量", btcPct, -50, 50, btcZones, "%",
       "BTC往往领先美股科技股1-2周，负值代表近期加密偏弱"),
+    gauge("💵 美元强弱 (DXY趋势)", dxyPct, -5, 5, dxyZones, "%",
+      "美元指数与美股通常负相关：美元强→外资回流美债、股市承压；美元弱→股市常受益。统计相关、非因果铁律"),
   ].filter(Boolean).join("");
 
   // Summary line
