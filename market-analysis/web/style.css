@@ -39,6 +39,10 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
   .view-nav { padding: .5rem .75rem; }
   .view-grid { grid-template-columns: 1fr; }
 }
+/* 今日页：masonry 多列——grid 行高对齐到最高面板会在矮面板下方留大片空白；
+   改 CSS 多列流式排布(break-inside:avoid 保面板完整)，紧密填充、白块消失。自动响应列数。 */
+#view-today .view-grid { display: block; columns: 360px; column-gap: 1.5rem; }
+#view-today .view-grid > .panel { break-inside: avoid; margin-bottom: 1.5rem; }
 
 /* ── Panel ── */
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
