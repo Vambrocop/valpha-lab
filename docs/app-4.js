@@ -332,26 +332,30 @@ function renderSPCXMonitor() {
     </div>`;
 }
 
-// Try to fetch SPCX price from Yahoo Finance
+// 拉取 SPCX 最新报价并填入盈亏计算器。
+// 注：旧版直连 query1.finance.yahoo.com，浏览器跨域(CORS)必被拦截 → 永远"获取失败"；
+// 且属境外第三方运行时依赖（国内访客打不开、违反本项目"同源自托管"原则）。
+// 改为重拉同源 quotes.json（服务端流水线每~10分钟抓好的报价），无 CORS、国内可用。
 async function fetchSPCXPrice() {
   const btn = document.getElementById("spcx-price-btn");
+  const old = btn ? btn.textContent : "";
   if (btn) btn.textContent = "⏳ 获取中...";
   try {
-    const r = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/SPCX?interval=1d&range=1d");
-    const d = await r.json();
-    const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    await loadQuotes();                              // 重拉 quotes.json 并重渲染监视卡
+    const q = QUOTES?.quotes?.SPCX;
+    const price = (q && q.price) ? q.price
+                : (STOCKS?.spcx?.last || null);      // 报价缺失时退用收盘数据
     if (price) {
       const inp = document.getElementById("spcx-price-input");
       if (inp) { inp.value = price.toFixed(2); updateSPCXCalc(); }
       localStorage.setItem("spcx_price", price);
-      renderSPCXTracker();
     } else {
-      alert("暂时无法自动获取价格，请在上市后手动输入。");
+      alert("报价暂未刷新（流水线约每10分钟更新 quotes.json）。请稍后再试，或在下方手动输入当前价。");
     }
   } catch(e) {
-    alert("获取失败（可能尚未上市）。上市后手动输入当前价格即可。");
+    alert("刷新失败，请在下方手动输入当前价格。");
   } finally {
-    if (btn) btn.textContent = "📡 获取价格";
+    if (btn) btn.textContent = old || "📡 获取价格";
   }
 }
 
@@ -534,18 +538,32 @@ function toggleAutoRefresh(el) {
   }
 }
 
-// Portfolio cost basis editor
+// Portfolio cost basis editor —— 支持两种输入：单价，或买入总价(前缀"=")
 function setPortfolioCost(i, ticker) {
-  const cost = prompt(`请输入 ${ticker} 的平均买入价（USD）：\n（例如：BTC填95000，DOGE填0.15）`);
-  if (cost == null) return;
-  const v = parseFloat(cost);
-  if (isNaN(v) || v < 0) { alert("请输入有效价格"); return; }
   const port = loadPortfolio();
-  if (port[i]) {
-    port[i].costUSD = v;
-    savePortfolio(port);
-    renderPortfolioTable(_portAudRate);
+  const item = port[i];
+  if (!item) return;
+  const qty = item.qty;
+  const raw = prompt(
+    `输入 ${ticker} 的成本（USD）：\n` +
+    `· 知道单价 → 直接填每股/每枚价格（例：BTC填95000，DOGE填0.15）\n` +
+    `· 只知买入总价 → 数字前加「=」（例：=1500 表示总共花US$1500，按持有 ${qty} 份自动折算单价）`
+  );
+  if (raw == null) return;
+  const t = String(raw).trim();
+  let unit;
+  if (t.startsWith("=")) {
+    const totalCost = parseFloat(t.slice(1));
+    if (isNaN(totalCost) || totalCost < 0) { alert("请输入有效金额"); return; }
+    if (!qty || qty <= 0) { alert("该持仓数量为 0，无法用总价折算单价——请先设好数量，或直接填单价"); return; }
+    unit = totalCost / qty;
+  } else {
+    unit = parseFloat(t);
+    if (isNaN(unit) || unit < 0) { alert("请输入有效价格"); return; }
   }
+  item.costUSD = unit;
+  savePortfolio(port);
+  renderPortfolioTable(_portAudRate);
 }
 
 // ── 启动 ──
