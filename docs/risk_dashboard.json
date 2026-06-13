@@ -1,0 +1,58 @@
+{
+  "generated": "2026-06-13T09:11:40Z",
+  "caveat": "风险/体制读数，非方向预测。条件下行=历史上某 VIX 档位后 20 日收益的 5% 分位，刻画'风险何时更深'，不预测涨跌。注：前瞻窗口重叠→有效独立样本≈n/20(见 n_eff)，尾部分位由极少数独立事件决定，勿过度解读精度(故并列 10% 分位作敏感性)。价差分位为全历史(VXN 自~2003)、70/30 档为描述性约定、非体制调整。用 VIX 作全市场风险条件变量(VXN 已用于价差读数，避免循环)。",
+  "horizon": 20,
+  "q_tail": 0.05,
+  "vxn_vix_spread": {
+    "status": "ok",
+    "current": 9.59,
+    "percentile": 89.1,
+    "regime": "走阔 · 纳指隐含波动溢价处历史高位(相对读数,非方向预测)",
+    "vxn_last": 27.27,
+    "vix_last": 17.68,
+    "mean": 5.45,
+    "min": -12.77,
+    "max": 52.46,
+    "start": "2001-01-23",
+    "end": "2026-06-12",
+    "n": 6385
+  },
+  "downside_by_vix": [
+    {
+      "vix_lo": 9.1,
+      "vix_hi": 13.9,
+      "downside_q05_pct": -5.37,
+      "downside_q10_pct": -3.62,
+      "median_pct": 1.18,
+      "n": 1597,
+      "n_eff": 79
+    },
+    {
+      "vix_lo": 13.9,
+      "vix_hi": 17.5,
+      "downside_q05_pct": -6.89,
+      "downside_q10_pct": -5.04,
+      "median_pct": 1.49,
+      "n": 1596,
+      "n_eff": 79
+    },
+    {
+      "vix_lo": 17.5,
+      "vix_hi": 22.9,
+      "downside_q05_pct": -11.62,
+      "downside_q10_pct": -8.73,
+      "median_pct": 1.7,
+      "n": 1592,
+      "n_eff": 79
+    },
+    {
+      "vix_lo": 22.9,
+      "vix_hi": 82.7,
+      "downside_q05_pct": -11.76,
+      "downside_q10_pct": -8.43,
+      "median_pct": 2.72,
+      "n": 1594,
+      "n_eff": 79
+    }
+  ]
+}

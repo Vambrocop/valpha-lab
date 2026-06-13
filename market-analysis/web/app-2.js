@@ -428,6 +428,53 @@ async function loadEventCausal() {
     ${events}${spcxHtml}`;
 }
 
+// ── 📉 风险仪表盘（方法D）：VXN-VIX 价差 + 条件下行风险（测风险不测方向）──
+let RISK_DASH = null;
+async function loadRiskDashboard() {
+  const el = document.getElementById("risk-dashboard");
+  if (!el) return;
+  try {
+    const r = await fetch("risk_dashboard.json?_=" + Date.now());
+    if (r.ok) RISK_DASH = await r.json();
+  } catch (e) { /* 文件可能尚未生成 */ }
+  if (!RISK_DASH) {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">风险仪表盘数据尚未生成（下次全量流水线后出现）</span>`;
+    return;
+  }
+  const sp = RISK_DASH.vxn_vix_spread;
+  let spreadHtml = "";
+  if (sp && sp.status === "ok") {
+    const c = sp.percentile >= 70 ? "#e74c3c" : sp.percentile <= 30 ? "#2ecc71" : "#f1c40f";
+    spreadHtml = `<div style="border-left:3px solid ${c};padding:.4rem .7rem;margin-bottom:.6rem;">
+      <div style="font-size:0.76rem;color:var(--muted)">VXN−VIX 价差（纳指 vs 标普 隐含波动率溢价）</div>
+      <div style="display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap;">
+        <span style="font-size:1.4rem;font-weight:800;color:${c}">${sp.current}</span>
+        <span style="color:${c};font-weight:700">${sp.regime}</span>
+        <span style="color:var(--muted);font-size:0.76rem">历史 ${sp.percentile} 分位 · VXN ${sp.vxn_last} / VIX ${sp.vix_last}</span>
+      </div>
+      <div style="color:var(--muted);font-size:0.72rem;margin-top:.15rem">区间 ${sp.min}~${sp.max}，均值 ${sp.mean}（${sp.start}–${sp.end}，n=${sp.n}）</div>
+    </div>`;
+  }
+  const dd = RISK_DASH.downside_by_vix || [];
+  let ddHtml = "";
+  if (dd.length) {
+    const rows = dd.map(b => `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:.3rem .4rem;color:var(--muted)">VIX ${b.vix_lo}–${b.vix_hi}</td>
+      <td style="padding:.3rem .4rem;text-align:right;color:#e74c3c;font-weight:600">${b.downside_q05_pct}%</td>
+      <td style="padding:.3rem .4rem;text-align:right;color:#e67e22">${b.downside_q10_pct}%</td>
+      <td style="padding:.3rem .4rem;text-align:right;color:var(--muted)">${b.median_pct}%</td>
+      <td style="padding:.3rem .4rem;text-align:right;color:var(--muted);font-size:0.72rem">n_eff≈${b.n_eff}</td></tr>`).join("");
+    ddHtml = `<div style="margin-top:.5rem;">
+      <div style="font-size:0.76rem;color:var(--muted);margin-bottom:.3rem">条件下行风险：不同 VIX 档位之后 ${RISK_DASH.horizon} 日 NASDAQ 收益的下行分位（风险何时更深；n_eff=有效独立样本≈n/${RISK_DASH.horizon}，前瞻窗口重叠故勿过度解读精度）</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+        <tr style="color:var(--muted);font-size:0.7rem"><td style="padding:.2rem .4rem">VIX 档位</td><td style="text-align:right;padding:.2rem .4rem">5% 分位</td><td style="text-align:right;padding:.2rem .4rem">10% 分位</td><td style="text-align:right;padding:.2rem .4rem">中位</td><td style="text-align:right;padding:.2rem .4rem">样本</td></tr>
+        ${rows}
+      </table></div>`;
+  }
+  el.innerHTML = `${spreadHtml}${ddHtml}
+    <div style="font-size:0.73rem;color:var(--muted);margin-top:.6rem;line-height:1.55">${RISK_DASH.caveat || ""}</div>`;
+}
+
 function renderDigitChart() {
   const yp = SIGNALS?.year_patterns;
   if (!yp?.decade_digit) return;
