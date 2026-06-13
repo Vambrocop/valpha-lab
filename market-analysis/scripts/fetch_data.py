@@ -5,6 +5,7 @@ fetch_data.py
   宏观：M2货币供应（FRED）/ 美联储基准利率（FRED）
 """
 
+import time
 import yfinance as yf
 import pandas as pd
 import warnings
@@ -71,12 +72,24 @@ def _cache_fallback(name):
     return None
 
 
+def _yf_download(ticker, **kw):
+    """带退避重试的 yf.download：吸收 Yahoo 偶发限流(CI 每30分钟高频跑易触发瞬时红叉)。
+    永不抛异常；连续失败返回空 DataFrame，交由调用方走缓存兜底。"""
+    df = pd.DataFrame()
+    for attempt in range(3):
+        try:
+            df = yf.download(ticker, auto_adjust=True, progress=False, **kw)
+            if not df.empty:
+                return df
+        except Exception as e:
+            if attempt == 2:
+                print(f"  ⚠ {ticker} 下载重试3次仍异常：{e}")
+        time.sleep(1.0 * (attempt + 1))   # 1s、2s 退避
+    return df
+
+
 def _get_close(ticker, name):
-    try:
-        df = yf.download(ticker, start=START, end=END, auto_adjust=True, progress=False)
-    except Exception as e:
-        print(f"  ⚠ {name} 下载异常：{e}")
-        return _cache_fallback(name)
+    df = _yf_download(ticker, start=START, end=END)
     if df.empty:
         # 新上市股票 yf.download(start=2000年) 常返回空，但 Ticker().history 拿得到
         try:
@@ -99,8 +112,7 @@ def _get_close(ticker, name):
 
     # Yahoo 日线常滞后1天：用小时线最新价补一个临时收盘（下次运行被官方值覆盖）
     try:
-        intra = yf.download(ticker, period="5d", interval="60m",
-                            auto_adjust=True, progress=False)
+        intra = _yf_download(ticker, period="5d", interval="60m")
         if not intra.empty:
             ic = intra["Close"]
             if isinstance(ic, pd.DataFrame):
