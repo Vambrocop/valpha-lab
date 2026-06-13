@@ -140,10 +140,11 @@ def event_study(sp, event_dates, window_days=30, label="事件"):
     arr = np.array(event_returns)
     wr_arr = np.array(event_wr)
 
-    # 与历史随机窗口比较（bootstrap基准）
+    # 与历史随机窗口比较（bootstrap基准）；固定种子 → 已发布 LR 可复现（repo 铁律，原用无种子全局 RNG）
+    rng = np.random.default_rng(20260613)
     all_windows = []
     for _ in range(500):
-        start = np.random.randint(0, len(daily_ret) - window_days)
+        start = int(rng.integers(0, len(daily_ret) - window_days))
         w = daily_ret.iloc[start:start + window_days]
         all_windows.append(float((1 + w).prod() - 1))
     base_mean = np.mean(all_windows)

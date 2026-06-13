@@ -340,7 +340,7 @@ def update_history(card):
     hist.append(entry)
     hist.sort(key=lambda h: h.get("date", ""))
     with open(HISTORY_PATH, "w", encoding="utf-8") as f:
-        json.dump(hist, f, ensure_ascii=False, indent=2)
+        json.dump(hist, f, ensure_ascii=False, indent=2, allow_nan=False)
     return hist
 
 
@@ -392,7 +392,7 @@ def main():
     out = PROC_DIR / "benchmark.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
-        json.dump(card, f, ensure_ascii=False, indent=2)
+        json.dump(card, f, ensure_ascii=False, indent=2, allow_nan=False)
     update_history(card)
     print_table(card)
     print(f"  漂移：{card['drift']['status']}")

@@ -278,7 +278,7 @@ def run():
     }
     path = PROC_DIR / "vol_model.json"
     with open(path, "w", encoding="utf-8") as fp:
-        json.dump(out, fp, ensure_ascii=False, indent=2)
+        json.dump(out, fp, ensure_ascii=False, indent=2, allow_nan=False)
     print(f"\n[OK] 写入 {path}")
     return out
 

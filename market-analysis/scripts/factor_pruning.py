@@ -275,7 +275,7 @@ def run():
     }
     path = PROC_DIR / "factor_pruning.json"
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, indent=2)
+        json.dump(out, f, ensure_ascii=False, indent=2, allow_nan=False)
     print(f"\n[OK] 写入 {path}")
     return out
 
