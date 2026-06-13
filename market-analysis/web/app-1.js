@@ -91,7 +91,7 @@ async function init() {
     console.warn("multivariate.json 未找到", e);
   }
 
-  buildEventGrid();
+  renderEventRefToday();   // ⑦ 真事件研究参考（替代原 buildEventGrid 主观勾选玩具）
   renderTierLegend();
   initDatePicker();
   // 研究视图的图表全部懒渲染（lazyRender 定义在 app-5.js；init 由 app-5 调用，此时已就绪）
@@ -470,6 +470,29 @@ function toggleEvent(key, el) {
   if(activeEvents.has(key)) { activeEvents.delete(key); el.classList.remove("active"); }
   else                       { activeEvents.add(key);   el.classList.add("active"); }
   if(selectedDate) updateSignal(selectedDate);
+}
+
+// ⑦ 事件影响参考：今日页用真 event_study 数据(历史同类事件30日反应)替代主观 what-if 勾选玩具
+function renderEventRefToday() {
+  const el = document.getElementById("event-ref-today");
+  if (!el || !SIGNALS) return;
+  const es = SIGNALS.event_study || {};
+  const rows = Object.entries(es).map(([k, v]) => {
+    const smallN = (v.n || 0) < 15;
+    return `<tr style="border-top:1px solid var(--border-faint)">
+      <td style="padding:.25rem .4rem">${v.label || k}</td>
+      <td style="padding:.25rem .4rem;text-align:center;color:${smallN ? "#e67e22" : "var(--muted)"}">n=${v.n}${smallN ? " ⚠" : ""}</td>
+      <td style="padding:.25rem .4rem;text-align:right">${v.avg_return > 0 ? "+" : ""}${v.avg_return}%</td>
+      <td style="padding:.25rem .4rem;text-align:right;color:var(--muted)">${v.win_rate}% <span style="font-size:0.66rem">(基准${v.base_win_rate}%)</span></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="4" style="padding:.4rem;color:var(--muted)">暂无事件研究数据</td></tr>`;
+  el.innerHTML = `
+    <div style="color:var(--muted);font-size:0.76rem;line-height:1.55;margin-bottom:.5rem">历史同类事件后 <b>30 日</b>的平均反应（样本内统计）。<b>事件影响的是波动/不确定性，不是可交易方向</b>——小样本(n⚠)更别当预测；调度型事件(FOMC/CPI/非农)当天放大波动、方向无稳定偏向。</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.78rem">
+      <tr class="u-cap"><td style="padding:.2rem .4rem">事件类型</td><td style="padding:.2rem .4rem;text-align:center">样本</td><td style="padding:.2rem .4rem;text-align:right">30日均涨跌</td><td style="padding:.2rem .4rem;text-align:right">胜率 vs 基准</td></tr>
+      ${rows}
+    </table>
+    <div style="font-size:0.7rem;color:var(--muted);margin-top:.4rem">→ 纳入方式：这些情形下<b>降杠杆 / 不重仓新开</b>，等不确定性消化，而非猜方向。反事实因果(SVB→KRE)见"📋 登记簿"。</div>`;
 }
 
 // ═══════════════════════════════════════════════════════
