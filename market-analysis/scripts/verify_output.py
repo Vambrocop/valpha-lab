@@ -147,6 +147,20 @@ except Exception as e:
     errors.append(f"cycles 形状检查失败: {e}")
     print(f"  ✗ cycles 形状检查失败: {e}")
 
+# 3e. 跨检验族 FDR 形状（#5：BY 存活 ≤ BH 存活 是头条不变式；claims 非空。存在才查，缺失不致命）
+try:
+    fx_path = WEB_DIR / "fdr_crossfamily.json"
+    if fx_path.exists():
+        with open(fx_path, encoding="utf-8") as fh:
+            fx = json.load(fh)
+        by10, bh10 = fx.get("n_survive_by_10"), fx.get("n_survive_bh_10")
+        ok = (isinstance(by10, int) and isinstance(bh10, int) and by10 <= bh10
+              and len(fx.get("claims", [])) >= 1)
+        check(ok, f"fdr_crossfamily.json 形状正常（BY {by10} ≤ BH {bh10}，{len(fx.get('claims', []))} 项）")
+except Exception as e:
+    errors.append(f"fdr_crossfamily 形状检查失败: {e}")
+    print(f"  ✗ fdr_crossfamily 形状检查失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv

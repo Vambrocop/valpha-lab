@@ -567,6 +567,51 @@ async function loadCycles() {
     <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;line-height:1.55">${CYCLES.caveat || ""}</div>`;
 }
 
+// ── 🧮 诚实总账（#5 跨检验族 FDR）：同源消费 fdr_crossfamily.json ──
+let FDRCF = null;
+async function loadFdrCrossfamily() {
+  const el = document.getElementById("fdr-crossfamily");
+  if (!el) return;
+  try { const r = await fetch("fdr_crossfamily.json?_=" + Date.now()); if (r.ok) FDRCF = await r.json(); } catch (e) { /* 尚未生成 */ }
+  if (!FDRCF?.claims) {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">跨检验族 FDR 数据尚未生成（下次全量流水线后出现）</span>`;
+    return;
+  }
+  const d = FDRCF;
+  const head = `<div style="border-left:3px solid var(--yellow);padding:.4rem .7rem;margin-bottom:.6rem;">
+    <div style="display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap;">
+      <span style="font-size:1.6rem;font-weight:800;color:var(--yellow)">${d.n_survive_by_10} / ${d.m_total}</span>
+      <span style="font-weight:700">项经得起跨族 BY 校正（q=0.10）</span>
+    </div>
+    <div style="color:var(--muted);font-size:0.73rem;margin-top:.2rem">把"试过的所有显著性主张"汇到一起算多重比较 · BH(乐观)留 ${d.n_survive_bh_10} · Bonferroni 留 ${d.n_survive_bonferroni_05} · BY 调和数 c(m)=${d.by_c_m}</div>
+  </div>`;
+  const fam = (d.by_family || []).map(f => {
+    const pct = f.n ? Math.round(f.n_survive_by_10 / f.n * 100) : 0;
+    return `<div style="display:flex;align-items:center;gap:.5rem;font-size:0.78rem;margin:.2rem 0;">
+      <span style="min-width:88px;color:var(--muted)">${f.family}</span>
+      <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:var(--yellow);"></div></div>
+      <span style="min-width:46px;text-align:right">${f.n_survive_by_10}/${f.n}</span></div>`;
+  }).join("");
+  const FC = { "日历效应": "#3498db", "事件因果": "#9b59b6", "路径/Granger": "#e67e22", "因子AUC": "#2ecc71" };
+  const rows = d.claims.map(c => {
+    const ok = c.survive_by_10;
+    return `<tr style="border-top:1px solid var(--border-faint);${ok ? "" : "opacity:.55"}">
+      <td style="padding:.25rem .4rem"><span style="color:${FC[c.family] || "var(--muted)"};font-size:0.7rem">${c.family}</span></td>
+      <td style="padding:.25rem .4rem">${c.label || "—"}</td>
+      <td style="padding:.25rem .4rem;text-align:right;font-variant-numeric:tabular-nums">${c.p.toFixed(4)}</td>
+      <td style="padding:.25rem .4rem;text-align:center;color:${ok ? "#2ecc71" : "var(--muted)"};font-weight:600">${ok ? "✓" : "✗"}</td></tr>`;
+  }).join("");
+  el.innerHTML = `${head}
+    <div style="margin:.5rem 0;">${fam}</div>
+    <div style="font-size:0.76rem;color:var(--muted);margin:.5rem 0 .3rem">全部 ${d.m_total} 项（按 p 排序；✓ = 过 BY q=0.10）：</div>
+    <div style="max-height:340px;overflow-y:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
+      <tr class="u-cap"><td style="padding:.2rem .4rem">族</td><td style="padding:.2rem .4rem">主张</td><td style="padding:.2rem .4rem;text-align:right">p</td><td style="padding:.2rem .4rem;text-align:center">BY</td></tr>
+      ${rows}
+    </table></div>
+    <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;line-height:1.55">${d.caveat}</div>`;
+}
+
 function renderDigitChart() {
   const yp = SIGNALS?.year_patterns;
   if (!yp?.decade_digit) return;
