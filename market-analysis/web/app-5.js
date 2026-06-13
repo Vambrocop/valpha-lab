@@ -128,6 +128,7 @@ function renderAll() {
   _mainTabRendered.add("forecast");
   _calTabRendered.add("digit");  // digit 是日历组默认标签，由懒渲染负责首画
   lazyRender("placebo-overview", loadPlacebo, "Placebo");   // 🔬 规律防伪诚实总览
+  lazyRender("event-causal", loadEventCausal, "EventCausal"); // 🎯 反事实事件影响(方法B)
   lazyRender("chart-digit", renderDigitChart, "Digit");
   lazyRender("chart-ipo-cycle", renderIPOCycle, "IPOCycle");
   lazyRender("factor-audit", renderFactorAudit, "FactorAudit");

@@ -388,6 +388,46 @@ async function loadPlacebo() {
     </div>`;
 }
 
+// ── 🎯 反事实事件影响（方法B）：同源消费 event_causal.json ──
+let EVENT_CAUSAL = null;
+async function loadEventCausal() {
+  const el = document.getElementById("event-causal");
+  if (!el) return;
+  try {
+    const r = await fetch("event_causal.json?_=" + Date.now());
+    if (r.ok) EVENT_CAUSAL = await r.json();
+  } catch (e) { /* 文件可能尚未生成 */ }
+  if (!EVENT_CAUSAL) {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">反事实数据尚未生成（下次全量流水线后出现）</span>`;
+    return;
+  }
+  const STY = { significant:"#2ecc71", not_significant:"#e67e22",
+                inadequate_controls:"#f1c40f", pending:"var(--muted)" };
+  const events = (EVENT_CAUSAL.events || []).map(e => {
+    const c = STY[e.status] || "var(--muted)";
+    return `<div style="padding:.55rem .2rem .55rem .6rem;border-bottom:1px solid var(--border);border-left:3px solid ${c};">
+      <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:baseline;">
+        <strong>${e.name}</strong>
+        <span style="color:${c};font-weight:700">${e.verdict || e.status}</span>
+        ${e.pre_r2 != null ? `<span style="color:var(--muted);font-size:0.74rem">对照R²=${e.pre_r2} · p=${e.p_value}</span>` : ""}
+      </div>
+      ${e.note ? `<div style="color:var(--muted);font-size:0.72rem;margin-top:.2rem;">${e.note}</div>` : ""}
+    </div>`;
+  }).join("");
+  const sp = EVENT_CAUSAL.spcx;
+  const spcxHtml = sp ? `<div style="padding:.55rem .6rem;border-left:3px solid var(--muted);background:var(--surface2);border-radius:5px;margin-top:.55rem;font-size:0.78rem;">
+      <strong>🚀 ${sp.name}</strong>：${sp.status === "pending" ? `待数据（已上市 ${sp.days_listed} 个交易日，需 ≥${sp.need_post}）` : sp.status}
+      ${sp.note ? `<div style="color:var(--muted);font-size:0.72rem;margin-top:.2rem;">${sp.note}</div>` : ""}
+    </div>` : "";
+  el.innerHTML = `
+    <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:.6rem;">
+      用事件前的"处理~对照"关系外推一个<b style="color:var(--text)">反事实</b>，实际 − 反事实 = 异常影响，
+      block-bootstrap(含系数估计不确定性)做显著性。
+      ${EVENT_CAUSAL.caveat ? `<br><span style="font-size:0.74rem">${EVENT_CAUSAL.caveat}</span>` : ""}
+    </div>
+    ${events}${spcxHtml}`;
+}
+
 function renderDigitChart() {
   const yp = SIGNALS?.year_patterns;
   if (!yp?.decade_digit) return;
