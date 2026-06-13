@@ -467,7 +467,7 @@ async function loadRiskDashboard() {
     ddHtml = `<div style="margin-top:.5rem;">
       <div style="font-size:0.76rem;color:var(--muted);margin-bottom:.3rem">条件下行风险：不同 VIX 档位之后 ${RISK_DASH.horizon} 日 NASDAQ 收益的下行分位（风险何时更深；n_eff=有效独立样本≈n/${RISK_DASH.horizon}，前瞻窗口重叠故勿过度解读精度）</div>
       <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
-        <tr style="color:var(--muted);font-size:0.7rem"><td style="padding:.2rem .4rem">VIX 档位</td><td style="text-align:right;padding:.2rem .4rem">5% 分位</td><td style="text-align:right;padding:.2rem .4rem">10% 分位</td><td style="text-align:right;padding:.2rem .4rem">中位</td><td style="text-align:right;padding:.2rem .4rem">样本</td></tr>
+        <tr class="u-cap"><td style="padding:.2rem .4rem">VIX 档位</td><td style="text-align:right;padding:.2rem .4rem">5% 分位</td><td style="text-align:right;padding:.2rem .4rem">10% 分位</td><td style="text-align:right;padding:.2rem .4rem">中位</td><td style="text-align:right;padding:.2rem .4rem">样本</td></tr>
         ${rows}
       </table></div>`;
   }
@@ -479,7 +479,7 @@ async function loadRiskDashboard() {
     evtHtml = `<div style="margin-top:.7rem;">
       <div style="font-size:0.76rem;color:var(--muted);margin-bottom:.3rem">极值尾部(EVT/POT)：S&P(${ev.start}–${ev.end}) 日损失拟合广义帕累托 · 尾指数 ξ=<b style="color:#e74c3c">${ev.xi}</b>（${ev.tail}）· 极值指数 θ=${ev.extremal_index}（越小越聚集）· 日 ${ve}</div>
       <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
-        <tr style="color:var(--muted);font-size:0.7rem"><td style="padding:.2rem .4rem">极端单日跌幅</td><td style="text-align:right;padding:.2rem .4rem">平均重现期（非规律间隔）</td></tr>
+        <tr class="u-cap"><td style="padding:.2rem .4rem">极端单日跌幅</td><td style="text-align:right;padding:.2rem .4rem">平均重现期（非规律间隔）</td></tr>
         ${rp}
       </table>
       ${ev.caveat ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:.3rem;line-height:1.5">⚠ ${ev.caveat}</div>` : ""}</div>`;
@@ -518,7 +518,7 @@ async function loadConformal() {
   el.innerHTML = `
     <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:.5rem">${CONFORMAL.caveat || ""}</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
-      <tr style="color:var(--muted);font-size:0.7rem"><td style="padding:.2rem .4rem">期限</td><td style="text-align:center;padding:.2rem .4rem">80% 区间</td><td style="text-align:center;padding:.2rem .4rem">90% 区间</td><td style="text-align:right;padding:.2rem .4rem">经验覆盖(名义90%)</td></tr>
+      <tr class="u-cap"><td style="padding:.2rem .4rem">期限</td><td style="text-align:center;padding:.2rem .4rem">80% 区间</td><td style="text-align:center;padding:.2rem .4rem">90% 区间</td><td style="text-align:right;padding:.2rem .4rem">经验覆盖(名义90%)</td></tr>
       ${rows}
     </table>
     <div style="font-size:0.72rem;color:var(--muted);margin-top:.4rem">${CONFORMAL.source} ${CONFORMAL.data_start}–${CONFORMAL.data_end}；旧${(CONFORMAL.cal_frac * 100).toFixed(0)}%校准/新${(100 - CONFORMAL.cal_frac * 100).toFixed(0)}%测试。经验覆盖≈名义 → 区间可信。</div>`;
@@ -557,7 +557,7 @@ async function loadCycles() {
   const named = `<div style="margin-top:.3rem">
     <div style="font-size:0.76rem;color:var(--muted);margin-bottom:.3rem">民间常引用的经济周期（实体经济：库存/投资/基建/科技，<b>非股市收益周期</b>），在 S&P 月收益谱上对照：</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
-      <tr style="color:var(--muted);font-size:0.7rem"><td style="padding:.2rem .4rem">周期（学说）</td><td style="text-align:center;padding:.2rem .4rem">周期带</td><td style="text-align:right;padding:.2rem .4rem">谱检验</td></tr>
+      <tr class="u-cap"><td style="padding:.2rem .4rem">周期（学说）</td><td style="text-align:center;padding:.2rem .4rem">周期带</td><td style="text-align:right;padding:.2rem .4rem">谱检验</td></tr>
       ${rows}
     </table></div>`;
   const warn = (res.named_cycles || []).some(nc => nc.testable && nc.exceeds_red_noise_95)

@@ -78,9 +78,9 @@ function renderSPCXTracker() {
       value="${savedPrice||""}" oninput="saveSPCXData('price',this.value)">
     ${savedShares > 0 && savedPrice > 0 ? `
     <div class="spcx-pl-row" style="margin-top:.65rem;">
-      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">成本</span><br><strong>A$${issueAUD.toFixed(0)}</strong></div>
-      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">市值</span><br><strong>A$${currAUD.toFixed(0)}</strong></div>
-      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">盈亏</span><br>
+      <div class="spcx-pl-val"><span class="u-cap">成本</span><br><strong>A$${issueAUD.toFixed(0)}</strong></div>
+      <div class="spcx-pl-val"><span class="u-cap">市值</span><br><strong>A$${currAUD.toFixed(0)}</strong></div>
+      <div class="spcx-pl-val"><span class="u-cap">盈亏</span><br>
         <strong style="color:${plAUD>=0?'#2ecc71':'#e74c3c'}">${plAUD>=0?'+':''}A$${plAUD.toFixed(0)}<br>${plPct>=0?'+':''}${plPct.toFixed(1)}%</strong></div>
     </div>
     <div class="spcx-decision-box" style="background:rgba(155,89,182,.08);border-left:3px solid var(--purple);">
@@ -183,10 +183,10 @@ function updateSPCXCalc() {
 
   el.innerHTML = `
     <div class="spcx-pl-row">
-      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">股数</span><br><strong>${shares}</strong></div>
-      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">成本(AUD)</span><br><strong>A$${issueAUD.toFixed(0)}</strong></div>
-      ${currAUD > 0 ? `<div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">市值(AUD)</span><br><strong>A$${currAUD.toFixed(0)}</strong></div>
-      <div class="spcx-pl-val"><span style="color:var(--muted);font-size:0.7rem">盈亏</span><br>
+      <div class="spcx-pl-val"><span class="u-cap">股数</span><br><strong>${shares}</strong></div>
+      <div class="spcx-pl-val"><span class="u-cap">成本(AUD)</span><br><strong>A$${issueAUD.toFixed(0)}</strong></div>
+      ${currAUD > 0 ? `<div class="spcx-pl-val"><span class="u-cap">市值(AUD)</span><br><strong>A$${currAUD.toFixed(0)}</strong></div>
+      <div class="spcx-pl-val"><span class="u-cap">盈亏</span><br>
         <strong style="color:${plAUD>=0?'#2ecc71':'#e74c3c'}">${plAUD>=0?'+':''}A$${plAUD.toFixed(0)}<br>${plPct>=0?'+':''}${plPct.toFixed(1)}%</strong></div>` : ""}
     </div>
     ${currAUD > 0 && gainPct > 5 ? `<div style="font-size:0.78rem;color:var(--muted)">卖一半可入袋 <strong style="color:#2ecc71">A$${halfProfit.toFixed(0)}</strong></div>` : ""}
@@ -1065,7 +1065,7 @@ function renderTradePlan(fc, allFc) {
   if (macroDays.length) {
     html += `📊 持有期内宏观事件：${macroDays.map(d => `${d.date.slice(5)} ${d.macro}`).join("、")} —— 当日波动放大<br>`;
   }
-  html += `<span style="color:var(--muted);font-size:0.7rem">以上为历史统计规律的机械应用，非投资建议；越远的日期技术因子失效越多，临近时以当日信号为准。</span></div>`;
+  html += `<span class="u-cap">以上为历史统计规律的机械应用，非投资建议；越远的日期技术因子失效越多，临近时以当日信号为准。</span></div>`;
   el.innerHTML = html;
 }
 

@@ -7,6 +7,9 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
 
+/* ── 工具类（约定：仅"整条 style 完全相同"的高频模式抽到此；一次性布局样式保留内联，别强抽） ── */
+.u-cap { color: var(--muted); font-size: 0.7rem; }   /* 表头/标签的 muted 小字（原 12 处重复内联） */
+
 /* ── Header ── */
 header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
 header h1 { font-size: 1.3rem; font-weight: 700; }
