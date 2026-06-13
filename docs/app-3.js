@@ -492,22 +492,27 @@ async function fetchPortfolioPrices() {
   const btn = document.getElementById("portfolio-refresh-btn");
   if (btn) btn.textContent = "⏳ 获取中...";
   try {
-    const ids = Object.values(COIN_IDS).join(",");
-    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd,aud`);
-    const data = await r.json();
-    let audRate = null;
-    Object.entries(COIN_IDS).forEach(([ticker, id]) => {
-      if (data[id]?.usd) portfolioPrices[ticker] = data[id].usd;
-      if (!audRate && data[id]?.usd && data[id]?.aud) audRate = data[id].usd / data[id].aud;
-    });
-    const now = new Date();
-    const ts = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+    // 优先用同源 quotes.json（服务端 quick_quotes 抓的 CoinGecko）——中国访客不必直连境外 API
+    if (typeof loadQuotes === "function") { try { await loadQuotes(); } catch (e) { /* 用已有 QUOTES */ } }
+    let crypto = QUOTES?.crypto, audRate = QUOTES?.aud_rate, src = "同源";
+    if (!crypto || !Object.keys(crypto).length) {
+      // 兜底：直连 CoinGecko（境外，可能 CORS/被墙；仅当同源缺失时）
+      const ids = Object.values(COIN_IDS).join(",");
+      const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd,aud`);
+      const data = await r.json();
+      crypto = {}; src = "直连";
+      Object.entries(COIN_IDS).forEach(([ticker, id]) => {
+        if (data[id]?.usd) crypto[ticker] = data[id].usd;
+        if (!audRate && data[id]?.usd && data[id]?.aud) audRate = data[id].usd / data[id].aud;
+      });
+    }
+    Object.assign(portfolioPrices, crypto);
     const updEl = document.getElementById("portfolio-updated");
-    if (updEl) updEl.textContent = `更新于 ${ts}，1 AUD ≈ US$${audRate?audRate.toFixed(4):"?"}`;
+    if (updEl) updEl.textContent = `1 AUD ≈ US$${audRate ? audRate.toFixed(4) : "?"}（${src}报价）`;
     renderPortfolioTable(audRate || 0.71);
     renderSPCXTracker();
     updateSPCXCalc();
-  } catch(e) {
+  } catch (e) {
     console.warn("Portfolio price fetch failed:", e);
     renderPortfolioTable(0.71);
   } finally {

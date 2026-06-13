@@ -16,6 +16,8 @@ from pathlib import Path
 WEB  = Path(__file__).parent.parent / "web"
 DOCS = Path(__file__).parent.parent.parent / "docs"
 SYMS = {"SPCX": "SPCX", "NASDAQ": "^IXIC", "SP500": "^GSPC", "BTC": "BTC-USD"}
+COIN_IDS = {"BTC": "bitcoin", "ETH": "ethereum", "XLM": "stellar", "DOGE": "dogecoin",
+            "HOME": "home", "SOL": "solana", "BNB": "binancecoin"}   # 与前端 app-3.js COIN_IDS 同步
 
 
 def _chart_meta(symbol):
@@ -72,6 +74,24 @@ def _quote_fallback(symbol):
     return q
 
 
+def _coingecko():
+    """服务端抓 CoinGecko 加密报价 + AUD 汇率 → 写同源 quotes.json，
+    中国访客不必直连境外 API(CORS/被墙)。失败由 main 沿用上次数据。"""
+    ids = ",".join(COIN_IDS.values())
+    url = (f"https://api.coingecko.com/api/v3/simple/price"
+           f"?ids={ids}&vs_currencies=usd,aud")
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (alpha-lab dashboard)"})
+    d = json.load(urllib.request.urlopen(req, timeout=15))
+    crypto, aud_rate = {}, None
+    for tk, cid in COIN_IDS.items():
+        row = d.get(cid) or {}
+        if row.get("usd") is not None:
+            crypto[tk] = round(float(row["usd"]), 6)
+        if aud_rate is None and row.get("usd") and row.get("aud"):
+            aud_rate = round(float(row["usd"]) / float(row["aud"]), 4)
+    return crypto, aud_rate
+
+
 def main():
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc)
@@ -105,7 +125,27 @@ def main():
                 age = f"（成交 {mins:.0f} 分钟前）"
             print(f"  {name:<7} {q['price']:>12}  {q.get('chg_pct', '—')}% {age}")
 
-    if not out["quotes"]:
+    # CoinGecko 加密报价（服务端抓 → 同源 quotes.json；中国访客不必直连境外 API）
+    try:
+        crypto, aud_rate = _coingecko()
+    except Exception as e:
+        print(f"  ! CoinGecko: {e}")
+        crypto, aud_rate = {}, None
+    if not crypto:   # 限流/失败 → 沿用上次 quotes.json 的加密价，不丢数据
+        try:
+            with open(WEB / "quotes.json", encoding="utf-8") as f:
+                old = json.load(f)
+            crypto = old.get("crypto", {})
+            aud_rate = aud_rate or old.get("aud_rate")
+        except Exception:
+            pass
+    if crypto:
+        out["crypto"] = crypto
+        print(f"  crypto  {len(crypto)} 币 · 1 AUD≈US${aud_rate}")
+    if aud_rate:
+        out["aud_rate"] = aud_rate
+
+    if not out["quotes"] and "crypto" not in out:
         print("无任何报价（限流/休市异常），保留旧 quotes.json")
         sys.exit(0)
 
