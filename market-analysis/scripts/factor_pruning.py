@@ -28,6 +28,7 @@ from sklearn.metrics import roc_auc_score
 
 from walk_forward import build_feature_df, BINARY_FEATURES, block_bootstrap_diff
 from signal_model import build_design_matrix
+from placebo_test import benjamini_hochberg, benjamini_yekutieli   # DSR/反过拟合：多重检验校正
 
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
@@ -35,6 +36,7 @@ PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 HORIZON = 20
 EMBARGO = 20            # 交易日，=前向窗口，切掉跨界泄漏的训练样本
 HOLDOUT_START = 2024    # 2024+ 从未进过任何折
+FDR_Q = 0.10           # 多重检验校正阈值（与 p_boot 显著阈一致，单一来源避免漂移）
 SUBJECTIVE_EVENT_LRS = ["halving", "gold_spike", "oil_spike", "election", "ipo_boom"]
 
 # 每个因子在模型里的假设方向（+1 看涨/-1 看跌）。
@@ -205,6 +207,27 @@ def run():
     rows, base_pool, base_hold, n_pool, n_hold = factor_scorecard(df)
     probe = target_probe(df)
 
+    # ── 因子 deflation（Fable#1 落地 / Bailey&LdP 反过拟合）──────────────
+    # 难点(独立审查)：这些因子互为补/同源(mom_pos↔neg、high/low_vol…)→负相关，BH 的
+    # PRDS 假设不成立 → 以 BY(任意相关下有效,保守)为稳健 FDR 口径；另报 BH(乐观)与
+    # "最佳因子"的 Bonferroni(FWER,回答'最佳因子是否 N 选 1 的运气')。
+    # 显著性只认与假设方向一致者(dev_p_boot 两侧，反向显著=证据相反，不算"站得住")。
+    pvec = [r["dev_p_boot"] for r in rows]
+    q_bh = benjamini_hochberg(pvec) if rows else []
+    q_by = benjamini_yekutieli(pvec) if rows else []
+    for r, qb, qy in zip(rows, q_bh, q_by):
+        agrees = bool(np.sign(r["dev_diff_pp"]) == r["assumed_dir"])
+        r["q_value_bh"] = round(float(qb), 4)
+        r["q_value_by"] = round(float(qy), 4)
+        r["bh_significant"] = bool(agrees and qb < FDR_Q)        # 乐观(假设正相关)
+        r["robust_significant"] = bool(agrees and qy < FDR_Q)    # 稳健(BY,任意相关)
+    m = len(rows)
+    best = min(rows, key=lambda r: r["dev_p_boot"]) if rows else None
+    best_bonf = round(min(1.0, best["dev_p_boot"] * m), 4) if best else None
+    n_raw_sig = int(sum((r["dev_p_boot"] < FDR_Q) and (np.sign(r["dev_diff_pp"]) == r["assumed_dir"]) for r in rows))
+    n_bh_sig = int(sum(r["bh_significant"] for r in rows))
+    n_by_sig = int(sum(r["robust_significant"] for r in rows))
+
     n_info = sum(r["verdict"] == "INFORMATIVE" for r in rows)
     n_frag = sum(r["verdict"] == "FRAGILE" for r in rows)
     n_mis  = sum(r["verdict"] == "MISLEADING" for r in rows)
@@ -217,6 +240,7 @@ def run():
         print(f"  {r['factor']:<24}{ad:>5}{r['fires_pct']:>6.1f}{r['dev_diff_pp']:>+9.1f}"
               f"{r['dev_p_boot']:>8.3f}{ss:>7}{hd:>9}  {r['verdict']}")
     print(f"\n  INFORMATIVE={n_info}  FRAGILE={n_frag}  MISLEADING={n_mis}  NOISE={len(rows)-n_info-n_frag-n_mis}")
+    print(f"  Deflation：{m} 因子(方向一致 p<{FDR_Q}={n_raw_sig}) → BY稳健留{n_by_sig}/BH乐观留{n_bh_sig}/最佳因子Bonferroni p={best_bonf}")
     print(f"  主观事件LR（无样本支撑，建议标注/移出）：{', '.join(SUBJECTIVE_EVENT_LRS)}")
     if probe:
         print(f"\n=== 靶子探针（holdout）===")
@@ -237,6 +261,17 @@ def run():
         "target_probe": probe,
         "summary": {"informative": n_info, "fragile": n_frag, "misleading": n_mis,
                     "noise": len(rows) - n_info - n_frag - n_mis},
+        "deflation": {
+            "method": "对 N 个因子(方向一致者)做多重检验校正。因子互为补/同源→负相关，BH(PRDS)不适用→以 BY(任意相关,保守)为稳健口径，另报 BH(乐观)与最佳因子 Bonferroni(FWER)。数据挖掘校正，不预测方向。",
+            "q_level": FDR_Q, "n_factors": m, "n_raw_dir_sig_p10": n_raw_sig,
+            "n_bh_sig_q10": n_bh_sig, "n_by_sig_q10": n_by_sig,
+            "best_factor": best["factor"] if best else None,
+            "best_factor_bonferroni_p": best_bonf,
+            "caveat": "p 为有限次(B=2000)块自助估计，阈值附近 q 本身不确定；两侧 p、显著性已按假设方向门控。",
+            "note": (f"{m} 个因子里方向一致且原始 p<{FDR_Q} 有 {n_raw_sig} 个；依赖稳健校正后 "
+                     f"BY(保守)留 {n_by_sig} 个、BH(乐观)留 {n_bh_sig} 个，最佳因子 Bonferroni(FWER) p={best_bonf}。"
+                     f"即便留下的也 FRAGILE(逐折符号翻转)→ 无可稳健外推的因子 alpha。"),
+        },
     }
     path = PROC_DIR / "factor_pruning.json"
     with open(path, "w", encoding="utf-8") as f:

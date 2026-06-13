@@ -329,6 +329,13 @@ function renderFactorAudit() {
   const probe = fa.target_probe || {};
   const dirAuc = probe.direction_auc_pooled_2012_2024, volAuc = probe.vol_auc_holdout;
   const baseHold = fa.base_rate_holdout != null ? Math.round(fa.base_rate_holdout*100) : null;
+  const df = fa.deflation;   // 多重检验校正（反过拟合）；缺失则优雅不显示
+  const deflHtml = df ? `<div class="insight" style="margin-top:.7rem;border-left:3px solid #8b949e;">
+      <strong>🎲 多重检验校正（反过拟合 / 数据挖掘校正）：</strong>测了 ${df.n_factors} 个因子，方向一致且原始 p&lt;${df.q_level} 有 ${df.n_raw_dir_sig_p10} 个；
+      依赖稳健校正后 <b style="color:#2ecc71">BY(保守)留 ${df.n_by_sig_q10}</b> / BH(乐观)留 ${df.n_bh_sig_q10}，最佳因子 Bonferroni(FWER) p=${df.best_factor_bonferroni_p}。
+      ${df.note ? `<br><span style="color:var(--muted);font-size:0.76rem">${esc2(df.note)}</span>` : ""}
+      ${df.caveat ? `<br><span style="color:var(--muted);font-size:0.72rem">⚠ ${esc2(df.caveat)}</span>` : ""}
+    </div>` : "";
   el.innerHTML = `
     <div style="color:var(--muted);font-size:0.78rem;line-height:1.6;margin-bottom:.7rem;">
       方法：测试折拼接为样本外序列算「触发胜率−基率」（块自助 CI）；purged+embargo 扩窗用于跨折<b>符号稳定性</b>检验；
@@ -354,7 +361,7 @@ function renderFactorAudit() {
       <strong>换靶子探针：</strong>方向 AUC 跨 regime 摆动（2012-2024 拼接 <b>${dirAuc ?? "?"}</b>，单一 2024-2026 ${probe.direction_auc_holdout ?? "?"}）——
       这种不稳定本身就是非平稳性；波动率 AUC <b style="color:#2ecc71">${volAuc ?? "?"}</b> 更高（单点 holdout，仍需多 regime 复核）。
       <b>数据倾向：把 ML/深度学习力气投向"预测波动率/市场状态"，而非"预测涨跌方向"。</b>
-    </div>`;
+    </div>${deflHtml}`;
 }
 
 // ── 波动率状态预测原型（P2-6，研究面板）──

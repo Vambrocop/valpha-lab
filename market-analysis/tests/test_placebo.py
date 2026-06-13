@@ -3,7 +3,7 @@ import numpy as np
 
 from placebo_test import (perm_test, make_ssb_stat, make_dir_diff_stat,
                           _verdict, _group_means, benjamini_hochberg,
-                          MIN_GROUP_N, ALPHA)
+                          benjamini_yekutieli, MIN_GROUP_N, ALPHA)
 
 
 def _rng(key=1):
@@ -111,3 +111,23 @@ def test_bh_month_just_fails_at_05():
 
 def test_bh_single_pvalue_unchanged():
     assert np.isclose(benjamini_hochberg([0.04])[0], 0.04)
+
+
+# ── Benjamini-Yekutieli（任意相关下有效，比 BH 保守）─────────────────
+def test_by_equals_bh_times_harmonic():
+    p = [0.001, 0.02, 0.2, 0.5, 0.9]
+    c = sum(1.0 / i for i in range(1, len(p) + 1))
+    assert np.allclose(benjamini_yekutieli(p), np.clip(np.asarray(benjamini_hochberg(p)) * c, 0, 1))
+
+
+def test_by_at_least_as_large_as_bh():
+    p = [0.001, 0.02, 0.2, 0.5, 0.9]
+    assert np.all(benjamini_yekutieli(p) >= np.asarray(benjamini_hochberg(p)) - 1e-12)
+
+
+def test_by_bounded_and_monotone():
+    p = [0.001, 0.001, 0.03, 0.1, 0.4, 0.9]
+    by = benjamini_yekutieli(p)
+    order = np.argsort(p)
+    assert np.all((by >= 0) & (by <= 1))
+    assert np.all(np.diff(by[order]) >= -1e-12)

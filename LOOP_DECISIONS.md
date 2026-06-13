@@ -54,6 +54,7 @@
     原因：DSR 收缩的是"策略夏普"，但本项目**从不维护夏普策略**（靠 AUC/命中率的零结果立诚实，从没追过回测夏普）——没有夏普可 deflate。这是项目**正直的体现，不是缺陷**。
     *我的推荐（细节调整，守 Fable 的 Bailey&LdP 反过拟合精神）*：把"按试验数收缩"的同一原理用在**项目真有的指标=因子选择的 AUC**（factor_pruning 试了 N 个因子→最佳因子 AUC 是否超过 max-of-N-随机的期望）。这是 A(FDR) 向因子层的自然延伸。
     **待你拍板**：(a) 做这个"因子-AUC deflation"适配；(b) 认定"无夏普可 defl"=已满足精神、跳过；(c) 仅在量化方法论页做 DSR 公式讲解。CPCV 同理较重，先 scope。
+    → ✅ **用户选 (a)，已做并推送**：placebo 加 BY(任意相关稳健)，factor_pruning 用 BH+BY+最佳因子Bonferroni、按方向门控。15 因子 **BY 稳健留 0**(BH乐观留1=BTC_mom20_pos,本就FRAGILE)→ 诚实"无可稳健外推的因子 alpha"。CPCV 仍 scope-待办。
 11. ~~Fable HIGH ① 诚实性回退~~ **✅ 已核对=已完成**：旧 `renderEventStudyChart` 已删(app-2.js:287 注释为证)，新 `renderEventImpact` 已去裸 p/方向色，多元图已标"📸 研究快照·非实时"(index.html:425)。无需再改。
 12. ~~Fable HIGH ② 数据健壮性~~ **✅ 已核对=已完成**：fetch_data 有 `_cache_fallback`；verify_output §3b 查 KEY_COLS 齐全 + 末值非 NaN/不过期。无需再改。
     → 结论：REVIEW.md(2026-06-12) 的 HIGH 项均已闭环、大半被后续提交超越。**Fable 唯一仍开放的高价值项 = CPCV + Deflated Sharpe(见 #10)** → 升为 loop 下一项。

@@ -162,6 +162,17 @@ def benjamini_hochberg(pvals):
     return q
 
 
+def benjamini_yekutieli(pvals):
+    """Benjamini-Yekutieli FDR：任意相关结构下都有效（含负相关），= BH 的 q 值 × 调和数
+    c(m)=Σ1/i，比 BH 保守。当检验统计量可能负相关(如互补因子)时，这才是诚实选择。"""
+    p = np.asarray(pvals, float)
+    m = len(p)
+    if m == 0:
+        return p
+    c = float(np.sum(1.0 / np.arange(1, m + 1)))
+    return np.clip(benjamini_hochberg(p) * c, 0.0, 1.0)
+
+
 # ══════════════════════════════════════════════════════════════════
 # 主流程
 # ══════════════════════════════════════════════════════════════════
