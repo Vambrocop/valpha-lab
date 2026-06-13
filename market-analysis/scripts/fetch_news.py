@@ -23,6 +23,7 @@ FEEDS = {
 MAX_AUTO = 5        # 自动条目上限
 MAX_TOTAL = 8       # 面板总条目上限
 MAX_AGE_H = 24      # 只保留24小时内的新闻
+CURATED_MAX_AGE_DAYS = 2    # 手写/AI 分析条目超过这天数自动下架（防"停在旧日期"永久滞留）
 
 # 粗略的影响标签：标题关键词启发式
 NEG = re.compile(r"\b(fall|drop|plunge|sink|tumble|slump|crash|fear|selloff|sell-off|"
@@ -82,6 +83,16 @@ def fetch_feed(name, url):
     return items
 
 
+def _curated_fresh(it, max_days=CURATED_MAX_AGE_DAYS):
+    """curated 条目按 time 前缀日期判断是否在保鲜期内（防手写条目永久滞留、页面看着停在旧日期）。"""
+    t = (it.get("time") or "")[:10]
+    try:
+        d = datetime.strptime(t, "%Y-%m-%d").date()
+    except Exception:
+        return True   # 无法解析则保守保留
+    return (datetime.now(timezone.utc).date() - d).days <= max_days
+
+
 def main():
     print("=== 抓取市场要闻 RSS ===")
     auto = []
@@ -106,7 +117,7 @@ def main():
         with open(NEWS_PATH, encoding="utf-8") as f:
             old = json.load(f)
         curated = [it for it in old.get("items", [])
-                   if it.get("kind", "curated") == "curated"]
+                   if it.get("kind", "curated") == "curated" and _curated_fresh(it)]
     except Exception:
         pass
 

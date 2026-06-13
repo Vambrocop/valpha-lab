@@ -997,6 +997,17 @@ function esc(s) {
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+// 相对时间（"3小时前"）——免去 UTC/ET/本地 多时区困惑；解析 "YYYY-MM-DD HH:MM" 当 UTC
+function relTime(t) {
+  const m = String(t || "").match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+  if (!m) return "";
+  const mins = Math.round((Date.now() - Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])) / 60000);
+  if (mins < 0) return "";
+  if (mins < 60) return mins <= 1 ? "刚刚" : `${mins}分钟前`;
+  const hrs = Math.round(mins / 60);
+  return hrs < 24 ? `${hrs}小时前` : `${Math.round(hrs / 24)}天前`;
+}
+
 async function loadNewsPanel() {
   const el = document.getElementById("news-list");
   if (!el) return;
@@ -1009,7 +1020,7 @@ async function loadNewsPanel() {
     return;
   }
   const up = document.getElementById("news-updated");
-  if (up && news.updated) up.textContent = `更新 ${news.updated}`;
+  if (up && news.updated) up.textContent = `更新 ${relTime(news.updated) || news.updated}`;
   const IC = { positive: ["▲", "#2ecc71"], negative: ["▼", "#e74c3c"], neutral: ["●", "#f1c40f"] };
   el.innerHTML = (news.items || []).map(n => {
     const [sym, color] = IC[n.impact] || IC.neutral;
@@ -1019,7 +1030,7 @@ async function loadNewsPanel() {
         <div>
           <div style="font-weight:600;line-height:1.4;">${esc(n.title)}</div>
           ${n.note ? `<div style="color:var(--muted);font-size:0.72rem;margin-top:.15rem;line-height:1.5;">${esc(n.note)}</div>` : ""}
-          <div style="color:var(--muted);font-size:0.65rem;margin-top:.15rem;">${esc(n.time)}${n.source ? " · " + esc(n.source) : ""}</div>
+          <div style="color:var(--muted);font-size:0.65rem;margin-top:.15rem;">${relTime(n.time) ? esc(relTime(n.time)) + " · " : ""}${esc(n.time)}${n.source ? " · " + esc(n.source) : ""}</div>
         </div>
       </div>
     </div>`;

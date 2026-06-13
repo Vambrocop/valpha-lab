@@ -161,6 +161,26 @@ except Exception as e:
     errors.append(f"fdr_crossfamily 形状检查失败: {e}")
     print(f"  ✗ fdr_crossfamily 形状检查失败: {e}")
 
+# 3f. 新闻 curated 条目须遵守自动下架（防"停在旧日期"回归 → CI 自动抓，不靠人工发现）
+try:
+    nj = WEB_DIR / "news.json"
+    if nj.exists():
+        with open(nj, encoding="utf-8") as fh:
+            nd = json.load(fh)
+        stale_cur = []
+        for it in nd.get("items", []):
+            if it.get("kind", "curated") == "curated":
+                ds = (it.get("time") or "")[:10]
+                try:
+                    if (US_TODAY - datetime.date.fromisoformat(ds)).days > 3:
+                        stale_cur.append(ds)
+                except Exception:
+                    pass
+        check(not stale_cur, f"新闻无滞留的旧 curated 条目（发现 {stale_cur or '无'}）")
+except Exception as e:
+    errors.append(f"新闻 curated 新鲜度检查失败: {e}")
+    print(f"  ✗ 新闻 curated 新鲜度检查失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv
