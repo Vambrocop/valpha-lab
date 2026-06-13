@@ -131,6 +131,7 @@ function renderAll() {
   lazyRender("event-causal", loadEventCausal, "EventCausal"); // 🎯 反事实事件影响(方法B)
   lazyRender("risk-dashboard", loadRiskDashboard, "RiskDash"); // 📉 风险仪表盘(方法D)
   lazyRender("conformal", loadConformal, "Conformal");        // 📐 收益区间(方法E 保形预测)
+  lazyRender("cycles-spectral", loadCycles, "Cycles");        // 🌀 周期检验(方法F 谱+红噪声)
   lazyRender("chart-digit", renderDigitChart, "Digit");
   lazyRender("chart-ipo-cycle", renderIPOCycle, "IPOCycle");
   lazyRender("factor-audit", renderFactorAudit, "FactorAudit");

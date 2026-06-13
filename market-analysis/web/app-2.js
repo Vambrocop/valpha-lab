@@ -524,6 +524,49 @@ async function loadConformal() {
     <div style="font-size:0.72rem;color:var(--muted);margin-top:.4rem">${CONFORMAL.source} ${CONFORMAL.data_start}–${CONFORMAL.data_end}；旧${(CONFORMAL.cal_frac * 100).toFixed(0)}%校准/新${(100 - CONFORMAL.cal_frac * 100).toFixed(0)}%测试。经验覆盖≈名义 → 区间可信。</div>`;
 }
 
+// ── 🌀 周期检验（方法F 谱 + 红噪声）：同源消费 cycles.json ──
+let CYCLES = null;
+async function loadCycles() {
+  const el = document.getElementById("cycles-spectral");
+  if (!el) return;
+  try {
+    const r = await fetch("cycles.json?_=" + Date.now());
+    if (r.ok) CYCLES = await r.json();
+  } catch (e) { /* 文件可能尚未生成 */ }
+  const res = CYCLES?.result;
+  if (!res || res.status !== "ok") {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">周期检验数据尚未生成（下次全量流水线后出现）</span>`;
+    return;
+  }
+  const sig = res.significant, vc = sig ? "#e74c3c" : "#2ecc71";
+  const head = `<div style="border-left:3px solid ${vc};padding:.4rem .7rem;margin-bottom:.6rem;">
+    <div style="display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap;">
+      <span style="font-size:1.05rem;font-weight:800;color:${vc}">${sig ? "✓ 检出超红噪声的周期" : "✗ 无显著周期"}</span>
+      <span style="color:var(--muted);font-size:0.78rem">全局检验 p=${res.p_global}（最强峰≈${res.top_period_years}年 vs 红噪声最强峰）</span>
+    </div>
+    <div style="color:var(--muted);font-size:0.73rem;margin-top:.2rem">AR(1) ρ=${res.ar1_rho}（≈0 即近白噪声）· ${CYCLES.source} ${CYCLES.data_start}–${CYCLES.data_end}（${res.years}年/${res.n_months}月）· ${CYCLES.n_surrogate} 条 surrogate</div>
+  </div>`;
+  const STAT = { no:{t:"未见超噪声功率",c:"#2ecc71"}, pt:{t:"⚠ 仅逐频率穿线",c:"#e67e22"}, lo:{t:"分辨率边缘·信息有限",c:"var(--muted)"}, na:{t:"数据不足·无法检验",c:"var(--muted)"} };
+  const rows = (res.named_cycles || []).map(nc => {
+    const s = !nc.testable ? STAT.na : (nc.exceeds_red_noise_95 ? STAT.pt : (nc.low_resolution ? STAT.lo : STAT.no));
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:.3rem .4rem">${nc.cycle}</td>
+      <td style="padding:.3rem .4rem;text-align:center;color:var(--muted)">${nc.band_years[0]}–${nc.band_years[1]}年</td>
+      <td style="padding:.3rem .4rem;text-align:right;color:${s.c};font-weight:600">${s.t}</td></tr>`;
+  }).join("");
+  const named = `<div style="margin-top:.3rem">
+    <div style="font-size:0.76rem;color:var(--muted);margin-bottom:.3rem">民间常引用的经济周期（实体经济：库存/投资/基建/科技，<b>非股市收益周期</b>），在 S&P 月收益谱上对照：</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+      <tr style="color:var(--muted);font-size:0.7rem"><td style="padding:.2rem .4rem">周期（学说）</td><td style="text-align:center;padding:.2rem .4rem">周期带</td><td style="text-align:right;padding:.2rem .4rem">谱检验</td></tr>
+      ${rows}
+    </table></div>`;
+  const warn = (res.named_cycles || []).some(nc => nc.testable && nc.exceeds_red_noise_95)
+    ? `<div style="font-size:0.72rem;color:#e67e22;margin-top:.4rem;line-height:1.5">⚠ 个别周期带"逐频率穿 95% 线"是检验上百个频率的<b>预期偶然假阳性(~5%)</b>，不构成真周期证据——以<b>上方全局检验</b>为准（控多重比较，结论：无显著周期）。</div>`
+    : "";
+  el.innerHTML = `${head}${named}${warn}
+    <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;line-height:1.55">${CYCLES.caveat || ""}</div>`;
+}
+
 function renderDigitChart() {
   const yp = SIGNALS?.year_patterns;
   if (!yp?.decade_digit) return;

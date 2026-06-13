@@ -130,6 +130,23 @@ except Exception as e:
     errors.append(f"conformal 形状检查失败: {e}")
     print(f"  ✗ conformal 形状检查失败: {e}")
 
+# 3d. 周期检验产物形状（方法F：status ok 时 p_global 合法、具名周期齐全；存在才查，缺失不致命）
+try:
+    cy_path = WEB_DIR / "cycles.json"
+    if cy_path.exists():
+        with open(cy_path, encoding="utf-8") as fh:
+            cy = json.load(fh)
+        res = cy.get("result", {})
+        if res.get("status") == "ok":
+            p = res.get("p_global")
+            ok_p = isinstance(p, (int, float)) and 0.0 <= p <= 1.0
+            nnamed = len(res.get("named_cycles", []))
+            check(ok_p and nnamed >= 1,
+                  f"cycles.json 形状正常（p_global={p}，具名周期 {nnamed} 条）")
+except Exception as e:
+    errors.append(f"cycles 形状检查失败: {e}")
+    print(f"  ✗ cycles 形状检查失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv

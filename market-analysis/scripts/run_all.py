@@ -29,6 +29,7 @@ steps = [
     ("反事实事件影响",     "event_causal.py"),         # 方法B：回归反事实+bootstrap（SVB验证事件 + SPCX钩子）
     ("风险仪表盘",         "risk_dashboard.py"),       # 方法D：VXN-VIX价差 + 条件下行(测风险不测方向)
     ("收益区间(保形)",     "conformal.py"),            # 方法E：split-conformal 覆盖区间(测不确定性,非方向)
+    ("周期检验(谱)",       "cycles.py"),               # 方法F：periodogram + AR1红噪声(测周期真伪,非预测周期延续)
     ("隔夜vs日内分析",     "overnight_analysis.py"),   # 产出隔夜动量因子数据
     ("基础统计分析",       "analyze.py"),
     ("买卖时机分析",       "timing_analysis.py"),
