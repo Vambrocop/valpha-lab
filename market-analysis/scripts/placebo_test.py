@@ -146,31 +146,8 @@ def holiday_pre_mask(ret_index):
     return pre
 
 
-def benjamini_hochberg(pvals):
-    """Benjamini-Hochberg FDR：返回各 p 的校正 q 值（已单调化，截断到 [0,1]）。
-    多重比较封顶诚实性——逐个看 p 会随测试数膨胀假阳性；测了 m 个效应就该
-    控假发现率(FDR)，校正后再看谁真站得住。"""
-    p = np.asarray(pvals, float)
-    m = len(p)
-    if m == 0:
-        return p
-    order = np.argsort(p)
-    ranked = p[order] * m / np.arange(1, m + 1)
-    ranked = np.minimum.accumulate(ranked[::-1])[::-1]   # 单调化(从大p端往回取最小)
-    q = np.empty(m)
-    q[order] = np.clip(ranked, 0, 1)
-    return q
-
-
-def benjamini_yekutieli(pvals):
-    """Benjamini-Yekutieli FDR：任意相关结构下都有效（含负相关），= BH 的 q 值 × 调和数
-    c(m)=Σ1/i，比 BH 保守。当检验统计量可能负相关(如互补因子)时，这才是诚实选择。"""
-    p = np.asarray(pvals, float)
-    m = len(p)
-    if m == 0:
-        return p
-    c = float(np.sum(1.0 / np.arange(1, m + 1)))
-    return np.clip(benjamini_hochberg(p) * c, 0.0, 1.0)
+# BH/BY 已统一到 stats_util(审计 S5:消除三处重写的漂移风险);函数仍在本模块命名空间可用(向后兼容)
+from stats_util import benjamini_hochberg, benjamini_yekutieli
 
 
 # ══════════════════════════════════════════════════════════════════

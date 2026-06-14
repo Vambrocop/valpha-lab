@@ -32,22 +32,8 @@ def _load(path):
         return None
 
 
-def _bh_reject(pvals, q):
-    """Benjamini-Hochberg step-up：返回被拒(=显著存活)的索引集合。"""
-    m = len(pvals)
-    order = sorted(range(m), key=lambda i: pvals[i])
-    thresh_rank = 0
-    for rank, idx in enumerate(order, 1):
-        if pvals[idx] <= rank / m * q:
-            thresh_rank = rank          # step-up：取满足条件的最大 rank
-    return set(order[:thresh_rank])
-
-
-def _by_reject(pvals, q):
-    """Benjamini-Yekutieli = BH 在 q/c(m) 上（c(m)=调和数，对任意相关结构稳健）。"""
-    m = len(pvals)
-    c_m = sum(1.0 / i for i in range(1, m + 1))
-    return _bh_reject(pvals, q / c_m), c_m
+# BH/BY step-up 已统一到 stats_util(审计 S5);沿用 _bh_reject/_by_reject 名
+from stats_util import bh_reject as _bh_reject, by_reject as _by_reject
 
 
 def collect():

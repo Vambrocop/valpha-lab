@@ -28,7 +28,7 @@ from sklearn.metrics import roc_auc_score
 
 from walk_forward import build_feature_df, BINARY_FEATURES, block_bootstrap_diff
 from signal_model import build_design_matrix
-from placebo_test import benjamini_hochberg, benjamini_yekutieli   # DSR/反过拟合：多重检验校正
+from stats_util import benjamini_hochberg, benjamini_yekutieli   # DSR/反过拟合：多重检验校正(审计S5:统一来源)
 
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
