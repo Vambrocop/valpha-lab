@@ -39,7 +39,7 @@ def test_zero_p_always_rejected():
 
 
 def test_run_all_smoke_and_invariant():
-    out = fc.run_all()
+    out = fc.run_all(write=False)   # 不写生产 JSON,避免 pytest 污染工作树
     if out is not None:                                   # 真实产物存在才校验
         assert out["m_total"] >= 2
         assert out["n_survive_by_10"] <= out["n_survive_bh_10"]   # 头条不变式：BY ≤ BH
