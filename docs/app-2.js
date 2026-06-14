@@ -282,7 +282,7 @@ function renderOppPanel() {
   document.getElementById("opp-entry-list").innerHTML = entryHTML;
   document.getElementById("opp-exit-list").innerHTML  = exitHTML;
   document.getElementById("opp-note").innerHTML =
-    `<span style="color:var(--muted)">技术信号冻结为今日值；日历因子（星期/假日/月份/税季）精确预测。</span>`;
+    `<span style="color:var(--muted)">技术信号冻结为今日值。买入日排序基于历史<b>日历先验</b>:其中星期/月份/圣诞效应经 placebo 检验成立;节前/税季/月内周等为先验(未通过或未单独检验)——<b>当参考、非已验证边际,不预测方向</b>。</span>`;
 }
 // 旧"事件研究图表"已删除（裸 p 值 + 方向红绿色违反诚实铁律）；
 // 事件结论以"今日"标签的"🗓 事件影响一览"(renderEventImpact) 为唯一口径。

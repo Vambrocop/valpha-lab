@@ -135,7 +135,7 @@ def evt_tail(returns, threshold_pct=95.0, var_levels=(0.99, 0.999),
     var_es = []
     for p in var_levels:
         v = _var(p)
-        es = (v + beta - xi * u) / (1 - xi) if xi < 1 else None
+        es = min((v + beta - xi * u) / (1 - xi), 1.0) if xi < 1 else None   # 显示钳位:ξ→1 时 ES 爆炸,封顶100%(真实ξ~0.2不触发)
         var_es.append({"level": p, "var_pct": round(v * 100, 2),
                        "es_pct": round(es * 100, 2) if es is not None else None})
 
