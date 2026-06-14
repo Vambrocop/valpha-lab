@@ -203,18 +203,23 @@ def learn_lrs(train_df):
     learned = {"base_win_rate": round(base_wr, 4),
                "n_total": int(len(train_df)), "factors": {}}
 
-    # 技术因子（二值）
+    # 技术因子（二值）。审计 S6：LR 的基准率按**本因子可观测窗口**算,而非全 train——
+    # 晚出现因子(vix_backwardation 2009+/overnight_mom 等)col 前期为 NaN,全 train 基准会错配、LR 偏差。
+    # 与 factor_pruning(pool[col].notna())一致。
     for col, name in BINARY_FEATURES:
         if col not in train_df.columns:
             continue
-        sub = train_df[train_df[col] == 1]["fwd_up_20d"].dropna()
+        obs = train_df[train_df[col].notna()]                  # 该因子可观测窗口
+        base_f = float(obs["fwd_up_20d"].mean()) if len(obs) else base_wr
+        sub = obs[obs[col] == 1]["fwd_up_20d"].dropna()
         if len(sub) < 50:
             continue
         wr = float(sub.mean())
-        lr = wr / base_wr if base_wr > 0 else 1.0
+        lr = wr / base_f if base_f > 0 else 1.0
         learned["factors"][col] = {
             "name": name,
             "win_rate": round(wr, 4),
+            "base_win_rate": round(base_f, 4),                 # 本因子窗口基准(透明,审计S6)
             "lr": round(lr, 4),
             "n": len(sub),
         }
