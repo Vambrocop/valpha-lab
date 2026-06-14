@@ -16,11 +16,11 @@
 > 三方 Opus 独立审(统计/安全/前端)。**总评:高质量、诚实架构真实、安全 0 critical/0 high、无红线违规。**
 > **当日已修上线**:A 前端健壮性(b5950d6:DOM搬迁幂等/tooltip只绑一次/登记簿coverage驱动)·B 安全加固(ad6f511:brief/report 补 esc 防潜在XSS / quick_quotes 显式 import)·C 统计卫生(2bcbe36:event_study 固定种子 / 5处 allow_nan=False)·B1 自助透明(ab942b8:block_bootstrap 暴露 n_dropped,重跑验证全=0、p不变;裁决"理论成立但 sel≥10 门槛下惰性")。
 >
-> **待办(明天接,均不紧急/非红线/非漏洞)**:
-> - **S1【最大缺口·改观感,改前先问用户】** `build_signals.find_next_opportunities` 的"最佳买入日"仍乘硬编**样本内**日历 LR(DOW_LR/_WOM_LR/_calendar_anomaly_lr/_holiday_lr,如 4/15×1.24、感恩节前×1.46),**未消费 placebo 裁决**(placebo_tests.json 已算真伪但无人据此抑制生产 LR)。修法:买入日排序只采纳过 placebo 的效应,未过者不用或标"仅日历先验·未验证"+收缩。代价:部分买入日消失/降权(更诚实但"计划"页看着少东西)。
-> - **S6【真bug·动部署数字·需重跑】** `walk_forward.learn_lrs`(~:210-214)对晚出现因子(vix_backwardation 2009+/overnight_mom)用**全train基准率**,而因子可观测期是子集 → 基准错配、LR 偏差。factor_pruning(:113 `pool[col].notna()`)已修对,生产 learn_lrs 没修。修法:base_wr 按 `train_df[train_df[col].notna()]` 逐因子算;改后重跑 walk_forward + 新旧指标写进 commit(铁律)。
+> **处理记录(2026-06-15 全部主项完成 ✅,仅余安全低优先项)**:
+> - ✅**S1 已完成(84ff726,用户约束:买入日不删)** opp-note 去掉"日历因子精确预测"越界措辞,改诚实标注:星期/月份/圣诞经 placebo 成立,节前/税季/月内周为先验(未通过或未单独检验)、当参考非已验证边际、不预测方向。排序与买入日不变。(更深可选:后端按 placebo 裁决逐日打标/收缩 LR。)
+> - ✅**S6 已完成+部署(56d26ac 修 / fc1f789 部署)** learn_lrs 基准率改按因子可观测窗口算(`train[col.notna()]`)。晚出现因子虚高 LR 纠正:vix_backwardation 1.04→0.98、BTC_mom20_pos 1.20→1.11、BTC_above_ma200 1.11→1.04;全周期因子不变(±0.002,证明改对)。全量流水线已嵌入 signals.json 上线。
 > - ✅**S5 已完成(d75e010,2026-06-14)** BH/BY 三处重写 → 统一到 `stats_util.py`(逐字搬迁、零逻辑改动;placebo/fdr verdict 验证一致、117 测试绿)。
-> - **S2/NIT【低优先·自校正】** conformal 分位对照 Lei2018+加合成覆盖测试;MODEL_VERSION=2.1 加"为何不变"注释;find_next_opportunities 文档"自然日"→"交易日";risk_dashboard ES 对 ξ→1 加显示钳位;event_study 自助升级置换检验(更深)。
+> - ✅**S2 主项完成(84ff726)** MODEL_VERSION 加"为何保持2.1"注释、find_next_opportunities 文档"自然日"→"交易日"+去"完全可预测"、risk_dashboard ES 显示钳位(ξ→1 封顶100%)。**余(可选/更深)**:conformal 加合成覆盖测试、event_study 自助升级为置换检验。
 > - **安全低优先**:fear-greed(alternative.me)挪服务端(同源·中国访客);fetch_news XML 体积上限;index.html 加 CSP meta。
 > 完整审计三方原文见 2026-06-14 会话记录。
 
