@@ -21,7 +21,7 @@
 > - ✅**S6 已完成+部署(56d26ac 修 / fc1f789 部署)** learn_lrs 基准率改按因子可观测窗口算(`train[col.notna()]`)。晚出现因子虚高 LR 纠正:vix_backwardation 1.04→0.98、BTC_mom20_pos 1.20→1.11、BTC_above_ma200 1.11→1.04;全周期因子不变(±0.002,证明改对)。全量流水线已嵌入 signals.json 上线。
 > - ✅**S5 已完成(d75e010,2026-06-14)** BH/BY 三处重写 → 统一到 `stats_util.py`(逐字搬迁、零逻辑改动;placebo/fdr verdict 验证一致、117 测试绿)。
 > - ✅**S2 主项完成(84ff726)** MODEL_VERSION 加"为何保持2.1"注释、find_next_opportunities 文档"自然日"→"交易日"+去"完全可预测"、risk_dashboard ES 显示钳位(ξ→1 封顶100%)。**余(可选/更深)**:conformal 加合成覆盖测试、event_study 自助升级为置换检验。
-> - **安全低优先**:fear-greed(alternative.me)挪服务端(同源·中国访客);fetch_news XML 体积上限;index.html 加 CSP meta。
+> - **安全低优先**:✅fear-greed 挪服务端(62690f4,同源·中国访客);✅fetch_news XML 体积上限 5MB(f3c7a39);⏸**CSP meta 暂缓**——需浏览器实测(站点重度依赖内联 onclick、Plotly 可能需 unsafe-eval,盲加可能白屏)。
 > 完整审计三方原文见 2026-06-14 会话记录。
 
 ---
