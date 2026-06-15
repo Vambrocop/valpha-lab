@@ -166,36 +166,8 @@ def _holiday_lr(ts):
     return 1.0  # 普通日
 
 # 事件调整因子（乘法，贝叶斯似然比）
-# ── 标注[实证]的来自 event_study.py（1928-2026历史事件研究），其余为主观估计
-def _load_event_lr():
-    try:
-        with open(PROC_DIR / "event_study_results.json", encoding="utf-8") as f:
-            es = json.load(f)
-        return es.get("data_driven_lr", {})
-    except Exception:
-        return {}
-
-_event_lr = _load_event_lr()
-
-EVENT_ADJUSTMENTS = {
-    # ── 实证估计（Event Study 数据驱动）────────────────────────────
-    "war":          _event_lr.get("war",         1.001),  # [实证] 地缘冲击30日后=LR1.001（市场30日内反弹）
-    "pandemic":     _event_lr.get("pandemic",    0.985),  # [实证] 疫情封锁30日=LR0.985（轻微负面）
-    "trade_war":    _event_lr.get("trade_war",   1.089),  # [实证] 贸易战升级后市场30日=LR1.089（阶段性反弹）
-    "trade_relief": _event_lr.get("trade_relief",1.080),  # [实证] 贸易协议缓和=LR1.080
-    "fed_hike":     _event_lr.get("fed_hike",    0.915),  # [实证] 首次加息30日=LR0.915（显著负面 p=0.021）
-    "fed_cut":      _event_lr.get("fed_cut",     0.978),  # [实证] 首次降息30日=LR0.978（反直觉：靴子落地卖）
-    "vix_spike":    _event_lr.get("vix_spike",   0.978),  # [实证] VIX暴涨后30日=LR0.978
-    "banking":      _event_lr.get("banking",     0.889),  # [实证] 银行危机30日=LR0.889
-    "ai_boom":      _event_lr.get("ai_boom",     1.001),  # [实证] AI突破30日=LR1.001（短期中性）
-    # ── 主观估计（尚无足够历史样本）────────────────────────────────
-    "election":     0.92,   # 大选不确定期（主观，基于历史不确定性折扣）
-    "halving":      1.15,   # BTC减半（正面情绪溢出，主观）
-    "gold_spike":   0.88,   # 黄金暴涨（避险情绪，主观）
-    "oil_spike":    0.85,   # 油价暴涨（滞胀担忧，主观）
-    "none":         1.00,   # 无特殊事件
-    "ipo_boom":     1.08,   # 大型科技IPO（主观）
-}
+# 事件叠加 what-if(旧 EVENT_ADJUSTMENTS / compute_current_signal)已移除:其前端勾选玩具
+# 已被真事件研究面板(renderEventRefToday,消费 load_event_study 的 event_study 字段)取代。
 
 # ── 经验似然比（walk_forward 学习值，带收缩）──────────────────────
 def _load_learned_lrs():
@@ -390,11 +362,6 @@ def compute_daily_signals(prices, ret, tech, trading_days, index="NASDAQ", prior
 
     return records
 
-# ── 当前信号（带事件调整） ────────────────────────────────────────
-def compute_current_signal(base_prob, event_keys):
-    likelihoods = [EVENT_ADJUSTMENTS.get(k, 1.0) for k in event_keys]
-    return bayesian_update(base_prob, likelihoods)
-
 # ── 主流程 ────────────────────────────────────────────────────────
 def build():
     print("加载数据...")
@@ -420,10 +387,6 @@ def build():
     sp_latest = list(streams["SP500"].values())[-1]
     base_prob = latest["prob"]
 
-    # 输出事件调整表
-    event_table = {k: round(compute_current_signal(base_prob, [k]), 4)
-                   for k in EVENT_ADJUSTMENTS}
-
     output = {
         "generated": pd.Timestamp.now().strftime("%Y-%m-%d"),
         "model_version": MODEL_VERSION,
@@ -438,8 +401,6 @@ def build():
             "SP500":  {"prob": sp_latest["prob"], "tier": sp_latest["tier"],
                        "date": list(streams["SP500"])[-1]},
         },
-        "event_adjustments": EVENT_ADJUSTMENTS,
-        "event_probs": event_table,
         "daily_signals": signals,
         # SP500 流只保留核心字段（诊断字段前端只对 NASDAQ 流展示），控制文件体积
         "daily_signals_sp500": {

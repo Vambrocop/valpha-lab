@@ -74,13 +74,6 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 .input-group input[type=date] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: .5rem .75rem; font-size: 0.9rem; }
 .input-group input:focus { outline: none; border-color: var(--green); }
 
-/* ── Event Checkboxes ── */
-.event-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
-.event-item { display: flex; align-items: center; gap: .5rem; cursor: pointer; padding: .35rem .5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; transition: border-color .2s; }
-.event-item:hover { border-color: var(--muted); }
-.event-item.active { border-color: var(--blue); background: rgba(52,152,219,.1); }
-.event-item input { display: none; }
-.event-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
 /* ── Factor Breakdown ── */
 .factor-list { font-size: 0.82rem; }
@@ -264,7 +257,6 @@ footer a { color: var(--green); text-decoration: none; }
   .panel { padding:1rem; }
   .signal-ring { width:130px; height:130px; }
   .signal-pct { font-size:2.2rem; }
-  .event-grid { grid-template-columns:1fr 1fr; }
   header { padding:.75rem 1rem; flex-direction:column; align-items:flex-start; gap:.35rem; }
   header h1 { font-size:1.1rem; }
 }

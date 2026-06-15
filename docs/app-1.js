@@ -5,7 +5,6 @@ let SIGNALS = null;
 let PRICES  = null;
 let MV      = null;  // multivariate analysis results
 let selectedDate = null;
-let activeEvents = new Set();
 
 const TIER_META = {
   5: { label:"强势入场", stars:"★★★★★", color:"#27ae60", short:"季节 + 技术 + 宏观全面支撑",
@@ -41,22 +40,6 @@ function renderTierLegend() {
   }).join("");
 }
 
-// subjective:true = 该事件 LR 是主观估计，无历史样本支撑（P2-5 尸检结论）；
-// 其余来自 event_study 数据驱动（仍是小样本/样本内，但至少有实证依据）。
-const EVENTS_CONFIG = [
-  { key:"war",        label:"战争爆发",   dot:"#e74c3c" },
-  { key:"pandemic",   label:"疫情封锁",   dot:"#c0392b" },
-  { key:"trade_war",  label:"贸易战升级", dot:"#d35400" },
-  { key:"fed_hike",   label:"意外加息",   dot:"#9b59b6" },
-  { key:"fed_cut",    label:"降息",       dot:"#27ae60" },
-  { key:"gold_spike", label:"黄金暴涨",   dot:"#f1c40f", subjective:true },
-  { key:"oil_spike",  label:"油价暴涨",   dot:"#e67e22", subjective:true },
-  { key:"vix_spike",  label:"VIX恐慌↑",  dot:"#e74c3c" },
-  { key:"halving",    label:"BTC减半",    dot:"#f39c12", subjective:true },
-  { key:"ai_boom",    label:"AI重大利好", dot:"#1abc9c" },
-  { key:"ipo_boom",   label:"大型IPO潮",  dot:"#3498db", subjective:true },
-  { key:"election",   label:"选举不确定", dot:"#3498db", subjective:true },
-];
 
 // ═══════════════════════════════════════════════════════
 //  初始化
@@ -127,9 +110,6 @@ function buildDemoSignals() {
   }
   return { generated: new Date().toISOString().slice(0,10),
     latest_prob: 0.392, latest_tier: 2,
-    event_adjustments: {war:0.72,pandemic:0.65,trade_war:0.78,fed_hike:0.80,
-      fed_cut:1.20,election:0.90,halving:1.15,gold_spike:0.82,oil_spike:0.78,
-      vix_spike:0.70,none:1.0,ai_boom:1.18,ipo_boom:1.08},
     daily_signals: daily };
 }
 
@@ -237,12 +217,7 @@ function updateSignal(dateStr) {
       nasdaq_vol: tech.nasdaq_vol ?? 0.15,
       _isForecast: true, _reasons: forecast.reasons || [],
     };
-    let prob = forecast.prob;
-    if(activeEvents.size > 0) {
-      let logOdds = Math.log(prob/(1-prob+1e-10));
-      for(const ev of activeEvents) logOdds += Math.log(Math.max(SIGNALS.event_adjustments[ev]||1, 0.01));
-      prob = Math.min(0.97, Math.max(0.03, 1/(1+Math.exp(-logOdds))));
-    }
+    const prob = forecast.prob;
     renderSignalMeter(prob, synRec);
     renderFactors(synRec, prob);
     renderPercentileInfo(prob);
@@ -267,12 +242,7 @@ function updateSignal(dateStr) {
   }
   if (!rec) { document.getElementById("signal-pct").textContent = "无数据"; return; }
 
-  let prob = rec.prob;
-  if(activeEvents.size > 0) {
-    let logOdds = Math.log(prob/(1-prob+1e-10));
-    for(const ev of activeEvents) logOdds += Math.log(Math.max(SIGNALS.event_adjustments[ev]||1, 0.01));
-    prob = Math.min(0.97, Math.max(0.03, 1/(1+Math.exp(-logOdds))));
-  }
+  const prob = rec.prob;
   renderSignalMeter(prob, rec);
   renderFactors(rec, prob);
   renderPercentileInfo(prob);
@@ -336,9 +306,7 @@ function renderSignalMeterTail(prob, rec, opts) {
     : isForecast
     ? `<span style="background:#3498db22;color:#3498db;border-radius:4px;padding:1px 6px;font-size:0.78rem">📡 预测</span>`
     : "";
-  const evText = activeEvents.size > 0
-    ? `<br>叠加事件调整后 → <strong style="color:${opts.color}">${Math.round(prob*100)}%</strong>`
-    : "";
+  const evText = "";   // 事件叠加玩具已移除(原 activeEvents);保留空串兼容下方模板
   const forecastReasons = isForecast && rec._reasons?.length
     ? `<br>日历因子：${rec._reasons.join("、")}`
     : "";
@@ -451,26 +419,6 @@ function renderFactors(rec, finalProb) {
   document.getElementById("factor-list").innerHTML = html;
 }
 
-// ═══════════════════════════════════════════════════════
-//  事件选择
-// ═══════════════════════════════════════════════════════
-function buildEventGrid() {
-  const grid = document.getElementById("event-grid");
-  grid.innerHTML = EVENTS_CONFIG.map(e => `
-    <label class="event-item" id="ev-${e.key}" onclick="toggleEvent('${e.key}',this)"
-      ${e.subjective ? 'style="opacity:.6" title="主观估计·无历史样本支撑（未经验证）"' : 'title="来自事件研究的数据驱动估计（小样本）"'}>
-      <input type="checkbox">
-      <span class="event-dot" style="background:${e.dot}"></span>
-      ${e.label}${e.subjective ? ' <span style="font-size:0.6rem;color:var(--muted);">主观?</span>' : ''}
-    </label>
-  `).join("");
-}
-
-function toggleEvent(key, el) {
-  if(activeEvents.has(key)) { activeEvents.delete(key); el.classList.remove("active"); }
-  else                       { activeEvents.add(key);   el.classList.add("active"); }
-  if(selectedDate) updateSignal(selectedDate);
-}
 
 // ⑦ 事件影响参考：今日页用真 event_study 数据(历史同类事件30日反应)替代主观 what-if 勾选玩具
 function renderEventRefToday() {
