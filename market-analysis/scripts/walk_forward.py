@@ -496,6 +496,14 @@ def run():
                          "n": int(m.sum())})
         oos_cal[name] = rows
 
+    # ── 校准漂移（#3）：逐折(各前向时间窗)校准是否随时间系统性偏移 ──
+    from stats_util import calibration_drift
+    cal_drift = calibration_drift(naive_pool, y_pool, [f["test"] for f in fold_results])
+    if cal_drift.get("status") == "ok":
+        print(f"\n=== 校准漂移（naive，逐折）：{cal_drift['verdict']} ===")
+        print(f"  平均|缺口|={cal_drift['mean_abs_gap_pct']}pp  最大={cal_drift['max_abs_gap_pct']}pp  "
+              f"趋势 ρ={cal_drift['trend_rho']} p={cal_drift['trend_p']}")
+
     # ── 系数稳定性（P2-5 地基）：跨折符号一致的特征才值得信 ─────────
     feats = list(coef_values[0].keys())
     stability = []
@@ -534,6 +542,7 @@ def run():
         # ── P2 对决产物 ──
         "duel_summary": duel_summary,
         "oos_calibration": oos_cal,
+        "calibration_drift": cal_drift,
         "logit_coef_stability": stability,
         "logit_full_coefs": logit_full_coefs,
     }

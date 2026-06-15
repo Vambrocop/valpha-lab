@@ -196,6 +196,20 @@ except Exception as e:
     errors.append(f"cpcv 形状检查失败: {e}")
     print(f"  ✗ cpcv 形状检查失败: {e}")
 
+# 3h. 校准漂移形状（#3：嵌在 signals.json；verdict 合法、每折 gap 有界。存在才查，缺失不致命）
+try:
+    with open(WEB_DIR / "signals.json", encoding="utf-8") as fh:
+        _sig = json.load(fh)
+    cd = _sig.get("calibration_drift")
+    if cd and cd.get("status") == "ok":
+        ok = (cd.get("verdict") in {"stable", "drifting", "inconclusive"}
+              and isinstance(cd.get("folds"), list) and len(cd["folds"]) >= 2
+              and all(abs(f.get("gap", 9)) <= 1.0 for f in cd["folds"]))
+        check(ok, f"signals.json calibration_drift 形状正常（{cd.get('verdict')}，{cd.get('n_folds')} 折）")
+except Exception as e:
+    errors.append(f"calibration_drift 形状检查失败: {e}")
+    print(f"  ✗ calibration_drift 形状检查失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv

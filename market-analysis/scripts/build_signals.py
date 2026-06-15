@@ -811,6 +811,9 @@ if __name__ == "__main__":
         with open(PROC_DIR / "walk_forward_results.json", encoding="utf-8") as _f:
             _wf = json.load(_f)
         result["base_rate_20d"] = _wf.get("optimized_lr", {}).get("base_win_rate", 0.62)
+        cd = _wf.get("calibration_drift")            # #3 校准漂移(逐折随时间)：随基率一并搬运
+        if cd and cd.get("status") == "ok":
+            result["calibration_drift"] = cd
     except Exception:
         result["base_rate_20d"] = 0.62
     result["horizon_note"] = "概率含义：未来20个交易日收盘高于今日的概率"

@@ -675,6 +675,13 @@ async function loadHonestRegistry() {
     const p = cv.result.pbo;
     rows.push(["因子过拟合 (PBO)", "CSCV 组合对称CV", `PBO=${(p * 100).toFixed(0)}% —— 挑"最佳"因子${p >= 0.3 ? "过拟合风险显著" : "较稳健"}`, "cpcv", p >= 0.3 ? "null" : "real"]);
   }
+  const cdr = (typeof SIGNALS !== "undefined" && SIGNALS) ? SIGNALS.calibration_drift : null;
+  if (cdr?.status === "ok") {
+    const txt = cdr.verdict === "stable" ? `平均|缺口| ${cdr.mean_abs_gap_pct}pp —— 跨时段自报把握度与现实一致`
+              : cdr.verdict === "drifting" ? `校准随时间恶化（ρ=${cdr.trend_rho}，峰值 ${cdr.max_abs_gap_pct}pp）—— 见详情`
+              : `无定论：单期最大|缺口| ${cdr.max_abs_gap_pct}pp（区制误差大，无系统漂移 ≠ 校准良好）`;
+    rows.push(["校准漂移", "逐折 OOS 校准 + Spearman 趋势", txt, "calibration-drift", cdr.verdict === "stable" ? "real" : "null"]);
+  }
   rows.push(["短期方向预测", "（红线）", "不可靠预测 → 主动不做", null, "redline"]);
   rows.push(["v3 稀疏模型", "L1 正则实验", "假设被否（诚实 null，见 git 历史）", null, "null"]);
   rows.push(["指数纳入效应 (RDD)", "断点回归 · Russell 1000/2000 阈值", "排名运行变量为 Russell/WRDS 专有，免费拿不到（2007后 banding 又使阈值模糊）→ 诚实不做，不用劣质代理硬凑", null, "infeasible"]);
@@ -723,6 +730,41 @@ async function loadCpcv() {
     </div>
     <div style="font-size:0.82rem;line-height:1.55;margin-bottom:.4rem">${res.verdict}</div>
     <div style="font-size:0.72rem;color:var(--muted);line-height:1.55">${CPCV.caveat || ""}</div>`;
+}
+
+// ── 📉 校准漂移（#3 逐折校准随时间）：同源消费 SIGNALS.calibration_drift ──
+function loadCalibrationDrift() {
+  const el = document.getElementById("calibration-drift");
+  if (!el) return;
+  const cd = (typeof SIGNALS !== "undefined" && SIGNALS) ? SIGNALS.calibration_drift : null;
+  if (!cd || cd.status !== "ok") {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">校准漂移数据尚未生成（下次重跑 walk_forward 后出现）</span>`;
+    return;
+  }
+  const vmap = { stable: ["#2ecc71", "校准稳定"], drifting: ["#e74c3c", "校准漂移"], inconclusive: ["#f1c40f", "无定论"] };
+  const [c, vlabel] = vmap[cd.verdict] || ["#f1c40f", esc(cd.verdict)];
+  const frows = (cd.folds || []).map(f => {
+    const g = f.gap, gc = Math.abs(g) < 0.05 ? "var(--muted)" : "#e67e22";
+    return `<tr style="border-top:1px solid var(--border-faint)">
+      <td style="padding:.25rem .4rem;color:var(--muted)">${esc(f.period)}</td>
+      <td style="padding:.25rem .4rem;text-align:right;font-variant-numeric:tabular-nums">${(f.mean_pred * 100).toFixed(1)}%</td>
+      <td style="padding:.25rem .4rem;text-align:right;font-variant-numeric:tabular-nums">${(f.actual_wr * 100).toFixed(1)}%</td>
+      <td style="padding:.25rem .4rem;text-align:right;font-variant-numeric:tabular-nums;color:${gc}">${g > 0 ? "+" : ""}${(g * 100).toFixed(1)}pp</td>
+      <td style="padding:.25rem .4rem;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)">${(f.ece * 100).toFixed(1)}</td></tr>`;
+  }).join("");
+  el.innerHTML = `
+    <div style="border-left:3px solid ${c};padding:.4rem .7rem;margin-bottom:.6rem;">
+      <div style="display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap;">
+        <span style="font-size:1.2rem;font-weight:800;color:${c}">${vlabel}</span>
+        <span style="color:var(--muted);font-size:0.78rem">平均|缺口| ${cd.mean_abs_gap_pct}pp · 最大 ${cd.max_abs_gap_pct}pp · 趋势 ρ=${cd.trend_rho} (p=${cd.trend_p})</span>
+      </div>
+      <div style="font-size:0.8rem;line-height:1.5;margin-top:.35rem">${esc(cd.note)}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
+      <tr class="u-cap"><td style="padding:.2rem .4rem">时段(测试折)</td><td style="text-align:right;padding:.2rem .4rem">平均预测</td><td style="text-align:right;padding:.2rem .4rem">实际胜率</td><td style="text-align:right;padding:.2rem .4rem">缺口</td><td style="text-align:right;padding:.2rem .4rem">ECE</td></tr>
+      ${frows}
+    </table>
+    <div style="font-size:0.72rem;color:var(--muted);margin-top:.45rem;line-height:1.5">缺口=平均预测−实际胜率(&gt;0=偏乐观);ECE=分箱内|预测−实际|样本加权均。逐折=walk-forward 各前向时间窗(naive 部署打分)。折数少→趋势检验力低,故多落"无定论"——这是<b>校准质量</b>诊断,非方向预测。</div>`;
 }
 
 function renderDigitChart() {
