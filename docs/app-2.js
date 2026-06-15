@@ -530,12 +530,27 @@ async function loadConformal() {
       <td style="padding:.3rem .4rem;text-align:right;color:${cc}">${cov != null ? (cov * 100).toFixed(0) + "%" : "—"}<span style="color:var(--muted);font-size:0.66rem"> (n=${b90.n_test ?? "?"})</span></td>
     </tr>`;
   }).join("");
+  const cond = CONFORMAL.conditional_by_vix || [];
+  let condHtml = "";
+  if (cond.length) {
+    const crows = cond.map(c => `<tr style="border-top:1px solid var(--border-faint)">
+      <td style="padding:.3rem .4rem;color:var(--muted)">VIX ${c.vix_lo}–${c.vix_hi}</td>
+      <td style="padding:.3rem .4rem;text-align:center">${c.lower_pct}% ~ +${c.upper_pct}%</td>
+      <td style="padding:.3rem .4rem;text-align:right;font-weight:600">${c.width_pct}%</td>
+      <td style="padding:.3rem .4rem;text-align:right;color:var(--muted)">${c.empirical_coverage != null ? (c.empirical_coverage * 100).toFixed(0) + "%" : "—"}</td></tr>`).join("");
+    condHtml = `<div style="margin-top:.7rem">
+      <div style="font-size:0.76rem;color:var(--muted);margin-bottom:.3rem">按 VIX 体制的 20 日 90% 区间——<b>不确定性(宽度)随体制放大</b>(低VIX窄 / 高VIX宽)。实测覆盖<名义 = 该体制样本少 / 出样本外不够稳,<b>勿因区间窄就当更可信</b>;非方向、非"未来必落在内"。${CONFORMAL.conditional_period ? "仅覆盖 VIX 可得期 " + esc(CONFORMAL.conditional_period) + "(与上表全样本期间不同)" : ""}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+        <tr class="u-cap"><td style="padding:.2rem .4rem">VIX 体制</td><td style="text-align:center;padding:.2rem .4rem">90% 区间</td><td style="text-align:right;padding:.2rem .4rem">宽度</td><td style="text-align:right;padding:.2rem .4rem">实测覆盖</td></tr>
+        ${crows}
+      </table></div>`;
+  }
   el.innerHTML = `
     <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:.5rem">${CONFORMAL.caveat || ""}</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
       <tr class="u-cap"><td style="padding:.2rem .4rem">期限</td><td style="text-align:center;padding:.2rem .4rem">80% 区间</td><td style="text-align:center;padding:.2rem .4rem">90% 区间</td><td style="text-align:right;padding:.2rem .4rem">经验覆盖(名义90%)</td></tr>
       ${rows}
-    </table>
+    </table>${condHtml}
     <div style="font-size:0.72rem;color:var(--muted);margin-top:.4rem">${CONFORMAL.source} ${CONFORMAL.data_start}–${CONFORMAL.data_end}；旧${(CONFORMAL.cal_frac * 100).toFixed(0)}%校准/新${(100 - CONFORMAL.cal_frac * 100).toFixed(0)}%测试。经验覆盖≈名义 → 区间可信。</div>`;
 }
 

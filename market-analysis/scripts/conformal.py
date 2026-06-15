@@ -78,6 +78,47 @@ def split_conformal(rets, levels=LEVELS, cal_frac=CAL_FRAC):
     return rows
 
 
+def _load_vix():
+    """复用 risk_dashboard 缓存的 VIX(risk_dashboard 在 run_all 中先于 conformal 运行)。"""
+    f = RAW_DIR / "risk_VIX.csv"
+    if f.exists():
+        s = pd.read_csv(f, index_col=0, parse_dates=True).iloc[:, 0]
+        return pd.to_numeric(s, errors="coerce").dropna()
+    return None
+
+
+def conditional_by_vix(px, vix, horizon=20, level=0.90, n_bins=3):
+    """按【起始 VIX 体制】(三分位)分组,各组单独 split-conformal 区间+覆盖。
+    与 risk_dashboard 的单边条件下行互补:这里给**双边区间**,展示不确定性(区间宽度)如何随体制放大。
+    诚实红线:仍是区间不是方向;且是体制-条件的历史区间,非'未来一定落在内'。"""
+    common = px.index.intersection(vix.index)
+    if len(common) < 500:
+        return []
+    p = px.reindex(common).to_numpy(float)
+    v = vix.reindex(common).to_numpy(float)
+    n = len(p)
+    starts = np.arange(0, n - horizon, horizon)
+    rets = p[starts + horizon] / p[starts] - 1.0
+    svix = v[starts]                                          # 窗口【起始】VIX
+    ok = ~np.isnan(svix) & ~np.isnan(rets)
+    rets, svix = rets[ok], svix[ok]
+    if len(rets) < 60:
+        return []
+    edges = np.quantile(svix, np.linspace(0, 1, n_bins + 1))   # VIX 连续,并列罕见;若边界重合致某 bin 样本<40 则跳过(下游容忍 <n_bins 行)
+    rows = []
+    for b in range(n_bins):
+        m = (svix >= edges[b]) & ((svix <= edges[b + 1]) if b == n_bins - 1 else (svix < edges[b + 1]))
+        rb = rets[m]
+        if len(rb) < 40:
+            continue
+        band = split_conformal(rb, levels=(level,), cal_frac=CAL_FRAC)[0]
+        rows.append({"vix_lo": round(float(edges[b]), 1), "vix_hi": round(float(edges[b + 1]), 1),
+                     "n": int(len(rb)), "lower_pct": band["lower_pct"], "upper_pct": band["upper_pct"],
+                     "width_pct": round(band["upper_pct"] - band["lower_pct"], 2),
+                     "empirical_coverage": band["empirical_coverage"]})
+    return rows
+
+
 def run_all():
     print("=== 方法 E：保形预测（split-conformal 覆盖区间，非方向）===")
     px = _sp_prices()
@@ -96,6 +137,15 @@ def run_all():
         print(f"  {h:>3}日: 90% 区间 [{b90['lower_pct']:+.1f}%, {b90['upper_pct']:+.1f}%]  "
               f"经验覆盖={b90['empirical_coverage']}（名义0.90, n_test={b90['n_test']}）")
 
+    vix = _load_vix()
+    conditional = conditional_by_vix(px, vix, horizon=20) if vix is not None else []
+    cond_period = ""
+    if conditional:
+        c = px.index.intersection(vix.index)                  # 条件区间仅覆盖 VIX 可得期(≈2001+),与上表(全样本)期间不同
+        cond_period = f"{c[0].date()}–{c[-1].date()}"
+        print("  条件区间(20日,按VIX体制): "
+              + " | ".join(f"VIX{cc['vix_lo']}-{cc['vix_hi']} 宽{cc['width_pct']}%" for cc in conditional))
+
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "method": "split-conformal：非重叠 N 日收益(秩调整分位)，旧70%校准定区间、新30%测试。"
@@ -103,10 +153,13 @@ def run_all():
         "caveat": "这是**校准的不确定性区间，不是方向预测**——只说区间多宽、历史多少落在内，不预测涨跌。"
                   "区间略偏正只反映历史无条件分布的位置，不构成方向判断；且这是历史**无条件**区间、非对"
                   "【当前】市场状态的条件预测——不等于'未来 N 日一定落在此区间'。时间序切：经验覆盖<名义="
-                  "较校准期更动荡(非平稳)，如实呈现。基于 S&P500。",
+                  "较校准期更动荡(非平稳)，如实呈现。基于 S&P500。"
+                  "'按 VIX 体制'区间=体制-条件(复用 split-conformal 分组),展示不确定性宽度随体制放大，仍是区间非方向、非'未来必落在内'。",
         "source": "S&P 500 (^GSPC)", "cal_frac": CAL_FRAC,
         "data_start": str(px.index[0].date()), "data_end": str(px.index[-1].date()),
         "horizons": horizons,
+        "conditional_by_vix": conditional,
+        "conditional_period": cond_period,
     }
     payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
     for d in (PROC_DIR, WEB_DIR, DOCS_DIR):

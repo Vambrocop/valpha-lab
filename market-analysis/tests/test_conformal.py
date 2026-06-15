@@ -1,7 +1,7 @@
 """方法 E 保形预测：非重叠窗口 + split-conformal 区间/覆盖（合成数据，无网络）。"""
 import numpy as np
 
-from conformal import nonoverlap_fwd_returns, split_conformal
+from conformal import nonoverlap_fwd_returns, split_conformal, conditional_by_vix
 
 
 def test_nonoverlap_windows_count_and_value():
@@ -30,3 +30,18 @@ def test_split_fields_and_bracketing():
     b = split_conformal(rng.normal(0, 0.05, 1000), levels=(0.90,), cal_frac=0.7)[0]
     assert b["n_cal"] == 700 and b["n_test"] == 300
     assert b["lower_pct"] < 0 < b["upper_pct"]
+
+
+def test_conditional_by_vix_width_scales_with_regime():
+    """波动随 VIX 放大的合成数据 → 高VIX体制的区间应比低VIX更宽(不确定性随体制放大)。"""
+    import pandas as pd
+    rng = np.random.default_rng(5)
+    n = 4000
+    idx = pd.bdate_range("2005-01-01", periods=n)
+    vix = pd.Series(12 + 30 * np.abs(np.sin(np.arange(n) / 40)), index=idx)   # 体制差够大,信号压过分位抽样噪声
+    daily = rng.normal(0, (vix.values / 100) / np.sqrt(252))    # 波动随 VIX 放大
+    px = pd.Series(100 * np.exp(np.cumsum(daily)), index=idx)
+    rows = conditional_by_vix(px, vix, horizon=20, n_bins=3)
+    assert len(rows) == 3
+    assert rows[-1]["width_pct"] > rows[0]["width_pct"]          # 高VIX组更宽
+    assert all(r["lower_pct"] < r["upper_pct"] for r in rows)
