@@ -23,6 +23,14 @@
 > - ✅**S2 主项完成(84ff726)** MODEL_VERSION 加"为何保持2.1"注释、find_next_opportunities 文档"自然日"→"交易日"+去"完全可预测"、risk_dashboard ES 显示钳位(ξ→1 封顶100%)。**余(可选/更深)**:conformal 加合成覆盖测试、event_study 自助升级为置换检验。
 > - **安全低优先**:✅fear-greed 挪服务端(62690f4,同源·中国访客);✅fetch_news XML 体积上限 5MB(f3c7a39);⏸**CSP meta 暂缓**——需浏览器实测(站点重度依赖内联 onclick、Plotly 可能需 unsafe-eval,盲加可能白屏)。
 > 完整审计三方原文见 2026-06-14 会话记录。
+>
+> ## 🚀 验证强化批(2026-06-15)—— 用户「review+精简+增强」后批准全做,已全部上线
+> 主线=Fable 原则「升级验证不加模型」。四项均经**全新上下文 Opus 独立审**(审查者≠建造者)并修完 SHOULD-FIX:
+> - ✅**#1 CPCV/PBO 过拟合概率(4a590a9)** CSCV 组合对称CV 枚举 C(10,5)=252 组合,挑"最佳"因子→OOS 排名→logit λ→PBO。结果 **PBO=44%**(挑因子过拟合风险中等)、median_logit=0.788(典型最佳略能外推)。审修:verdict 三档软化+方向测试。
+> - ✅**#4 路径回撤分布(437bdd9)** 非重叠 N 日窗 peak-to-trough 回撤分布,补单日 EVT + 窗末条件下行之外的"路径中途最深回撤"维度。20日 med 3.07%/worst 33.69%;60日 med 5.86%/worst 44.57%。审修:off-by-one(末窗)。
+> - ✅**#2 VIX 体制条件保形区间(4be0e23)** 按起始 VIX 三分位分组各做 split-conformal 双边区间,展示**不确定性宽度随体制放大**(低5.84%/中12.39%/高24.21%)。与 risk_dashboard 单边下行互补。审修:测试 seed 脆弱(拓宽体制差 30/30)、披露仅 VIX 期(2001+)、覆盖颜色去绿橙改中性防"高VIX更可信"误读。
+> - ✅**#3 校准漂移监控(f376663)** 逐折(各前向时间窗)算 gap+ECE,Spearman 趋势,三态裁决。复用 walk_forward 逐折 OOS 数据→signals.json→独立面板+登记簿行。补静态 oos_calibration 缺的**时间维**。结果 **inconclusive**(无系统趋势 ρ=-0.2)但单期最大缺口 21pp(区制误差大,印证 calibration_flat)。审修:drifting 加幅度门(防噪声误报)、登记簿 surface 最大缺口防"无漂移=校准良好"误读、ECE 分位改等宽(不虚高)。
+> 注:#1-#4 共增 stats_util.calibration_drift + cpcv.py + path_drawdown + conditional_by_vix;测试 117→134 全绿。
 
 ---
 
