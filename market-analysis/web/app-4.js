@@ -375,10 +375,15 @@ async function fetchFearAndGreed() {
   if (!el) return;
   el.innerHTML = `<span style="color:var(--muted);font-size:0.78rem">加载中...</span>`;
   try {
-    const r = await fetch("https://api.alternative.me/fng/?limit=7&format=json");
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const json = await r.json();
-    renderFearGreed(json.data || []);
+    // 优先用同源 quotes.json(服务端 quick_quotes 抓的恐惧贪婪)——中国访客不必直连境外 API
+    if (typeof loadQuotes === "function") { try { await loadQuotes(); } catch (e) { /* 用已有 QUOTES */ } }
+    let data = QUOTES?.fear_greed;
+    if (!data || !data.length) {
+      const r = await fetch("https://api.alternative.me/fng/?limit=7&format=json");  // 兜底:直连境外
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      data = (await r.json()).data || [];
+    }
+    renderFearGreed(data);
   } catch(e) {
     el.innerHTML = `<div style="font-size:0.78rem;color:var(--muted)">
       恐惧贪婪指数暂时无法加载

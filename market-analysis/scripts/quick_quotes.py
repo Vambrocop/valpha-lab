@@ -93,6 +93,14 @@ def _coingecko():
     return crypto, aud_rate
 
 
+def _fear_greed():
+    """服务端抓 alternative.me 恐惧贪婪指数(7天)→ 同源 quotes.json;中国访客不必直连境外 API。"""
+    url = "https://api.alternative.me/fng/?limit=7&format=json"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (alpha-lab dashboard)"})
+    d = json.load(urllib.request.urlopen(req, timeout=15))
+    return d.get("data", [])
+
+
 def main():
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc)
@@ -146,7 +154,23 @@ def main():
     if aud_rate:
         out["aud_rate"] = aud_rate
 
-    if not out["quotes"] and "crypto" not in out:
+    # 恐惧贪婪指数(alternative.me)同样挪服务端 → 同源 quotes.json(中国访客不必直连境外)
+    try:
+        fg = _fear_greed()
+    except Exception as e:
+        print(f"  ! fear&greed: {e}")
+        fg = []
+    if not fg:   # 失败 → 沿用上次 quotes.json 的 fear_greed,不丢数据
+        try:
+            with open(WEB / "quotes.json", encoding="utf-8") as f:
+                fg = json.load(f).get("fear_greed", [])
+        except Exception:
+            pass
+    if fg:
+        out["fear_greed"] = fg
+        print(f"  fear&greed  {fg[0].get('value')} ({fg[0].get('value_classification')})")
+
+    if not out["quotes"] and "crypto" not in out and "fear_greed" not in out:
         print("无任何报价（限流/休市异常），保留旧 quotes.json")
         sys.exit(0)
 
