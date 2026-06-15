@@ -617,9 +617,9 @@ async function loadHonestRegistry() {
   const el = document.getElementById("honest-registry");
   if (!el) return;
   const get = async (f) => { try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; } };
-  const [pl, fx, ev, cy, cf] = await Promise.all([
+  const [pl, fx, ev, cy, cf, cv] = await Promise.all([
     get("placebo_tests.json"), get("fdr_crossfamily.json"), get("event_causal.json"),
-    get("cycles.json"), get("conformal.json"),
+    get("cycles.json"), get("conformal.json"), get("cpcv.json"),
   ]);
   const rows = [];
   if (pl?.tests) {
@@ -640,6 +640,10 @@ async function loadHonestRegistry() {
   if (fx?.by_family) {
     const fam = fx.by_family.find(f => f.family === "因子AUC");
     if (fam) rows.push(["因子 alpha", "OOS 拼接 + DSR deflation", `${fam.n} 个因子 → 跨族稳健 ${fam.n_survive_by_10} 个`, "factor-audit", fam.n_survive_by_10 ? "real" : "null"]);
+  }
+  if (cv?.result?.pbo != null) {
+    const p = cv.result.pbo;
+    rows.push(["因子过拟合 (PBO)", "CSCV 组合对称CV", `PBO=${(p * 100).toFixed(0)}% —— 挑"最佳"因子${p >= 0.3 ? "过拟合风险显著" : "较稳健"}`, "cpcv", p >= 0.3 ? "null" : "real"]);
   }
   rows.push(["短期方向预测", "（红线）", "不可靠预测 → 主动不做", null, "redline"]);
   rows.push(["v3 稀疏模型", "L1 正则实验", "假设被否（诚实 null，见 git 历史）", null, "null"]);
@@ -662,6 +666,33 @@ async function loadHonestRegistry() {
       <tr class="u-cap"><td style="padding:.25rem .4rem">实验</td><td style="padding:.25rem .4rem">方法</td><td style="padding:.25rem .4rem">诚实结论</td><td style="padding:.25rem .4rem;text-align:center">判定</td><td style="padding:.25rem .4rem;text-align:center">详情</td></tr>
       ${tr}
     </table>`;
+}
+
+// ── 🎲 过拟合概率 PBO（方法G CSCV）：同源消费 cpcv.json ──
+let CPCV = null;
+async function loadCpcv() {
+  const el = document.getElementById("cpcv");
+  if (!el) return;
+  try { const r = await fetch("cpcv.json?_=" + Date.now()); if (r.ok) CPCV = await r.json(); } catch (e) { /* 尚未生成 */ }
+  const res = CPCV?.result;
+  if (!res || res.pbo == null) {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">PBO 数据尚未生成（下次全量流水线后出现）</span>`;
+    return;
+  }
+  const pbo = res.pbo, pct = (pbo * 100).toFixed(0);
+  const c = pbo >= 0.5 ? "#e74c3c" : pbo >= 0.3 ? "#e67e22" : "#2ecc71";   // 高PBO=过拟合=红
+  el.innerHTML = `
+    <div style="border-left:3px solid ${c};padding:.4rem .7rem;margin-bottom:.6rem;">
+      <div style="display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap;">
+        <span style="font-size:1.6rem;font-weight:800;color:${c}">PBO ${pct}%</span>
+        <span style="color:var(--muted);font-size:0.78rem">挑"最佳"因子在样本外低于中位的概率</span>
+      </div>
+      <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin:.45rem 0;">
+        <div style="height:100%;width:${pct}%;background:${c};"></div></div>
+      <div style="color:var(--muted);font-size:0.72rem">${res.n_combos} 个 CSCV 组合 · ${res.n_factors} 因子 · 0%=完全稳健 / 50%≈抛硬币(过拟合) / &gt;50%=系统性失效</div>
+    </div>
+    <div style="font-size:0.82rem;line-height:1.55;margin-bottom:.4rem">${res.verdict}</div>
+    <div style="font-size:0.72rem;color:var(--muted);line-height:1.55">${CPCV.caveat || ""}</div>`;
 }
 
 function renderDigitChart() {

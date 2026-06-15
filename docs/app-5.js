@@ -133,6 +133,7 @@ function renderAll() {
   lazyRender("conformal", loadConformal, "Conformal");        // 📐 收益区间(方法E 保形预测)
   lazyRender("cycles-spectral", loadCycles, "Cycles");        // 🌀 周期检验(方法F 谱+红噪声)
   lazyRender("fdr-crossfamily", loadFdrCrossfamily, "FdrCF"); // 🧮 诚实总账(#5 跨检验族 FDR)
+  lazyRender("cpcv", loadCpcv, "CPCV");                       // 🎲 过拟合概率 PBO(方法G CSCV)
   lazyRender("chart-digit", renderDigitChart, "Digit");
   lazyRender("chart-ipo-cycle", renderIPOCycle, "IPOCycle");
   lazyRender("factor-audit", renderFactorAudit, "FactorAudit");
@@ -145,7 +146,7 @@ function renderAll() {
   // appendChild 搬的是同一活节点(IntersectionObserver 跟随节点、id 不变 → 懒渲染键照常)，勿改成 clone。
   const _regHost = document.getElementById("registry-panels");
   if (_regHost) {
-    ["fdr-crossfamily", "placebo-overview", "event-causal", "risk-dashboard", "conformal", "cycles-spectral", "factor-audit"].forEach(id => {
+    ["fdr-crossfamily", "cpcv", "placebo-overview", "event-causal", "risk-dashboard", "conformal", "cycles-spectral", "factor-audit"].forEach(id => {
       const w = document.getElementById(id)?.closest(".chart-wrap");
       if (w && w.parentElement !== _regHost) _regHost.appendChild(w);   // 幂等:refreshData 重调时不重复搬/重排
     });

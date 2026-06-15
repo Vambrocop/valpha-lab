@@ -39,6 +39,7 @@ steps = [
     ("滚动样本外验证",     "walk_forward.py"),
     ("因子样本外尸检",     "factor_pruning.py"),   # P2-5：因子记分卡 + 靶子探针（研究面板）
     ("跨检验族FDR收口",    "fdr_crossfamily.py"),  # P4-#5：汇池全站显著性主张做多重比较（须在 factor_pruning 后）
+    ("过拟合概率PBO",      "cpcv.py"),             # 方法G：CSCV/PBO 量化因子选择过拟合风险(升级验证、不加模型)
     ("波动率状态原型",     "vol_model.py"),        # P2-6：高信噪比靶子（研究面板）
     ("市场结构解释",       "market_structure.py"), # PCA共动 + 相关性体制（研究面板）
     ("实盘预测追踪",       "track_predictions.py"),

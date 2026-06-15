@@ -181,6 +181,21 @@ except Exception as e:
     errors.append(f"新闻 curated 新鲜度检查失败: {e}")
     print(f"  ✗ 新闻 curated 新鲜度检查失败: {e}")
 
+# 3g. CPCV 过拟合概率 PBO 形状（方法G：pbo∈[0,1]、n_combos>0。存在才查，缺失不致命）
+try:
+    cv_path = WEB_DIR / "cpcv.json"
+    if cv_path.exists():
+        with open(cv_path, encoding="utf-8") as fh:
+            cv = json.load(fh)
+        r = cv.get("result", {})
+        pbo_v = r.get("pbo")
+        ok = (isinstance(pbo_v, (int, float)) and 0.0 <= pbo_v <= 1.0
+              and int(r.get("n_combos", 0)) > 0)
+        check(ok, f"cpcv.json 形状正常（PBO={pbo_v}，n_combos={r.get('n_combos')}）")
+except Exception as e:
+    errors.append(f"cpcv 形状检查失败: {e}")
+    print(f"  ✗ cpcv 形状检查失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv
