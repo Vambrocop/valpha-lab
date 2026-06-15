@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from risk_dashboard import vxn_vix_spread, conditional_downside, evt_tail
+from risk_dashboard import vxn_vix_spread, conditional_downside, evt_tail, path_drawdown
 
 
 def _idx(n):
@@ -65,6 +65,18 @@ def test_evt_var_es_monotone_and_es_ge_var():
     ve = {x["level"]: x for x in r["var_es"]}
     assert ve[0.999]["var_pct"] > ve[0.99]["var_pct"]                   # 更极端分位 VaR 更深
     assert all(x["es_pct"] >= x["var_pct"] for x in r["var_es"])        # ES≥VaR
+
+
+# ── 路径回撤分布（#4）────────────────────────────────────────────────
+def test_path_drawdown_known_value():
+    r = np.tile([0.1, -0.2], 60)        # 120 收益,horizon=2 → 60 窗口,每窗净值 1.1→0.88 = 回撤 20%
+    res = path_drawdown(r, horizon=2)
+    assert res["status"] == "ok" and res["n_windows"] == 60
+    assert res["median_pct"] == 20.0 and res["worst_pct"] == 20.0
+
+
+def test_path_drawdown_insufficient():
+    assert path_drawdown(np.array([0.01] * 10), horizon=2)["status"] == "insufficient"
 
 
 def test_evt_return_period_increases_with_loss():

@@ -170,6 +170,27 @@ def evt_tail(returns, threshold_pct=95.0, var_levels=(0.99, 0.999),
                       "ξ 对阈值敏感(见 xi_sensitivity)；样本跨多体制、假设尾部平稳。"}
 
 
+def path_drawdown(ret, horizon=HORIZON):
+    """非重叠 N 日窗口内最大回撤(峰到谷)幅度的分布——持有期内路径最深跌多少(风险,非方向)。
+    与 EVT(单日尾部)/条件下行(期末分位)互补:刻画'持有期间最难受的回撤有多深'。"""
+    r = np.asarray(ret, float)
+    n = len(r)
+    mags = []
+    for start in range(0, n - horizon + 1, horizon):                   # +1:含最后一个完整窗口
+        path = np.cumprod(1.0 + r[start:start + horizon])              # 窗口内净值路径(起点=1)
+        dd = float((path / np.maximum.accumulate(path) - 1.0).min())   # 最大回撤(≤0)
+        mags.append(-dd)                                               # 幅度(≥0)
+    if len(mags) < 30:
+        return {"status": "insufficient"}
+    a = np.array(mags)
+    return {"status": "ok", "horizon": int(horizon), "n_windows": int(len(a)),
+            "median_pct": round(float(np.median(a)) * 100, 2),
+            "p75_pct": round(float(np.percentile(a, 75)) * 100, 2),
+            "p90_pct": round(float(np.percentile(a, 90)) * 100, 2),
+            "p95_pct": round(float(np.percentile(a, 95)) * 100, 2),
+            "worst_pct": round(float(a.max()) * 100, 2)}
+
+
 def run_all():
     print("=== 方法 D：风险仪表盘（测风险不测方向）===")
     px = _fetch(["^VXN", "^VIX", "^IXIC"])
@@ -190,6 +211,8 @@ def run_all():
         gx = _fetch(["^GSPC"], start="1928-01-01")   # 与 SP500_long.csv 同起点，保证可复现
         sp_ret = gx["^GSPC"].pct_change().dropna() if "^GSPC" in gx else None
     evt = evt_tail(sp_ret) if sp_ret is not None else {"status": "insufficient"}
+    drawdown = ([d for d in (path_drawdown(sp_ret, h) for h in (HORIZON, 60))
+                 if d.get("status") == "ok"] if sp_ret is not None else [])
 
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -199,11 +222,13 @@ def run_all():
                   "价差分位为全历史(VXN 自~2003)、70/30 档为描述性约定、非体制调整。"
                   "用 VIX 作全市场风险条件变量(VXN 已用于价差读数，避免循环)。"
                   "EVT 尾部=对历史日损失超阈值部分拟合 GPD，估极端跌幅 VaR/ES 与重现期；"
-                  "假设尾部行为平稳、外推有不确定性，只测严重度/稀有度，不测时点或方向。",
+                  "假设尾部行为平稳、外推有不确定性，只测严重度/稀有度，不测时点或方向。"
+                  "路径回撤=非重叠 N 日窗口内峰到谷最大跌幅的分布(持有期内最深回撤)，与单日 EVT/期末下行互补，仍只测严重度、非方向。",
         "horizon": HORIZON, "q_tail": Q_TAIL,
         "vxn_vix_spread": spread,
         "downside_by_vix": downside,
         "evt": evt,
+        "drawdown": drawdown,
     }
     payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
     for d in (PROC_DIR, WEB_DIR, DOCS_DIR):

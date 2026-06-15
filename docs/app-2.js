@@ -484,7 +484,22 @@ async function loadRiskDashboard() {
       </table>
       ${ev.caveat ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:.3rem;line-height:1.5">⚠ ${ev.caveat}</div>` : ""}</div>`;
   }
-  el.innerHTML = `${spreadHtml}${ddHtml}${evtHtml}
+  const dw = RISK_DASH.drawdown || [];
+  let dwHtml = "";
+  if (dw.length) {
+    const rows = dw.map(d => `<tr style="border-top:1px solid var(--border-faint)">
+      <td style="padding:.3rem .4rem;color:var(--muted)">${d.horizon} 日持有</td>
+      <td style="padding:.3rem .4rem;text-align:right">${d.median_pct}%</td>
+      <td style="padding:.3rem .4rem;text-align:right;color:#e67e22">${d.p90_pct}%</td>
+      <td style="padding:.3rem .4rem;text-align:right;color:#e74c3c">${d.worst_pct}%</td></tr>`).join("");
+    dwHtml = `<div style="margin-top:.7rem;">
+      <div style="font-size:0.76rem;color:var(--muted);margin-bottom:.3rem">路径回撤：持有期内峰到谷最深跌幅的历史分布（持有期间最难受跌多深；非重叠窗口；测严重度非方向）</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+        <tr class="u-cap"><td style="padding:.2rem .4rem">持有期</td><td style="text-align:right;padding:.2rem .4rem">中位回撤</td><td style="text-align:right;padding:.2rem .4rem">90分位</td><td style="text-align:right;padding:.2rem .4rem">史上最坏</td></tr>
+        ${rows}
+      </table></div>`;
+  }
+  el.innerHTML = `${spreadHtml}${ddHtml}${evtHtml}${dwHtml}
     <div style="font-size:0.73rem;color:var(--muted);margin-top:.6rem;line-height:1.55">${RISK_DASH.caveat || ""}</div>`;
 }
 
