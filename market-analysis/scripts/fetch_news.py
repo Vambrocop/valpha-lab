@@ -54,6 +54,9 @@ def fetch_feed(name, url):
         r = requests.get(url, timeout=20,
                          headers={"User-Agent": "Mozilla/5.0 (alpha-lab personal dashboard)"})
         r.raise_for_status()
+        if len(r.content) > 5_000_000:          # 5MB 上限:防异常/被污染的巨型 XML 耗尽 CI 资源(审计 LOW)
+            print(f"  ⚠ {name} 响应过大({len(r.content)//1024}KB),跳过")
+            return items
         root = ET.fromstring(r.content)
         now = datetime.now(timezone.utc)
         for item in root.iter("item"):
