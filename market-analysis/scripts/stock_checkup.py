@@ -76,6 +76,39 @@ def compute_evt(px):
             "var_es": r["var_es"]}
 
 
+def market_dependence(stock_ret, mkt_ret):
+    """对齐后的日收益数组 → 单因子(市场)依赖度：相关、R²(市场解释的方差占比)、特质风险占比(1−R²)。"""
+    s = np.asarray(stock_ret, float)
+    m = np.asarray(mkt_ret, float)
+    if len(s) < 2 or len(m) != len(s):
+        return None
+    if np.std(s, ddof=1) == 0 or np.std(m, ddof=1) == 0:
+        return None
+    corr = float(np.corrcoef(s, m)[0, 1])
+    r2 = corr ** 2
+    return {"corr": round(corr, 2), "r2_pct": round(r2 * 100, 1),
+            "idiosyncratic_pct": round((1.0 - r2) * 100, 1)}
+
+
+def compute_market_dependence(px, nasdaq):
+    """块2：单票对纳指的依赖度——R²=多大比例的波动被大盘解释，特质=自己的部分(1−R²)。描述非预测。"""
+    px = pd.to_numeric(px, errors="coerce").dropna().sort_index()
+    ret = px.pct_change().dropna()
+    nas = pd.to_numeric(nasdaq, errors="coerce").dropna().sort_index().pct_change().dropna()
+    common = ret.index.intersection(nas.index)
+    if len(common) < 100:
+        return {"status": "insufficient"}
+    s = ret.reindex(common).to_numpy(float)
+    m = nas.reindex(common).to_numpy(float)
+    ok = ~np.isnan(s) & ~np.isnan(m)
+    md = market_dependence(s[ok], m[ok])
+    if md is None:
+        return {"status": "insufficient"}
+    md["status"] = "ok"
+    md["n_obs"] = int(ok.sum())
+    return md
+
+
 def compute_basic_risk(px, nasdaq):
     """单票价格序列 px + 纳指价格序列 nasdaq（皆 pd.Series，索引=日期）→ 基础风险字典。"""
     px = pd.to_numeric(px, errors="coerce").dropna().sort_index()
@@ -156,6 +189,7 @@ def run_all():
         risk["name"] = TICKER_NAMES[tk]
         if risk["status"] == "ok":
             risk["evt"] = compute_evt(px)                       # 块1：EVT 尾部
+            risk["market_dep"] = compute_market_dependence(px, nasdaq)   # 块2：市场依赖度
         out_tickers[tk] = risk
         if risk["status"] == "ok":
             ev = risk.get("evt", {})

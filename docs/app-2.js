@@ -816,13 +816,21 @@ function renderStockCheckup(code) {
   } else if (ev) {
     evtHtml = `<div style="margin-top:.6rem;color:var(--muted);font-size:0.76rem">极值尾部：数据不足（需 ~1000+ 天），诚实不给。</div>`;
   }
+  const md = t.market_dep;
+  let mdHtml = "";
+  if (md && md.status === "ok") {
+    const tag = md.r2_pct >= 60 ? "——大盘主导" : md.r2_pct <= 30 ? "——以自身因素为主" : "";
+    mdHtml = `<div style="margin-top:.7rem;font-size:0.82rem;color:var(--muted);line-height:1.55">
+      市场依赖度：<b style="color:var(--fg)">${md.r2_pct}%</b> 的波动可由纳指解释（相关 ${md.corr}），其余
+      <b style="color:var(--fg)">${md.idiosyncratic_pct}%</b> 是个股特质。${tag}</div>`;
+  }
   body.innerHTML = `
     <div style="font-size:0.78rem;color:var(--muted);margin-bottom:.4rem">${esc(code)} ${esc(t.name || "")} · 日线 ${esc(t.start)}→${esc(t.end)}（${t.n_days} 天）</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
       ${row("年化波动", t.ann_vol_pct + "%", "历史日收益波动，越高越颠")}
       ${row("历史最深回撤", t.max_drawdown_pct + "%", "峰到谷最大跌幅——提示风险，非机会")}
       ${row("对纳指 β", betaTxt, "对大盘的敏感度，是风险特征非收益承诺")}
-    </table>${evtHtml}`;
+    </table>${mdHtml}${evtHtml}`;
 }
 
 function renderDigitChart() {

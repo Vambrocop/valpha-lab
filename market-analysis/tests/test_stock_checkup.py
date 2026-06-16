@@ -2,7 +2,8 @@
 import numpy as np
 import pandas as pd
 
-from stock_checkup import annualized_vol, max_drawdown, beta, compute_basic_risk, compute_evt
+from stock_checkup import (annualized_vol, max_drawdown, beta, compute_basic_risk,
+                           compute_evt, market_dependence)
 
 
 def test_max_drawdown_known():
@@ -52,3 +53,14 @@ def test_compute_evt_fat_tail_and_insufficient():
     assert ve99["es_pct"] >= ve99["var_pct"]                   # ES≥VaR
     short = pd.Series(100 + np.arange(200.0), index=pd.bdate_range("2020-01-01", periods=200))
     assert compute_evt(short)["status"] == "insufficient"      # 不足 ~1000 天
+
+
+def test_market_dependence():
+    rng = np.random.default_rng(7)
+    m = rng.normal(0, 0.01, 2000)
+    assert market_dependence(m, m)["r2_pct"] == 100.0          # 完全跟随 → R²=100%
+    md_indep = market_dependence(rng.normal(0, 0.01, 2000), m)
+    assert md_indep["r2_pct"] < 10.0 and abs(md_indep["corr"]) < 0.2   # 独立 → R²≈0
+    mix = 0.7 * m + 0.3 * rng.normal(0, 0.01, 2000)
+    assert 30 < market_dependence(mix, m)["r2_pct"] < 95       # 混合 → R² 居中
+    assert market_dependence(np.ones(5), np.ones(5)) is None   # 零方差 → None
