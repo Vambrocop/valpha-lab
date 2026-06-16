@@ -919,6 +919,33 @@ function renderStockCheckup(code) {
     </table>${mdHtml}${evtHtml}${cfHtml}${patHtml}${anHtml}`;
 }
 
+// ── 🌡️ 当前市场风险体制(R1)：同源消费 market_regime.json,描述非预测 ──
+async function loadMarketRegime() {
+  const el = document.getElementById("market-regime");
+  if (!el) return;
+  let MR = null;
+  try { const r = await fetch("market_regime.json?_=" + Date.now()); if (r.ok) MR = await r.json(); } catch (e) { /* 尚未生成 */ }
+  if (!MR || MR.status !== "ok") {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">市场体制数据尚未生成（下次全量流水线后出现）</span>`;
+    return;
+  }
+  const rows = (MR.components || []).map(c => {
+    const lc = (c.inverted || c.backwardation) ? "#e67e22" : "var(--muted)";   // 倒挂=橙仅引起注意,非红绿灯
+    return `<tr style="border-top:1px solid var(--border-faint)">
+      <td style="padding:.35rem .4rem;color:var(--muted)">${esc(c.name)}</td>
+      <td style="padding:.35rem .4rem;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${c.value}${c.percentile != null ? `<span style="color:var(--muted);font-size:.72rem"> (第${c.percentile}分位)</span>` : ""}${c.asof ? `<span style="color:var(--muted);font-size:.68rem;display:block;font-weight:400">截至 ${esc(c.asof)}</span>` : ""}</td>
+      <td style="padding:.35rem .4rem;text-align:center;color:${lc};font-size:.8rem">${esc(c.label)}</td>
+      <td style="padding:.35rem .4rem;color:var(--muted);font-size:.72rem">${esc(c.note)}</td></tr>`;
+  }).join("");
+  el.innerHTML = `
+    <div style="font-size:0.86rem;font-weight:600;margin-bottom:.5rem">${esc(MR.composite)} <span style="color:var(--muted);font-size:.74rem;font-weight:400">— 描述当前环境，非预测、非操作建议（各指标截至日期见下，部分月频会滞后）</span></div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.83rem">
+      <tr class="u-cap"><td style="padding:.2rem .4rem">指标</td><td style="text-align:right;padding:.2rem .4rem">现值</td><td style="text-align:center;padding:.2rem .4rem">体制</td><td style="padding:.2rem .4rem">含义</td></tr>
+      ${rows}
+    </table>
+    <div style="font-size:0.74rem;color:var(--muted);line-height:1.6;margin-top:.6rem">${esc(MR.caveat || "")}</div>`;
+}
+
 // ── 🪦 诚实坟场：聚合死掉的模型 + 消失/被刷掉的规律(同源消费各 JSON) ──
 async function loadGraveyard() {
   const el = document.getElementById("honest-graveyard");

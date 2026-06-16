@@ -238,6 +238,19 @@ except Exception as e:
     errors.append(f"方法论完整性护栏失败: {e}")
     print(f"  ✗ 方法论完整性护栏失败: {e}")
 
+# 3k. R1 市场风险体制形状（components 非空、有 composite。存在才查、缺失不致命）
+try:
+    mr_path = WEB_DIR / "market_regime.json"
+    if mr_path.exists():
+        with open(mr_path, encoding="utf-8") as fh:
+            mr = json.load(fh)
+        ok = (mr.get("status") == "ok" and isinstance(mr.get("components"), list)
+              and len(mr["components"]) >= 2 and bool(mr.get("composite")))
+        check(ok, f"market_regime.json 形状正常（{len(mr.get('components', []))} 指标）")
+except Exception as e:
+    errors.append(f"market_regime 形状检查失败: {e}")
+    print(f"  ✗ market_regime 形状检查失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv
