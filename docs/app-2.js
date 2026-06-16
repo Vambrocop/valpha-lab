@@ -650,11 +650,17 @@ async function loadFdrCrossfamily() {
     <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;line-height:1.55">${d.caveat}</div>`;
 }
 
+// 同源拉取 JSON（带 cache-buster），失败/非 200 返 null —— 登记簿/坟场/探索区共用
+async function _fetchJson(f) {
+  try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; }
+  catch (e) { return null; }
+}
+
 // ── 🧾 诚实总览（登记簿首屏）：从各方法 JSON 实时抓 verdict，含空/否结果 ──
 async function loadHonestRegistry() {
   const el = document.getElementById("honest-registry");
   if (!el) return;
-  const get = async (f) => { try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+  const get = _fetchJson;
   const [pl, fx, ev, cy, cf, cv, sc] = await Promise.all([
     get("placebo_tests.json"), get("fdr_crossfamily.json"), get("event_causal.json"),
     get("cycles.json"), get("conformal.json"), get("cpcv.json"), get("stock_checkup.json"),
@@ -993,7 +999,7 @@ async function loadOverreaction() {
 async function loadExploratory() {
   const el = document.getElementById("exploratory");
   if (!el) return;
-  const get = async f => { try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+  const get = _fetchJson;
   const [pl, cy, sc] = await Promise.all([
     get("placebo_tests.json"), get("cycles.json"), get("stock_checkup.json"),
   ]);
@@ -1029,7 +1035,7 @@ async function loadExploratory() {
 async function loadGraveyard() {
   const el = document.getElementById("honest-graveyard");
   if (!el) return;
-  const get = async f => { try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+  const get = _fetchJson;
   const [pl, fx, cy, sc] = await Promise.all([
     get("placebo_tests.json"), get("fdr_crossfamily.json"), get("cycles.json"), get("stock_checkup.json"),
   ]);
