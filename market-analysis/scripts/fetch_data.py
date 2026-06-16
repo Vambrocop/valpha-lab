@@ -150,30 +150,45 @@ def fetch_fred():
         "YIELD_10Y":"GS10",      # 10年期国债收益率（月频，FRED官方）
         "YIELD_2Y": "GS2",       # 2年期国债收益率（用于算倒挂）
         "T10Y2Y":   "T10Y2Y",    # 10Y-2Y利差（日频）：<0 倒挂=衰退预警
-        "HY_SPREAD":"BAMLH0A0HYM2",  # 高收益债利差（日频）：信用压力，>5%危险
+        "HY_SPREAD":"BAMLH0A0HYM2",  # 高收益债利差（ICE，日频）：FRED 仅开放~2年，仅供"当前值"展示
+        "CREDIT_SPREAD":"BAA10Y",    # 穆迪 Baa 公司债 − 10Y 国债（日频，全史2000+，无访问限制）：信用压力体制(R1)
     }
+    import os
+    api_key = os.environ.get("FRED_API_KEY", "").strip()   # 有 key→官方 API 取全史(graph CSV 对日频序列只返~2年);无 key→回退 graph CSV
+    if api_key:
+        print("  (使用 FRED API key:全史日频)")
+
+    def _via_api(series):
+        url = ("https://api.stlouisfed.org/fred/series/observations"
+               f"?series_id={series}&api_key={api_key}&file_type=json&observation_start={START}")
+        r = requests.get(url, timeout=30); r.raise_for_status()
+        obs = r.json().get("observations", [])
+        s = pd.Series({pd.to_datetime(o["date"]): o["value"] for o in obs})
+        return pd.to_numeric(s.replace(".", pd.NA), errors="coerce").dropna()
+
+    def _via_graph(series):
+        url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}"
+        r = requests.get(url, timeout=30); r.raise_for_status()
+        df = pd.read_csv(io.StringIO(r.text)); df.columns = ["Date", "v"]
+        s = df.set_index(pd.to_datetime(df["Date"]))["v"]
+        return pd.to_numeric(s.replace(".", pd.NA), errors="coerce").dropna()
+
     for name, series in FRED_SERIES.items():
         try:
             print(f"  下载 {name} (FRED:{series})...")
-            url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}"
-            r = requests.get(url, timeout=30)
-            r.raise_for_status()
-            df = pd.read_csv(io.StringIO(r.text))
-            df.columns = ["Date", name]
-            df["Date"] = pd.to_datetime(df["Date"])
-            df = df.set_index("Date")[name]
-            df = df[df.index >= START].replace(".", pd.NA).dropna()
-            df = df.astype(float)
-            frames[name] = df
-            df.to_csv(RAW_DIR / f"{name}.csv")
-            print(f"    → {len(df)} 行（月频）")
+            s = _via_api(series) if api_key else _via_graph(series)
+            s = s[s.index >= pd.Timestamp(START)].astype(float)
+            s.index.name = "Date"; s.name = name
+            frames[name] = s
+            s.to_csv(RAW_DIR / f"{name}.csv")
+            print(f"    → {len(s)} 行（{'API全史' if api_key else 'graph'}，{s.index[0].date()}–{s.index[-1].date()}）")
         except Exception as e:
             # 下载失败时回退到上次缓存的 CSV，保证 combined_prices 列不缺失
             cache = RAW_DIR / f"{name}.csv"
             if cache.exists():
-                df = pd.read_csv(cache, index_col="Date", parse_dates=True).squeeze()
-                frames[name] = df.astype(float)
-                print(f"    ⚠ {name} 下载失败，使用缓存（截至 {df.index[-1].date()}）: {e}")
+                df = pd.read_csv(cache, index_col="Date", parse_dates=True).squeeze("columns")
+                frames[name] = pd.to_numeric(df, errors="coerce").dropna().astype(float)
+                print(f"    ⚠ {name} 下载失败，使用缓存（截至 {frames[name].index[-1].date()}）: {e}")
             else:
                 print(f"    ⚠ {name} 失败且无缓存: {e}")
     return frames
