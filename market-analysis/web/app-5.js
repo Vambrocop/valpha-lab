@@ -118,6 +118,7 @@ function renderAll() {
   safeRender(renderBenchmark,       "Benchmark");
   fetchFearAndGreed();
   loadQuotes();   // 盘中轻量报价（10分钟级），SPCX 监视卡优先消费
+  loadDataFreshness();   // 📡 数据新鲜度徽章：让"自动刷新到几点 + 盘中/休市"一眼可见
   lazyRender("chart-spcx-ipo",      renderSPCXDetail, "SPCXDetail");
   // Sync SPCX inputs with localStorage
   const savedShares = localStorage.getItem("spcx_shares");
@@ -320,6 +321,28 @@ async function refreshData(btn) {
   } finally {
     _refreshing = false;
   }
+}
+
+// 📡 数据新鲜度徽章：读各源时间戳 → "几分钟前 + 美东盘中/休市(均自动刷新)"，让实时性一眼可见
+async function loadDataFreshness() {
+  const el = document.getElementById("data-freshness");
+  if (!el) return;
+  const g = async f => { try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+  const [q, n] = await Promise.all([g("quotes.json"), g("news.json")]);
+  const now = Date.now();
+  const ago = t => { if (!t) return null; const m = Math.round((now - t) / 60000); if (m < 1) return "刚刚"; if (m < 60) return m + " 分钟前"; const h = m / 60; return h < 24 ? Math.round(h) + " 小时前" : Math.round(h / 24) + " 天前"; };
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+  let hh = +p.find(x => x.type === "hour").value; if (hh === 24) hh = 0;
+  const mins = hh * 60 + +p.find(x => x.type === "minute").value;
+  const weekday = !["Sat", "Sun"].includes(p.find(x => x.type === "weekday").value);
+  const open = weekday && mins >= 570 && mins < 960;   // 美东 9:30–16:00
+  const qT = q && q.generated ? Date.parse(q.generated) : 0;
+  const nT = n && n.updated ? Date.parse(n.updated.replace(" UTC", "Z").replace(" ", "T")) : 0;
+  const status = open ? "🟢 美股盘中 · 报价每 10 分钟自动刷新"
+    : (weekday ? "⚪ 盘前/盘后休市 · 开盘(美东9:30)后自动刷新" : "⚪ 周末休市 · 下个交易日自动刷新");
+  const stale = open && qT && (now - qT > 30 * 60000);
+  el.innerHTML = `📡 报价 ${ago(qT) || "—"}${ago(nT) ? " · 要闻 " + ago(nT) : ""} · ${status}`
+    + (stale ? ` <span style="color:#e67e22">⚠ 盘中超 30 分未刷新，CI 可能异常</span>` : "");
 }
 
 // ═══════════════════════════════════════════════════════
