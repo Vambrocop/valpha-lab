@@ -225,6 +225,19 @@ except Exception as e:
     errors.append(f"stock_checkup 形状检查失败: {e}")
     print(f"  ✗ stock_checkup 形状检查失败: {e}")
 
+# 3j. 方法论完整性护栏(automation-first):个股"真规律"(三关全过)必须先经人工审视,
+#     不得自动发布——若 patterns_fdr_real=True 进了已发布 JSON,说明人工停下被绕过 → 拦住发布。
+try:
+    sc_path = WEB_DIR / "stock_checkup.json"
+    if sc_path.exists():
+        with open(sc_path, encoding="utf-8") as fh:
+            _sc = json.load(fh)
+        check(_sc.get("patterns_fdr_real") is not True,
+              "方法论护栏:无未经人工审视的个股'真规律'(patterns_fdr_real≠True)")
+except Exception as e:
+    errors.append(f"方法论完整性护栏失败: {e}")
+    print(f"  ✗ 方法论完整性护栏失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv
