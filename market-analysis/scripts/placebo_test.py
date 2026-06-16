@@ -167,12 +167,21 @@ def run_all():
     print(f"  S&P500 日收益 {ret.index[0].date()}–{ret.index[-1].date()}  n={len(ret)}")
 
     tests = []
+    recent_cut = pd.Timestamp("2000-01-01")               # 分段:全样本 vs "现代"(2000后),看效应是否随时间消失(被套利)
 
-    def add(idx_key, **kw):
+    def add(idx_key, recent_mask=None, **kw):
         rng = np.random.default_rng([SEED, idx_key])      # 每项独立流
-        r = perm_test(kw.pop("values"), kw.pop("labels"), kw.pop("stat_fn"), rng)
+        vals, labs, sf = kw.pop("values"), kw.pop("labels"), kw.pop("stat_fn")
+        r = perm_test(vals, labs, sf, rng)
         status, verdict = _verdict(r["p_value"], kw["min_group_n"])
-        tests.append({**kw, **r, "status": status,
+        rec = {}
+        if recent_mask is not None and int(recent_mask.sum()) >= 200:   # 现代段够样本才测
+            rp = perm_test(vals[recent_mask], labs[recent_mask], sf,
+                           np.random.default_rng([SEED, idx_key, 2000]))["p_value"]
+            rmin = int(np.unique(labs[recent_mask], return_counts=True)[1].min())   # 现代段最小组样本→判检验力
+            rec = {"recent_p": round(rp, 6), "recent_significant": bool(rp < ALPHA),
+                   "recent_min_group_n": rmin}                          # 前端据此区分"消失"vs"现代样本不足"
+        tests.append({**kw, **r, **rec, "status": status,
                       "passed": bool(status == "real"), "verdict": verdict})
 
     # ── 1. 星期效应（日频，限五日交易制，SS_between）──────────────
@@ -182,7 +191,8 @@ def run_all():
     wvals, wlab = dret.values[wmask], wlab[wmask]
     gm, cnt = _group_means(wvals, wlab, 5)
     names = ["周一", "周二", "周三", "周四", "周五"]
-    add(1, values=wvals, labels=wlab, stat_fn=make_ssb_stat(5),
+    add(1, recent_mask=np.asarray(dret.index[wmask] >= recent_cut),
+        values=wvals, labels=wlab, stat_fn=make_ssb_stat(5),
         key="dow", panel="星期效应", scope=f"日频 S&P500 {DOW_START[:4]}+",
         claim="某些交易日平均收益更高", stat="组间平方和(日均收益)",
         min_group_n=int(cnt.min()),
@@ -191,7 +201,8 @@ def run_all():
     # ── 2. 月份效应（月频，全历史，SS_between）─────────────────────
     mlab = (monthly.index.month - 1).values
     gm, cnt = _group_means(monthly.values, mlab, 12)
-    add(2, values=monthly.values, labels=mlab, stat_fn=make_ssb_stat(12),
+    add(2, recent_mask=np.asarray(monthly.index >= recent_cut),
+        values=monthly.values, labels=mlab, stat_fn=make_ssb_stat(12),
         key="month", panel="月份效应(月度胜率)", scope="月频 S&P500 1928+",
         claim="某些月份系统性更强/更弱", stat="组间平方和(月均收益)",
         min_group_n=int(cnt.min()),
@@ -216,7 +227,8 @@ def run_all():
     # ── 5. 假日效应：节前看涨（日频，现代口径，单边 diff）─────────
     hret = ret[ret.index >= HOLIDAY_START]
     pre = holiday_pre_mask(hret.index)
-    add(5, values=hret.values, labels=pre.astype(int), stat_fn=make_dir_diff_stat(),
+    add(5, recent_mask=np.asarray(hret.index >= recent_cut),
+        values=hret.values, labels=pre.astype(int), stat_fn=make_dir_diff_stat(),
         key="pre_holiday", panel="假日效应(节前)", scope=f"日频 S&P500 {HOLIDAY_START[:4]}+",
         claim="节前最后一个交易日平均看涨", stat="节前均值 - 其余均值(单边)",
         min_group_n=int(pre.sum()), detail=f"节前交易日 n={int(pre.sum())}")
@@ -224,7 +236,8 @@ def run_all():
     # ── 6. 圣诞行情 Santa Claus Rally（Dec26–Jan3，纯日期，全历史）──
     santa = (((ret.index.month == 12) & (ret.index.day >= 26)) |
              ((ret.index.month == 1) & (ret.index.day <= 3))).astype(int)
-    add(6, values=ret.values, labels=santa, stat_fn=make_dir_diff_stat(),
+    add(6, recent_mask=np.asarray(ret.index >= recent_cut),
+        values=ret.values, labels=santa, stat_fn=make_dir_diff_stat(),
         key="santa_claus", panel="圣诞行情", scope="日频 S&P500 1928+",
         claim="Dec26–Jan3 区间平均看涨", stat="区间均值 - 其余均值(单边)",
         min_group_n=int(santa.sum()), detail=f"区间交易日 n={int(santa.sum())}")

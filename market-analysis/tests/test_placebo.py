@@ -10,6 +10,20 @@ def _rng(key=1):
     return np.random.default_rng([20260613, key])
 
 
+def test_recent_segment_subset_and_reproducible():
+    """分段(现代段)逻辑可测部分:子段最小组样本计算 + 独立 rng 流可复现。"""
+    rng = np.random.default_rng(1)
+    vals = rng.normal(0, 1, 1000)
+    labs = np.array([0, 1, 2, 3, 4] * 200)
+    mask = np.arange(1000) >= 600                       # "现代段"=后 400(每组 80)
+    rmin = int(np.unique(labs[mask], return_counts=True)[1].min())
+    assert rmin == 80
+    args = (vals[mask], labs[mask], make_ssb_stat(5))
+    r1 = perm_test(*args, np.random.default_rng([20260613, 1, 2000]), n_perm=200)
+    r2 = perm_test(*args, np.random.default_rng([20260613, 1, 2000]), n_perm=200)
+    assert r1["p_value"] == r2["p_value"] and 0 < r1["p_value"] <= 1   # 现代段独立种子可复现
+
+
 # ── 置换设计：打乱标签必须保持各组样本量不变 ──────────────────────
 def test_permutation_preserves_group_sizes():
     labels = np.array([0, 0, 1, 1, 1, 2])

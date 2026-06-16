@@ -362,16 +362,23 @@ async function loadPlacebo() {
     const fdr = t.status === "inconclusive" ? `<span style="color:var(--muted)">FDR —</span>`
               : t.fdr_significant_05 ? `<span style="color:#2ecc71">FDR✓</span>`
               : `<span style="color:#e67e22">FDR✗</span>`;
+    const recAdq = t.recent_min_group_n == null || t.recent_min_group_n >= 30;   // 现代段够检验力才敢说"消失"
+    const modern = t.recent_p == null ? ""
+      : (t.fdr_significant_05 && !t.recent_significant && recAdq
+          ? `<span style="color:#3498db;font-size:0.78rem">· 现代(2000后) p=${t.recent_p.toFixed(2)} → <b>现代已测不到(很可能被套利)</b></span>`
+          : `<span style="color:var(--muted);font-size:0.78rem">· 现代 p=${t.recent_p.toFixed(2)}${t.recent_significant ? "(仍在)" : (recAdq ? "" : "(现代样本不足)")}</span>`);
     return `<div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem;
                  padding:.5rem .2rem .5rem .6rem;border-bottom:1px solid var(--border);border-left:3px solid ${s.c};">
       <strong style="min-width:8.5rem">${t.panel}</strong>
       <span style="color:${s.c};font-weight:700">${s.t}</span>
       <span style="color:var(--muted);font-size:0.78rem">p=${t.p_value.toFixed(3)} · q=${t.q_value.toFixed(3)} ${fdr}</span>
+      ${modern}
       <span style="color:var(--muted);font-size:0.73rem;flex-basis:100%">${t.claim}——${t.detail}（${t.scope}）</span>
     </div>`;
   }).join("");
   const cnt = k => PLACEBO.tests.filter(t => t.status === k).length;
   const fdrSurv = PLACEBO.tests.filter(t => t.fdr_significant_05).map(t => t.panel);
+  const fadedSurv = PLACEBO.tests.filter(t => t.fdr_significant_05 && t.recent_p != null && !t.recent_significant && (t.recent_min_group_n == null || t.recent_min_group_n >= 30)).map(t => t.panel);
   el.innerHTML = `
     <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:.6rem;">
       把每个"日历规律"的日期标签随机打乱 ${PLACEBO.n_perm} 次生成零分布，真实效应须超 95 分位才算"真"；
@@ -383,7 +390,8 @@ async function loadPlacebo() {
       小结：<b style="color:#2ecc71">${cnt("real")} 真实</b> /
       <b style="color:#f1c40f">${cnt("inconclusive")} 无定论</b>(样本太小,无权下结论) /
       <b style="color:#e74c3c">${cnt("rejected")} 未显现</b>。
-      多重检验校正(FDR q&lt;0.05)后仍站得住：<b>${fdrSurv.join("、") || "无"}</b>。
+      多重检验校正(FDR q&lt;0.05)后仍站得住：<b>${fdrSurv.join("、") || "无"}</b>${fadedSurv.length ? `——但分段揭示 <b style="color:#3498db">${fadedSurv.join("、")}</b> 在 2000 后已测不到(很可能被套利，见 🪦 诚实坟场)，全样本显著多半是 2000 前的遗物` : ""}。
+      <br><span style="font-size:0.73rem">分段口径=全样本 vs 现代(2000后)两段;只证"现代段测不到"，不证具体消失机制(套利/结构变迁/检验力下降皆可能)。与个股体检的"分半+近5年"口径不同。</span>
       <br>数据 ${PLACEBO.data?.source} ${PLACEBO.data?.start}–${PLACEBO.data?.end}，种子 ${PLACEBO.seed}（可复现）。
     </div>`;
 }
@@ -924,6 +932,8 @@ async function loadGraveyard() {
   dead.push(["模型/假设被否", "指数纳入效应 RDD", "断点回归需 Russell 浮动市值排名(专有不可得)，拒用劣质代理硬凑 → 诚实不做"]);
   if (pl?.tests) for (const t of pl.tests) if (t.status === "rejected")
     dead.push(["曾认为有效·现已测不到", t.panel, `充分样本下不显著(p=${t.p_value})——很可能已被套利`]);
+  if (pl?.tests) for (const t of pl.tests) if (t.fdr_significant_05 && t.recent_p != null && !t.recent_significant && (t.recent_min_group_n == null || t.recent_min_group_n >= 30))
+    dead.push(["曾有效·现已消失(指数级)", t.panel, `全样本 FDR 显著(q=${t.q_value})但 2000 后 p=${t.recent_p.toFixed(2)} 已测不到——全样本显著多半是 2000 前遗物，很可能被套利`]);
   if (sc?.tickers) for (const k of Object.keys(sc.tickers)) {
     const p = sc.tickers[k].patterns, nm = sc.tickers[k].name || "";
     if (p && p.overall === "faded") dead.push(["曾有效·现已消失(个股)", `${k} ${nm} 日历规律`, "全史显著但近年消失——经典被套利(详见个股体检)"]);
