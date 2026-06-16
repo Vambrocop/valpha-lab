@@ -151,10 +151,25 @@ function renderAll() {
   // ⑥ 登记簿页：把诚实统计面板从"研究"运行时搬到"登记簿"。这些 id 上面已 lazyRender 观察过；
   // appendChild 搬的是同一活节点(IntersectionObserver 跟随节点、id 不变 → 懒渲染键照常)，勿改成 clone。
   const _regHost = document.getElementById("registry-panels");
-  if (_regHost) {
-    ["fdr-crossfamily", "cpcv", "calibration-drift", "stock-checkup", "honest-graveyard", "exploratory", "overreaction", "market-regime", "placebo-overview", "event-causal", "risk-dashboard", "conformal", "cycles-spectral", "factor-audit"].forEach(id => {
-      const w = document.getElementById(id)?.closest(".chart-wrap");
-      if (w && w.parentElement !== _regHost) _regHost.appendChild(w);   // 幂等:refreshData 重调时不重复搬/重排
+  if (_regHost && !document.getElementById("reg-group-0")) {   // 只在首次构建分组布局(幂等:reg-group-0 在则跳过)
+    // 把面板按"用途"分 5 组,各组前插一个分组标题 —— 降信息过载、让人不迷路
+    const _groups = [
+      ["🔬 规律真伪 · 防伪（真规律 vs 幻觉）", ["placebo-overview", "cpcv", "fdr-crossfamily", "calibration-drift", "cycles-spectral"]],
+      ["🌡️ 风险与不确定性（描述当前环境，非预测）", ["market-regime", "risk-dashboard", "conformal"]],
+      ["🩺 个股 · 因子", ["stock-checkup", "factor-audit"]],
+      ["🎯 事件因果", ["event-causal"]],
+      ["🔭 探索中 vs 已死（未验证/被套利，别拿来交易）", ["exploratory", "overreaction", "honest-graveyard"]],
+    ];
+    _groups.forEach(([title, ids], gi) => {
+      const h = document.createElement("div");
+      h.id = "reg-group-" + gi;
+      h.style.cssText = "font-size:1.02rem;font-weight:700;margin:1.4rem .2rem .4rem;padding-bottom:.3rem;border-bottom:1px solid var(--border)";
+      h.textContent = title;
+      _regHost.appendChild(h);
+      ids.forEach(id => {
+        const w = document.getElementById(id)?.closest(".chart-wrap");
+        if (w) _regHost.appendChild(w);   // 按组顺序搬入(首次构建,顺序即定)
+      });
     });
   }
   lazyRender("honest-registry", loadHonestRegistry, "Registry");   // 🧾 诚实总览自动汇总
