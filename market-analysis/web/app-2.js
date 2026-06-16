@@ -866,9 +866,15 @@ function renderStockCheckup(code) {
   if (cf && cf.status === "ok") {
     const covC = Math.abs((cf.empirical_coverage || 0) - 0.9) <= 0.07 ? "var(--muted)" : "#e67e22";
     const sgn = x => (x >= 0 ? "+" : "") + x + "%";
+    const _sp = (Math.max(Math.abs(cf.lower_pct), Math.abs(cf.upper_pct)) * 1.1) || 1;   // 对称跨度,0 居中
+    const _x = v => (v + _sp) / (2 * _sp) * 100;
+    const bar = `<div style="position:relative;height:12px;background:var(--border);border-radius:6px;margin:.35rem 0;overflow:hidden" title="0=今日水平，蓝条=历史90%区间(范围非方向)">
+      <div style="position:absolute;left:${_x(cf.lower_pct).toFixed(1)}%;width:${(_x(cf.upper_pct) - _x(cf.lower_pct)).toFixed(1)}%;top:0;bottom:0;background:var(--blue);opacity:.35"></div>
+      <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--fg);opacity:.6"></div></div>`;
     cfHtml = `<div style="margin-top:.7rem;font-size:0.82rem;line-height:1.55">
       <span style="color:var(--muted)">${cf.horizon}日 ${Math.round(cf.level * 100)}% 区间：</span><b style="color:var(--fg)">${sgn(cf.lower_pct)} ~ ${sgn(cf.upper_pct)}</b>
       <span style="color:var(--muted)">（宽 ${cf.width_pct}%）· 实测覆盖 <span style="color:${covC}">${(cf.empirical_coverage * 100).toFixed(0)}%</span>（${cf.n_test} 个出样本窗口）</span>
+      ${bar}
       <div style="color:var(--muted);font-size:0.7rem;margin-top:.2rem">这是<b>不确定性区间</b>(历史 N 日收益多少比例落在内)，<b>给范围不给方向、不预测涨跌</b>。此为<b>历史无条件</b>区间、非对当下行情的预测，<b>不等于未来一定落在内</b>;覆盖偏离名义 90% = 该票非平稳或样本少。</div></div>`;
   }
   const an = t.anomaly;
@@ -879,9 +885,13 @@ function renderStockCheckup(code) {
     if (an.decoupled) flags.push("与大盘异常脱钩(走自己的、相关处历史低位 → 特质风险占比升高，无关好坏方向)");
     const sC = flags.length ? "#e67e22" : "var(--muted)";   // 正常=中性灰,不用绿(避免"绿灯=可买"误读);橙仅引起注意
     const sT = flags.length ? flags.join("、") : "无异常（波动/相关均在常态区间）";
+    const vpBar = `<div style="position:relative;height:10px;background:var(--border);border-radius:5px;margin:.3rem 0;overflow:hidden" title="当前波动在该票历史的分位(0–100)，红线=95">
+      <div style="position:absolute;left:0;width:${an.vol_percentile}%;top:0;bottom:0;background:${an.high_vol ? "#e67e22" : "var(--blue)"};opacity:.4"></div>
+      <div style="position:absolute;left:95%;top:0;bottom:0;width:1px;background:#e67e22;opacity:.7"></div></div>`;
     anHtml = `<div style="margin-top:.7rem;font-size:0.82rem;line-height:1.55">
       <span style="color:var(--muted)">当前风险状态（${an.win}日滚动，截至 ${esc(an.asof)}）：</span><span style="color:${sC}">${sT}</span>
       <div style="color:var(--muted);font-size:0.74rem;margin-top:.2rem">波动 ${an.vol_now_pct}%（历史第 ${an.vol_percentile} 分位）${an.corr_now != null ? "、与纳指相关 " + an.corr_now + "（第 " + an.corr_percentile + " 分位）" : ""}</div>
+      ${vpBar}
       <div style="color:var(--muted);font-size:0.7rem;margin-top:.2rem">⚠ 异动 = <b>风险升高、请重新审视你的仓位风险</b>，<b>不是交易信号/机会</b>；本页不择时、不预测方向。</div></div>`;
   }
   const volTier = t.ann_vol_pct >= 45 ? "高波动" : t.ann_vol_pct >= 28 ? "中等波动" : "低波动";
