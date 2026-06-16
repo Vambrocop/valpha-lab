@@ -47,6 +47,7 @@ steps = [
     ("信号嵌入回测结果",   "build_signals.py"),   # 第二遍：嵌入最新回测/验证/追踪
     ("导出图表数据",       "export_chart_data.py"),
     ("导出个股数据",       "export_stocks.py"),
+    ("个股诚实体检",       "stock_checkup.py"),   # 个股风险画像(块0起)：复用 stocks_prices/combined_prices,非荐股非预测
     ("市场要闻RSS",        "fetch_news.py"),
     ("模拟盘执行",         "paper_trading.py"),
     ("每日盘后简报",       "daily_brief.py"),

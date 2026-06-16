@@ -53,6 +53,7 @@ STOCK_TICKERS = {
     "COST":  "COST",   # 好市多
     "LLY":   "LLY",    # 礼来
     "BRK-B": "BRK-B",  # 伯克希尔
+    "KO":    "KO",     # 可口可乐（低β防御股，几十年历史，诚实体检诊断满检验力）
     "SPCX":  "SPCX",   # SpaceX（2026-06-12 上市；历史不足260天，由 export_stocks 专属块处理）
 }
 

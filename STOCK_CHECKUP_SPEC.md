@@ -14,8 +14,9 @@ placebo+FDR / stats_util）。数据不足的模块**如实标 insufficient/inco
 - 失败/空/无定论照样上页面（登记簿灵魂）。三态：real / inconclusive / insufficient。
 
 ## 📦 数据与精选清单
-- 精选清单 = export_stocks.py 已追踪的 12 只大盘龙头（流动性好、历史长）：
-  `AAPL MSFT GOOGL AMZN NVDA META TSLA AVGO TSM COST LLY BRK-B`
+- 精选清单 = export_stocks.py 已追踪的大盘龙头 + KO（流动性好、历史长）：
+  `AAPL MSFT GOOGL AMZN NVDA META TSLA AVGO TSM COST LLY BRK-B KO`
+  （KO=可口可乐：几十年历史、低 β 防御股，与科技龙头形成对照、诊断满检验力）
 - `stock_checkup.py` 自抓**全量日线**（yfinance，仿 conformal._sp_prices / risk_dashboard），
   **不是** stocks.json 的周线（那是图表降采样）。优先复用 data/raw 缓存，缺失才下载。
 - **检验力门（每票每模块）**：样本不足该模块就标 insufficient（EVT 需 ~2000+ 天、保形需数年、
@@ -71,6 +72,14 @@ placebo+FDR / stats_util）。数据不足的模块**如实标 insufficient/inco
 - 验收：卡片措辞**逐字过红线检查表**（无方向/无买卖/无"更好"）；登记簿行正确。**独立审（措辞重点）**。
 - 停下：任何措辞过不了红线 → 改到过为止；拿不准 → 问用户。
 
+### 块6 — 风险型异动监测（描述性，非信号）
+- 做：每票判定**当前是否处于异常风险体制**——① 波动突变/当前波动落在历史高分位（如 ≥95pct）；
+  ② 与纳指**脱钩**（滚动相关骤降 = 特质风险骤升）。跨票/跨日做 **FDR 控假阳性**（复用 stats_util BH/BY）。
+- 🔴 红线措辞死守：**"异动 = 风险升高，请重新审视你的仓位风险，不是交易信号/机会"**。
+  被动展示（点开某票才看到的"当前风险状态"），**不做主动弹窗雷达、不做跨股票'什么最热'扫描器**。
+- 验收：异常判定有统计依据（分位/相关阈值）+ FDR 校正；措辞逐字过红线表；正常票显示"无异常"。**独立审（红线+统计双重点）**。
+- 停下：若做法滑向"机会发现/择时" → 停下问用户。
+
 ## ⛔ loop 只为这三种情况停下留言（别的不停，按 spec 推进）
 1. 踩红线（措辞/功能暗示方向或买卖）
 2. 某块数据不可行（诚实跳过 + 记 LOOP_DECISIONS + 进登记簿"数据不足"，绝不编造）
@@ -86,9 +95,10 @@ placebo+FDR / stats_util）。数据不足的模块**如实标 insufficient/inco
 - [ ] 提交（commit 带"块N + 块名"）→ `git pull --rebase origin main` → push
 
 ## 进度
-- [ ] 块0 脊柱
+- [x] 块0 脊柱 ✅（stock_checkup.py 基础风险:波动/最深回撤/β + 选择器面板;13票含KO;139测试绿）
 - [ ] 块1 EVT
 - [ ] 块2 市场依赖度
 - [ ] 块3 规律真伪
 - [ ] 块4 保形区间
 - [ ] 块5 裁决卡 + 登记簿
+- [ ] 块6 风险型异动监测

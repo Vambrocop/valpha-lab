@@ -767,6 +767,49 @@ function loadCalibrationDrift() {
     <div style="font-size:0.72rem;color:var(--muted);margin-top:.45rem;line-height:1.5">缺口=平均预测−实际胜率(&gt;0=偏乐观);ECE=分箱内|预测−实际|样本加权均。逐折=walk-forward 各前向时间窗(naive 部署打分)。折数少→趋势检验力低,故多落"无定论"——这是<b>校准质量</b>诊断,非方向预测。</div>`;
 }
 
+// ── 🩺 个股诚实体检（块0 基础风险画像）：同源消费 stock_checkup.json ──
+let STOCK_CHECKUP = null;
+async function loadStockCheckup() {
+  const el = document.getElementById("stock-checkup");
+  if (!el) return;
+  try { const r = await fetch("stock_checkup.json?_=" + Date.now()); if (r.ok) STOCK_CHECKUP = await r.json(); } catch (e) { /* 尚未生成 */ }
+  const tks = STOCK_CHECKUP?.tickers;
+  if (!tks || !Object.keys(tks).length) {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">个股体检数据尚未生成（下次全量流水线后出现）</span>`;
+    return;
+  }
+  const codes = Object.keys(tks);
+  const opts = codes.map(c => `<option value="${esc(c)}">${esc(c)} ${esc(tks[c].name || "")}</option>`).join("");
+  el.innerHTML = `
+    <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:.6rem">${esc(STOCK_CHECKUP.caveat || "")}</div>
+    <div style="margin-bottom:.6rem"><select id="sc-select" onchange="renderStockCheckup(this.value)" aria-label="选择股票"
+       style="background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;font-size:0.9rem">${opts}</select></div>
+    <div id="sc-body"></div>`;
+  renderStockCheckup(codes[0]);
+}
+
+function renderStockCheckup(code) {
+  const t = STOCK_CHECKUP?.tickers?.[code];
+  const body = document.getElementById("sc-body");
+  if (!body || !t) return;
+  if (t.status !== "ok") {
+    body.innerHTML = `<div style="color:var(--muted);font-size:0.85rem">${esc(code)} ${esc(t.name || "")}：数据不足/不可得（${esc(t.status)}${t.n_days != null ? "，n=" + t.n_days : ""}），诚实不给画像。</div>`;
+    return;
+  }
+  const betaTxt = t.beta_nasdaq == null ? "—" : t.beta_nasdaq + (t.beta_nasdaq >= 1 ? "（比纳指更颠）" : "（比纳指更稳）");
+  const row = (label, val, hint) => `<tr style="border-top:1px solid var(--border-faint)">
+    <td style="padding:.35rem .4rem;color:var(--muted)">${label}</td>
+    <td style="padding:.35rem .4rem;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${val}</td>
+    <td style="padding:.35rem .4rem;color:var(--muted);font-size:0.74rem">${hint}</td></tr>`;
+  body.innerHTML = `
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:.4rem">${esc(code)} ${esc(t.name || "")} · 日线 ${esc(t.start)}→${esc(t.end)}（${t.n_days} 天）</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+      ${row("年化波动", t.ann_vol_pct + "%", "历史日收益波动，越高越颠")}
+      ${row("历史最深回撤", t.max_drawdown_pct + "%", "峰到谷最大跌幅——提示风险，非机会")}
+      ${row("对纳指 β", betaTxt, "对大盘的敏感度，是风险特征非收益承诺")}
+    </table>`;
+}
+
 function renderDigitChart() {
   const yp = SIGNALS?.year_patterns;
   if (!yp?.decade_digit) return;

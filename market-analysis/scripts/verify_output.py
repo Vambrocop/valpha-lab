@@ -210,6 +210,21 @@ except Exception as e:
     errors.append(f"calibration_drift 形状检查失败: {e}")
     print(f"  ✗ calibration_drift 形状检查失败: {e}")
 
+# 3i. 个股诚实体检形状（块0：tickers 非空、ok 票 vol 有界且回撤≤0。存在才查、缺失不致命）
+try:
+    sc_path = WEB_DIR / "stock_checkup.json"
+    if sc_path.exists():
+        with open(sc_path, encoding="utf-8") as fh:
+            sc = json.load(fh)
+        tks = sc.get("tickers", {})
+        oks = [v for v in tks.values() if v.get("status") == "ok"]
+        ok = (len(tks) > 0 and all(
+            0 < v.get("ann_vol_pct", 0) < 500 and v.get("max_drawdown_pct", 1) <= 0 for v in oks))
+        check(ok, f"stock_checkup.json 形状正常（{len(tks)} 票，{len(oks)} 个 ok）")
+except Exception as e:
+    errors.append(f"stock_checkup 形状检查失败: {e}")
+    print(f"  ✗ stock_checkup 形状检查失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv
