@@ -119,6 +119,7 @@ function renderAll() {
   fetchFearAndGreed();
   loadQuotes();   // 盘中轻量报价（10分钟级），SPCX 监视卡优先消费
   loadDataFreshness();   // 📡 数据新鲜度徽章：让"自动刷新到几点 + 盘中/休市"一眼可见
+  initOnboarding();      // 👋 新手引导横幅（首次访问显示）
   lazyRender("chart-spcx-ipo",      renderSPCXDetail, "SPCXDetail");
   // Sync SPCX inputs with localStorage
   const savedShares = localStorage.getItem("spcx_shares");
@@ -343,6 +344,20 @@ async function loadDataFreshness() {
   const stale = open && qT && (now - qT > 30 * 60000);
   el.innerHTML = `📡 报价 ${ago(qT) || "—"}${ago(nT) ? " · 要闻 " + ago(nT) : ""} · ${status}`
     + (stale ? ` <span style="color:#e67e22">⚠ 盘中超 30 分未刷新，CI 可能异常</span>` : "");
+}
+
+// 新手引导横幅:首次访问显示,关闭后 localStorage 记住不再弹
+function dismissOnboarding() {
+  const el = document.getElementById("onboarding");
+  if (el) el.style.display = "none";
+  try { localStorage.setItem("alphalab_ob_seen", "1"); } catch (e) { /* 隐私模式忽略 */ }
+}
+function initOnboarding() {
+  const el = document.getElementById("onboarding");
+  if (!el) return;
+  let seen = false;
+  try { seen = localStorage.getItem("alphalab_ob_seen") === "1"; } catch (e) { /* 隐私模式当未看过 */ }
+  if (!seen) el.style.display = "";   // 首次访问才显示
 }
 
 // ═══════════════════════════════════════════════════════

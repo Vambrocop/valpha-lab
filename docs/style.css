@@ -259,7 +259,25 @@ footer a { color: var(--green); text-decoration: none; }
   .signal-pct { font-size:2.2rem; }
   header { padding:.75rem 1rem; flex-direction:column; align-items:flex-start; gap:.35rem; }
   header h1 { font-size:1.1rem; }
+  .chart-wrap { padding:1rem !important; overflow-x:auto; }   /* 宽多列表格在窄屏可横向滚动,不撑破视口 */
+  .chart-wrap table, .panel table { font-size:0.8rem; }
 }
+@media (max-width: 600px) {
+  main { padding:.6rem; }
+  .chart-wrap { padding:.8rem !important; }
+  .chart-wrap table, .panel table { font-size:0.74rem; }
+  .view-intro { font-size:0.76rem; padding:.5rem .7rem; }
+  .view-btn { padding:.4rem .7rem; font-size:0.8rem; }
+  .signal-pct { font-size:2rem; }
+}
+
+/* ── 新手引导横幅(首次访问显示,可关闭;localStorage 记住)── */
+.onboarding { background:var(--surface); border:1px solid var(--blue); border-left:4px solid var(--blue);
+  border-radius:10px; padding:1rem 1.2rem; margin-bottom:1.25rem; font-size:0.84rem; line-height:1.6; }
+.onboarding h3 { font-size:0.98rem; margin-bottom:.4rem; }
+.onboarding ul { margin:.4rem 0 .5rem 1.1rem; }
+.onboarding .ob-dismiss { background:var(--blue); color:#fff; border:none; border-radius:6px;
+  padding:.35rem .9rem; font-size:0.8rem; cursor:pointer; font-family:inherit; margin-top:.3rem; }
 
 /* ── 键盘焦点环（鼠标点击不显示，键盘 Tab 才显示）── */
 .view-btn:focus-visible, .tab:focus-visible, .period-btn:focus-visible,
