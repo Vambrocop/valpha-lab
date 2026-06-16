@@ -42,7 +42,7 @@ def compute_regime(df):
     v = float(vix.iloc[-1]); vp = _pct(vix, v)
     vix_label = "极端高" if vp >= 95 else "偏高" if vp >= 75 else "偏低" if vp <= 25 else "中性"
     comps.append({"name": "波动率 VIX", "value": round(v, 1), "percentile": vp, "label": vix_label,
-                  "asof": str(vix.index[-1].date()),
+                  "asof": str(vix.index[-1].date()), "history_start": str(vix.index[0].date()),
                   "note": "股市波动/恐慌水平(现值在历史的分位)"})
 
     y10, y2 = _col(df, "YIELD_10Y"), _col(df, "YIELD_2Y")
@@ -52,6 +52,7 @@ def compute_regime(df):
         comps.append({"name": "收益率曲线 10Y-2Y", "value": round(curve, 2), "label": c_label,
                       "inverted": bool(curve < 0),
                       "asof": str(min(y10.index[-1], y2.index[-1]).date()),     # GS10/GS2 月频,会滞后
+                      "history_start": str(max(y10.index[0], y2.index[0]).date()),
                       "note": "期限利差(月频GS10/GS2,日期可能滞后);倒挂在历史上与衰退相关(描述性关联，非方向预测)"})
 
     credit = _col(df, "CREDIT_SPREAD")
@@ -60,8 +61,8 @@ def compute_regime(df):
         cs_label = ("极端高(信用紧张)" if csp >= 95 else "偏高" if csp >= 75
                     else "偏低(信用宽松)" if csp <= 25 else "中性")
         comps.append({"name": "信用利差 Baa-10Y", "value": round(cs, 2), "percentile": csp, "label": cs_label,
-                      "asof": str(credit.index[-1].date()),
-                      "note": "穆迪 Baa 公司债 减 10Y 国债(信用压力代理,全史2000+);高分位=信用紧张(描述性,非预测)"})
+                      "asof": str(credit.index[-1].date()), "history_start": str(credit.index[0].date()),
+                      "note": "穆迪 Baa 公司债 减 10Y 国债(信用压力代理);高分位=信用紧张(描述性,非预测)"})
 
     vix3m = _col(df, "VIX3M")
     if vix3m is not None and len(vix3m) > 200:
@@ -70,6 +71,7 @@ def compute_regime(df):
         comps.append({"name": "VIX 期限结构 (VIX3M-VIX)", "value": round(term, 2), "label": t_label,
                       "backwardation": bool(term < 0),
                       "asof": str(min(vix3m.index[-1], vix.index[-1]).date()),
+                      "history_start": str(max(vix3m.index[0], vix.index[0]).date()),
                       "note": "倒挂=近月恐慌高于远月，通常对应急性市场压力(描述当前状态，非预测)"})
 
     # 综合(纯描述,不给方向/操作)

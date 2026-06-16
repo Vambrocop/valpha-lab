@@ -933,7 +933,7 @@ async function loadMarketRegime() {
     const lc = (c.inverted || c.backwardation) ? "#e67e22" : "var(--muted)";   // 倒挂=橙仅引起注意,非红绿灯
     return `<tr style="border-top:1px solid var(--border-faint)">
       <td style="padding:.35rem .4rem;color:var(--muted)">${esc(c.name)}</td>
-      <td style="padding:.35rem .4rem;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${c.value}${c.percentile != null ? `<span style="color:var(--muted);font-size:.72rem"> (第${c.percentile}分位)</span>` : ""}${c.asof ? `<span style="color:var(--muted);font-size:.68rem;display:block;font-weight:400">截至 ${esc(c.asof)}</span>` : ""}</td>
+      <td style="padding:.35rem .4rem;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${c.value}${c.percentile != null ? `<span style="color:var(--muted);font-size:.72rem"> (第${c.percentile}分位${c.history_start ? "·" + c.history_start.slice(0, 4) + "+起" : ""})</span>` : ""}${c.asof ? `<span style="color:var(--muted);font-size:.68rem;display:block;font-weight:400">截至 ${esc(c.asof)}</span>` : ""}</td>
       <td style="padding:.35rem .4rem;text-align:center;color:${lc};font-size:.8rem">${esc(c.label)}</td>
       <td style="padding:.35rem .4rem;color:var(--muted);font-size:.72rem">${esc(c.note)}</td></tr>`;
   }).join("");
