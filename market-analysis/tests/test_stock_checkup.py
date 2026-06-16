@@ -4,7 +4,8 @@ import pandas as pd
 
 from stock_checkup import (annualized_vol, max_drawdown, beta, compute_basic_risk,
                            compute_evt, market_dependence, compute_patterns,
-                           _fdr_annotate_patterns, compute_conformal, compute_anomaly)
+                           _fdr_annotate_patterns, compute_conformal, compute_anomaly,
+                           compute_dip_distribution)
 
 
 def test_max_drawdown_known():
@@ -111,6 +112,17 @@ def test_compute_conformal():
     assert 0 < r["n_test"] < r["n_windows"]                          # 覆盖的真实分母=出样本窗口数
     short = pd.Series(100.0 + np.arange(100.0), index=pd.bdate_range("2020-01-01", periods=100))
     assert compute_conformal(short, horizon=20)["status"] == "insufficient"
+
+
+def test_compute_dip_distribution():
+    idx = pd.bdate_range("2005-01-01", periods=2000)
+    rng = np.random.default_rng(11)
+    px = pd.Series(100 * np.cumprod(1 + rng.normal(0, 0.015, 2000)), index=idx)
+    r = compute_dip_distribution(px, q=5)
+    assert r["status"] == "ok" and len(r["distribution"]) >= 1
+    assert all(d["worst_pct"] <= d["p10_pct"] <= d["p90_pct"] for d in r["distribution"])
+    short = pd.Series(100.0 + np.arange(300.0), index=pd.bdate_range("2020-01-01", periods=300))
+    assert compute_dip_distribution(short)["status"] == "insufficient"
 
 
 def test_compute_anomaly():

@@ -908,6 +908,24 @@ function renderStockCheckup(code) {
       ${vpBar}
       <div style="color:var(--muted);font-size:0.7rem;margin-top:.2rem">⚠ 异动 = <b>风险升高、请重新审视你的仓位风险</b>，<b>不是交易信号/机会</b>；本页不择时、不预测方向。</div></div>`;
   }
+  const dd = t.dip_distribution;
+  let dipHtml = "";
+  if (dd && dd.status === "ok" && (dd.distribution || []).length) {
+    const dn = { 1: "次日", 5: "次 5 日", 20: "次 20 日" };
+    const dpr = dd.distribution.map(x => `<tr style="border-top:1px solid var(--border-faint)">
+      <td style="padding:.3rem .4rem;color:var(--muted)">${dn[x.horizon] || x.horizon + "日"}</td>
+      <td style="padding:.3rem .4rem;text-align:right;font-variant-numeric:tabular-nums">${x.median_pct}%</td>
+      <td style="padding:.3rem .4rem;text-align:right;font-variant-numeric:tabular-nums;color:#e74c3c">${x.p10_pct}%</td>
+      <td style="padding:.3rem .4rem;text-align:right;font-variant-numeric:tabular-nums;color:#e74c3c;font-weight:600">${x.worst_pct}%</td>
+      <td style="padding:.3rem .4rem;text-align:right;font-variant-numeric:tabular-nums;color:#e67e22">${x.pct_negative}%</td></tr>`).join("");
+    dipHtml = `<div style="margin-top:.75rem">
+      <div style="font-size:0.76rem;color:var(--muted);margin-bottom:.2rem">这只票<b>大跌日(收益≤第 ${dd.q} 百分位)之后</b>历史发生过什么——<b>完整分布(含灾难路径)</b>，不只看平均：</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
+        <tr class="u-cap"><td style="padding:.2rem .4rem">区间</td><td style="text-align:right;padding:.2rem .4rem">中位</td><td style="text-align:right;padding:.2rem .4rem">p10(差)</td><td style="text-align:right;padding:.2rem .4rem">最坏</td><td style="text-align:right;padding:.2rem .4rem">继续亏比例</td></tr>
+        ${dpr}
+      </table>
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:.25rem">⚠ 相当比例(见"继续亏"列)大跌后<b>继续亏</b>、最坏可深至表中"最坏"列——<b>这是历史全貌、不是抄底信号,不预测、不可交易</b>。</div></div>`;
+  }
   const volTier = t.ann_vol_pct >= 45 ? "高波动" : t.ann_vol_pct >= 28 ? "中等波动" : "低波动";
   const betaDesc = t.beta_nasdaq == null ? "" : (t.beta_nasdaq >= 1.2 ? "、对大盘涨跌更敏感" : t.beta_nasdaq <= 0.6 ? "、对大盘涨跌不敏感" : "、敏感度与大盘相当");
   const betaClause = t.beta_nasdaq == null ? "" : `${betaDesc}（β=${t.beta_nasdaq}）`;
@@ -922,7 +940,7 @@ function renderStockCheckup(code) {
       ${row("年化波动", t.ann_vol_pct + "%", "历史日收益波动，越高越颠")}
       ${row("历史最深回撤", t.max_drawdown_pct + "%", "峰到谷最大跌幅——提示风险，非机会")}
       ${row("对纳指 β", betaTxt, "对大盘的敏感度，是风险特征非收益承诺")}
-    </table>${mdHtml}${evtHtml}${cfHtml}${patHtml}${anHtml}`;
+    </table>${mdHtml}${evtHtml}${cfHtml}${patHtml}${anHtml}${dipHtml}`;
 }
 
 // ── 🌡️ 当前市场风险体制(R1)：同源消费 market_regime.json,描述非预测 ──

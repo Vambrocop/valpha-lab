@@ -20,6 +20,7 @@ from risk_dashboard import evt_tail   # 块1：复用已审的 EVT/GPD 尾部风
 from placebo_test import perm_test, make_ssb_stat, _group_means, MIN_GROUP_N, ALPHA   # 块3：复用 placebo 置换机器
 from stats_util import benjamini_hochberg   # 块3：跨全部票×效应统一 FDR 校正
 from conformal import nonoverlap_fwd_returns, split_conformal   # 块4：复用已审的 split-conformal 区间
+from overreaction import _fwd_distribution   # 块#4个股版：复用 R3 的大跌后前瞻分布
 
 SCRIPTS  = Path(__file__).parent
 RAW_DIR  = SCRIPTS.parent / "data" / "raw"
@@ -235,6 +236,17 @@ def _fdr_annotate_patterns(out_tickers):
     return any_real
 
 
+def compute_dip_distribution(px, q=5):
+    """这只票【极端下跌日(收益≤第q百分位)后】次日/5日/20日前瞻收益的【完整分布】(含下行尾部)。
+    复用 R3 的 _fwd_distribution。🔴 红线:描述大跌后历史全貌(含灾难路径)、非抄底建议、不预测。"""
+    px = pd.to_numeric(px, errors="coerce").dropna().sort_index()
+    ret = px.pct_change().dropna()
+    if len(ret) < 600:
+        return {"status": "insufficient"}
+    dist = [d for d in (_fwd_distribution(ret, q, h) for h in (1, 5, 20)) if d]
+    return {"status": "ok", "q": q, "distribution": dist} if dist else {"status": "insufficient"}
+
+
 def compute_conformal(px, horizon=20, level=0.90):
     """块4：单票 N 日收益的 split-conformal 双边区间 + 出样本外实测覆盖(复用 conformal.py)。
     🔴 红线:这是【不确定性区间】,给范围、不给方向、不预测涨跌;区间略偏正只反映历史无条件分布。"""
@@ -333,6 +345,7 @@ def run_all():
             risk["market_dep"] = compute_market_dependence(px, nasdaq)   # 块2：市场依赖度
             risk["patterns"] = compute_patterns(px, tk)         # 块3：规律真伪(每效应独立种子;FDR 在后统一)
             risk["conformal"] = compute_conformal(px)           # 块4：保形区间(范围非方向)
+            risk["dip_distribution"] = compute_dip_distribution(px)   # 块#4个股版:大跌后完整分布(含灾难路径,非抄底)
             risk["anomaly"] = compute_anomaly(px, nasdaq)        # 块6：当前风险状态(描述性,非信号)
         out_tickers[tk] = risk
         if risk["status"] == "ok":
