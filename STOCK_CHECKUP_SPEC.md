@@ -99,7 +99,7 @@ placebo+FDR / stats_util）。数据不足的模块**如实标 insufficient/inco
 - [x] 块1 EVT ✅（每票 ξ/日VaR-ES，复用 evt_tail；13票 ξ∈[0.04,0.32]；独立审 APPROVE，补"非规律间隔"caveat + ξ提示修正）
 - [x] 块2 市场依赖度 ✅（R²=市场解释方差占比 + 特质=1−R²；KO/LLY ~11% 市场驱动 vs MSFT 57%。初等描述、红线安全→风险分级下自审，独立审保留给块3起）
 - [x] 块3 规律真伪 ✅（星期几/月份 SSB置换 + 跨票FDR + 分半 + 近期持续 三关;六态real/faded/hist_robust/data_snoop/inconclusive/rejected;独立审 REQUEST_CHANGES→修月份faded误判bug。结果:0真规律,AAPL星期=faded被套利。前端分段呈现全样本/前后半/近5年）
-- [ ] 块4 保形区间
+- [x] 块4 保形区间 ✅（每票 20日90% split-conformal 双边区间+实测覆盖;复用 conformal.py;宽度随波动 KO17%→TSLA60%;独立审 APPROVE→补 n_test 真分母 + "无条件非预测"caveat + 带符号边界）
 - [ ] 块5 裁决卡 + 登记簿
 - [ ] 块6 风险型异动监测
 

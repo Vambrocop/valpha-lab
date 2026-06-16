@@ -19,6 +19,7 @@ from pathlib import Path
 from risk_dashboard import evt_tail   # 块1：复用已审的 EVT/GPD 尾部风险
 from placebo_test import perm_test, make_ssb_stat, _group_means, MIN_GROUP_N, ALPHA   # 块3：复用 placebo 置换机器
 from stats_util import benjamini_hochberg   # 块3：跨全部票×效应统一 FDR 校正
+from conformal import nonoverlap_fwd_returns, split_conformal   # 块4：复用已审的 split-conformal 区间
 
 SCRIPTS  = Path(__file__).parent
 RAW_DIR  = SCRIPTS.parent / "data" / "raw"
@@ -206,6 +207,21 @@ def _fdr_annotate_patterns(out_tickers):
     return any_real
 
 
+def compute_conformal(px, horizon=20, level=0.90):
+    """块4：单票 N 日收益的 split-conformal 双边区间 + 出样本外实测覆盖(复用 conformal.py)。
+    🔴 红线:这是【不确定性区间】,给范围、不给方向、不预测涨跌;区间略偏正只反映历史无条件分布。"""
+    px = pd.to_numeric(px, errors="coerce").dropna().sort_index()
+    rets = nonoverlap_fwd_returns(px.to_numpy(float), horizon)
+    if len(rets) < 50:
+        return {"status": "insufficient"}
+    band = split_conformal(rets, levels=(level,))[0]
+    return {"status": "ok", "horizon": int(horizon), "level": level,
+            "lower_pct": band["lower_pct"], "upper_pct": band["upper_pct"],
+            "width_pct": round(band["upper_pct"] - band["lower_pct"], 2),
+            "empirical_coverage": band["empirical_coverage"], "n_test": band["n_test"],
+            "n_windows": int(len(rets))}
+
+
 def compute_basic_risk(px, nasdaq):
     """单票价格序列 px + 纳指价格序列 nasdaq（皆 pd.Series，索引=日期）→ 基础风险字典。"""
     px = pd.to_numeric(px, errors="coerce").dropna().sort_index()
@@ -288,6 +304,7 @@ def run_all():
             risk["evt"] = compute_evt(px)                       # 块1：EVT 尾部
             risk["market_dep"] = compute_market_dependence(px, nasdaq)   # 块2：市场依赖度
             risk["patterns"] = compute_patterns(px, tk)         # 块3：规律真伪(每效应独立种子;FDR 在后统一)
+            risk["conformal"] = compute_conformal(px)           # 块4：保形区间(范围非方向)
         out_tickers[tk] = risk
         if risk["status"] == "ok":
             ev = risk.get("evt", {})

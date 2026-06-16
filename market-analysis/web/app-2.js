@@ -852,13 +852,23 @@ function renderStockCheckup(code) {
       </table>
       <div style="color:var(--muted);font-size:0.7rem;margin-top:.3rem;line-height:1.5">只问"是真是噪声"、<b>不预测涨跌</b>。<b>历史有·近年消失</b>=典型被套利(如 AAPL 星期效应:全史显著、近5年 p≈0.57 已无)。单股日历效应极易过拟合，故跨票 FDR + 分半 + 近期三关从严。</div></div>`;
   }
+  const cf = t.conformal;
+  let cfHtml = "";
+  if (cf && cf.status === "ok") {
+    const covC = Math.abs((cf.empirical_coverage || 0) - 0.9) <= 0.07 ? "var(--muted)" : "#e67e22";
+    const sgn = x => (x >= 0 ? "+" : "") + x + "%";
+    cfHtml = `<div style="margin-top:.7rem;font-size:0.82rem;line-height:1.55">
+      <span style="color:var(--muted)">${cf.horizon}日 ${Math.round(cf.level * 100)}% 区间：</span><b style="color:var(--fg)">${sgn(cf.lower_pct)} ~ ${sgn(cf.upper_pct)}</b>
+      <span style="color:var(--muted)">（宽 ${cf.width_pct}%）· 实测覆盖 <span style="color:${covC}">${(cf.empirical_coverage * 100).toFixed(0)}%</span>（${cf.n_test} 个出样本窗口）</span>
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:.2rem">这是<b>不确定性区间</b>(历史 N 日收益多少比例落在内)，<b>给范围不给方向、不预测涨跌</b>。此为<b>历史无条件</b>区间、非对当下行情的预测，<b>不等于未来一定落在内</b>;覆盖偏离名义 90% = 该票非平稳或样本少。</div></div>`;
+  }
   body.innerHTML = `
     <div style="font-size:0.78rem;color:var(--muted);margin-bottom:.4rem">${esc(code)} ${esc(t.name || "")} · 日线 ${esc(t.start)}→${esc(t.end)}（${t.n_days} 天）</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
       ${row("年化波动", t.ann_vol_pct + "%", "历史日收益波动，越高越颠")}
       ${row("历史最深回撤", t.max_drawdown_pct + "%", "峰到谷最大跌幅——提示风险，非机会")}
       ${row("对纳指 β", betaTxt, "对大盘的敏感度，是风险特征非收益承诺")}
-    </table>${mdHtml}${evtHtml}${patHtml}`;
+    </table>${mdHtml}${evtHtml}${cfHtml}${patHtml}`;
 }
 
 function renderDigitChart() {

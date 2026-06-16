@@ -4,7 +4,7 @@ import pandas as pd
 
 from stock_checkup import (annualized_vol, max_drawdown, beta, compute_basic_risk,
                            compute_evt, market_dependence, compute_patterns,
-                           _fdr_annotate_patterns)
+                           _fdr_annotate_patterns, compute_conformal)
 
 
 def test_max_drawdown_known():
@@ -99,3 +99,15 @@ def test_compute_patterns_planted_persistent_dow():
     mot = [t for t in r["tests"] if t["effect"] == "月份"]
     if mot:
         assert mot[0]["recent_testable"] is False
+
+
+def test_compute_conformal():
+    idx = pd.bdate_range("2008-01-01", periods=4000)
+    rng = np.random.default_rng(9)
+    px = pd.Series(100 * np.cumprod(1 + rng.normal(0.0003, 0.015, 4000)), index=idx)
+    r = compute_conformal(px, horizon=20, level=0.90)
+    assert r["status"] == "ok" and r["lower_pct"] < r["upper_pct"]   # 双边区间
+    assert r["width_pct"] > 0 and 0.0 <= r["empirical_coverage"] <= 1.0
+    assert 0 < r["n_test"] < r["n_windows"]                          # 覆盖的真实分母=出样本窗口数
+    short = pd.Series(100.0 + np.arange(100.0), index=pd.bdate_range("2020-01-01", periods=100))
+    assert compute_conformal(short, horizon=20)["status"] == "insufficient"
