@@ -225,6 +225,21 @@ except Exception as e:
     errors.append(f"stock_checkup 形状检查失败: {e}")
     print(f"  ✗ stock_checkup 形状检查失败: {e}")
 
+# 3l. R3 短期反转形状(full 有 p_value/diff_pct、verdict 合法。存在才查、缺失不致命)
+try:
+    ov_path = WEB_DIR / "overreaction.json"
+    if ov_path.exists():
+        with open(ov_path, encoding="utf-8") as fh:
+            ov = json.load(fh)
+        if ov.get("status") == "ok":
+            f = ov.get("full", {})
+            ok = ("p_value" in f and "diff_pct" in f
+                  and ov.get("verdict") in {"real", "faded", "real_recent_untested", "rejected", "inconclusive"})
+            check(ok, f"overreaction.json 形状正常（verdict={ov.get('verdict')}）")
+except Exception as e:
+    errors.append(f"overreaction 形状检查失败: {e}")
+    print(f"  ✗ overreaction 形状检查失败: {e}")
+
 # 3j. 方法论完整性护栏(automation-first):个股"真规律"(三关全过)必须先经人工审视,
 #     不得自动发布——若 patterns_fdr_real=True 进了已发布 JSON,说明人工停下被绕过 → 拦住发布。
 try:

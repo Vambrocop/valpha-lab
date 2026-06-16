@@ -946,6 +946,33 @@ async function loadMarketRegime() {
     <div style="font-size:0.74rem;color:var(--muted);line-height:1.6;margin-top:.6rem">${esc(MR.caveat || "")}</div>`;
 }
 
+// ── 🔁 短期反转(过度反应 R3)：大跌次日是否系统性反弹——描述历史规律,非抄底建议、不可交易 ──
+async function loadOverreaction() {
+  const el = document.getElementById("overreaction");
+  if (!el) return;
+  let OV = null;
+  try { const r = await fetch("overreaction.json?_=" + Date.now()); if (r.ok) OV = await r.json(); } catch (e) { /* 尚未生成 */ }
+  if (!OV || OV.status !== "ok") {
+    el.innerHTML = `<span style="color:var(--muted);font-size:0.8rem">短期反转数据尚未生成（下次全量流水线后出现）</span>`;
+    return;
+  }
+  // real 用蓝(描述性历史规律),不用绿(避免读成"可交易信号")
+  const vmap = {
+    real: ["#3498db", "统计上可见 · 经济上不可用"], faded: ["#3498db", "历史有·现代已消失(被套利)"],
+    real_recent_untested: ["#8b949e", "全样本有·现代样本不足未验证"], rejected: ["#2ecc71", "未检出系统反弹"],
+    inconclusive: ["#8b949e", "无定论"],
+  };
+  const [c, lbl] = vmap[OV.verdict] || ["#8b949e", esc(OV.verdict || "")];
+  const f = OV.full, rc = OV.recent;
+  el.innerHTML = `
+    <div style="border-left:3px solid ${c};padding:.4rem .7rem;margin-bottom:.6rem">
+      <div style="font-weight:700;color:${c}">${lbl}</div>
+      <div style="font-size:0.82rem;margin-top:.3rem;line-height:1.55">极端下跌日(收益≤第 ${OV.q} 百分位)的<b>次日</b>平均 ${f.bounce_next_pct}% vs 其余 ${f.other_next_pct}%（差 ${f.diff_pct}pp，全样本 p=${f.p_value}，n=${f.n_down}）${rc ? `<br>现代(2000后)：差 ${rc.diff_pct}pp，p=${rc.p_value}` : ""}
+      <span style="color:#e67e22;font-size:0.74rem">　← 这点均差远小于当日波动与交易成本，统计可见 ≠ 能赚钱</span></div>
+    </div>
+    <div style="font-size:0.74rem;color:var(--muted);line-height:1.6">⚠ <b>这是历史描述，不是抄底建议、不预测明天</b>。每天零点几 pp 的均差会被<b>波动 / 交易成本 / 滑点</b>吃掉，且极端下跌日多发生在 2008/2020 这类危机中(反弹伴随剧烈波动)——<b>不可交易</b>。${esc(OV.caveat || "")}</div>`;
+}
+
 // ── 🔬 探索区：未验证/猜测性假设(露了苗头但没过稳健检验)——怀疑训练场,非预测非可交易 ──
 async function loadExploratory() {
   const el = document.getElementById("exploratory");

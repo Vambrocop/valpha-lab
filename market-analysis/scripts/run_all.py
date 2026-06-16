@@ -27,6 +27,7 @@ steps = [
     ("下载长历史数据",     "long_history.py"),
     ("规律置换检验placebo", "placebo_test.py"),         # P4-1：日历效应防伪（须在 long_history 后，复用其 SP500_long.csv）
     ("反事实事件影响",     "event_causal.py"),         # 方法B：回归反事实+bootstrap（SVB验证事件 + SPCX钩子）
+    ("短期反转(过度反应)", "overreaction.py"),         # R3：极端下跌次日反弹检验(描述非建议,全样本vs现代)
     ("风险仪表盘",         "risk_dashboard.py"),       # 方法D：VXN-VIX价差 + 条件下行(测风险不测方向)
     ("市场风险体制(R1)",   "market_regime.py"),        # R1：当前风险环境(VIX/收益率曲线/期限结构,描述非预测)
     ("收益区间(保形)",     "conformal.py"),            # 方法E：split-conformal 覆盖区间(测不确定性,非方向)
