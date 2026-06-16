@@ -58,6 +58,25 @@ def _test_segment(ret, q, rng):
             "diff_pct": round((bounce - other) * 100, 3)}
 
 
+def _fwd_distribution(ret, q, horizon):
+    """极端下跌日之后 horizon 日累计收益的【完整分布】——含下行尾部,让用户看全貌自己判断(非推荐)。
+    重叠窗口仅作描述(非显著性检验);重点暴露 p10/最坏/继续亏比例,戳破'抄底必反弹'幻觉。"""
+    r = ret.values
+    n = len(r)
+    thr = float(np.percentile(r, q))
+    fwd = [float(np.prod(1.0 + r[i + 1:i + 1 + horizon]) - 1.0)
+           for i in range(n - horizon) if r[i] <= thr]
+    if len(fwd) < 30:
+        return None
+    a = np.array(fwd) * 100.0
+    return {"horizon": int(horizon), "n": int(len(a)),
+            "median_pct": round(float(np.median(a)), 2),
+            "p10_pct": round(float(np.percentile(a, 10)), 2),
+            "p90_pct": round(float(np.percentile(a, 90)), 2),
+            "worst_pct": round(float(a.min()), 2), "best_pct": round(float(a.max()), 2),
+            "pct_negative": round(float((a < 0).mean()) * 100, 1)}
+
+
 def compute_overreaction(ret, q=Q):
     if ret is None or len(ret) < 1000:
         return {"status": "insufficient"}
@@ -75,8 +94,9 @@ def compute_overreaction(ret, q=Q):
         verdict, note = "real_recent_untested", "全样本显著、现代段样本不足未验证"
     else:
         verdict, note = "rejected", "未检出系统性次日反弹"
+    dist = [d for d in (_fwd_distribution(ret, q, h) for h in (1, 5, 20)) if d]
     return {"status": "ok", "q": q, "full": full, "recent": recent,
-            "verdict": verdict, "note": note}
+            "distribution": dist, "verdict": verdict, "note": note}
 
 
 def run_all():

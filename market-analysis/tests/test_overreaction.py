@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from overreaction import compute_overreaction
+from overreaction import compute_overreaction, _fwd_distribution
 
 
 def test_detects_planted_reversal():
@@ -35,6 +35,18 @@ def test_faded_when_reversal_only_pre2000():
             r[i + 1] += 0.03
     res = compute_overreaction(pd.Series(r, index=idx), q=5)
     assert res["status"] == "ok" and res["verdict"] == "faded"   # 全样本显著、现代(2000后)已无
+
+
+def test_fwd_distribution_shape_and_order():
+    idx = pd.bdate_range("2005-01-01", periods=3000)
+    rng = np.random.default_rng(7)
+    ret = pd.Series(rng.normal(0, 0.01, 3000), index=idx)
+    d = _fwd_distribution(ret, 5, 5)
+    assert d["n"] >= 30
+    assert d["worst_pct"] <= d["p10_pct"] <= d["median_pct"] <= d["p90_pct"] <= d["best_pct"]
+    assert 0 <= d["pct_negative"] <= 100
+    short = pd.Series(rng.normal(0, 0.01, 100), index=pd.bdate_range("2020-01-01", periods=100))
+    assert _fwd_distribution(short, 5, 5) is None        # 样本不足 → None
 
 
 def test_insufficient():

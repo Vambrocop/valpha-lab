@@ -964,13 +964,29 @@ async function loadOverreaction() {
   };
   const [c, lbl] = vmap[OV.verdict] || ["#8b949e", esc(OV.verdict || "")];
   const f = OV.full, rc = OV.recent;
+  const hn = { 1: "次日", 5: "次 5 日", 20: "次 20 日" };
+  const dist = OV.distribution || [];
+  const drows = dist.map(x => `<tr style="border-top:1px solid var(--border-faint)">
+    <td style="padding:.3rem .4rem;color:var(--muted)">${hn[x.horizon] || x.horizon + "日"}</td>
+    <td style="padding:.3rem .4rem;text-align:right;font-variant-numeric:tabular-nums">${x.median_pct}%</td>
+    <td style="padding:.3rem .4rem;text-align:right;font-variant-numeric:tabular-nums;color:#e74c3c">${x.p10_pct}%</td>
+    <td style="padding:.3rem .4rem;text-align:right;font-variant-numeric:tabular-nums;color:#e74c3c;font-weight:600">${x.worst_pct}%</td>
+    <td style="padding:.3rem .4rem;text-align:right;font-variant-numeric:tabular-nums;color:#e67e22">${x.pct_negative}%</td></tr>`).join("");
+  const distHtml = dist.length ? `<div style="margin-top:.6rem">
+    <div style="font-size:0.76rem;color:var(--muted);margin-bottom:.2rem">大跌后历史上发生过什么——<b>完整分布(含灾难路径)</b>，不只看平均：</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
+      <tr class="u-cap"><td style="padding:.2rem .4rem">区间</td><td style="text-align:right;padding:.2rem .4rem">中位</td><td style="text-align:right;padding:.2rem .4rem">p10(差)</td><td style="text-align:right;padding:.2rem .4rem">最坏</td><td style="text-align:right;padding:.2rem .4rem">继续亏比例</td></tr>
+      ${drows}
+    </table>
+    <div style="font-size:0.72rem;color:var(--muted);margin-top:.25rem">看清没：大跌后约 <b style="color:#e67e22">40–46% 的情况继续亏</b>、最坏跌到 <b style="color:#e74c3c">-20%~-31%</b>。"平均小幅反弹"把这些灾难路径藏起来了——<b>这就是为什么我们不喊抄底：把全貌给你，你自己判断</b>。</div></div>` : "";
   el.innerHTML = `
     <div style="border-left:3px solid ${c};padding:.4rem .7rem;margin-bottom:.6rem">
       <div style="font-weight:700;color:${c}">${lbl}</div>
       <div style="font-size:0.82rem;margin-top:.3rem;line-height:1.55">极端下跌日(收益≤第 ${OV.q} 百分位)的<b>次日</b>平均 ${f.bounce_next_pct}% vs 其余 ${f.other_next_pct}%（差 ${f.diff_pct}pp，全样本 p=${f.p_value}，n=${f.n_down}）${rc ? `<br>现代(2000后)：差 ${rc.diff_pct}pp，p=${rc.p_value}` : ""}
       <span style="color:#e67e22;font-size:0.74rem">　← 这点均差远小于当日波动与交易成本，统计可见 ≠ 能赚钱</span></div>
     </div>
-    <div style="font-size:0.74rem;color:var(--muted);line-height:1.6">⚠ <b>这是历史描述，不是抄底建议、不预测明天</b>。每天零点几 pp 的均差会被<b>波动 / 交易成本 / 滑点</b>吃掉，且极端下跌日多发生在 2008/2020 这类危机中(反弹伴随剧烈波动)——<b>不可交易</b>。${esc(OV.caveat || "")}</div>`;
+    ${distHtml}
+    <div style="font-size:0.74rem;color:var(--muted);line-height:1.6;margin-top:.5rem">⚠ <b>这是历史描述，不是抄底建议、不预测明天</b>。每天零点几 pp 的均差会被<b>波动 / 交易成本 / 滑点</b>吃掉，且极端下跌日多发生在 2008/2020 这类危机中(反弹伴随剧烈波动)——<b>不可交易</b>。${esc(OV.caveat || "")}</div>`;
 }
 
 // ── 🔬 探索区：未验证/猜测性假设(露了苗头但没过稳健检验)——怀疑训练场,非预测非可交易 ──
