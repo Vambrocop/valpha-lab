@@ -319,6 +319,13 @@ def run_all():
           f"数据窥探 {cnt_v('data_snoop')} / 其余无规律或无定论"
           + ("  ⚠️ 触发块3停下(持续真规律候选需人工审视)" if pattern_real else ""))
 
+    summary = {                                                   # 块5：登记簿一行用的聚合
+        "n_tickers": len(out_tickers),
+        "n_ok": sum(1 for v in out_tickers.values() if v.get("status") == "ok"),
+        "pattern_real": cnt_v("has_real"), "pattern_faded": cnt_v("faded"),
+        "pattern_hist_robust": cnt_v("hist_robust"), "pattern_data_snoop": cnt_v("data_snoop"),
+    }
+
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "caveat": "这是个股的**风险画像**，描述它历史上是什么样——**不预测涨跌、不荐股、不给买卖点**。"
@@ -326,6 +333,7 @@ def run_all():
                   "β=对纳指的敏感度（>1 比大盘更颠，<1 更稳），是风险特征不是收益承诺。数据不足的票如实标注。",
         "benchmark": "NASDAQ", "min_days": MIN_DAYS,
         "patterns_fdr_real": bool(pattern_real),
+        "summary": summary,
         "tickers": out_tickers,
     }
     payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)

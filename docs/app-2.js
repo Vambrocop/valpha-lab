@@ -647,9 +647,9 @@ async function loadHonestRegistry() {
   const el = document.getElementById("honest-registry");
   if (!el) return;
   const get = async (f) => { try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; } };
-  const [pl, fx, ev, cy, cf, cv] = await Promise.all([
+  const [pl, fx, ev, cy, cf, cv, sc] = await Promise.all([
     get("placebo_tests.json"), get("fdr_crossfamily.json"), get("event_causal.json"),
-    get("cycles.json"), get("conformal.json"), get("cpcv.json"),
+    get("cycles.json"), get("conformal.json"), get("cpcv.json"), get("stock_checkup.json"),
   ]);
   const rows = [];
   if (pl?.tests) {
@@ -681,6 +681,15 @@ async function loadHonestRegistry() {
               : cdr.verdict === "drifting" ? `校准随时间恶化（ρ=${cdr.trend_rho}，峰值 ${cdr.max_abs_gap_pct}pp）—— 见详情`
               : `无定论：单期最大|缺口| ${cdr.max_abs_gap_pct}pp（区制误差大，无系统漂移 ≠ 校准良好）`;
     rows.push(["校准漂移", "逐折 OOS 校准 + Spearman 趋势", txt, "calibration-drift", cdr.verdict === "stable" ? "real" : "null"]);
+  }
+  if (sc?.summary) {
+    const s = sc.summary;
+    const lead = s.pattern_real ? `${s.pattern_real} 例疑似持续规律(待验证)` : "未发现可持续日历规律";
+    const extra = (s.pattern_faded ? `${s.pattern_faded} 例曾有、已被套利` : "")
+      + (s.pattern_data_snoop ? `；${s.pattern_data_snoop} 例数据窥探` : "");
+    rows.push(["个股诚实体检", "风险画像 + 规律真伪(三关)",
+      `${s.n_ok} 票风险画像；${lead}${extra ? "（" + extra + "）" : ""} —— 非荐股非预测`,
+      "stock-checkup", s.pattern_real ? "real" : "null"]);
   }
   rows.push(["短期方向预测", "（红线）", "不可靠预测 → 主动不做", null, "redline"]);
   rows.push(["v3 稀疏模型", "L1 正则实验", "假设被否（诚实 null，见 git 历史）", null, "null"]);
@@ -796,7 +805,7 @@ function renderStockCheckup(code) {
     body.innerHTML = `<div style="color:var(--muted);font-size:0.85rem">${esc(code)} ${esc(t.name || "")}：数据不足/不可得（${esc(t.status)}${t.n_days != null ? "，n=" + t.n_days : ""}），诚实不给画像。</div>`;
     return;
   }
-  const betaTxt = t.beta_nasdaq == null ? "—" : t.beta_nasdaq + (t.beta_nasdaq >= 1 ? "（比纳指更颠）" : "（比纳指更稳）");
+  const betaTxt = t.beta_nasdaq == null ? "—" : t.beta_nasdaq + (t.beta_nasdaq >= 1 ? "（对纳指涨跌更敏感）" : "（对纳指涨跌不敏感）");
   const row = (label, val, hint) => `<tr style="border-top:1px solid var(--border-faint)">
     <td style="padding:.35rem .4rem;color:var(--muted)">${label}</td>
     <td style="padding:.35rem .4rem;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${val}</td>
@@ -862,7 +871,15 @@ function renderStockCheckup(code) {
       <span style="color:var(--muted)">（宽 ${cf.width_pct}%）· 实测覆盖 <span style="color:${covC}">${(cf.empirical_coverage * 100).toFixed(0)}%</span>（${cf.n_test} 个出样本窗口）</span>
       <div style="color:var(--muted);font-size:0.7rem;margin-top:.2rem">这是<b>不确定性区间</b>(历史 N 日收益多少比例落在内)，<b>给范围不给方向、不预测涨跌</b>。此为<b>历史无条件</b>区间、非对当下行情的预测，<b>不等于未来一定落在内</b>;覆盖偏离名义 90% = 该票非平稳或样本少。</div></div>`;
   }
-  body.innerHTML = `
+  const volTier = t.ann_vol_pct >= 45 ? "高波动" : t.ann_vol_pct >= 28 ? "中等波动" : "低波动";
+  const betaDesc = t.beta_nasdaq == null ? "" : (t.beta_nasdaq >= 1.2 ? "、对大盘涨跌更敏感" : t.beta_nasdaq <= 0.6 ? "、对大盘涨跌不敏感" : "、敏感度与大盘相当");
+  const betaClause = t.beta_nasdaq == null ? "" : `${betaDesc}（β=${t.beta_nasdaq}）`;
+  const patMap = { has_real: "出现疑似持续规律(见下，待验证)", faded: "曾有日历规律、近年已消失(被套利)", hist_robust: "历史稳健但近期样本不足无法验证", data_snoop: "疑似规律经查为数据窥探", no_pattern: "未检出日历规律", inconclusive: "日历规律无定论(检验力不足)" };
+  const patTxt = (t.patterns && t.patterns.status === "ok") ? (patMap[t.patterns.overall] || "") : "";
+  const cardHtml = `<div style="border-left:3px solid var(--blue);padding:.4rem .7rem;margin-bottom:.7rem;font-size:0.85rem;line-height:1.6">
+    <b>${esc(code)} ${esc(t.name || "")}</b> 风险画像综述：${volTier}（年化 ${t.ann_vol_pct}%）${betaClause}${md && md.status === "ok" ? "、" + md.r2_pct + "% 波动随大盘" : ""}。${patTxt ? "日历规律：" + patTxt + "。" : ""}
+    <div style="color:var(--muted);font-size:0.74rem;margin-top:.25rem">这是<b>风险与真伪的客观画像，不是评级、不荐股、不预测方向</b>（'敏感'指随大盘摆动幅度，非安全或收益高低）。</div></div>`;
+  body.innerHTML = `${cardHtml}
     <div style="font-size:0.78rem;color:var(--muted);margin-bottom:.4rem">${esc(code)} ${esc(t.name || "")} · 日线 ${esc(t.start)}→${esc(t.end)}（${t.n_days} 天）</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
       ${row("年化波动", t.ann_vol_pct + "%", "历史日收益波动，越高越颠")}
