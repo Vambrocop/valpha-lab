@@ -49,10 +49,14 @@ jobs:
       - name: Run pipeline (intraday 30-min = light, pre-open/post-close = full)
         run: |
           if [ "${{ github.event.schedule }}" = "0,30 14-20 * * 1-5" ]; then
-            python market-analysis/scripts/run_all.py --light
+            CMD="python market-analysis/scripts/run_all.py --light"
           else
-            python market-analysis/scripts/run_all.py
+            CMD="python market-analysis/scripts/run_all.py"
           fi
+          # 瞬时网络/yfinance 抖动会让整条刷新失败、白丢本次调度 → 自动重试一次。
+          # run_all 每步都重写产物(幂等)、末步 verify_output 仍把关 → 重试不会发布坏数据;
+          # 真错(代码/数据问题)会两次都失败 → 仍正确地红，不被掩盖。
+          $CMD || { echo "::warning::pipeline 首次失败，60s 后重试一次（疑似瞬时抓取抖动）"; sleep 60; $CMD; }
 
       - name: Signal alerts (state changes only)
         run: python market-analysis/scripts/alert_check.py
