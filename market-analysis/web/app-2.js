@@ -871,6 +871,19 @@ function renderStockCheckup(code) {
       <span style="color:var(--muted)">（宽 ${cf.width_pct}%）· 实测覆盖 <span style="color:${covC}">${(cf.empirical_coverage * 100).toFixed(0)}%</span>（${cf.n_test} 个出样本窗口）</span>
       <div style="color:var(--muted);font-size:0.7rem;margin-top:.2rem">这是<b>不确定性区间</b>(历史 N 日收益多少比例落在内)，<b>给范围不给方向、不预测涨跌</b>。此为<b>历史无条件</b>区间、非对当下行情的预测，<b>不等于未来一定落在内</b>;覆盖偏离名义 90% = 该票非平稳或样本少。</div></div>`;
   }
+  const an = t.anomaly;
+  let anHtml = "";
+  if (an && an.status === "ok") {
+    const flags = [];
+    if (an.high_vol) flags.push("波动处历史高位(≥95 分位)");
+    if (an.decoupled) flags.push("与大盘异常脱钩(走自己的、相关处历史低位 → 特质风险占比升高，无关好坏方向)");
+    const sC = flags.length ? "#e67e22" : "var(--muted)";   // 正常=中性灰,不用绿(避免"绿灯=可买"误读);橙仅引起注意
+    const sT = flags.length ? flags.join("、") : "无异常（波动/相关均在常态区间）";
+    anHtml = `<div style="margin-top:.7rem;font-size:0.82rem;line-height:1.55">
+      <span style="color:var(--muted)">当前风险状态（${an.win}日滚动，截至 ${esc(an.asof)}）：</span><span style="color:${sC}">${sT}</span>
+      <div style="color:var(--muted);font-size:0.74rem;margin-top:.2rem">波动 ${an.vol_now_pct}%（历史第 ${an.vol_percentile} 分位）${an.corr_now != null ? "、与纳指相关 " + an.corr_now + "（第 " + an.corr_percentile + " 分位）" : ""}</div>
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:.2rem">⚠ 异动 = <b>风险升高、请重新审视你的仓位风险</b>，<b>不是交易信号/机会</b>；本页不择时、不预测方向。</div></div>`;
+  }
   const volTier = t.ann_vol_pct >= 45 ? "高波动" : t.ann_vol_pct >= 28 ? "中等波动" : "低波动";
   const betaDesc = t.beta_nasdaq == null ? "" : (t.beta_nasdaq >= 1.2 ? "、对大盘涨跌更敏感" : t.beta_nasdaq <= 0.6 ? "、对大盘涨跌不敏感" : "、敏感度与大盘相当");
   const betaClause = t.beta_nasdaq == null ? "" : `${betaDesc}（β=${t.beta_nasdaq}）`;
@@ -885,7 +898,7 @@ function renderStockCheckup(code) {
       ${row("年化波动", t.ann_vol_pct + "%", "历史日收益波动，越高越颠")}
       ${row("历史最深回撤", t.max_drawdown_pct + "%", "峰到谷最大跌幅——提示风险，非机会")}
       ${row("对纳指 β", betaTxt, "对大盘的敏感度，是风险特征非收益承诺")}
-    </table>${mdHtml}${evtHtml}${cfHtml}${patHtml}`;
+    </table>${mdHtml}${evtHtml}${cfHtml}${patHtml}${anHtml}`;
 }
 
 function renderDigitChart() {

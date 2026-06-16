@@ -4,7 +4,7 @@ import pandas as pd
 
 from stock_checkup import (annualized_vol, max_drawdown, beta, compute_basic_risk,
                            compute_evt, market_dependence, compute_patterns,
-                           _fdr_annotate_patterns, compute_conformal)
+                           _fdr_annotate_patterns, compute_conformal, compute_anomaly)
 
 
 def test_max_drawdown_known():
@@ -111,3 +111,17 @@ def test_compute_conformal():
     assert 0 < r["n_test"] < r["n_windows"]                          # 覆盖的真实分母=出样本窗口数
     short = pd.Series(100.0 + np.arange(100.0), index=pd.bdate_range("2020-01-01", periods=100))
     assert compute_conformal(short, horizon=20)["status"] == "insufficient"
+
+
+def test_compute_anomaly():
+    idx = pd.bdate_range("2008-01-01", periods=2000)
+    rng = np.random.default_rng(13)
+    base = rng.normal(0, 0.01, 2000)
+    base[-80:] = rng.normal(0, 0.05, 80)                       # 近期波动飙升(5×)
+    px = pd.Series(100 * np.cumprod(1 + base), index=idx)
+    nas = pd.Series(100 * np.cumprod(1 + rng.normal(0, 0.01, 2000)), index=idx)
+    r = compute_anomaly(px, nas, win=60)
+    assert r["status"] == "ok" and r["high_vol"] is True       # 近期高波动 → 落历史高分位
+    assert 0 <= r["vol_percentile"] <= 100
+    short = pd.Series(100.0 + np.arange(100.0), index=pd.bdate_range("2020-01-01", periods=100))
+    assert compute_anomaly(short, short)["status"] == "insufficient"

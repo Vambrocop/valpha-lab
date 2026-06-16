@@ -101,7 +101,9 @@ placebo+FDR / stats_util）。数据不足的模块**如实标 insufficient/inco
 - [x] 块3 规律真伪 ✅（星期几/月份 SSB置换 + 跨票FDR + 分半 + 近期持续 三关;六态real/faded/hist_robust/data_snoop/inconclusive/rejected;独立审 REQUEST_CHANGES→修月份faded误判bug。结果:0真规律,AAPL星期=faded被套利。前端分段呈现全样本/前后半/近5年）
 - [x] 块4 保形区间 ✅（每票 20日90% split-conformal 双边区间+实测覆盖;复用 conformal.py;宽度随波动 KO17%→TSLA60%;独立审 APPROVE→补 n_test 真分母 + "无条件非预测"caveat + 带符号边界）
 - [x] 块5 裁决卡 + 登记簿 ✅（每票风险画像综述卡:波动档+β敏感度+市场依赖+规律真伪,纯描述非评级;后端 summary 聚合;诚实登记簿加一行。独立审(措辞重点)REQUEST_CHANGES→修 null-β 渲染 + 把"更稳/更颠"改中性"敏感度"防小白读成"更安全可买"+ 登记簿把0真规律重述为"未发现可持续规律"）
-- [ ] 块6 风险型异动监测
+- [x] 块6 风险型异动监测 ✅（描述性"当前风险状态":当前波动/与纳指相关落在历史哪个分位;分位自校准免FDR(前提=被动per-stock不扫描);独立审 APPROVE→修绿灯误读(正常态改中性灰)+脱钩判定四舍五入边界一致。结果:COST/KO/BRK-B 当前与纳指脱钩。红线:异动=风险非信号）
+
+**🎉 个股体检 6 块全部完成（2026-06-16）。** 4 轮独立 Opus 审抓出真问题(faded-month误判/conformal n_test真分母/绿灯误读等)。下一步:开"市场风险体制+理论检验"轨(见下方🛣️)。
 
 ---
 

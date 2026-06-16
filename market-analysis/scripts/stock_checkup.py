@@ -145,6 +145,34 @@ def _eff_rng(tk, effect):
     return np.random.default_rng([SEED, key])
 
 
+def compute_anomaly(px, nasdaq, win=60):
+    """块6：描述性"当前风险状态"——当前 win 日滚动波动落在该票历史哪个分位 + 是否与纳指异常脱钩。
+    🔴 红线:异动 = 风险升高、请重审你的仓位风险,【不是交易信号/机会】;被动展示、非择时非预测。
+    用分位(自校准:~5%的日子本就在95分位上)而非显著性检验,故不涉多重比较 FDR——
+    【此免 FDR 前提=保持被动、per-stock,绝不跨票排名/筛选'谁在异动';若改成扫描器则该前提失效】。
+    分位用严格 `<`(当前值不计入自身参照分布,N≥500 时差异~1/N 可忽略,刻意如此勿改成 off-by-one)。"""
+    px = pd.to_numeric(px, errors="coerce").dropna().sort_index()
+    ret = px.pct_change().dropna()
+    if len(ret) < 500:
+        return {"status": "insufficient"}
+    rv = (ret.rolling(win).std() * np.sqrt(252)).dropna()
+    vol_now = float(rv.iloc[-1])
+    vol_pct = round(float((rv < vol_now).mean()) * 100, 1)
+    res = {"status": "ok", "win": int(win), "asof": str(ret.index[-1].date()),
+           "vol_now_pct": round(vol_now * 100, 1), "vol_percentile": vol_pct,
+           "high_vol": bool(vol_pct >= 95)}
+    nas = pd.to_numeric(nasdaq, errors="coerce").dropna().sort_index().pct_change()
+    common = ret.index.intersection(nas.index)
+    if len(common) >= 500:
+        rc = ret.reindex(common).rolling(win).corr(nas.reindex(common)).dropna()
+        if len(rc) >= 100:
+            corr_now = float(rc.iloc[-1])
+            cp = float((rc < corr_now).mean()) * 100          # 同一原始分位派生显示值+脱钩判定,避免四舍五入边界分歧
+            res.update({"corr_now": round(corr_now, 2),
+                        "corr_percentile": round(cp, 1), "decoupled": bool(cp <= 5)})
+    return res
+
+
 def compute_patterns(px, tk):
     """块3：单票日历规律真伪——星期几(日频5组)+月份(月频12组) SSB 置换 + 分半稳健。
     FDR 跨【全部票×效应】统一(防数据窥探);单股 in-sample 显著但【分半不稳】→ 判数据窥探(诚实揭穿)。
@@ -305,6 +333,7 @@ def run_all():
             risk["market_dep"] = compute_market_dependence(px, nasdaq)   # 块2：市场依赖度
             risk["patterns"] = compute_patterns(px, tk)         # 块3：规律真伪(每效应独立种子;FDR 在后统一)
             risk["conformal"] = compute_conformal(px)           # 块4：保形区间(范围非方向)
+            risk["anomaly"] = compute_anomaly(px, nasdaq)        # 块6：当前风险状态(描述性,非信号)
         out_tickers[tk] = risk
         if risk["status"] == "ok":
             ev = risk.get("evt", {})
