@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from market_regime import compute_regime, _pct
+from market_regime import compute_regime, _pct, _avg_pairwise_corr
 
 
 def _df(n=2000):
@@ -49,3 +49,21 @@ def test_compute_regime_backwardation():
 def test_compute_regime_insufficient():
     idx = pd.bdate_range("2020-01-01", periods=100)
     assert compute_regime(pd.DataFrame({"VIX": [15.0] * 100}, index=idx))["status"] == "insufficient"
+
+
+def _basket(n, k, common, idio, seed):
+    rng = np.random.default_rng(seed)
+    idx = pd.bdate_range("2010-01-01", periods=n)
+    factor = rng.normal(0, 0.01, n)
+    return pd.DataFrame({f"S{i}": common * factor + idio * rng.normal(0, 0.01, n) for i in range(k)}, index=idx)
+
+
+def test_herding_high_when_common_factor_dominates():
+    avg = _avg_pairwise_corr(_basket(800, 6, common=1.0, idio=0.2, seed=0), 60)   # 共同因子主导
+    assert float(avg.iloc[-1]) > 0.6                                              # 趋同/抱团
+
+
+def test_herding_low_when_independent():
+    avg = _avg_pairwise_corr(_basket(800, 6, common=0.0, idio=1.0, seed=1), 60)   # 纯独立噪声
+    assert abs(float(avg.iloc[-1])) < 0.3                                         # 各走各的
+    assert avg.notna().all() and -1 <= avg.min() <= avg.max() <= 1

@@ -6,7 +6,7 @@ market_regime.py — 当前市场风险/流动性体制盘(R1，描述性,非预
 🔴 红线:**只描述当前环境,绝不预测方向、不构成操作建议**。"曲线倒挂与衰退相关"等是
 历史关联的【描述】,非"会跌"的预测。
 
-指标(均跨完整周期):VIX(2000+)/收益率曲线 10Y-2Y(2000+)/**信用利差 Baa-10Y(2000+)**/VIX 期限结构(2006+)。
+指标(均跨完整周期):VIX(2000+)/收益率曲线 10Y-2Y(2000+)/**信用利差 Baa-10Y(2000+)**/VIX 期限结构(2006+)/**个股共动羊群(2004+)**。
 注:ICE 高收益利差(BAMLH0A0HYM2)在 FRED 仅开放~2年(访问限制),故信用维度改用穆迪 Baa-10Y(全史、无限制、等价的信用压力代理)。
 
 依赖 numpy/pandas。输出 market_regime.json(PROC+WEB+DOCS 三处, allow_nan=False)。
@@ -31,6 +31,38 @@ def _col(df, name):
 
 def _pct(series, val):
     return round(float((series < val).mean()) * 100, 1)
+
+
+HERDING_BASKET = ["AAPL", "MSFT", "AMZN", "NVDA", "GOOGL", "COST", "LLY", "BRK-B"]  # 长历史(~2004+)大盘股
+
+
+def _avg_pairwise_corr(rets, win):
+    """日收益 DataFrame → 各日"近 win 日平均两两相关"的时间序列(纯函数,可测)。"""
+    cols = list(rets.columns)
+    pair = [rets[cols[i]].rolling(win).corr(rets[cols[j]])
+            for i in range(len(cols)) for j in range(i + 1, len(cols))]
+    return pd.concat(pair, axis=1).mean(axis=1).dropna()
+
+
+def compute_herding(win=60):
+    """羊群/共动体制:一篮大盘股【近 win 日平均两两相关】,当前值 + 历史分位。
+    高=危机式趋同(everything moves together,分散失效);描述当前结构,非预测。"""
+    f = RAW_DIR / "stocks_prices.csv"
+    if not f.exists():
+        return None
+    df = pd.read_csv(f, index_col=0, parse_dates=True)
+    cols = [c for c in HERDING_BASKET if c in df.columns]
+    if len(cols) < 4:
+        return None
+    rets = df[cols].apply(pd.to_numeric, errors="coerce").pct_change().dropna(how="any")
+    if len(rets) < 300:
+        return None
+    avg = _avg_pairwise_corr(rets, win)
+    if len(avg) < 250:
+        return None
+    cur = float(avg.iloc[-1])
+    return {"value": round(cur, 2), "percentile": round(float((avg < cur).mean()) * 100, 1),
+            "history_start": str(avg.index[0].date()), "n_stocks": len(cols)}
 
 
 def compute_regime(df):
@@ -74,6 +106,15 @@ def compute_regime(df):
                       "history_start": str(max(vix3m.index[0], vix.index[0]).date()),
                       "note": "倒挂=近月恐慌高于远月，通常对应急性市场压力(描述当前状态，非预测)"})
 
+    herd = compute_herding()
+    if herd:
+        hp = herd["percentile"]
+        h_label = ("极端抱团(分散失效)" if hp >= 95 else "偏高(趋同)" if hp >= 75
+                   else "偏低(各走各的)" if hp <= 25 else "中性")
+        comps.append({"name": "个股共动(羊群)", "value": herd["value"], "percentile": hp, "label": h_label,
+                      "history_start": herd["history_start"],
+                      "note": f"{herd['n_stocks']} 只大盘股近 60 日平均两两相关;高=危机式趋同(分散失效)、低=各走各的(描述性,非预测)"})
+
     # 综合(纯描述,不给方向/操作)
     bits = [f"波动率{vix_label}"]
     cv = next((c for c in comps if c["name"].startswith("收益率")), None)
@@ -82,6 +123,9 @@ def compute_regime(df):
     cr = next((c for c in comps if c["name"].startswith("信用利差")), None)
     if cr:
         bits.append("信用利差" + cr["label"])
+    hd = next((c for c in comps if c["name"].startswith("个股共动")), None)
+    if hd:
+        bits.append("个股共动" + hd["label"])
     tv = next((c for c in comps if c["name"].startswith("VIX 期限")), None)
     if tv and tv.get("backwardation"):
         bits.append("期限结构倒挂(近月恐慌>远月)")
@@ -110,8 +154,8 @@ def run_all():
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "caveat": "这是【当前风险环境的客观描述】——现值在历史的位置 + 体制标签,"
                   "**绝不预测方向、不构成买卖建议**。如'曲线倒挂与衰退相关'是历史关联的描述,非'会跌'。"
-                  "用 VIX(2000+)/收益率曲线(2000+)/信用利差 Baa-10Y(2000+)/VIX 期限结构(2006+),均跨 2008、2020。"
-                  "信用维度用穆迪 Baa-10Y(ICE 高收益利差在 FRED 仅~2年,访问受限)。",
+                  "用 VIX(2000+)/收益率曲线(2000+)/信用利差 Baa-10Y(2000+)/VIX 期限结构(2006+)/个股共动羊群(2004+),均跨 2008、2020。"
+                  "信用维度用穆迪 Baa-10Y(ICE 高收益利差在 FRED 仅~2年,访问受限);羊群=8 只大盘股近60日平均两两相关。",
         **res,
     }
     payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
