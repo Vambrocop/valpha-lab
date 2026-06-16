@@ -1,8 +1,9 @@
 {
-  "generated": "2026-06-16T03:07:21Z",
+  "generated": "2026-06-16T04:19:59Z",
   "caveat": "这是个股的**风险画像**，描述它历史上是什么样——**不预测涨跌、不荐股、不给买卖点**。年化波动=历史日收益波动；最深回撤=历史峰到谷最大跌幅（可能极深，提示风险非机会）；β=对纳指的敏感度（>1 比大盘更颠，<1 更稳），是风险特征不是收益承诺。数据不足的票如实标注。",
   "benchmark": "NASDAQ",
   "min_days": 250,
+  "patterns_fdr_real": false,
   "tickers": {
     "AAPL": {
       "status": "ok",
@@ -38,6 +39,42 @@
         "idiosyncratic_pct": 58.2,
         "status": "ok",
         "n_obs": 6651
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.000999,
+            "min_group_n": 1247,
+            "split_half_p": [
+              0.01,
+              0.015
+            ],
+            "split_half_stable": true,
+            "recent_p": 0.5724,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.026,
+            "verdict": "faded"
+          },
+          {
+            "p_value": 0.232767,
+            "min_group_n": 26,
+            "split_half_p": [
+              0.7722,
+              0.1239
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.4477,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "faded"
       }
     },
     "MSFT": {
@@ -74,6 +111,42 @@
         "idiosyncratic_pct": 43.3,
         "status": "ok",
         "n_obs": 6651
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.603397,
+            "min_group_n": 1247,
+            "split_half_p": [
+              0.1399,
+              0.4715
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.5125,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.7713,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.071928,
+            "min_group_n": 26,
+            "split_half_p": [
+              0.2238,
+              0.1399
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.2672,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "GOOGL": {
@@ -110,6 +183,42 @@
         "idiosyncratic_pct": 52.6,
         "status": "ok",
         "n_obs": 5489
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.645355,
+            "min_group_n": 1028,
+            "split_half_p": [
+              0.7952,
+              0.5704
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.8921,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.7713,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.004995,
+            "min_group_n": 21,
+            "split_half_p": [
+              0.023,
+              0.012
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.0649,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "AMZN": {
@@ -146,6 +255,42 @@
         "idiosyncratic_pct": 65.1,
         "status": "ok",
         "n_obs": 6651
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.806194,
+            "min_group_n": 1247,
+            "split_half_p": [
+              0.9471,
+              0.5005
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.976,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.8734,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.045954,
+            "min_group_n": 26,
+            "split_half_p": [
+              0.1838,
+              0.1878
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.239,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "NVDA": {
@@ -182,6 +327,42 @@
         "idiosyncratic_pct": 57.5,
         "status": "ok",
         "n_obs": 6651
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.877123,
+            "min_group_n": 1247,
+            "split_half_p": [
+              0.991,
+              0.6064
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.2378,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.8771,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.082917,
+            "min_group_n": 26,
+            "split_half_p": [
+              0.3247,
+              0.1698
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.2695,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "META": {
@@ -218,6 +399,42 @@
         "idiosyncratic_pct": 62.7,
         "status": "ok",
         "n_obs": 3537
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.10989,
+            "min_group_n": 664,
+            "split_half_p": [
+              0.021,
+              0.8741
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.8931,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.3143,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.292707,
+            "min_group_n": 14,
+            "split_half_p": [
+              0.4346,
+              0.4885
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.4477,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "TSLA": {
@@ -254,6 +471,42 @@
         "idiosyncratic_pct": 72.3,
         "status": "ok",
         "n_obs": 4014
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.012987,
+            "min_group_n": 751,
+            "split_half_p": [
+              0.5135,
+              0.004
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.034,
+            "recent_testable": true,
+            "recent_significant": true,
+            "effect": "星期几",
+            "q_value": 0.1126,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.848152,
+            "min_group_n": 16,
+            "split_half_p": [
+              0.8202,
+              0.8681
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.8771,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "AVGO": {
@@ -290,6 +543,42 @@
         "idiosyncratic_pct": 55.0,
         "status": "ok",
         "n_obs": 4239
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.678322,
+            "min_group_n": 794,
+            "split_half_p": [
+              0.0909,
+              0.7732
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.3117,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.7713,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.188811,
+            "min_group_n": 16,
+            "split_half_p": [
+              0.0719,
+              0.2198
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.4091,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "TSM": {
@@ -326,6 +615,42 @@
         "idiosyncratic_pct": 55.8,
         "status": "ok",
         "n_obs": 6651
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.040959,
+            "min_group_n": 1247,
+            "split_half_p": [
+              0.0509,
+              0.016
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.0949,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.239,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.275724,
+            "min_group_n": 26,
+            "split_half_p": [
+              0.1678,
+              0.7413
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.4477,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "COST": {
@@ -362,6 +687,42 @@
         "idiosyncratic_pct": 73.6,
         "status": "ok",
         "n_obs": 6651
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.058941,
+            "min_group_n": 1247,
+            "split_half_p": [
+              0.2018,
+              0.3856
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.8721,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.2554,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.682318,
+            "min_group_n": 26,
+            "split_half_p": [
+              0.7203,
+              0.0839
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.7713,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "LLY": {
@@ -398,6 +759,42 @@
         "idiosyncratic_pct": 87.8,
         "status": "ok",
         "n_obs": 6651
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.474525,
+            "min_group_n": 1247,
+            "split_half_p": [
+              0.1399,
+              0.036
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.1209,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.6493,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.351648,
+            "min_group_n": 26,
+            "split_half_p": [
+              0.2078,
+              0.8981
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.5079,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "BRK-B": {
@@ -434,13 +831,49 @@
         "idiosyncratic_pct": 79.1,
         "status": "ok",
         "n_obs": 6651
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.177822,
+            "min_group_n": 1247,
+            "split_half_p": [
+              0.1558,
+              0.9081
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.7463,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.4091,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.120879,
+            "min_group_n": 26,
+            "split_half_p": [
+              0.6713,
+              0.03
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.3143,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     },
     "KO": {
       "status": "ok",
-      "n_days": 6652,
+      "n_days": 6651,
       "start": "2000-01-03",
-      "end": "2026-06-15",
+      "end": "2026-06-12",
       "ann_vol_pct": 20.3,
       "max_drawdown_pct": -41.6,
       "beta_nasdaq": 0.27,
@@ -469,7 +902,43 @@
         "r2_pct": 10.7,
         "idiosyncratic_pct": 89.3,
         "status": "ok",
-        "n_obs": 6651
+        "n_obs": 6650
+      },
+      "patterns": {
+        "status": "ok",
+        "tests": [
+          {
+            "p_value": 0.258741,
+            "min_group_n": 1246,
+            "split_half_p": [
+              0.3447,
+              0.1808
+            ],
+            "split_half_stable": false,
+            "recent_p": 0.3137,
+            "recent_testable": true,
+            "recent_significant": false,
+            "effect": "星期几",
+            "q_value": 0.4477,
+            "verdict": "rejected"
+          },
+          {
+            "p_value": 0.243756,
+            "min_group_n": 26,
+            "split_half_p": [
+              0.2497,
+              0.7103
+            ],
+            "split_half_stable": false,
+            "recent_p": null,
+            "recent_testable": false,
+            "recent_significant": false,
+            "effect": "月份",
+            "q_value": 0.4477,
+            "verdict": "inconclusive"
+          }
+        ],
+        "overall": "inconclusive"
       }
     }
   }

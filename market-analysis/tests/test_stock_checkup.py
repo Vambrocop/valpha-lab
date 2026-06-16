@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 
 from stock_checkup import (annualized_vol, max_drawdown, beta, compute_basic_risk,
-                           compute_evt, market_dependence)
+                           compute_evt, market_dependence, compute_patterns,
+                           _fdr_annotate_patterns)
 
 
 def test_max_drawdown_known():
@@ -64,3 +65,37 @@ def test_market_dependence():
     mix = 0.7 * m + 0.3 * rng.normal(0, 0.01, 2000)
     assert 30 < market_dependence(mix, m)["r2_pct"] < 95       # 混合 → R² 居中
     assert market_dependence(np.ones(5), np.ones(5)) is None   # 零方差 → None
+
+
+def test_fdr_annotate_verdicts():
+    """块3 六态裁决：real / faded / hist_robust(近期没测) / data_snoop / inconclusive / rejected。"""
+    def tk(p, mgn, stable, r_test, r_sig):
+        return {"patterns": {"status": "ok", "tests": [
+            {"effect": "e", "p_value": p, "min_group_n": mgn, "split_half_stable": stable,
+             "recent_testable": r_test, "recent_significant": r_sig}]}}
+    out = {"A": tk(0.0009, 1000, True, True, True),     # 三关全过 → real
+           "B": tk(0.0009, 1000, True, True, False),    # 近期测了仍消失 → faded
+           "F": tk(0.0009, 1000, True, False, False),   # 近期没测(样本不足) → hist_robust(不声称消失)
+           "C": tk(0.0009, 1000, False, False, False),  # 分半就不稳 → data_snoop
+           "D": tk(0.5, 20, False, True, False),        # 不显著且组样本<30 → inconclusive
+           "E": tk(0.5, 1000, False, True, False)}      # 不显著但样本足 → rejected
+    any_real = _fdr_annotate_patterns(out)
+    g = lambda k: out[k]["patterns"]["tests"][0]["verdict"]
+    assert any_real and g("A") == "real" and g("B") == "faded" and g("F") == "hist_robust"
+    assert g("C") == "data_snoop" and g("D") == "inconclusive" and g("E") == "rejected"
+
+
+def test_compute_patterns_planted_persistent_dow():
+    idx = pd.bdate_range("2005-01-01", periods=3000)
+    rng = np.random.default_rng(21)
+    base = rng.normal(0, 0.01, 3000)
+    base[idx.dayofweek.values == 0] += 0.004                   # 周一系统性 +0.4%/天，全程(含近期)
+    px = pd.Series(100 * np.cumprod(1 + base), index=idx)
+    r = compute_patterns(px, "TEST")
+    dwt = [t for t in r["tests"] if t["effect"] == "星期几"][0]
+    assert r["status"] == "ok" and dwt["p_value"] < 0.05
+    assert dwt["split_half_stable"] and dwt["recent_significant"]   # 日频持续效应三关都过
+    # 月份近期窗(~5年≈60月<100) 无法测 → recent_testable=False（不得据此误判 faded）
+    mot = [t for t in r["tests"] if t["effect"] == "月份"]
+    if mot:
+        assert mot[0]["recent_testable"] is False

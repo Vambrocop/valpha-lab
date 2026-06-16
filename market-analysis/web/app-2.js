@@ -824,13 +824,41 @@ function renderStockCheckup(code) {
       市场依赖度：<b style="color:var(--fg)">${md.r2_pct}%</b> 的波动可由纳指解释（相关 ${md.corr}），其余
       <b style="color:var(--fg)">${md.idiosyncratic_pct}%</b> 是个股特质。${tag}</div>`;
   }
+  const pat = t.patterns;
+  let patHtml = "";
+  if (pat && pat.status === "ok") {
+    const vmap = {
+      real: ["#e67e22", "疑似持续规律(待验证)"], faded: ["#3498db", "历史有·近年消失(被套利)"],
+      hist_robust: ["#8b949e", "历史稳健·近期样本不足未验证"],
+      data_snoop: ["#f1c40f", "数据窥探(分半不稳)"], rejected: ["#2ecc71", "未检出规律"],
+      inconclusive: ["#8b949e", "无定论(检验力不足)"],
+    };
+    const sig = p => p == null ? "—" : (p < 0.05 ? `<b style="color:var(--fg)">${p}*</b>` : `${p}`);
+    const prows = pat.tests.map(t2 => {
+      const [c, lbl] = vmap[t2.verdict] || ["#8b949e", esc(t2.verdict || "")];
+      const hp = t2.split_half_p || [null, null];
+      return `<tr style="border-top:1px solid var(--border-faint)">
+        <td style="padding:.3rem .4rem;color:var(--muted)">${esc(t2.effect)}</td>
+        <td style="padding:.3rem .4rem;text-align:center;color:${c};font-size:.76rem">${lbl}</td>
+        <td style="padding:.3rem .4rem;text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums">${sig(t2.p_value)}</td>
+        <td style="padding:.3rem .4rem;text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums">${sig(hp[0])}/${sig(hp[1])}</td>
+        <td style="padding:.3rem .4rem;text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums">${sig(t2.recent_p)}</td></tr>`;
+    }).join("");
+    patHtml = `<div style="margin-top:.75rem">
+      <div style="color:var(--muted);font-size:0.74rem;margin-bottom:.25rem">日历规律真伪（置换检验 + 跨票 FDR + 分段稳健；* = p&lt;0.05）：</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+        <tr class="u-cap"><td style="padding:.2rem .4rem">效应</td><td style="text-align:center;padding:.2rem .4rem">判定</td><td style="text-align:right;padding:.2rem .4rem">全样本</td><td style="text-align:right;padding:.2rem .4rem">前半/后半</td><td style="text-align:right;padding:.2rem .4rem">近5年</td></tr>
+        ${prows}
+      </table>
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:.3rem;line-height:1.5">只问"是真是噪声"、<b>不预测涨跌</b>。<b>历史有·近年消失</b>=典型被套利(如 AAPL 星期效应:全史显著、近5年 p≈0.57 已无)。单股日历效应极易过拟合，故跨票 FDR + 分半 + 近期三关从严。</div></div>`;
+  }
   body.innerHTML = `
     <div style="font-size:0.78rem;color:var(--muted);margin-bottom:.4rem">${esc(code)} ${esc(t.name || "")} · 日线 ${esc(t.start)}→${esc(t.end)}（${t.n_days} 天）</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
       ${row("年化波动", t.ann_vol_pct + "%", "历史日收益波动，越高越颠")}
       ${row("历史最深回撤", t.max_drawdown_pct + "%", "峰到谷最大跌幅——提示风险，非机会")}
       ${row("对纳指 β", betaTxt, "对大盘的敏感度，是风险特征非收益承诺")}
-    </table>${mdHtml}${evtHtml}`;
+    </table>${mdHtml}${evtHtml}${patHtml}`;
 }
 
 function renderDigitChart() {

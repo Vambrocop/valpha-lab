@@ -11,11 +11,14 @@ stock_checkup.py — 个股诚实体检（块0 脊柱：基础风险画像）
 """
 import datetime
 import json
+import zlib
 import numpy as np
 import pandas as pd
 from pathlib import Path
 
 from risk_dashboard import evt_tail   # 块1：复用已审的 EVT/GPD 尾部风险
+from placebo_test import perm_test, make_ssb_stat, _group_means, MIN_GROUP_N, ALPHA   # 块3：复用 placebo 置换机器
+from stats_util import benjamini_hochberg   # 块3：跨全部票×效应统一 FDR 校正
 
 SCRIPTS  = Path(__file__).parent
 RAW_DIR  = SCRIPTS.parent / "data" / "raw"
@@ -31,6 +34,7 @@ TICKER_NAMES = {
     "LLY": "礼来", "BRK-B": "伯克希尔", "KO": "可口可乐",
 }
 MIN_DAYS = 250          # 基础风险至少需 ~1 年日线，否则判 insufficient
+SEED = 20260613         # 固定种子 → 置换检验可复现（已发布统计结论的硬要求）
 
 
 # ── 纯函数（可单测，不碰网络）──────────────────────────────────────
@@ -107,6 +111,99 @@ def compute_market_dependence(px, nasdaq):
     md["status"] = "ok"
     md["n_obs"] = int(ok.sum())
     return md
+
+
+def _effect_test(values, labels, k, rng, recent_mask):
+    """单效应稳健性三关：全样本 SSB 置换 p + 分半稳健(两半都显著且主导组一致) + 近期持续性(末段~5年仍显著)。
+    异象常被套利:历史稳健但近年消失 → faded,非真规律。"""
+    full = perm_test(values, labels, make_ssb_stat(k), rng)
+    _, cnt = _group_means(values, labels, k)
+    half = len(values) // 2
+
+    def _p_dom(v, l):
+        r = perm_test(v, l, make_ssb_stat(k), rng)
+        g, c = _group_means(v, l, k)
+        gm = np.where(c > 0, g, np.nan)
+        return r["p_value"], (int(np.nanargmax(gm)) if np.isfinite(gm).any() else -1)
+
+    p1, d1 = _p_dom(values[:half], labels[:half])
+    p2, d2 = _p_dom(values[half:], labels[half:])
+    stable = bool(p1 < ALPHA and p2 < ALPHA and d1 == d2 and d1 >= 0)   # 两半都显著且主导组一致
+    rp = None
+    if int(recent_mask.sum()) >= 100:                                  # 近期持续性：末段~5年够样本才测
+        rp = round(perm_test(values[recent_mask], labels[recent_mask], make_ssb_stat(k), rng)["p_value"], 4)
+    return {"p_value": full["p_value"], "min_group_n": int(cnt[cnt > 0].min()),
+            "split_half_p": [round(p1, 4), round(p2, 4)], "split_half_stable": stable,
+            "recent_p": rp, "recent_testable": bool(rp is not None),    # 区分"近期没测"与"近期测了没效应"
+            "recent_significant": bool(rp is not None and rp < ALPHA)}
+
+
+def _eff_rng(tk, effect):
+    """每个(票×效应)独立确定性种子 → 置换结果与执行顺序无关、加新检验不扰动旧结果(可复现硬要求)。"""
+    key = zlib.crc32(f"{tk}|{effect}".encode()) & 0xffffffff
+    return np.random.default_rng([SEED, key])
+
+
+def compute_patterns(px, tk):
+    """块3：单票日历规律真伪——星期几(日频5组)+月份(月频12组) SSB 置换 + 分半稳健。
+    FDR 跨【全部票×效应】统一(防数据窥探);单股 in-sample 显著但【分半不稳】→ 判数据窥探(诚实揭穿)。
+    每效应独立种子(与顺序无关)。🔴 红线:测规律真伪、不预测方向。预期单股几乎都 rejected/inconclusive。"""
+    px = pd.to_numeric(px, errors="coerce").dropna().sort_index()
+    ret = px.pct_change().dropna()
+    if len(ret) < 500:
+        return {"status": "insufficient"}
+    cutoff = ret.index.max() - pd.Timedelta(days=365 * 5)             # 近期 = 末 5 年
+    tests = []
+    td = _effect_test(ret.values, ret.index.dayofweek.values, 5,
+                      _eff_rng(tk, "dow"), np.asarray(ret.index >= cutoff))
+    td["effect"] = "星期几"
+    tests.append(td)
+    monthly = (1 + ret).resample("ME").prod(min_count=1).dropna() - 1
+    if len(monthly) >= 60:
+        tm = _effect_test(monthly.values, (monthly.index.month - 1).values, 12,
+                          _eff_rng(tk, "month"), np.asarray(monthly.index >= cutoff))
+        tm["effect"] = "月份"
+        tests.append(tm)
+    return {"status": "ok", "tests": tests}
+
+
+def _fdr_annotate_patterns(out_tickers):
+    """跨【全部票×效应】统一 BH FDR；回填 q 值 + 三态裁决 + 每票总判。返回是否有 FDR 后仍显著者(STOP 信号)。"""
+    flat = [(tk, i) for tk, v in out_tickers.items()
+            if v.get("patterns", {}).get("status") == "ok"
+            for i in range(len(v["patterns"]["tests"]))]
+    pvals = [out_tickers[tk]["patterns"]["tests"][i]["p_value"] for tk, i in flat]
+    if not pvals:
+        return False
+    qvals = benjamini_hochberg(pvals)
+    any_real = False
+    for (tk, i), q in zip(flat, qvals):
+        t = out_tickers[tk]["patterns"]["tests"][i]
+        t["q_value"] = round(float(q), 4)
+        if q < 0.05 and t.get("split_half_stable"):                   # 过 FDR + 分半稳
+            if not t.get("recent_testable"):
+                t["verdict"] = "hist_robust"                          # 历史稳健,但近期样本不足无法验证(不声称消失)
+            elif t.get("recent_significant"):
+                t["verdict"] = "real"; any_real = True                # 三关全过=持续真规律(罕见,停下人工审视)
+            else:
+                t["verdict"] = "faded"                                # 近期【确实测了】仍消失=被套利(诚实揭穿)
+        elif q < 0.05:                                                # in-sample 显著但分半就不稳 = 数据窥探
+            t["verdict"] = "data_snoop"
+        elif t["min_group_n"] < MIN_GROUP_N:
+            t["verdict"] = "inconclusive"
+        else:
+            t["verdict"] = "rejected"
+    for tk, v in out_tickers.items():
+        p = v.get("patterns")
+        if p and p.get("status") == "ok":
+            vs = [t["verdict"] for t in p["tests"]]
+            p["overall"] = ("has_real" if "real" in vs else
+                            "faded" if "faded" in vs else
+                            "hist_robust" if "hist_robust" in vs else
+                            "data_snoop" if "data_snoop" in vs else
+                            "no_pattern" if all(x == "rejected" for x in vs) else
+                            "inconclusive")
+    return any_real
 
 
 def compute_basic_risk(px, nasdaq):
@@ -190,6 +287,7 @@ def run_all():
         if risk["status"] == "ok":
             risk["evt"] = compute_evt(px)                       # 块1：EVT 尾部
             risk["market_dep"] = compute_market_dependence(px, nasdaq)   # 块2：市场依赖度
+            risk["patterns"] = compute_patterns(px, tk)         # 块3：规律真伪(每效应独立种子;FDR 在后统一)
         out_tickers[tk] = risk
         if risk["status"] == "ok":
             ev = risk.get("evt", {})
@@ -198,12 +296,19 @@ def run_all():
         else:
             print(f"  {tk:<6} {risk['status']}（n={risk.get('n_days')}）")
 
+    pattern_real = _fdr_annotate_patterns(out_tickers)            # 块3：跨【全部票×效应】统一 FDR + 分半稳健门
+    cnt_v = lambda x: sum(1 for v in out_tickers.values() if v.get("patterns", {}).get("overall") == x)
+    print(f"  规律真伪(三关后)：真规律 {cnt_v('has_real')} / 历史有近年消失faded {cnt_v('faded')} / "
+          f"数据窥探 {cnt_v('data_snoop')} / 其余无规律或无定论"
+          + ("  ⚠️ 触发块3停下(持续真规律候选需人工审视)" if pattern_real else ""))
+
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "caveat": "这是个股的**风险画像**，描述它历史上是什么样——**不预测涨跌、不荐股、不给买卖点**。"
                   "年化波动=历史日收益波动；最深回撤=历史峰到谷最大跌幅（可能极深，提示风险非机会）；"
                   "β=对纳指的敏感度（>1 比大盘更颠，<1 更稳），是风险特征不是收益承诺。数据不足的票如实标注。",
         "benchmark": "NASDAQ", "min_days": MIN_DAYS,
+        "patterns_fdr_real": bool(pattern_real),
         "tickers": out_tickers,
     }
     payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
