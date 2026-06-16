@@ -901,6 +901,41 @@ function renderStockCheckup(code) {
     </table>${mdHtml}${evtHtml}${cfHtml}${patHtml}${anHtml}`;
 }
 
+// ── 🪦 诚实坟场：聚合死掉的模型 + 消失/被刷掉的规律(同源消费各 JSON) ──
+async function loadGraveyard() {
+  const el = document.getElementById("honest-graveyard");
+  if (!el) return;
+  const get = async f => { try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+  const [pl, fx, cy, sc] = await Promise.all([
+    get("placebo_tests.json"), get("fdr_crossfamily.json"), get("cycles.json"), get("stock_checkup.json"),
+  ]);
+  const dead = [];   // [类别, 名称, 说明]
+  dead.push(["模型/假设被否", "v3 稀疏模型(L1 正则)", "加正则未带来样本外增益，假设被否(诚实 null，见 git 历史)"]);
+  dead.push(["模型/假设被否", "指数纳入效应 RDD", "断点回归需 Russell 浮动市值排名(专有不可得)，拒用劣质代理硬凑 → 诚实不做"]);
+  if (pl?.tests) for (const t of pl.tests) if (t.status === "rejected")
+    dead.push(["曾认为有效·现已测不到", t.panel, `充分样本下不显著(p=${t.p_value})——很可能已被套利`]);
+  if (sc?.tickers) for (const k of Object.keys(sc.tickers)) {
+    const p = sc.tickers[k].patterns, nm = sc.tickers[k].name || "";
+    if (p && p.overall === "faded") dead.push(["曾有效·现已消失(个股)", `${k} ${nm} 日历规律`, "全史显著但近年消失——经典被套利(详见个股体检)"]);
+    else if (p && p.overall === "data_snoop") dead.push(["伪规律(数据窥探)", `${k} ${nm} 日历规律`, "in-sample 显著但分半不稳 = 数据窥探"]);
+  }
+  if (pl?.tests) for (const t of pl.tests) if (t.status === "real" && !t.fdr_significant_05)
+    dead.push(["被多重比较(FDR)刷掉", t.panel, `裸 p 显著(${t.p_value})但 FDR 校正后掉出(q≥0.05)`]);
+  if (fx && fx.m_total != null) dead.push(["被多重比较(FDR)刷掉", "跨检验族总账", `全站 ${fx.m_total} 项显著性主张 → 跨族 BY 后仅 ${fx.n_survive_by_10} 项扛住(${fx.m_total - fx.n_survive_by_10} 项是噪声)`]);
+  if (cy?.result && cy.result.significant === false) dead.push(["民间说法被否", "市场周期(基钦/朱格拉等)", "未检出超过红噪声的显著周期"]);
+
+  const cats = [...new Set(dead.map(d => d[0]))];
+  const body = cats.map(c => {
+    const items = dead.filter(d => d[0] === c).map(d =>
+      `<tr style="border-top:1px solid var(--border-faint)"><td style="padding:.3rem .4rem;font-weight:600">${esc(d[1])}</td><td style="padding:.3rem .4rem;color:var(--muted)">${esc(d[2])}</td></tr>`).join("");
+    return `<div style="margin-bottom:.7rem"><div style="font-size:0.8rem;color:#e67e22;font-weight:600;margin-bottom:.2rem">🪦 ${esc(c)}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem">${items}</table></div>`;
+  }).join("");
+  el.innerHTML = `
+    <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:.7rem">这页专收<b>死掉的东西</b>——试过没用、曾有效现已消失、被多重比较刷掉。诚实统计的价值，一半在于敢把<b>坟</b>立出来：这些"否定结果"和"找到规律"同样重要，且能防你去追一个早已被套利的幻觉。</div>
+    ${body}`;
+}
+
 function renderDigitChart() {
   const yp = SIGNALS?.year_patterns;
   if (!yp?.decade_digit) return;
