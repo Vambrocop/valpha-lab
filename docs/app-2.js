@@ -946,6 +946,42 @@ async function loadMarketRegime() {
     <div style="font-size:0.74rem;color:var(--muted);line-height:1.6;margin-top:.6rem">${esc(MR.caveat || "")}</div>`;
 }
 
+// ── 🔬 探索区：未验证/猜测性假设(露了苗头但没过稳健检验)——怀疑训练场,非预测非可交易 ──
+async function loadExploratory() {
+  const el = document.getElementById("exploratory");
+  if (!el) return;
+  const get = async f => { try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+  const [pl, cy, sc] = await Promise.all([
+    get("placebo_tests.json"), get("cycles.json"), get("stock_checkup.json"),
+  ]);
+  const items = [];   // [类别, 名称, 说明, 没过哪一关]
+  const ncs = cy?.result?.named_cycles || [];
+  for (const c of ncs) {
+    if (c.testable === false) items.push(["长周期猜测·无法检验", c.cycle, c.note || "超出可检验范围", "数据跨不了一个完整周期"]);
+    else if (c.low_resolution) items.push(["周期·分辨率边缘", c.cycle, "频带内频点太少、谱分辨率不足，结论不稳", "样本/分辨率"]);
+    else if (c.exceeds_red_noise_95 && cy?.result?.significant === false) items.push(["周期·逐点超但全局不显著", c.cycle, "逐频率超红噪声 95% 线，但控多重比较的全局检验后不显著", "全局 max-stat"]);
+  }
+  if (pl?.tests) for (const t of pl.tests) {
+    if (t.status === "real" && !t.fdr_significant_05) items.push(["日历·裸显著但没过FDR", t.panel, `单看 p=${t.p_value} 显著，多重比较校正后站不住`, "FDR"]);
+    else if (t.status === "inconclusive") items.push(["日历·无定论(检验力不足)", t.panel, `p=${t.p_value}，每组样本太少、无权下结论`, "样本量"]);
+  }
+  if (sc?.summary) items.push(["个股层面", "个股日历规律", "13 票多为无定论(详见个股体检);疑似数据窥探/已消失的见 🪦 坟场", "分半 / 近期"]);
+
+  const cats = [...new Set(items.map(d => d[0]))];
+  const body = cats.map(c => {
+    const rows = items.filter(d => d[0] === c).map(d =>
+      `<tr style="border-top:1px solid var(--border-faint)"><td style="padding:.3rem .4rem;font-weight:600">${esc(d[1])}</td><td style="padding:.3rem .4rem;color:var(--muted)">${esc(d[2])}</td><td style="padding:.3rem .4rem;text-align:right;color:#e67e22;font-size:.72rem;white-space:nowrap">没过:${esc(d[3])}</td></tr>`).join("");
+    return `<div style="margin-bottom:.7rem"><div style="font-size:0.8rem;color:#f1c40f;font-weight:600;margin-bottom:.2rem">🔬 ${esc(c)}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem">${rows}</table></div>`;
+  }).join("");
+  el.innerHTML = `
+    <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:.7rem;border-left:3px solid #e67e22;padding-left:.6rem">
+      ⚠ 这里是<b>未通过稳健检验的探索性/猜测性假设</b>——露了点苗头(甚至"有一两次 ok")，但没过 FDR / 分半 / 全局多重比较，
+      <b>极可能是噪声或即将被套利。不是规律、不是预测、不可交易</b>。我们保留并<b>逐次重验</b>：哪天真过了稳健检验 → 升入 🧾 登记簿；证伪 → 进 🪦 坟场。
+      隔壁坟场就是这类东西的大多数归宿——看看就好，别拿来下注。</div>
+    ${body || '<span style="color:var(--muted);font-size:0.8rem">暂无未定论候选(数据尚未生成)</span>'}`;
+}
+
 // ── 🪦 诚实坟场：聚合死掉的模型 + 消失/被刷掉的规律(同源消费各 JSON) ──
 async function loadGraveyard() {
   const el = document.getElementById("honest-graveyard");
@@ -957,6 +993,7 @@ async function loadGraveyard() {
   const dead = [];   // [类别, 名称, 说明]
   dead.push(["模型/假设被否", "v3 稀疏模型(L1 正则)", "加正则未带来样本外增益，假设被否(诚实 null，见 git 历史)"]);
   dead.push(["模型/假设被否", "指数纳入效应 RDD", "断点回归需 Russell 浮动市值排名(专有不可得)，拒用劣质代理硬凑 → 诚实不做"]);
+  dead.push(["模型/假设被否", "Fed model(盈利收益率 vs 债券收益率)", "流行但学术已证伪(Asness 2003):它相关的是通胀、非真实价值;不预测股市回报"]);
   if (pl?.tests) for (const t of pl.tests) if (t.status === "rejected")
     dead.push(["曾认为有效·现已测不到", t.panel, `充分样本下不显著(p=${t.p_value})——很可能已被套利`]);
   if (pl?.tests) for (const t of pl.tests) if (t.fdr_significant_05 && t.recent_p != null && !t.recent_significant && (t.recent_min_group_n == null || t.recent_min_group_n >= 30))

@@ -138,6 +138,7 @@ function renderAll() {
   lazyRender("stock-checkup", loadStockCheckup, "StockCheckup");     // 🩺 个股诚实体检(块0 基础风险画像)
   lazyRender("honest-graveyard", loadGraveyard, "Graveyard");        // 🪦 诚实坟场(死掉的模型+消失的规律)
   lazyRender("market-regime", loadMarketRegime, "MarketRegime");     // 🌡️ 当前市场风险体制(R1,描述非预测)
+  lazyRender("exploratory", loadExploratory, "Exploratory");         // 🔬 探索区(未验证猜测,怀疑训练场)
   lazyRender("chart-digit", renderDigitChart, "Digit");
   lazyRender("chart-ipo-cycle", renderIPOCycle, "IPOCycle");
   lazyRender("factor-audit", renderFactorAudit, "FactorAudit");
@@ -150,7 +151,7 @@ function renderAll() {
   // appendChild 搬的是同一活节点(IntersectionObserver 跟随节点、id 不变 → 懒渲染键照常)，勿改成 clone。
   const _regHost = document.getElementById("registry-panels");
   if (_regHost) {
-    ["fdr-crossfamily", "cpcv", "calibration-drift", "stock-checkup", "honest-graveyard", "market-regime", "placebo-overview", "event-causal", "risk-dashboard", "conformal", "cycles-spectral", "factor-audit"].forEach(id => {
+    ["fdr-crossfamily", "cpcv", "calibration-drift", "stock-checkup", "honest-graveyard", "exploratory", "market-regime", "placebo-overview", "event-causal", "risk-dashboard", "conformal", "cycles-spectral", "factor-audit"].forEach(id => {
       const w = document.getElementById(id)?.closest(".chart-wrap");
       if (w && w.parentElement !== _regHost) _regHost.appendChild(w);   // 幂等:refreshData 重调时不重复搬/重排
     });
