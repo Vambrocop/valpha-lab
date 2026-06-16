@@ -801,13 +801,28 @@ function renderStockCheckup(code) {
     <td style="padding:.35rem .4rem;color:var(--muted)">${label}</td>
     <td style="padding:.35rem .4rem;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${val}</td>
     <td style="padding:.35rem .4rem;color:var(--muted);font-size:0.74rem">${hint}</td></tr>`;
+  const ev = t.evt;
+  let evtHtml = "";
+  if (ev && ev.status === "ok") {
+    const v99 = (ev.var_es || []).find(x => x.level === 0.99) || {};
+    evtHtml = `<div style="margin-top:.75rem">
+      <div style="color:var(--muted);font-size:0.74rem;margin-bottom:.2rem">极值尾部（EVT/GPD，日损失）：${esc(ev.tail || "")}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+        ${row("尾部指数 ξ", ev.xi, "尾部越厚极端日跌越狠；≈0 近指数、&lt;0 有上界")}
+        ${row("日 VaR 99%", (v99.var_pct ?? "—") + "%", "约百日一遇的单日跌幅量级")}
+        ${row("日 ES 99%", (v99.es_pct ?? "—") + "%", "跌破 VaR 时的平均损失（更惨那部分）")}
+      </table>
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:.3rem;line-height:1.5">⚠ 历史尾部严重度——长期平均频率、<b>非规律间隔</b>（极端日常成簇连发、之后多年沉寂），<b>不预测哪天发生</b>。</div></div>`;
+  } else if (ev) {
+    evtHtml = `<div style="margin-top:.6rem;color:var(--muted);font-size:0.76rem">极值尾部：数据不足（需 ~1000+ 天），诚实不给。</div>`;
+  }
   body.innerHTML = `
     <div style="font-size:0.78rem;color:var(--muted);margin-bottom:.4rem">${esc(code)} ${esc(t.name || "")} · 日线 ${esc(t.start)}→${esc(t.end)}（${t.n_days} 天）</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
       ${row("年化波动", t.ann_vol_pct + "%", "历史日收益波动，越高越颠")}
       ${row("历史最深回撤", t.max_drawdown_pct + "%", "峰到谷最大跌幅——提示风险，非机会")}
       ${row("对纳指 β", betaTxt, "对大盘的敏感度，是风险特征非收益承诺")}
-    </table>`;
+    </table>${evtHtml}`;
 }
 
 function renderDigitChart() {

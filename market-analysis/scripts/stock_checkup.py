@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
+from risk_dashboard import evt_tail   # 块1：复用已审的 EVT/GPD 尾部风险
+
 SCRIPTS  = Path(__file__).parent
 RAW_DIR  = SCRIPTS.parent / "data" / "raw"
 PROC_DIR = SCRIPTS.parent / "data" / "processed"
@@ -59,6 +61,19 @@ def beta(stock_ret, mkt_ret):
     if vm == 0:
         return None
     return float(np.cov(s, m, ddof=1)[0, 1] / vm)
+
+
+def compute_evt(px):
+    """块1：单票日损失的 EVT/GPD 尾部（ξ + 日 VaR/ES）。复用 risk_dashboard.evt_tail（需 ~1000+ 天）。
+    返回紧凑子集；样本不足 → insufficient。只测尾部严重度/稀有度，不预测时点/方向。"""
+    px = pd.to_numeric(px, errors="coerce").dropna().sort_index()
+    ret = px.pct_change().dropna()
+    r = evt_tail(ret)
+    if r.get("status") != "ok":
+        return {"status": r.get("status", "insufficient")}
+    return {"status": "ok", "xi": r["xi"], "tail": r["tail"],
+            "extremal_index": r["extremal_index"], "n_exceed": r["n_exceed"],
+            "var_es": r["var_es"]}
 
 
 def compute_basic_risk(px, nasdaq):
@@ -139,9 +154,13 @@ def run_all():
             continue
         risk = compute_basic_risk(px, nasdaq)
         risk["name"] = TICKER_NAMES[tk]
+        if risk["status"] == "ok":
+            risk["evt"] = compute_evt(px)                       # 块1：EVT 尾部
         out_tickers[tk] = risk
         if risk["status"] == "ok":
-            print(f"  {tk:<6} 波动 {risk['ann_vol_pct']}% · 最深回撤 {risk['max_drawdown_pct']}% · β={risk['beta_nasdaq']}")
+            ev = risk.get("evt", {})
+            evtxt = (f" · EVT ξ={ev['xi']}" if ev.get("status") == "ok" else "")
+            print(f"  {tk:<6} 波动 {risk['ann_vol_pct']}% · 最深回撤 {risk['max_drawdown_pct']}% · β={risk['beta_nasdaq']}{evtxt}")
         else:
             print(f"  {tk:<6} {risk['status']}（n={risk.get('n_days')}）")
 

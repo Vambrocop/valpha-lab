@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from stock_checkup import annualized_vol, max_drawdown, beta, compute_basic_risk
+from stock_checkup import annualized_vol, max_drawdown, beta, compute_basic_risk, compute_evt
 
 
 def test_max_drawdown_known():
@@ -39,3 +39,16 @@ def test_compute_basic_risk_ok_and_deterministic():
     assert r1["status"] == "ok" and r1["n_days"] == 1000
     assert r1["ann_vol_pct"] > 0 and r1["max_drawdown_pct"] <= 0
     assert r1["beta_nasdaq"] is not None
+
+
+def test_compute_evt_fat_tail_and_insufficient():
+    idx = pd.bdate_range("2008-01-01", periods=3000)
+    rng = np.random.default_rng(3)
+    ret = rng.standard_t(3, 3000) * 0.01                       # t(3) 厚尾
+    px = pd.Series(100 * np.cumprod(1 + ret), index=idx)
+    r = compute_evt(px)
+    assert r["status"] == "ok" and r["xi"] > 0                 # 厚尾 ξ>0
+    ve99 = [x for x in r["var_es"] if x["level"] == 0.99][0]
+    assert ve99["es_pct"] >= ve99["var_pct"]                   # ES≥VaR
+    short = pd.Series(100 + np.arange(200.0), index=pd.bdate_range("2020-01-01", periods=200))
+    assert compute_evt(short)["status"] == "insufficient"      # 不足 ~1000 天

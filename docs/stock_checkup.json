@@ -1,5 +1,5 @@
 {
-  "generated": "2026-06-16T02:26:52Z",
+  "generated": "2026-06-16T02:46:21Z",
   "caveat": "这是个股的**风险画像**，描述它历史上是什么样——**不预测涨跌、不荐股、不给买卖点**。年化波动=历史日收益波动；最深回撤=历史峰到谷最大跌幅（可能极深，提示风险非机会）；β=对纳指的敏感度（>1 比大盘更颠，<1 更稳），是风险特征不是收益承诺。数据不足的票如实标注。",
   "benchmark": "NASDAQ",
   "min_days": 250,
@@ -12,7 +12,26 @@
       "ann_vol_pct": 38.3,
       "max_drawdown_pct": -81.8,
       "beta_nasdaq": 1.0,
-      "name": "苹果"
+      "name": "苹果",
+      "evt": {
+        "status": "ok",
+        "xi": 0.235,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.508,
+        "n_exceed": 333,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 6.2,
+            "es_pct": 8.79
+          },
+          {
+            "level": 0.999,
+            "var_pct": 12.24,
+            "es_pct": 16.68
+          }
+        ]
+      }
     },
     "MSFT": {
       "status": "ok",
@@ -22,7 +41,26 @@
       "ann_vol_pct": 30.1,
       "max_drawdown_pct": -68.7,
       "beta_nasdaq": 0.91,
-      "name": "微软"
+      "name": "微软",
+      "evt": {
+        "status": "ok",
+        "xi": 0.247,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.52,
+        "n_exceed": 333,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 5.12,
+            "es_pct": 7.43
+          },
+          {
+            "level": 0.999,
+            "var_pct": 10.51,
+            "es_pct": 14.59
+          }
+        ]
+      }
     },
     "GOOGL": {
       "status": "ok",
@@ -32,7 +70,26 @@
       "ann_vol_pct": 30.7,
       "max_drawdown_pct": -65.3,
       "beta_nasdaq": 0.98,
-      "name": "谷歌"
+      "name": "谷歌",
+      "evt": {
+        "status": "ok",
+        "xi": 0.04,
+        "tail": "近指数尾(ξ≈0)",
+        "extremal_index": 0.575,
+        "n_exceed": 275,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 5.2,
+            "es_pct": 6.8
+          },
+          {
+            "level": 0.999,
+            "var_pct": 8.92,
+            "es_pct": 10.68
+          }
+        ]
+      }
     },
     "AMZN": {
       "status": "ok",
@@ -42,7 +99,26 @@
       "ann_vol_pct": 48.6,
       "max_drawdown_pct": -93.3,
       "beta_nasdaq": 1.16,
-      "name": "亚马逊"
+      "name": "亚马逊",
+      "evt": {
+        "status": "ok",
+        "xi": 0.125,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.462,
+        "n_exceed": 333,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 8.3,
+            "es_pct": 11.55
+          },
+          {
+            "level": 0.999,
+            "var_pct": 15.89,
+            "es_pct": 20.23
+          }
+        ]
+      }
     },
     "NVDA": {
       "status": "ok",
@@ -52,7 +128,26 @@
       "ann_vol_pct": 58.8,
       "max_drawdown_pct": -89.7,
       "beta_nasdaq": 1.54,
-      "name": "英伟达"
+      "name": "英伟达",
+      "evt": {
+        "status": "ok",
+        "xi": 0.188,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.559,
+        "n_exceed": 333,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 9.36,
+            "es_pct": 13.02
+          },
+          {
+            "level": 0.999,
+            "var_pct": 17.92,
+            "es_pct": 23.56
+          }
+        ]
+      }
     },
     "META": {
       "status": "ok",
@@ -62,7 +157,26 @@
       "ann_vol_pct": 39.7,
       "max_drawdown_pct": -76.7,
       "beta_nasdaq": 1.19,
-      "name": "Meta"
+      "name": "Meta",
+      "evt": {
+        "status": "ok",
+        "xi": 0.319,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.565,
+        "n_exceed": 177,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 6.35,
+            "es_pct": 9.56
+          },
+          {
+            "level": 0.999,
+            "var_pct": 13.78,
+            "es_pct": 20.46
+          }
+        ]
+      }
     },
     "TSLA": {
       "status": "ok",
@@ -72,7 +186,26 @@
       "ann_vol_pct": 57.4,
       "max_drawdown_pct": -73.6,
       "beta_nasdaq": 1.48,
-      "name": "特斯拉"
+      "name": "特斯拉",
+      "evt": {
+        "status": "ok",
+        "xi": 0.096,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.711,
+        "n_exceed": 201,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 9.35,
+            "es_pct": 12.48
+          },
+          {
+            "level": 0.999,
+            "var_pct": 16.65,
+            "es_pct": 20.55
+          }
+        ]
+      }
     },
     "AVGO": {
       "status": "ok",
@@ -82,7 +215,26 @@
       "ann_vol_pct": 38.2,
       "max_drawdown_pct": -48.3,
       "beta_nasdaq": 1.25,
-      "name": "博通"
+      "name": "博通",
+      "evt": {
+        "status": "ok",
+        "xi": 0.257,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.604,
+        "n_exceed": 212,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 5.97,
+            "es_pct": 8.54
+          },
+          {
+            "level": 0.999,
+            "var_pct": 11.97,
+            "es_pct": 16.61
+          }
+        ]
+      }
     },
     "TSM": {
       "status": "ok",
@@ -92,7 +244,26 @@
       "ann_vol_pct": 41.2,
       "max_drawdown_pct": -84.6,
       "beta_nasdaq": 1.1,
-      "name": "台积电"
+      "name": "台积电",
+      "evt": {
+        "status": "ok",
+        "xi": 0.13,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.485,
+        "n_exceed": 332,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 6.56,
+            "es_pct": 8.69
+          },
+          {
+            "level": 0.999,
+            "var_pct": 11.53,
+            "es_pct": 14.4
+          }
+        ]
+      }
     },
     "COST": {
       "status": "ok",
@@ -102,7 +273,26 @@
       "ann_vol_pct": 26.8,
       "max_drawdown_pct": -53.4,
       "beta_nasdaq": 0.56,
-      "name": "好市多"
+      "name": "好市多",
+      "evt": {
+        "status": "ok",
+        "xi": 0.219,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.498,
+        "n_exceed": 333,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 4.65,
+            "es_pct": 6.74
+          },
+          {
+            "level": 0.999,
+            "var_pct": 9.54,
+            "es_pct": 13.0
+          }
+        ]
+      }
     },
     "LLY": {
       "status": "ok",
@@ -112,7 +302,26 @@
       "ann_vol_pct": 28.1,
       "max_drawdown_pct": -68.3,
       "beta_nasdaq": 0.39,
-      "name": "礼来"
+      "name": "礼来",
+      "evt": {
+        "status": "ok",
+        "xi": 0.28,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.613,
+        "n_exceed": 333,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 4.46,
+            "es_pct": 6.55
+          },
+          {
+            "level": 0.999,
+            "var_pct": 9.33,
+            "es_pct": 13.31
+          }
+        ]
+      }
     },
     "BRK-B": {
       "status": "ok",
@@ -122,7 +331,26 @@
       "ann_vol_pct": 21.8,
       "max_drawdown_pct": -53.9,
       "beta_nasdaq": 0.4,
-      "name": "伯克希尔"
+      "name": "伯克希尔",
+      "evt": {
+        "status": "ok",
+        "xi": 0.215,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.541,
+        "n_exceed": 333,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 3.64,
+            "es_pct": 5.28
+          },
+          {
+            "level": 0.999,
+            "var_pct": 7.47,
+            "es_pct": 10.16
+          }
+        ]
+      }
     },
     "KO": {
       "status": "ok",
@@ -132,7 +360,26 @@
       "ann_vol_pct": 20.3,
       "max_drawdown_pct": -41.6,
       "beta_nasdaq": 0.27,
-      "name": "可口可乐"
+      "name": "可口可乐",
+      "evt": {
+        "status": "ok",
+        "xi": 0.159,
+        "tail": "厚尾(ξ>0,极端损失比指数更重)",
+        "extremal_index": 0.498,
+        "n_exceed": 333,
+        "var_es": [
+          {
+            "level": 0.99,
+            "var_pct": 3.63,
+            "es_pct": 5.1
+          },
+          {
+            "level": 0.999,
+            "var_pct": 7.08,
+            "es_pct": 9.2
+          }
+        ]
+      }
     }
   }
 }

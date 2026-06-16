@@ -96,7 +96,7 @@ placebo+FDR / stats_util）。数据不足的模块**如实标 insufficient/inco
 
 ## 进度
 - [x] 块0 脊柱 ✅（stock_checkup.py 基础风险:波动/最深回撤/β + 选择器面板;13票含KO;139测试绿）
-- [ ] 块1 EVT
+- [x] 块1 EVT ✅（每票 ξ/日VaR-ES，复用 evt_tail；13票 ξ∈[0.04,0.32]；独立审 APPROVE，补"非规律间隔"caveat + ξ提示修正）
 - [ ] 块2 市场依赖度
 - [ ] 块3 规律真伪
 - [ ] 块4 保形区间
