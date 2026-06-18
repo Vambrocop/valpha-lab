@@ -35,7 +35,7 @@
 ### ③ 待办 / 未决
 - [ ] **v3_sparse**：撤展示 + 取精华进坟场（已定，待执行：先确认坟场有结论）
 - [ ] **整站 relayout**：9 标签 IA 重组（主脑出方案 → 浏览器验证；含"诚实底线一句话"着陆）
-- [ ] **#5 分段透镜推广到 factor_audit**（唯一真欠的旧任务）
+- [ ] **#5 分段透镜推广到 factor_audit**（唯一真欠的旧任务）→ **spec 已写：`market-analysis/docs_internal/SPEC_FACTOR_SEGMENT.md`**；明天先拍 🔴 判断点（现代段怎么切：A/B/C + 年限）再建
 - [ ] **🛰️ 个股发现包**：扩 universe + 雷达 screener + 板块（housekeeping 之后）
 - [ ] **胆子大的页面**：📈观点 + 🎲试胆 已是出格区；用户要保留/可更大胆——按需调
 - [ ] **本批收口**：全量 run_all 确认（horizon 复活 + 闪迪 + outlook 集成）→ 提交推送

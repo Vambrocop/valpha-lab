@@ -52,6 +52,7 @@
 ## 执行协议
 
 - 按 ROADMAP.md 任务编号干活，**每个编号 = 一次提交**，commit message 带任务号
+- **先查后动（用户铁律 2026-06-18）**：收到"做 X"先读 `DAILY_LOG.md` + `OPTIMIZATION_LOG.md §4c(试过但否决)` + 🪦坟场 + 📋登记簿 → 报"之前做过没 / 做成啥样 / 有无结果" → 再动手。**每个尝试都登结果（成/败/测量结论），别只记计划**——失败的尝试也是结果（进坟场或 §4c），这样以后"做 X"一读就清楚
 - 改流水线 → 提交前全量跑通 + pytest 全绿；改模型 → bump `MODEL_VERSION` 并重跑 walk_forward，
   新旧指标对比写进 commit message
 - web/ 改动要镜像到 docs/（run_all 末步会自动做；手改记得 Copy-Item）
