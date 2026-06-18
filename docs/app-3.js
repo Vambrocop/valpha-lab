@@ -418,6 +418,10 @@ function renderEconCalendar() {
 const PORTFOLIO_KEY = "alpha_portfolio_v2";
 const COIN_IDS = { BTC:"bitcoin", ETH:"ethereum", XLM:"stellar", DOGE:"dogecoin", HOME:"home", SOL:"solana", BNB:"binancecoin" };
 let portfolioPrices = {};
+function escPortfolio(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 
 function loadPortfolio() {
   try { return JSON.parse(localStorage.getItem(PORTFOLIO_KEY)) || defaultPortfolio(); }
@@ -445,25 +449,29 @@ function renderPortfolioTable(audRate) {
   if (!body) return;
   let total = 0, totalCost = 0;
   body.innerHTML = port.map((item, i) => {
-    const p = portfolioPrices[item.ticker] || item.priceUSD;
+    const rawPrice = portfolioPrices[item.ticker] ?? item.priceUSD;
+    const p = Number.isFinite(Number(rawPrice)) ? Number(rawPrice) : null;
+    const qty = Number.isFinite(Number(item.qty)) ? Number(item.qty) : 0;
     const pAUD = p && _portAudRate ? p / _portAudRate : null;
-    const val = pAUD ? item.qty * pAUD : null;
+    const val = pAUD ? qty * pAUD : null;
     if (val) total += val;
     // P&L
-    const costUSD = item.costUSD;
-    const costAUD = (costUSD && _portAudRate) ? (costUSD / _portAudRate * item.qty) : null;
+    const costUSD = Number.isFinite(Number(item.costUSD)) ? Number(item.costUSD) : null;
+    const costAUD = (costUSD && _portAudRate) ? (costUSD / _portAudRate * qty) : null;
     if (costAUD) totalCost += costAUD;
     const plAUD = (val && costAUD) ? val - costAUD : null;
     const plPct = (plAUD != null && costAUD > 0) ? plAUD / costAUD * 100 : null;
-    const plStr = item.qty <= 0 ? "" :
+    const plStr = qty <= 0 ? "" :
       plAUD != null
       ? `<br><span class="${plAUD >= 0 ? 'pl-up' : 'pl-dn'}">${plAUD >= 0 ? '+' : ''}A$${plAUD.toFixed(0)} (${plPct >= 0 ? '+' : ''}${(plPct||0).toFixed(1)}%)</span>`
-      : `<br><span class="cost-link" onclick="setPortfolioCost(${i},'${item.ticker}')">设置成本价</span>`;
+      : `<br><span class="cost-link" onclick="setPortfolioCost(${i})">设置成本价</span>`;
     const valStr = val ? `A$${val.toFixed(2)}` : "—";
     const pStr  = p   ? `$${p < 1 ? p.toFixed(4) : p.toFixed(2)}` : "—";
+    const ticker = escPortfolio(item.ticker);
+    const note = item.note ? escPortfolio(item.note) : "";
     return `<tr style="border-bottom:1px solid var(--border-faint);">
-      <td style="padding:.35rem .4rem;font-weight:600;color:var(--text)">${item.ticker}${item.note?`<br><span style="font-size:0.68rem;color:var(--muted);font-weight:400">${item.note}</span>`:""}</td>
-      <td style="text-align:right;padding:.35rem .4rem;color:var(--muted)">${item.qty}</td>
+      <td style="padding:.35rem .4rem;font-weight:600;color:var(--text)">${ticker}${note?`<br><span style="font-size:0.68rem;color:var(--muted);font-weight:400">${note}</span>`:""}</td>
+      <td style="text-align:right;padding:.35rem .4rem;color:var(--muted)">${qty}</td>
       <td style="text-align:right;padding:.35rem .4rem">${pStr}</td>
       <td style="text-align:right;padding:.35rem .4rem;font-weight:600;color:${val?'var(--green)':'var(--muted)'}">${valStr}${plStr}</td>
     </tr>`;
@@ -486,6 +494,23 @@ function renderPortfolioTable(audRate) {
     sigEl.innerHTML = `<div style="font-size:0.78rem;color:var(--muted);">当前信号第${t}档 →
       <strong style="color:${tColor[t]||"#f1c40f"}">${tText[t]||"观望"}</strong></div>`;
   }
+}
+
+function setPortfolioCost(i) {
+  const port = loadPortfolio();
+  const item = port[i];
+  if (!item) return;
+  const fallback = item.costUSD ?? item.priceUSD ?? portfolioPrices[item.ticker] ?? "";
+  const input = prompt(`设置 ${item.ticker || "资产"} 的 USD 成本价`, fallback);
+  if (input === null) return;
+  const cost = Number(input);
+  if (!Number.isFinite(cost) || cost <= 0) {
+    alert("请输入有效的正数成本价。");
+    return;
+  }
+  item.costUSD = cost;
+  savePortfolio(port);
+  renderPortfolioTable(_portAudRate);
 }
 
 async function fetchPortfolioPrices() {

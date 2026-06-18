@@ -10,10 +10,17 @@ paper_trading.py — 多策略模拟盘（四个"基金经理"同台竞技）
   signal   🎯信号：贝叶斯信号 tier>=4 全仓 / tier<=2 清仓 / 3 不动
   momentum 🚀动量：观察池6个月动量前3名等权，每月首个交易日调仓
 """
+import sys
 import pandas as pd
 import json
 from pathlib import Path
 from util_time import is_final_trading_day
+from ledger_hash import HASH_COLS, seal_hash_chain
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")   # 中文 note 在 GBK 控制台不致崩溃/乱码
+except Exception:
+    pass
 
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
@@ -31,18 +38,22 @@ STRATS = {
     "overnight": {"label": "🌙 隔夜",  "desc": "每日收盘买QQQ次日开盘卖（已扣每日2bp成本）——验证隔夜异象能否活过交易成本"},
 }
 OVERNIGHT_COST = 0.0002   # 每日双边交易成本 2bp（点差+滑点，零佣金时代的乐观估计）
-COLS = ["date", "strategy", "action", "holdings", "cash", "equity", "note", "logged_at"]
+COLS = ["date", "strategy", "action", "holdings", "cash", "equity", "note", "logged_at"] + HASH_COLS
+HASH_FIELDS = ["date", "strategy", "action", "holdings", "cash", "equity", "note", "logged_at"]
 
 
 def load_ledger():
     if LEDGER.exists():
-        df = pd.read_csv(LEDGER)
-        if "strategy" in df.columns:
+        raw = pd.read_csv(LEDGER)
+        needs_hash_migration = not all(c in raw.columns for c in HASH_COLS)
+        if "strategy" in raw.columns:
             # 容忍 CI/本地双写合并产生的乱序与重复（merge=union 后必须去重）
-            df = (df.reindex(columns=COLS)
+            df = (raw.reindex(columns=COLS)
                     .drop_duplicates(subset=["date", "strategy"], keep="last")
                     .sort_values(["date", "strategy"])
                     .reset_index(drop=True))
+            df = seal_hash_chain(df, HASH_FIELDS)
+            df.attrs["needs_hash_migration"] = needs_hash_migration
             return df
     return pd.DataFrame(columns=COLS)
 
@@ -72,6 +83,8 @@ def main():
         ov_ret = pd.Series(dtype=float)
 
     ledger = load_ledger()
+    needs_hash_migration = bool(ledger.attrs.get("needs_hash_migration", False))
+    before_hash = ledger[HASH_COLS].copy() if all(c in ledger.columns for c in HASH_COLS) else None
     # 每个策略的当前状态（重放账本最后一行）
     state = {k: {"cash": START_CAPITAL, "holdings": {}} for k in STRATS}
     done = {k: set() for k in STRATS}
@@ -170,6 +183,9 @@ def main():
 
     if new_rows:
         ledger = pd.concat([ledger, pd.DataFrame(new_rows)], ignore_index=True)
+    ledger = seal_hash_chain(ledger.reindex(columns=COLS), HASH_FIELDS)
+    hash_changed = before_hash is None or not before_hash.equals(ledger[HASH_COLS].iloc[:len(before_hash)])
+    if new_rows or hash_changed or needs_hash_migration:
         ledger.to_csv(LEDGER, index=False)
 
     # ── 输出前端 JSON ──────────────────────────────────────────────

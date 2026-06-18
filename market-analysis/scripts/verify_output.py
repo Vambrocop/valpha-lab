@@ -8,6 +8,12 @@ import sys
 import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from ledger_hash import verify_hash_chain
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
 
 WEB_DIR  = Path(__file__).parent.parent / "web"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
@@ -225,6 +231,22 @@ except Exception as e:
     errors.append(f"stock_checkup 形状检查失败: {e}")
     print(f"  ✗ stock_checkup 形状检查失败: {e}")
 
+# 3i-2. 数据源健康形状（实时/缓存/过期透明度；存在才查，缺失不致命）
+try:
+    dh_path = WEB_DIR / "data_health.json"
+    if dh_path.exists():
+        with open(dh_path, encoding="utf-8") as fh:
+            dh = json.load(fh)
+        sm = dh.get("summary", {})
+        src = dh.get("sources", {})
+        ok = (isinstance(src, dict) and len(src) >= 20
+              and sm.get("total") == len(src)
+              and sm.get("freshness") in {"ok", "degraded", "incomplete"})
+        check(ok, f"data_health.json 形状正常（{len(src)} 源，freshness={sm.get('freshness')}）")
+except Exception as e:
+    errors.append(f"data_health 形状检查失败: {e}")
+    print(f"  ✗ data_health 形状检查失败: {e}")
+
 # 3l. R3 短期反转形状(full 有 p_value/diff_pct、verdict 合法。存在才查、缺失不致命)
 try:
     ov_path = WEB_DIR / "overreaction.json"
@@ -269,8 +291,13 @@ except Exception as e:
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv
-    for fname, keys in [("paper_ledger.csv", ("date", "strategy")),
-                        ("prediction_log.csv", ("signal_date", "index", "model_version"))]:
+    ledger_specs = [
+        ("paper_ledger.csv", ("date", "strategy"),
+         ["date", "strategy", "action", "holdings", "cash", "equity", "note", "logged_at"]),
+        ("prediction_log.csv", ("signal_date", "index", "model_version"),
+         ["logged_at", "signal_date", "index", "model_version", "prob", "tier", "ret_1d", "ret_5d", "ret_20d"]),
+    ]
+    for fname, keys, hash_fields in ledger_specs:
         p = PROC_DIR / fname
         if p.exists():
             with open(p, encoding="utf-8") as fh:
@@ -278,6 +305,9 @@ try:
             seen = [tuple(str(r[k]) for k in keys) for r in rows]
             dup = len(seen) - len(set(seen))
             check(dup == 0, f"{fname} 无重复键（发现 {dup} 条重复）")
+            import pandas as pd
+            h_errors = verify_hash_chain(pd.DataFrame(rows), hash_fields)
+            check(not h_errors, f"{fname} hash chain 完整（{h_errors or 'ok'}）")
 except Exception as e:
     errors.append(f"账本检查失败: {e}")
 

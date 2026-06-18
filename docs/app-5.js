@@ -329,7 +329,7 @@ async function loadDataFreshness() {
   const el = document.getElementById("data-freshness");
   if (!el) return;
   const g = async f => { try { const r = await fetch(f + "?_=" + Date.now()); return r.ok ? await r.json() : null; } catch (e) { return null; } };
-  const [q, n] = await Promise.all([g("quotes.json"), g("news.json")]);
+  const [q, n, h] = await Promise.all([g("quotes.json"), g("news.json"), g("data_health.json")]);
   const now = Date.now();
   const ago = t => { if (!t) return null; const m = Math.round((now - t) / 60000); if (m < 1) return "刚刚"; if (m < 60) return m + " 分钟前"; const h = m / 60; return h < 24 ? Math.round(h) + " 小时前" : Math.round(h / 24) + " 天前"; };
   const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
@@ -342,7 +342,13 @@ async function loadDataFreshness() {
   const status = open ? "🟢 美股盘中 · 报价每 10 分钟自动刷新"
     : (weekday ? "⚪ 盘前/盘后休市 · 开盘(美东9:30)后自动刷新" : "⚪ 周末休市 · 下个交易日自动刷新");
   const stale = open && qT && (now - qT > 30 * 60000);
+  const hs = h && h.summary;
+  const health = hs ? ` · 数据源 ${Number(hs.ok || 0)}/${Number(hs.total || 0)} live`
+    + (hs.cache ? ` · 缓存 ${Number(hs.cache)}` : "")
+    + (hs.stale ? ` · 过期 ${Number(hs.stale)}` : "")
+    + (hs.missing ? ` · 缺失 ${Number(hs.missing)}` : "") : "";
   el.innerHTML = `📡 报价 ${ago(qT) || "—"}${ago(nT) ? " · 要闻 " + ago(nT) : ""} · ${status}`
+    + health
     + (stale ? ` <span style="color:#e67e22">⚠ 盘中超 30 分未刷新，CI 可能异常</span>` : "");
 }
 

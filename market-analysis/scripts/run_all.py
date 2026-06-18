@@ -18,6 +18,11 @@ run_all.py — 一键运行完整流水线并同步部署目录
 import subprocess, sys, shutil
 from pathlib import Path
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 SCRIPTS = Path(__file__).parent
 WEB_DIR = SCRIPTS.parent / "web"
 DOCS_DIR = SCRIPTS.parent.parent / "docs"   # 仓库根 docs/，GitHub Pages 部署目录

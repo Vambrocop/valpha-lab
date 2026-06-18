@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 import vol_model
-from vol_model import FEATURES, HORIZON, EMBARGO, _purge
+from vol_model import FEATURES, HORIZON, EMBARGO, _purge, _usable_features
 
 
 def test_features_nonempty_and_known():
@@ -35,6 +35,15 @@ def test_block_bootstrap_auc_diff_sane():
     assert out is not None and out["diff"] > 0.3          # 完美明显优于随机
     out_same = block_bootstrap_auc_diff(y, rand, rand, block=20, B=500)
     assert abs(out_same["diff"]) < 1e-9                   # 同一分数差=0
+
+
+def test_usable_features_drops_constant_and_nonfinite():
+    tr = pd.DataFrame({
+        "good": [1.0, 2.0, 3.0, 4.0],
+        "constant": [7.0, 7.0, 7.0, 7.0],
+        "bad": [np.nan, np.inf, -np.inf, np.nan],
+    })
+    assert _usable_features(tr, ["good", "constant", "bad", "missing"]) == ["good"]
 
 
 def test_vol_direction_label_no_lookahead(monkeypatch):

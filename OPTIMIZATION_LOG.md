@@ -6,6 +6,26 @@
 
 ---
 
+## 🔍 Codex 加固轮 · 主脑复审(2026-06-18)
+
+> Codex 跑了一轮 hardening pass(未提交,见工作树 + 根目录 `CLAUDE_HANDOFF.md`)。主脑**亲验**:pytest 161 绿、verify_output 全过、账本 append-only 红线守住(原始行 byte 一致,仅追加 hash 列 + 2 条 overnight 新行)。**结论:本轮可提交,模型/安全/账本工作扎实。**
+
+**主脑已就地补的小修(本轮)**
+- `vol_model.py` 终审拟合补 `if final_feats` 空集兜底(扩窗折已有 `continue`、终审漏了;极端不触发,防崩)。
+- `paper_trading.py` / `track_predictions.py` 补 `sys.stdout.reconfigure(utf-8)`,与 Codex 给 verify_output/run_all 的控制台加固对齐。
+- `ledger_hash.py` 文档说明哈希链**真实保证**:相对上次封存的篡改证据,非不可变历史(见下「verify-before-seal」)。
+
+**⚠️ 假警报教训(防重复踩,呼应 §4c)**
+- 复审中一度判定 overnight note "乱码损坏"(`��ҹ...`)。**root-cause 后是假警报**:文件是合法 UTF-8(raw bytes `\xe9\x9a\x94\xe5\xa4\x9c…`=「隔夜…成本」),pandas `to_csv` 默认 utf-8、round-trip `MATCH=True`。"乱码"纯是**我自己的 cp936 控制台显示伪影**,非数据损坏。**教训:终端显示 ≠ 磁盘真相,改代码前先看 raw bytes**——差点去"修"一个不存在的 bug。
+
+**记下的好点子 / 待决**
+- **verify-before-seal**(让 hash 链真有牙):run_all 现在 `seal → … → verify`,同一轮 verify 抓不到篡改(重封会"祝福"改动)。可在重封前对已提交账本单独 verify 一次,让"外部手改"在被祝福前被门拦下。中等改动、动 run_all 顺序,留作提案。
+- **MODEL_VERSION**:Codex 的 `_usable_features` 只丢"恒定/损坏"零信息列 → 预测实质不变,**未 bump 版本可接受**;若从严,可在 commit message 注明"行为中性"。
+- **paper_ledger 同日行重排**:load 的 `sort_values(["date","strategy"])` 把 06-16 的 trend/momentum 两行换了序(内容一致、仅顺序;hash 链顺序相关故重封)。良性,记此备查。
+- **Codex handoff 自列 Deferred**(并入 §4 backlog 候选):全 CSP 迁移(inline `onclick`→`addEventListener`,分阶段 report-only→enforce)、CI 依赖 lockfile(`requirements-lock.txt`)、data-health 点开抽屉(哪些源缓存/过期)、CI 跑 `site_audit.py --mobile`、页脚账本状态行(行数/最新 hash 前缀/校验时间)。
+
+---
+
 ## 🌅 明天可做(2026-06-16 收工,优先排序,给明天的启发)
 
 > 主脑推荐先做 ①+②(闭环 + 最该补的 UX 短板);③④ 是好的功能延伸;⑤⑥⑦ 卫生/稳健。

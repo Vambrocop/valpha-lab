@@ -12,10 +12,17 @@ track_predictions.py — 实盘预测追踪（模型的"成绩单"）
 
 运行顺序：在 build_signals 第一遍之后、第二遍之前（见 run_all.py）
 """
+import sys
 import pandas as pd
 import json
 from pathlib import Path
 from util_time import is_final_trading_day
+from ledger_hash import HASH_COLS, seal_hash_chain
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")   # 中文输出在 GBK 控制台不致崩溃/乱码
+except Exception:
+    pass
 
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
@@ -23,13 +30,18 @@ WEB_DIR  = Path(__file__).parent.parent / "web"
 LOG_PATH = PROC_DIR / "prediction_log.csv"
 
 COLS = ["logged_at", "signal_date", "index", "model_version", "prob", "tier",
-        "ret_1d", "ret_5d", "ret_20d"]
+        "ret_1d", "ret_5d", "ret_20d"] + HASH_COLS
+HASH_FIELDS = ["logged_at", "signal_date", "index", "model_version", "prob", "tier",
+               "ret_1d", "ret_5d", "ret_20d"]
 
 
 def load_log():
     if LOG_PATH.exists():
-        df = pd.read_csv(LOG_PATH)
-        return df.reindex(columns=COLS)
+        raw = pd.read_csv(LOG_PATH)
+        needs_hash_migration = not all(c in raw.columns for c in HASH_COLS)
+        df = raw.reindex(columns=COLS)
+        df.attrs["needs_hash_migration"] = needs_hash_migration
+        return df
     return pd.DataFrame(columns=COLS)
 
 
@@ -48,6 +60,7 @@ def main():
         sig = json.load(f)
     version = str(sig.get("model_version", "1.0"))
     log = load_log()
+    needs_hash_migration = bool(log.attrs.get("needs_hash_migration", False))
 
     streams = {"NASDAQ": sig["daily_signals"]}
     if "daily_signals_sp500" in sig:
@@ -72,6 +85,7 @@ def main():
                 "ret_1d": None, "ret_5d": None, "ret_20d": None,
             })
             print(f"  + 记录 {idx} {d}: prob={s['prob']} tier={s['tier']} (v{version})")
+    before_hash = log[HASH_COLS].copy() if all(c in log.columns for c in HASH_COLS) else None
     if new_rows:
         log = pd.concat([log, pd.DataFrame(new_rows)], ignore_index=True)
     # 防御性去重（同日同指数同版本只留最后一条）
@@ -103,7 +117,10 @@ def main():
     if n_filled:
         print(f"  回填 {n_filled} 个前向收益")
 
-    log.to_csv(LOG_PATH, index=False)
+    log = seal_hash_chain(log.reindex(columns=COLS), HASH_FIELDS)
+    hash_changed = before_hash is None or not before_hash.equals(log[HASH_COLS].iloc[:len(before_hash)])
+    if new_rows or n_filled or hash_changed or needs_hash_migration:
+        log.to_csv(LOG_PATH, index=False)
 
     # ── 3. 汇总（嵌入前端）────────────────────────────────────────
     def _summary(df):

@@ -83,6 +83,24 @@ def _gb():
                                           random_state=42)
 
 
+def _usable_features(train, candidates):
+    """Filter fold-local constant/broken columns before sklearn binning.
+
+    sklearn 1.9 + numpy 2.4 can fail inside HistGradientBoosting when a
+    training fold contains a non-categorical column with fewer than two
+    distinct finite values. The model gets no information from those columns
+    anyway, so dropping them per fold is both safer and statistically cleaner.
+    """
+    usable = []
+    for c in candidates:
+        if c not in train.columns:
+            continue
+        s = pd.to_numeric(train[c], errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+        if s.nunique() >= 2:
+            usable.append(c)
+    return usable
+
+
 # ── 配对 AUC 差的循环块自助（block_bootstrap_diff 算的是比例差，不能复用）──
 def block_bootstrap_auc_diff(y, sa, sb, block=HORIZON, B=2000, seed=42):
     """AUC(sa) − AUC(sb) 的 CI/p_boot。同一重采样索引同时算两档，保留 20 日重叠序列相关。"""
@@ -127,9 +145,12 @@ def vol_direction_experiment(f, all_dates):
         yte = (te["fwd_rv20"] > te["rv20"]).astype(int)
         if ytr.nunique() < 2 or yte.nunique() < 2:
             continue
-        m = _gb(); m.fit(tr[feats], ytr)
+        fold_feats = _usable_features(tr, feats)
+        if not fold_feats:
+            continue
+        m = _gb(); m.fit(tr[fold_feats], ytr)
         Y.append(yte.values)
-        S_model.append(m.predict_proba(te[feats])[:, 1])
+        S_model.append(m.predict_proba(te[fold_feats])[:, 1])
         S_naive.append((-te["rv20"]).values)   # 与标签自指：rv20 同时在标签两侧
         S_vix.append(te["vix"].values)
         RV.append(te["rv20"].values); FWD.append(te["fwd_rv20"].values)
@@ -155,7 +176,7 @@ def vol_direction_experiment(f, all_dates):
     print(f"\n=== 波动率升/降靶子（拼接样本外 n={len(y)}，正类{y.mean()*100:.1f}%）===")
     print(f"  模型 AUC={auc_m:.3f}  自指基线={auc_n:.3f}  VIX={auc_v:.3f}  机械假象地板={mech_null}")
     if bb:
-        print(f"  模型−基线 = {bb['diff']:+.3f}  CI95={bb['ci95']}  p_boot={bb['p_boot']}（唯一可解释量）")
+        print(f"  模型-基线 = {bb['diff']:+.3f}  CI95={bb['ci95']}  p_boot={bb['p_boot']}（唯一可解释量）")
     return {
         "target": "未来20日已实现波动 vs 当前（升=1/降=0）",
         "n_pooled": int(len(y)), "pos_pct": round(float(y.mean()) * 100, 1),
@@ -199,8 +220,11 @@ def run():
         yte = (te["fwd_rv20"] > thr).astype(int)
         if ytr.nunique() < 2 or yte.nunique() < 2:
             continue
-        m = _gb(); m.fit(tr[feats], ytr)
-        auc = float(roc_auc_score(yte, m.predict_proba(te[feats])[:, 1]))
+        fold_feats = _usable_features(tr, feats)
+        if not fold_feats:
+            continue
+        m = _gb(); m.fit(tr[fold_feats], ytr)
+        auc = float(roc_auc_score(yte, m.predict_proba(te[fold_feats])[:, 1]))
         vix_auc = float(roc_auc_score(yte, te["vix"])) if "vix" in te else None
         fold_rows.append({"test": f"{tr_end}-{te_end}", "n": int(len(te)),
                           "pos_pct": round(float(yte.mean()) * 100, 1),
@@ -214,20 +238,25 @@ def run():
     thr_dev = dev_p["fwd_rv20"].median()
     y_devp = (dev_p["fwd_rv20"] > thr_dev).astype(int)
     y_hold = (hold["fwd_rv20"] > thr_dev).astype(int)
-    final = _gb(); final.fit(dev_p[feats], y_devp)
-    p_hold = final.predict_proba(hold[feats])[:, 1]
-    holdout_auc = float(roc_auc_score(y_hold, p_hold)) if y_hold.nunique() > 1 else None
+    final_feats = _usable_features(dev_p, feats)
+    if final_feats:
+        final = _gb(); final.fit(dev_p[final_feats], y_devp)
+        p_hold = final.predict_proba(hold[final_feats])[:, 1]
+        holdout_auc = float(roc_auc_score(y_hold, p_hold)) if y_hold.nunique() > 1 else None
+        # 排列重要性（在 holdout 上，看哪些特征真的带信息）
+        imp = permutation_importance(final, hold[final_feats], y_hold, n_repeats=20,
+                                     random_state=42, scoring="roc_auc")
+        importances = sorted(
+            [{"feature": final_feats[i], "importance": round(float(imp.importances_mean[i]), 4)}
+             for i in range(len(final_feats))],
+            key=lambda x: -x["importance"])
+    else:
+        # 兜底：dev 段全部特征恒定/损坏（实际上不会发生）——跳过终审拟合而非崩溃
+        holdout_auc = None
+        importances = []
     holdout_vix_auc = (float(roc_auc_score(y_hold, hold["vix"]))
                        if "vix" in hold and y_hold.nunique() > 1 else None)
     hold_pos_pct = round(float(y_hold.mean()) * 100, 1)
-
-    # 排列重要性（在 holdout 上，看哪些特征真的带信息）
-    imp = permutation_importance(final, hold[feats], y_hold, n_repeats=20,
-                                 random_state=42, scoring="roc_auc")
-    importances = sorted(
-        [{"feature": feats[i], "importance": round(float(imp.importances_mean[i]), 4)}
-         for i in range(len(feats))],
-        key=lambda x: -x["importance"])
     fold_aucs = [r["auc"] for r in fold_rows]
 
     mean_cv = round(float(np.mean(fold_aucs)), 4) if fold_aucs else None

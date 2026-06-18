@@ -206,7 +206,11 @@ footer a { color: var(--green); text-decoration: none; }
 .spcx-input:focus { outline:none; border-color:var(--green); }
 .spcx-decision-box { border-radius:7px; padding:.65rem .9rem; margin-top:.65rem; font-size:0.8rem; line-height:1.6; }
 .spcx-pl-row { display:flex; gap:.75rem; flex-wrap:wrap; margin:.5rem 0; font-size:0.82rem; }
-.spcx-pl-val { background:var(--surface2); border-radius:5px; padding:.3rem .6rem; }
+.spcx-pl-val { background:var(--surface2); border-radius:5px; padding:.3rem .6rem; min-width:0; overflow-wrap:anywhere; }
+.spcx-detail-grid { display:grid; grid-template-columns:minmax(200px,1fr) minmax(220px,1.4fr); gap:1rem; margin-bottom:1rem; }
+.spcx-detail-grid > * { min-width:0; }
+#spcx-detail-wrap { max-width:100%; }
+#spcx-detail-wrap .chart-header > span { min-width:0; overflow-wrap:anywhere; }
 
 /* ── Portfolio P&L ── */
 .pl-up { color:#2ecc71; font-size:0.72rem; }
@@ -229,6 +233,7 @@ footer a { color: var(--green); text-decoration: none; }
 .cgt-result-row:last-child { border:none; }
 .cgt-highlight { font-size:1rem; font-weight:800; padding:.4rem 0; }
 @media (max-width:600px) { .cgt-grid { grid-template-columns:1fr; } }
+@media (max-width:600px) { .spcx-detail-grid { grid-template-columns:1fr; } }
 
 /* ── Prediction Accuracy ── */
 .acc-card { background:var(--surface2); border-radius:7px; padding:.5rem .85rem; flex:1; min-width:100px; text-align:center; }

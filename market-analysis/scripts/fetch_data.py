@@ -5,6 +5,7 @@ fetch_data.py
   宏观：M2货币供应（FRED）/ 美联储基准利率（FRED）
 """
 
+import json
 import time
 import yfinance as yf
 import pandas as pd
@@ -14,7 +15,79 @@ from pathlib import Path
 from datetime import date, timedelta
 
 RAW_DIR = Path(__file__).parent.parent / "data" / "raw"
+WEB_DIR = Path(__file__).parent.parent / "web"
 RAW_DIR.mkdir(parents=True, exist_ok=True)
+WEB_DIR.mkdir(parents=True, exist_ok=True)
+
+HEALTH = {
+    "generated": pd.Timestamp.utcnow().isoformat(),
+    "sources": {},
+}
+
+
+def _age_days(ts):
+    try:
+        return (date.today() - pd.Timestamp(ts).date()).days
+    except Exception:
+        return None
+
+
+def _stale_after(name, kind):
+    if kind == "fred":
+        monthly = {"M2", "FED_RATE", "CPI", "UNRATE", "YIELD_10Y", "YIELD_2Y"}
+        return 120 if name in monthly else 10
+    if name in {"BTC", "ETH"}:
+        return 2
+    return 6
+
+
+def _record_health(name, kind, provider, ticker, source, series=None, error=None):
+    age = None
+    last_date = None
+    rows = 0
+    if series is not None:
+        s = pd.Series(series).dropna()
+        rows = int(len(s))
+        if rows:
+            last_date = pd.Timestamp(s.index[-1]).strftime("%Y-%m-%d")
+            age = _age_days(last_date)
+    stale_after = _stale_after(name, kind)
+    status = "ok"
+    if source == "missing" or rows == 0:
+        status = "missing"
+    elif age is not None and age > stale_after:
+        status = "stale"
+    elif source in {"cache", "cache_after_error"}:
+        status = "cache"
+    key = f"{kind}:{name}"
+    HEALTH["sources"][key] = {
+        "name": name,
+        "kind": kind,
+        "provider": provider,
+        "ticker": ticker,
+        "source": source,
+        "status": status,
+        "rows": rows,
+        "last_date": last_date,
+        "age_days": age,
+        "stale_after_days": stale_after,
+        "error": str(error)[:300] if error else None,
+    }
+
+
+def _write_health():
+    src = HEALTH["sources"]
+    counts = {k: sum(1 for v in src.values() if v.get("status") == k)
+              for k in ["ok", "cache", "stale", "missing"]}
+    HEALTH["summary"] = {
+        "total": len(src),
+        **counts,
+        "freshness": "ok" if counts["stale"] == 0 and counts["missing"] == 0
+        else ("degraded" if counts["missing"] == 0 else "incomplete"),
+    }
+    for out in [RAW_DIR / "data_health.json", WEB_DIR / "data_health.json"]:
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump(HEALTH, f, ensure_ascii=False, indent=2, allow_nan=False)
 
 # ── Yahoo Finance 可直接下载的 ────────────────────────────────────
 TICKERS = {
@@ -66,6 +139,7 @@ def _cache_fallback(name):
             s = s.dropna()
             if len(s):
                 print(f"  ⚠ {name} Yahoo 无数据，使用缓存（截至 {s.index[-1].date()}）")
+                s.attrs["health_source"] = "cache"
                 return s.rename(name)
         except Exception:
             pass
@@ -100,6 +174,7 @@ def _get_close(ticker, name):
                 s.index = pd.to_datetime(s.index.tz_localize(None).date)
                 print(f"    （Ticker.history 回退，{len(s)} 行）")
                 s.to_csv(RAW_DIR / f"{name}.csv")     # 写缓存，与主路径同款兜底
+                s.attrs["health_source"] = "history_fallback"
                 return s
         except Exception:
             pass
@@ -110,6 +185,7 @@ def _get_close(ticker, name):
     col = col.rename(name)
     col.index = pd.to_datetime(col.index)
     col = col.dropna()
+    col.attrs["health_source"] = "live"
 
     # Yahoo 日线常滞后1天：用小时线最新价补一个临时收盘（下次运行被官方值覆盖）
     try:
@@ -122,6 +198,7 @@ def _get_close(ticker, name):
             last_day = pd.Timestamp(ic.index[-1].tz_localize(None).date())
             if len(col) and last_day > col.index[-1]:
                 col.loc[last_day] = float(ic.iloc[-1])
+                col.attrs["health_source"] = "live_intraday"
                 print(f"    + 盘中临时价补到 {last_day.date()}")
     except Exception:
         pass
@@ -135,7 +212,11 @@ def fetch_yahoo():
         if s is not None:
             frames[name] = s
             s.to_csv(RAW_DIR / f"{name}.csv")
+            _record_health(name, "asset", "Yahoo Finance", ticker,
+                           s.attrs.get("health_source", "live"), s)
             print(f"    → {len(s)} 行")
+        else:
+            _record_health(name, "asset", "Yahoo Finance", ticker, "missing")
     return frames
 
 # ── FRED 宏观数据（直接下载CSV，无需API Key） ─────────────────────
@@ -181,6 +262,7 @@ def fetch_fred():
             s.index.name = "Date"; s.name = name
             frames[name] = s
             s.to_csv(RAW_DIR / f"{name}.csv")
+            _record_health(name, "fred", "FRED", series, "live_api" if api_key else "live_graph", s)
             print(f"    → {len(s)} 行（{'API全史' if api_key else 'graph'}，{s.index[0].date()}–{s.index[-1].date()}）")
         except Exception as e:
             # 下载失败时回退到上次缓存的 CSV，保证 combined_prices 列不缺失
@@ -188,8 +270,10 @@ def fetch_fred():
             if cache.exists():
                 df = pd.read_csv(cache, index_col="Date", parse_dates=True).squeeze("columns")
                 frames[name] = pd.to_numeric(df, errors="coerce").dropna().astype(float)
+                _record_health(name, "fred", "FRED", series, "cache_after_error", frames[name], e)
                 print(f"    ⚠ {name} 下载失败，使用缓存（截至 {frames[name].index[-1].date()}）: {e}")
             else:
+                _record_health(name, "fred", "FRED", series, "missing", error=e)
                 print(f"    ⚠ {name} 失败且无缓存: {e}")
     return frames
 
@@ -224,7 +308,11 @@ def fetch_stocks():
         s = _get_close(ticker, name)
         if s is not None:
             frames[name] = s
+            _record_health(name, "stock", "Yahoo Finance", ticker,
+                           s.attrs.get("health_source", "live"), s)
             print(f"    → {len(s)} 行")
+        else:
+            _record_health(name, "stock", "Yahoo Finance", ticker, "missing")
     if frames:
         df = pd.concat(list(frames.values()), axis=1).sort_index()
         df.index.name = "Date"
@@ -238,7 +326,10 @@ def fetch_all():
     print("\n=== FRED 宏观数据 ===")
     fred  = fetch_fred()
     fetch_stocks()
-    return merge_all(yahoo, fred)
+    combined = merge_all(yahoo, fred)
+    _write_health()
+    print(f"数据健康 → {WEB_DIR / 'data_health.json'}")
+    return combined
 
 if __name__ == "__main__":
     fetch_all()
