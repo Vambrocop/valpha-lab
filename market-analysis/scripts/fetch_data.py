@@ -128,6 +128,7 @@ STOCK_TICKERS = {
     "BRK-B": "BRK-B",  # 伯克希尔
     "KO":    "KO",     # 可口可乐（低β防御股，几十年历史，诚实体检诊断满检验力）
     "SPCX":  "SPCX",   # SpaceX（2026-06-12 上市；历史不足260天，由 export_stocks 专属块处理）
+    "SNDK":  "SNDK",   # 闪迪（2025-02 从西数 WDC 分拆重新上市；历史~1年，次新股，长历史类分析会如实显示数据不足）
 }
 
 def _cache_fallback(name):

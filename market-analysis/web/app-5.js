@@ -196,6 +196,7 @@ function renderAll() {
   loadDataFreshness();   // 📡 数据新鲜度徽章：让"自动刷新到几点 + 盘中/休市"一眼可见
   loadDigest();          // 📋 今日摘要（三层诚实摘要，描述非预测）
   loadTipjar();          // 🎲 试胆区（玩具预测+公开计分，娱乐非建议）
+  loadOutlook();         // 📈 观点/预测（授权出格区：方向 + 看好看淡）
   initOnboarding();      // 👋 新手引导横幅（首次访问显示）
   lazyRender("chart-spcx-ipo",      renderSPCXDetail, "SPCXDetail");
   // Sync SPCX inputs with localStorage
@@ -489,6 +490,26 @@ function renderDataHealthDrawer() {
     + `</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+// 📈 观点/预测：读 outlook.json，纳指方向 + 个股看好/看淡 + 免责（用户授权的出格区）。
+function loadOutlook() {
+  const el = document.getElementById("outlook");
+  if (!el) return;
+  fetch("outlook.json?_=" + Date.now()).then(r => r.ok ? r.json() : null).then(d => {
+    if (!d) return;
+    const ic = d.index_call;
+    const up = "var(--green,#2ecc71)", dn = "#e74c3c";
+    const picks = (arr) => (arr || []).map(p =>
+      `<li style="margin:.25rem 0;"><b>${esc(p.symbol)}</b> <span style="color:${p.view === '看好' ? up : dn};font-weight:600;">${esc(p.view)}</span> <span style="color:var(--muted);font-size:.78rem;">${esc(p.reason)}</span></li>`).join("");
+    el.innerHTML =
+      (ic ? `<div style="margin:.2rem 0 .5rem;font-size:1rem;">🎯 <b>${esc(ic.target)}${esc(ic.horizon)}方向：<span style="color:${ic.call === '看涨' ? up : dn};">${esc(ic.call)}</span></b> <span style="color:var(--muted);font-size:.76rem;">${esc(ic.basis)}</span></div>` : "")
+      + `<div style="display:flex;gap:2rem;flex-wrap:wrap;">`
+      + `<div><div style="font-weight:600;margin-bottom:.2rem;">👍 看好</div><ul style="margin:0;padding-left:1.1rem;list-style:none;">${picks(d.bullish)}</ul></div>`
+      + `<div><div style="font-weight:600;margin-bottom:.2rem;">👎 看淡</div><ul style="margin:0;padding-left:1.1rem;list-style:none;">${picks(d.bearish)}</ul></div>`
+      + `</div>`
+      + (d.disclaimer ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.5rem;border-top:1px solid var(--border-faint);padding-top:.3rem;">${esc(d.disclaimer)}</div>` : "");
+  }).catch(() => {});
+}
+
 // 🎲 试胆区：读 tipjar.json，玩具预测器的最新一注 + 公开战绩(≈掷硬币) + 满屏免责。
 function loadTipjar() {
   const el = document.getElementById("tipjar");
@@ -548,7 +569,7 @@ function initOnboarding() {
 // ═══════════════════════════════════════════════════════
 //  顶层视图切换（今日/计划/实验/研究/我的）
 // ═══════════════════════════════════════════════════════
-const VIEWS = ["today", "plan", "longterm", "lab", "research", "registry", "quant", "mine"];
+const VIEWS = ["today", "outlook", "plan", "longterm", "lab", "research", "registry", "quant", "mine"];
 function switchView(name, btn) {
   document.querySelectorAll(".view-nav .view-btn").forEach(b => {
     const on = b === btn;

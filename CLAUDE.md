@@ -62,3 +62,4 @@
 - 不加新因子、不上深度学习、不引前端框架（理由见 ROADMAP"不建议做"节）
 - 不要绕过 verify_output / pytest 门禁
 - prediction_log.csv 和 paper_ledger.csv 是 append-only 账本，绝不手改历史行
+- ⚠️ 例外（2026-06-18 用户授权）：📈 观点/预测 区【有意】给纳指方向 + 个股看好/看淡（带免责）——这一页允许预测/荐股；全站其余仍守"测风险不测方向"。别再按"不预测"拦这页（onboarding/view-intro 里"不预测涨跌"措辞待 relayout 时一并校准）

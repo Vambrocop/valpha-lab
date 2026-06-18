@@ -29,6 +29,7 @@
 
 <nav class="view-nav" role="tablist" aria-label="主导航">
   <button class="view-btn active" role="tab" aria-selected="true"  data-view="today">📊 今日</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="outlook">📈 观点</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="plan">🗓 计划</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="longterm">⏳ 长期</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="lab">🧪 实验</button>
@@ -53,6 +54,12 @@
   ⚠ <b>页面上任何数字都不是操作建议</b>,投资有风险、亏损自负。
   <div><button class="ob-dismiss">知道了,开始看</button></div>
 </div>
+
+<!-- ════════ 观点/预测：用户授权的"出格"区（直说方向 + 看好看淡） ════════ -->
+<section id="view-outlook" style="display:none">
+  <div class="view-intro">📈 <b>观点 / 预测：直说方向 + 看好看淡。</b>这一区<b>有意越出</b>全站"测风险不测方向"——直接给纳指方向和个股观点。⚠ 仅供参考、<b>非投资建议</b>；方向预测的真实准确率见 🎲 试胆区（提示：≈掷硬币）。</div>
+  <div class="panel" id="outlook-panel"><div id="outlook">加载中…</div></div>
+</section>
 
 <!-- ════════ 今日：现在该不该动手 ════════ -->
 <section id="view-today">
