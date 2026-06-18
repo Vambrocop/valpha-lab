@@ -1,0 +1,48 @@
+name: Site audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "market-analysis/web/**"
+      - "docs/**"
+      - "tools/site_audit.py"
+      - ".github/workflows/site-audit.yml"
+  pull_request:
+    paths:
+      - "market-analysis/web/**"
+      - "docs/**"
+      - "tools/site_audit.py"
+      - ".github/workflows/site-audit.yml"
+  workflow_dispatch: {}
+
+jobs:
+  browser-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright Chromium
+        run: |
+          python -m pip install "playwright>=1.40,<2"
+          python -m playwright install --with-deps chromium
+
+      - name: Run browser audits
+        env:
+          ALAB_AUDIT_SHOT_DIR: audit-shots
+        run: |
+          python tools/site_audit.py --ci
+          python tools/site_audit.py --mobile --ci
+
+      - name: Upload audit screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-audit-screenshots
+          path: audit-shots/
+          if-no-files-found: ignore

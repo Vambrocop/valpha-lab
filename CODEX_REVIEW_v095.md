@@ -13,8 +13,11 @@ Date: 2026-06-18
    - refresh pipeline 现在会跑桌面和移动端：
      - `python tools/site_audit.py --ci`
      - `python tools/site_audit.py --mobile --ci`
+   - 新增 `.github/workflows/site-audit.yml`，push/PR 触发桌面 + 移动端浏览器审计。
+   - site audit workflow 会上传审计截图 artifact，便于 Claude/Codex 复看布局。
    - `tools/site_audit.py` 现在发现 overflow、console error/warning、failed request 会非零退出。
    - 本地 `--ci` 会优先 Chromium，缺失时 fallback 到 Edge，方便 Windows 复核。
+   - 截图目录现在可由 `ALAB_AUDIT_SHOT_DIR` 指定，CI 使用 `audit-shots/`。
 
 2. CSP 第一阶段
    - `market-analysis/web/index.html` 静态 `onclick/oninput` 已移除。
@@ -80,5 +83,5 @@ py E:\finance\tools\site_audit.py --mobile --ci
 ## 剩余建议
 
 1. 把 `rg "onclick=|oninput=" ...` 做成轻量 CI 检查，防止后续回归。
-2. 给 audit 截图改成 workspace-relative 输出，并在 Actions 上传 artifact。
-3. 上 CSP report-only，先观察一周，再决定是否抽 inline style。
+2. 上 CSP report-only，先观察一周，再决定是否抽 inline style。
+3. 如果 30 分钟 refresh 变慢，把浏览器 audit 保留在独立 `site-audit.yml`，从高频 refresh 中移除。

@@ -6,6 +6,7 @@ import threading
 import functools
 import os
 import sys
+import tempfile
 
 from playwright.sync_api import sync_playwright
 
@@ -16,7 +17,7 @@ except Exception:
 
 PORT = 8950
 WEB = "market-analysis/web"
-SHOT = "C:/Users/Vambr/AppData/Local/Temp/alab_audit"
+SHOT = os.environ.get("ALAB_AUDIT_SHOT_DIR") or os.path.join(tempfile.gettempdir(), "alab_audit")
 os.makedirs(SHOT, exist_ok=True)
 
 MOBILE = "--mobile" in sys.argv
