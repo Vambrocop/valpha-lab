@@ -17,6 +17,7 @@
     <h1>⬡ <span>Alpha Lab</span> — 美股诚实统计</h1>
     <div class="header-sub">纳指 · 标普 · 个股 · 加密 | 分清真规律与幻觉 · 测风险不测方向 | 实盘问责 + 五策略模拟盘 | 仅供学习研究</div>
     <div class="header-sub" id="data-freshness" style="margin-top:.25rem;font-size:0.74rem;">📡 数据新鲜度加载中…</div>
+    <div id="data-health-drawer" hidden style="margin:.4rem auto .2rem;max-width:720px;padding:.5rem .7rem;background:rgba(127,127,127,0.08);border:1px solid var(--border-faint,rgba(127,127,127,0.25));border-radius:8px;overflow-x:auto;text-align:left;"></div>
   </div>
   <div style="display:flex;align-items:center;gap:.55rem;">
     <div style="color:var(--muted);font-size:0.8rem;" id="updated-time">—</div>
@@ -56,6 +57,10 @@
 <!-- ════════ 今日：现在该不该动手 ════════ -->
 <section id="view-today">
   <div class="view-intro">📊 <b>今日：现在该不该动手。</b>信号、每日简报、风险红绿灯、卖出评估——一屏看完当下状态。⚠ 信号为实验性，方向不可靠预测，仅供参考。</div>
+  <div class="panel" id="daily-digest-panel" style="display:none">
+    <div class="panel-title">📋 今日摘要 <span style="font-weight:400;color:var(--muted);font-size:.7rem;">描述 + 诚实留意点，不预测方向、不荐股</span></div>
+    <div id="daily-digest"></div>
+  </div>
   <div class="view-grid">
 
     <!-- 日期选择 + 信号表盘 -->
@@ -312,6 +317,10 @@
 <!-- ════════ 研究：图表库 ════════ -->
 <section id="view-research" style="display:none">
   <div class="view-intro">🔬 <b>研究：分清真规律 vs 幻觉。</b>能用的（波动率/隔夜异象/相关性体制/事件影响）与不可测的（短期方向，因子尸检证明）——都老实摊开，再加传统图表库。</div>
+  <div class="panel" id="tipjar-panel" style="display:none">
+    <div class="panel-title">🎲 试胆区 <span style="font-weight:400;color:var(--muted);font-size:.7rem;">玩具预测器 · 公开计分 · 娱乐，非建议</span></div>
+    <div id="tipjar"></div>
+  </div>
   <div class="view-stack">
 
     <!-- 🧮 诚实总账：#5 跨检验族 FDR（把全站显著性主张汇到一个多重比较框架） -->

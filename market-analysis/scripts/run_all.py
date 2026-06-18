@@ -59,6 +59,8 @@ steps = [
     ("模拟盘执行",         "paper_trading.py"),
     ("每日盘后简报",       "daily_brief.py"),
     ("统计评估报告",       "weekly_report.py"),
+    ("每日诚实摘要",       "daily_digest.py"),    # 三层(事实/留意/探索)诚实摘要;红线门禁禁方向/荐股词,须在体制/信号/模拟盘后
+    ("试胆区(玩具预测+计分)", "tipjar.py"),       # 故意下方向判断但公开残酷计分(≈掷硬币),娱乐非建议;须在 fetch_data 后
     ("发布前自检",         "verify_output.py"),   # 失败则终止，不发布坏数据
 ]
 

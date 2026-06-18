@@ -27,7 +27,8 @@ jobs:
           python-version: "3.12"
 
       - name: Install light deps (news RSS + quotes fallback)
-        run: pip install --quiet requests yfinance
+        # 与 requirements-core 同口径上界，防大版本漂移打穿周末任务
+        run: pip install --quiet "requests>=2.31,<3" "yfinance>=0.2.40,<0.3"
 
       - name: Fetch news + crypto/index quotes
         run: |

@@ -119,6 +119,8 @@ function renderAll() {
   fetchFearAndGreed();
   loadQuotes();   // 盘中轻量报价（10分钟级），SPCX 监视卡优先消费
   loadDataFreshness();   // 📡 数据新鲜度徽章：让"自动刷新到几点 + 盘中/休市"一眼可见
+  loadDigest();          // 📋 今日摘要（三层诚实摘要，描述非预测）
+  loadTipjar();          // 🎲 试胆区（玩具预测+公开计分，娱乐非建议）
   initOnboarding();      // 👋 新手引导横幅（首次访问显示）
   lazyRender("chart-spcx-ipo",      renderSPCXDetail, "SPCXDetail");
   // Sync SPCX inputs with localStorage
@@ -347,9 +349,111 @@ async function loadDataFreshness() {
     + (hs.cache ? ` · 缓存 ${Number(hs.cache)}` : "")
     + (hs.stale ? ` · 过期 ${Number(hs.stale)}` : "")
     + (hs.missing ? ` · 缺失 ${Number(hs.missing)}` : "") : "";
+  _dataHealth = h;   // 存给"数据源详情"抽屉用
+  const _dhDrawer = document.getElementById("data-health-drawer");
+  const _dhOpen = _dhDrawer && !_dhDrawer.hidden;
   el.innerHTML = `📡 报价 ${ago(qT) || "—"}${ago(nT) ? " · 要闻 " + ago(nT) : ""} · ${status}`
     + health
-    + (stale ? ` <span style="color:#e67e22">⚠ 盘中超 30 分未刷新，CI 可能异常</span>` : "");
+    + (stale ? ` <span style="color:#e67e22">⚠ 盘中超 30 分未刷新，CI 可能异常</span>` : "")
+    + (h && h.sources ? ` <span class="dh-toggle" role="button" tabindex="0" aria-expanded="${_dhOpen ? "true" : "false"}" style="cursor:pointer;color:var(--accent,#58a6ff);text-decoration:underline dotted;">${_dhOpen ? "▴ 收起" : "▾ 数据源详情"}</span>` : "");
+  const _tog = el.querySelector(".dh-toggle");
+  if (_tog) {
+    _tog.addEventListener("click", toggleDataHealthDrawer);
+    _tog.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleDataHealthDrawer(); } });
+  }
+  if (_dhOpen) _dhDrawer.innerHTML = renderDataHealthDrawer();   // 刷新时同步抽屉内容
+}
+
+// 📡 数据源详情抽屉：点徽章 → 逐源 live/缓存/过期 + 最新日期/滞后（problems 排前）
+let _dataHealth = null;
+
+function toggleDataHealthDrawer() {
+  const d = document.getElementById("data-health-drawer");
+  if (!d) return;
+  d.hidden = !d.hidden;
+  if (!d.hidden) d.innerHTML = renderDataHealthDrawer();
+  const tog = document.querySelector("#data-freshness .dh-toggle");
+  if (tog) { tog.textContent = d.hidden ? "▾ 数据源详情" : "▴ 收起"; tog.setAttribute("aria-expanded", String(!d.hidden)); }
+}
+
+function renderDataHealthDrawer() {
+  const h = _dataHealth;
+  if (!h || !h.sources) return `<span style="color:var(--muted);font-size:.78rem;">数据源详情暂不可用</span>`;
+  const isLive = s => s.status === "ok" && /^live/.test(String(s.source || ""));
+  const items = Object.values(h.sources);
+  items.sort((a, b) => (isLive(a) - isLive(b))
+    || String(a.kind).localeCompare(String(b.kind)) || String(a.name).localeCompare(String(b.name)));
+  const tag = s => {
+    if (s.status !== "ok") return [String(s.status || "异常"), "#e74c3c"];
+    if (String(s.source) === "cache") return ["缓存", "#f39c12"];
+    if (/^live/.test(String(s.source || ""))) return ["live", "#2ecc71"];
+    return [String(s.source || "?"), "#8b949e"];
+  };
+  const rows = items.map(s => {
+    const [lbl, col] = tag(s);
+    const stale = s.age_days != null && s.stale_after_days != null && s.age_days > s.stale_after_days;
+    const age = s.age_days == null ? "" : ` · ${Number(s.age_days)}d`;
+    return `<tr style="border-top:1px solid var(--border-faint);">`
+      + `<td style="padding:.2rem .5rem;color:var(--text);">${esc(s.name)}</td>`
+      + `<td style="padding:.2rem .5rem;color:var(--muted);font-size:.72rem;">${esc(s.provider || "")}</td>`
+      + `<td style="padding:.2rem .5rem;text-align:center;color:${col};">${esc(lbl)}</td>`
+      + `<td style="padding:.2rem .5rem;text-align:right;color:${stale ? "#e67e22" : "var(--muted)"};white-space:nowrap;">${esc(s.last_date || "—")}${age}</td>`
+      + `</tr>`;
+  }).join("");
+  const sm = h.summary || {};
+  const gen = String(h.generated || "").slice(0, 16).replace("T", " ");
+  return `<div style="font-size:.72rem;color:var(--muted);margin:0 0 .35rem;">共 ${Number(sm.total || 0)} 源 · live ${Number(sm.ok || 0)}`
+    + (sm.cache ? ` · 缓存 ${Number(sm.cache)}` : "")
+    + (sm.stale ? ` · 过期 ${Number(sm.stale)}` : "")
+    + (sm.missing ? ` · 缺失 ${Number(sm.missing)}` : "")
+    + (gen ? ` · 生成 ${esc(gen)} UTC` : "")
+    + `（cache/过期排在前）</div>`
+    + `<table style="width:100%;border-collapse:collapse;font-size:.78rem;"><thead><tr style="color:var(--muted);font-size:.7rem;">`
+    + `<th style="padding:.2rem .5rem;text-align:left;">数据源</th><th style="padding:.2rem .5rem;text-align:left;">提供方</th>`
+    + `<th style="padding:.2rem .5rem;text-align:center;">来源</th><th style="padding:.2rem .5rem;text-align:right;">最新 · 滞后</th>`
+    + `</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// 🎲 试胆区：读 tipjar.json，玩具预测器的最新一注 + 公开战绩(≈掷硬币) + 满屏免责。
+function loadTipjar() {
+  const el = document.getElementById("tipjar");
+  if (!el) return;
+  fetch("tipjar.json?_=" + Date.now()).then(r => r.ok ? r.json() : null).then(d => {
+    if (!d || d.hit_rate == null) return;
+    const panel = document.getElementById("tipjar-panel");
+    if (panel) panel.style.display = "";
+    const lt = d.latest;
+    const rec = (d.recent || []).slice().reverse().map(r => {
+      const mk = r.hit == null ? "·" : (r.hit ? "✓" : "✗");
+      const c = r.hit == null ? "var(--muted)" : (r.hit ? "var(--green,#2ecc71)" : "#e74c3c");
+      return `<span style="color:${c};" title="${esc(r.as_of)} 赌${esc(r.call)}→实${esc(r.actual || '?')}">${mk}</span>`;
+    }).join(" ");
+    const cav = esc(d.caveat || "").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    el.innerHTML =
+      `<div style="font-size:.76rem;color:var(--muted);margin:.1rem 0;">规则：${esc(d.rule)}</div>`
+      + (lt ? `<div style="margin:.35rem 0;">最新一注（${esc(lt.as_of)} 收盘后）：纳指次日 <b style="font-size:1.05rem;">${lt.call === 'UP' ? '📈 赌涨' : '📉 赌跌'}</b></div>` : "")
+      + `<div style="margin:.4rem 0;font-size:.95rem;">滚动战绩 <b>${Number(d.hits)}/${Number(d.n_scored)} = ${Number(d.hit_rate)}%</b> <span style="color:var(--muted);font-size:.72rem;">≈50% 掷硬币才是常态 · 近20注 ${Number(d.hit_rate_last20)}% 只是噪声</span></div>`
+      + (rec ? `<div style="margin:.3rem 0;font-size:.8rem;">近 12 注：${rec}</div>` : "")
+      + `<div style="font-size:.68rem;color:var(--muted);margin-top:.4rem;border-top:1px solid var(--border-faint);padding-top:.3rem;">${cav}</div>`;
+  }).catch(() => {});
+}
+
+// 📋 今日摘要：读 digest.json，渲染三层(事实/留意/探索)。esc 转义 + 仅把 **x** 渲成粗体。
+function loadDigest() {
+  const el = document.getElementById("daily-digest");
+  if (!el) return;
+  fetch("digest.json?_=" + Date.now()).then(r => r.ok ? r.json() : null).then(d => {
+    if (!d || !d.tier1_facts) return;
+    const panel = document.getElementById("daily-digest-panel");
+    if (panel) panel.style.display = "";
+    const li = arr => (arr || []).map(x => `<li style="margin:.2rem 0;line-height:1.5;">${esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")}</li>`).join("");
+    el.innerHTML =
+      `<div style="font-size:.72rem;color:var(--muted);margin-bottom:.2rem;">${esc(d.date || "")}</div>`
+      + `<div style="font-weight:600;font-size:.82rem;margin:.3rem 0 .1rem;">① 今天什么变了</div><ul style="margin:0;padding-left:1.1rem;">${li(d.tier1_facts)}</ul>`
+      + ((d.tier2_watch || []).length ? `<div style="font-weight:600;font-size:.82rem;margin:.45rem 0 .1rem;">② 值得看一眼 <span style="font-weight:400;color:var(--muted);font-size:.66rem;">描述·非预测</span></div><ul style="margin:0;padding-left:1.1rem;">${li(d.tier2_watch)}</ul>` : "")
+      + ((d.tier3_explore || []).length ? `<div style="font-weight:600;font-size:.82rem;margin:.45rem 0 .1rem;color:var(--muted);">③ 探索 <span style="font-weight:400;font-size:.66rem;">很可能是噪声·不可交易</span></div><ul style="margin:0;padding-left:1.1rem;color:var(--muted);">${li(d.tier3_explore)}</ul>` : "")
+      + (d.caveat ? `<div style="font-size:.66rem;color:var(--muted);margin-top:.4rem;border-top:1px solid var(--border-faint);padding-top:.3rem;">${esc(d.caveat)}</div>` : "");
+  }).catch(() => {});
 }
 
 // 新手引导横幅:首次访问显示,关闭后 localStorage 记住不再弹
