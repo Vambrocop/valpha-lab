@@ -9,12 +9,18 @@ import sys
 
 from playwright.sync_api import sync_playwright
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 PORT = 8950
 WEB = "market-analysis/web"
 SHOT = "C:/Users/Vambr/AppData/Local/Temp/alab_audit"
 os.makedirs(SHOT, exist_ok=True)
 
 MOBILE = "--mobile" in sys.argv
+CI = "--ci" in sys.argv or os.environ.get("CI") == "true"
 VP = {"width": 390, "height": 844} if MOBILE else {"width": 1440, "height": 1000}
 TAG = "m" if MOBILE else "d"
 
@@ -29,7 +35,13 @@ VIEWS = ["today", "plan", "lab", "research", "quant", "mine"]
 console_msgs, bad_requests = [], []
 
 with sync_playwright() as p:
-    b = p.chromium.launch(channel="msedge")
+    try:
+        b = p.chromium.launch() if CI else p.chromium.launch(channel="msedge")
+    except Exception as first_error:
+        try:
+            b = p.chromium.launch(channel="msedge") if CI else p.chromium.launch()
+        except Exception:
+            raise first_error
     page = b.new_page(viewport=VP)
     page.on("console", lambda m: console_msgs.append(f"[{m.type}] {m.text[:200]}")
             if m.type in ("error", "warning") else None)
@@ -124,3 +136,6 @@ for x in console_msgs:
 print(f"\n=== 失败请求 ({len(bad_requests)}) ===")
 for x in sorted(set(bad_requests)): print(" ", x)
 print(f"\n截图: {SHOT}/{TAG}_<view>.png")
+
+if problems or console_msgs or bad_requests:
+    sys.exit(1)

@@ -21,21 +21,21 @@
   </div>
   <div style="display:flex;align-items:center;gap:.55rem;">
     <div style="color:var(--muted);font-size:0.8rem;" id="updated-time">—</div>
-    <button onclick="refreshData(this)" title="重新拉取全部数据并刷新页面内容（不丢失当前位置）"
+    <button id="refresh-data-btn" title="重新拉取全部数据并刷新页面内容（不丢失当前位置）"
       style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
       padding:.3rem .7rem;border-radius:6px;font-size:0.76rem;cursor:pointer;white-space:nowrap;">🔄 刷新</button>
   </div>
 </header>
 
 <nav class="view-nav" role="tablist" aria-label="主导航">
-  <button class="view-btn active" role="tab" aria-selected="true"  data-view="today"    onclick="switchView('today',this)">📊 今日</button>
-  <button class="view-btn" role="tab" aria-selected="false" data-view="plan"     onclick="switchView('plan',this)">🗓 计划</button>
-  <button class="view-btn" role="tab" aria-selected="false" data-view="longterm" onclick="switchView('longterm',this)">⏳ 长期</button>
-  <button class="view-btn" role="tab" aria-selected="false" data-view="lab"      onclick="switchView('lab',this)">🧪 实验</button>
-  <button class="view-btn" role="tab" aria-selected="false" data-view="research" onclick="switchView('research',this)">🔬 研究</button>
-  <button class="view-btn" role="tab" aria-selected="false" data-view="registry" onclick="switchView('registry',this)">📋 登记簿</button>
-  <button class="view-btn" role="tab" aria-selected="false" data-view="quant"    onclick="switchView('quant',this)">🎓 量化</button>
-  <button class="view-btn" role="tab" aria-selected="false" data-view="mine"     onclick="switchView('mine',this)">💼 我的</button>
+  <button class="view-btn active" role="tab" aria-selected="true"  data-view="today">📊 今日</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="plan">🗓 计划</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="longterm">⏳ 长期</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="lab">🧪 实验</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="research">🔬 研究</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="registry">📋 登记簿</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="quant">🎓 量化</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="mine">💼 我的</button>
 </nav>
 
 <main>
@@ -51,7 +51,7 @@
     <li><b>🌡️ 风险体制</b>:当前市场环境(波动/曲线/信用/羊群),描述非预测。</li>
   </ul>
   ⚠ <b>页面上任何数字都不是操作建议</b>,投资有风险、亏损自负。
-  <div><button class="ob-dismiss" onclick="dismissOnboarding()">知道了,开始看</button></div>
+  <div><button class="ob-dismiss">知道了,开始看</button></div>
 </div>
 
 <!-- ════════ 今日：现在该不该动手 ════════ -->
@@ -415,11 +415,11 @@
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
         <span>📅 S&P 500 月度胜率 <span class="badge" id="period-sample-badge">加载中</span></span>
         <div style="display:flex;gap:.3rem;flex-wrap:wrap;" id="period-btns">
-          <button class="period-btn active" onclick="setPeriod('1928+',this)">1928+（99年）</button>
-          <button class="period-btn" onclick="setPeriod('1950+',this)">1950+（76年）</button>
-          <button class="period-btn" onclick="setPeriod('1980+',this)">1980+（46年）</button>
-          <button class="period-btn" onclick="setPeriod('2000+',this)">2000+（26年）</button>
-          <button class="period-btn" onclick="setPeriod('2020+',this)">2020+（近5年）</button>
+          <button class="period-btn active" data-period="1928+">1928+（99年）</button>
+          <button class="period-btn" data-period="1950+">1950+（76年）</button>
+          <button class="period-btn" data-period="1980+">1980+（46年）</button>
+          <button class="period-btn" data-period="2000+">2000+（26年）</button>
+          <button class="period-btn" data-period="2020+">2020+（近5年）</button>
         </div>
       </div>
       <div id="chart-longmonthly" style="height:320px;"></div>
@@ -446,12 +446,12 @@
     <!-- 标签页：相关性 / Granger / GARCH / 年度热力图 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="tabs" role="tablist">
-        <button class="tab active" role="tab" onclick="switchTab('forecast',this)">30日前瞻</button>
-        <button class="tab" role="tab" onclick="switchTab('corr',this)">滚动相关性</button>
-        <button class="tab" role="tab" onclick="switchTab('monthly',this)">月度胜率(2000+)</button>
-        <button class="tab" role="tab" onclick="switchTab('garch',this)">波动率(GARCH)</button>
-        <button class="tab" role="tab" onclick="switchTab('granger',this)">Granger因果</button>
-        <button class="tab" role="tab" onclick="switchTab('annual',this)">年度热力图</button>
+        <button class="tab active" role="tab" data-main-tab="forecast">30日前瞻</button>
+        <button class="tab" role="tab" data-main-tab="corr">滚动相关性</button>
+        <button class="tab" role="tab" data-main-tab="monthly">月度胜率(2000+)</button>
+        <button class="tab" role="tab" data-main-tab="garch">波动率(GARCH)</button>
+        <button class="tab" role="tab" data-main-tab="granger">Granger因果</button>
+        <button class="tab" role="tab" data-main-tab="annual">年度热力图</button>
       </div>
       <div class="tab-content active" id="tab-forecast">
         <div id="chart-forecast" style="height:340px;"></div>
@@ -471,14 +471,14 @@
       </div>
       <div style="font-size:0.72rem;color:#e67e22;margin:-.5rem 0 .8rem;">⚠ 本组为重型 ML 研究快照，CI 不自动刷新（缺重型依赖），数据可能滞后数日；仅作方法演示，不当实时信号。事件研究结论请看"今日"标签的 🗓 事件影响一览。</div>
       <div class="tabs" id="mv-tabs" role="tablist">
-        <button class="tab active" role="tab" onclick="switchMVTab('modelcmp',this)">模型对比</button>
-        <button class="tab" role="tab" onclick="switchMVTab('shap',this)">SHAP因子</button>
-        <button class="tab" role="tab" onclick="switchMVTab('prophet',this)">Prophet预测</button>
-        <button class="tab" role="tab" onclick="switchMVTab('kalman',this)">卡尔曼趋势</button>
-        <button class="tab" role="tab" onclick="switchMVTab('rolling',this)">滚动β系数</button>
-        <button class="tab" role="tab" onclick="switchMVTab('path',this)">路径分析</button>
-        <button class="tab" role="tab" onclick="switchMVTab('cca',this)">CCA/RDA</button>
-        <button class="tab" role="tab" onclick="switchMVTab('backtest',this)">回测验证</button>
+        <button class="tab active" role="tab" data-mv-tab="modelcmp">模型对比</button>
+        <button class="tab" role="tab" data-mv-tab="shap">SHAP因子</button>
+        <button class="tab" role="tab" data-mv-tab="prophet">Prophet预测</button>
+        <button class="tab" role="tab" data-mv-tab="kalman">卡尔曼趋势</button>
+        <button class="tab" role="tab" data-mv-tab="rolling">滚动β系数</button>
+        <button class="tab" role="tab" data-mv-tab="path">路径分析</button>
+        <button class="tab" role="tab" data-mv-tab="cca">CCA/RDA</button>
+        <button class="tab" role="tab" data-mv-tab="backtest">回测验证</button>
       </div>
       <div class="tab-content" id="mvtab-backtest">
         <div id="chart-backtest-tier" style="height:300px;"></div>
@@ -614,10 +614,10 @@
         📅 日历规律统计 <span class="badge">1928-2026 · 98年S&P500</span>
       </div>
       <div class="tabs" id="cal-tabs" role="tablist">
-        <button class="tab active" role="tab" onclick="switchCalTab('digit',this)">年份尾数</button>
-        <button class="tab" role="tab" onclick="switchCalTab('cycle',this)">任期年</button>
-        <button class="tab" role="tab" onclick="switchCalTab('party',this)">执政党</button>
-        <button class="tab" role="tab" onclick="switchCalTab('calholiday',this)">假日效应</button>
+        <button class="tab active" role="tab" data-cal-tab="digit">年份尾数</button>
+        <button class="tab" role="tab" data-cal-tab="cycle">任期年</button>
+        <button class="tab" role="tab" data-cal-tab="party">执政党</button>
+        <button class="tab" role="tab" data-cal-tab="calholiday">假日效应</button>
       </div>
       <div class="tab-content active" id="caltab-digit">
         <div class="digit-highlight" id="digit-highlight"></div>
@@ -710,7 +710,7 @@
           </select>
         </div>
       </div>
-      <button class="cgt-btn" onclick="calculateCGT()">📊 计算税务</button>
+      <button class="cgt-btn" id="cgt-calc-btn">📊 计算税务</button>
       <div id="cgt-result"></div>
       <div style="font-size:0.72rem;color:var(--muted);margin-top:.65rem;line-height:1.5;">
         ⚠️ 仅为估算参考，不构成税务建议。加密货币每次交易（包括换币）均为CGT事件。
@@ -724,7 +724,7 @@
     <div class="chart-wrap" style="padding:1.25rem;" id="spcx-detail-wrap">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
         <span>🚀 SpaceX SPCX IPO 盈亏计算 <span class="badge">2026-06-12 Nasdaq</span></span>
-        <button onclick="fetchSPCXPrice()" id="spcx-price-btn"
+        <button id="spcx-price-btn"
           style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
           📡 获取价格
         </button>
@@ -737,10 +737,10 @@
           <div style="margin-top:.65rem;">
             <label style="font-size:0.78rem;color:var(--muted);">申购股数（分配结果后填写）</label>
             <input class="spcx-input" type="number" id="spcx-shares-input" min="0" step="1" placeholder="例如：30"
-              oninput="updateSPCXCalc()" style="margin-top:.3rem;">
+              style="margin-top:.3rem;">
             <label style="font-size:0.78rem;color:var(--muted);margin-top:.5rem;display:block;">当前市价 USD（上市后填写或自动获取）</label>
             <input class="spcx-input" type="number" id="spcx-price-input" min="0" step="0.01" placeholder="发行价 135"
-              oninput="updateSPCXCalc()" style="margin-top:.3rem;">
+              style="margin-top:.3rem;">
           </div>
         </div>
         <div>
@@ -763,11 +763,11 @@
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
         <span>💼 我的持仓计算器 <span class="badge">实时价格</span></span>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-          <button onclick="fetchPortfolioPrices()" id="portfolio-refresh-btn"
+          <button id="portfolio-refresh-btn"
             style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
             🔄 更新价格
           </button>
-          <button onclick="toggleAutoRefresh(this)" id="auto-refresh-btn"
+          <button id="auto-refresh-btn"
             style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
             ⏱ 自动
           </button>

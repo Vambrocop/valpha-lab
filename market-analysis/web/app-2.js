@@ -712,7 +712,7 @@ async function loadHonestRegistry() {
   const TAG = { real: { t: "有信号", c: "#2ecc71" }, null: { t: "空/否", c: "#e67e22" }, redline: { t: "红线", c: "#e74c3c" }, infeasible: { t: "数据不可行", c: "#8b949e" } };
   const tr = rows.map(([name, method, verdict, anchor, kind]) => {
     const tg = TAG[kind] || TAG.null;
-    const jump = anchor ? `<a href="#" onclick="document.getElementById('${anchor}')?.scrollIntoView({behavior:'smooth',block:'center'});return false;" style="color:var(--blue);text-decoration:none">展开 ↓</a>` : "—";
+    const jump = anchor ? `<a href="#" data-scroll-target="${anchor}" style="color:var(--blue);text-decoration:none">展开 ↓</a>` : "—";
     return `<tr style="border-top:1px solid var(--border-faint)">
       <td style="padding:.35rem .4rem;font-weight:600">${name}</td>
       <td style="padding:.35rem .4rem;color:var(--muted);font-size:0.76rem">${method}</td>

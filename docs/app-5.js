@@ -35,7 +35,8 @@ function renderBenchmark() {
   }).join("");
   const s = bm.summary || {};
   el.innerHTML = `
-    <table style="width:100%;border-collapse:collapse;">
+    <div style="overflow-x:auto;max-width:100%;">
+    <table style="width:100%;min-width:720px;border-collapse:collapse;">
       <thead><tr style="color:var(--muted);font-size:0.72rem;">
         <th style="padding:.3rem .5rem;text-align:left;">项目</th>
         <th style="padding:.3rem .5rem;text-align:left;">指标</th>
@@ -46,6 +47,7 @@ function renderBenchmark() {
         <th style="padding:.3rem .5rem;text-align:left;">依据</th>
       </tr></thead><tbody>${rows}</tbody>
     </table>
+    </div>
     <div style="display:flex;gap:.65rem;flex-wrap:wrap;margin-top:.7rem;font-size:0.72rem;color:var(--muted);">
       <span>✅ 打败 ${Number(s.beats ?? 0)}</span>
       <span>➖ 持平 ${Number(s.ties ?? 0)}</span>
@@ -92,9 +94,82 @@ function lazyRender(containerId, fn, name) {
   _lazyObserver.observe(el);
 }
 
+function bindStaticControls() {
+  if (bindStaticControls._bound) return;
+  bindStaticControls._bound = true;
+  const on = (id, event, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(event, fn);
+  };
+
+  on("refresh-data-btn", "click", e => refreshData(e.currentTarget));
+  document.querySelector(".view-nav")?.addEventListener("click", e => {
+    const btn = e.target.closest(".view-btn[data-view]");
+    if (btn) switchView(btn.dataset.view, btn);
+  });
+  document.querySelector(".ob-dismiss")?.addEventListener("click", dismissOnboarding);
+  document.getElementById("period-btns")?.addEventListener("click", e => {
+    const btn = e.target.closest(".period-btn[data-period]");
+    if (btn) setPeriod(btn.dataset.period, btn);
+  });
+  document.querySelectorAll("[data-main-tab]").forEach(btn =>
+    btn.addEventListener("click", () => switchTab(btn.dataset.mainTab, btn)));
+  document.querySelectorAll("[data-mv-tab]").forEach(btn =>
+    btn.addEventListener("click", () => switchMVTab(btn.dataset.mvTab, btn)));
+  document.querySelectorAll("[data-cal-tab]").forEach(btn =>
+    btn.addEventListener("click", () => switchCalTab(btn.dataset.calTab, btn)));
+
+  on("cgt-calc-btn", "click", calculateCGT);
+  on("spcx-price-btn", "click", fetchSPCXPrice);
+  on("portfolio-refresh-btn", "click", fetchPortfolioPrices);
+  on("auto-refresh-btn", "click", e => toggleAutoRefresh(e.currentTarget));
+  ["spcx-shares-input", "spcx-price-input"].forEach(id => on(id, "input", updateSPCXCalc));
+
+  document.addEventListener("click", e => {
+    const forecast = e.target.closest("[data-forecast-date]");
+    if (forecast) { selectForecastDay(forecast.dataset.forecastDate); return; }
+    const cost = e.target.closest("[data-cost-index]");
+    if (cost) { setPortfolioCost(Number(cost.dataset.costIndex)); return; }
+    const scrollTarget = e.target.closest("[data-scroll-target]");
+    if (scrollTarget) {
+      e.preventDefault();
+      document.getElementById(scrollTarget.dataset.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (e.target.closest("[data-fear-greed-retry]")) { fetchFearAndGreed(); return; }
+    const stock = e.target.closest("[data-stock-symbol]");
+    if (stock) { renderStockChart(stock.dataset.stockSymbol); return; }
+    const sell = e.target.closest("[data-game-sell]");
+    if (sell) { gameSell(sell.dataset.gameSell); return; }
+    if (e.target.closest("[data-game-buy]")) { gameBuy(); return; }
+    if (e.target.closest("[data-game-reset]")) { gameReset(); return; }
+    if (e.target.closest("[data-tz-toggle]")) { toggleTZMode(); return; }
+    const ov = e.target.closest("[data-overnight]");
+    if (ov) { renderOvernight(ov.dataset.overnight, ov); return; }
+  });
+  document.addEventListener("input", e => {
+    const spcx = e.target.closest("[data-spcx-save]");
+    if (spcx) saveSPCXData(spcx.dataset.spcxSave, spcx.value);
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const forecast = e.target.closest("[data-forecast-date]");
+    if (forecast) {
+      e.preventDefault();
+      selectForecastDay(forecast.dataset.forecastDate);
+      return;
+    }
+    const cost = e.target.closest("[data-cost-index]");
+    if (!cost) return;
+    e.preventDefault();
+    setPortfolioCost(Number(cost.dataset.costIndex));
+  });
+}
+
 // 启动渲染序列。抽成具名函数以支持"🔄 手动刷新"：所有渲染器都是幂等覆盖，
 // 重新 init()（拉最新 JSON）后再跑一遍即完成无整页刷新的数据更新。
 function renderAll() {
+  bindStaticControls();
   safeRender(renderDOWPanel,        "DOW");
   safeRender(renderSellPanel,       "Sell");
   safeRender(renderOppPanel,        "Opp");

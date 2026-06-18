@@ -40,7 +40,7 @@ function renderSPCXTracker() {
       </div>
       <div style="font-size:0.78rem;color:var(--muted);margin-bottom:.3rem">我的申购（股数）</div>
       <input class="spcx-input" type="number" min="0" step="1" placeholder="等待分配结果后填写"
-        value="${savedShares||""}" oninput="saveSPCXData('shares',this.value)">
+        value="${savedShares||""}" data-spcx-save="shares">
       ${savedShares > 0 ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:.35rem">
         ≈ A$${issueAUD.toFixed(0)}（按发行价US$135 · AUD/USD≈${_portAudRate.toFixed(3)}）</div>` : ""}
       <div class="spcx-decision-box" style="background:rgba(155,89,182,.1);border-left:3px solid var(--purple);">
@@ -72,10 +72,10 @@ function renderSPCXTracker() {
     </div>
     <div style="font-size:0.78rem;color:var(--muted);margin-bottom:.3rem">实际获配股数</div>
     <input class="spcx-input" type="number" min="0" step="1" placeholder="股数"
-      value="${savedShares||""}" oninput="saveSPCXData('shares',this.value)">
+      value="${savedShares||""}" data-spcx-save="shares">
     <div style="font-size:0.78rem;color:var(--muted);margin:.5rem 0 .3rem">当前市价 (USD)</div>
     <input class="spcx-input" type="number" min="0" step="0.01" placeholder="发行价135"
-      value="${savedPrice||""}" oninput="saveSPCXData('price',this.value)">
+      value="${savedPrice||""}" data-spcx-save="price">
     ${savedShares > 0 && savedPrice > 0 ? `
     <div class="spcx-pl-row" style="margin-top:.65rem;">
       <div class="spcx-pl-val"><span class="u-cap">成本</span><br><strong>A$${issueAUD.toFixed(0)}</strong></div>
@@ -387,7 +387,7 @@ async function fetchFearAndGreed() {
   } catch(e) {
     el.innerHTML = `<div style="font-size:0.78rem;color:var(--muted)">
       恐惧贪婪指数暂时无法加载
-      <button onclick="fetchFearAndGreed()"
+      <button data-fear-greed-retry
         style="margin-left:.5rem;background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:2px 8px;border-radius:4px;font-size:0.72rem;cursor:pointer;">重试</button>
     </div>`;
   }
@@ -671,7 +671,7 @@ function renderStocksTable() {
       ? `<span style="color:#2ecc71">✓</span>` : `<span style="color:#e74c3c">✗</span>`;
     const rsiColor = st.rsi14 > 70 ? "#e74c3c" : st.rsi14 < 30 ? "#2ecc71" : "var(--text)";
     const tag = s.is_mag7 ? `<span style="font-size:0.6rem;background:#9b59b633;color:#9b59b6;border-radius:3px;padding:0 3px;margin-left:3px;">M7</span>` : "";
-    return `<tr onclick="renderStockChart('${sym}')" style="cursor:pointer;border-bottom:1px solid var(--border-faint);">
+    return `<tr data-stock-symbol="${sym}" style="cursor:pointer;border-bottom:1px solid var(--border-faint);">
       <td style="padding:.35rem .5rem;font-weight:600;">${sym}${tag}<br><span style="font-size:0.68rem;color:var(--muted);">${s.label}</span></td>
       <td style="padding:.35rem .5rem;text-align:right;">$${st.last}</td>
       <td style="padding:.35rem .5rem;text-align:right;">${fmt(st.chg_1d)}</td>
@@ -853,7 +853,7 @@ function renderGamePanel() {
       <td style="padding:.25rem .4rem;text-align:right;">$${(h.units*p).toFixed(0)}</td>
       <td style="padding:.25rem .4rem;text-align:right;">成本$${h.cost.toFixed(2)}</td>
       <td style="padding:.25rem .4rem;text-align:right;color:${c};">${pl>0?"+":""}${pl.toFixed(1)}%</td>
-      <td style="padding:.25rem .4rem;"><button class="period-btn" onclick="gameSell('${s}')">卖出</button></td>
+      <td style="padding:.25rem .4rem;"><button class="period-btn" data-game-sell="${s}">卖出</button></td>
     </tr>`;
   }).join("");
   const eq = g.cash + mv, ret = (eq / 10000 - 1) * 100;
@@ -869,13 +869,13 @@ function renderGamePanel() {
     <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap;">
       <select id="game-sym" class="cgt-input" style="flex:2;min-width:140px;">${opts}</select>
       <input id="game-amt" class="cgt-input" type="number" placeholder="金额$" value="1000" style="flex:1;min-width:70px;">
-      <button class="cgt-btn" style="flex:0;padding:.4rem .8rem;" onclick="gameBuy()">买入</button>
+      <button class="cgt-btn" style="flex:0;padding:.4rem .8rem;" data-game-buy>买入</button>
     </div>
     ${holdRows ? `<table style="width:100%;font-size:0.74rem;border-collapse:collapse;">${holdRows}</table>` : ""}
     ${recent ? `<div style="margin-top:.4rem;">${recent}</div>` : ""}
     <div style="display:flex;justify-content:space-between;margin-top:.45rem;align-items:center;">
       <span style="color:var(--muted);font-size:0.66rem;">按最近收盘价成交（${STOCKS.generated}）· 存在本浏览器</span>
-      <button class="period-btn" onclick="gameReset()">重置</button>
+      <button class="period-btn" data-game-reset>重置</button>
     </div>`;
 }
 
@@ -1121,7 +1121,7 @@ function renderMarketClock() {
   const status = st.isOpen
     ? `<span style="color:#2ecc71;font-weight:700;">● 开盘中</span>`
     : `<span style="color:var(--muted);font-weight:700;">○ 休市</span>`;
-  const tzBtn = `<button onclick="toggleTZMode()" title="切换页面时间显示：美东统一 / 你的本地"
+  const tzBtn = `<button data-tz-toggle title="切换页面时间显示：美东统一 / 你的本地"
     style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);
     padding:1px 7px;border-radius:5px;font-size:0.68rem;cursor:pointer;">
     🕐 ${TZ_MODE === "ET" ? "美东" : "本地"}时间 ⇄</button>`;
@@ -1182,7 +1182,7 @@ async function loadOvernightPanel() {
   if (!names.length) return;
   const btns = document.getElementById("overnight-btns");
   if (btns) btns.innerHTML = names.map((n, i) =>
-    `<button class="period-btn ${i === 0 ? "active" : ""}" onclick="renderOvernight('${n}', this)">${n.split("_")[0]}</button>`
+    `<button class="period-btn ${i === 0 ? "active" : ""}" data-overnight="${n}">${n.split("_")[0]}</button>`
   ).join("");
   renderOvernight(names[names.length - 1]);
 }

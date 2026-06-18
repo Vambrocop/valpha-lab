@@ -346,7 +346,7 @@ function renderForecastCalendar() {
       const isToday = d.date === today;
       const border = isToday ? `2px solid ${TC[d.tier]}` : `1px solid ${TC[d.tier]}44`;
       html += `<div title="${d.date}  概率${Math.round(d.prob*100)}%  第${d.tier}档${d.macro ? "  ⚠"+d.macro : ""}（点击查看操作计划）"
-        onclick="selectForecastDay('${d.date}')"
+        role="button" tabindex="0" data-forecast-date="${d.date}"
         style="width:36px;height:36px;border-radius:5px;background:${TB[d.tier]};border:${border};cursor:pointer;
                display:flex;flex-direction:column;align-items:center;justify-content:center;
                ${isToday ? "box-shadow:0 0 0 3px "+TC[d.tier]+"66;" : ""}">
@@ -464,7 +464,7 @@ function renderPortfolioTable(audRate) {
     const plStr = qty <= 0 ? "" :
       plAUD != null
       ? `<br><span class="${plAUD >= 0 ? 'pl-up' : 'pl-dn'}">${plAUD >= 0 ? '+' : ''}A$${plAUD.toFixed(0)} (${plPct >= 0 ? '+' : ''}${(plPct||0).toFixed(1)}%)</span>`
-      : `<br><span class="cost-link" onclick="setPortfolioCost(${i})">设置成本价</span>`;
+      : `<br><span class="cost-link" role="button" tabindex="0" data-cost-index="${i}">设置成本价</span>`;
     const valStr = val ? `A$${val.toFixed(2)}` : "—";
     const pStr  = p   ? `$${p < 1 ? p.toFixed(4) : p.toFixed(2)}` : "—";
     const ticker = escPortfolio(item.ticker);

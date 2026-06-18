@@ -34,6 +34,11 @@ jobs:
       - name: Install dependencies (core pipeline only)
         run: pip install -r market-analysis/requirements-core.txt
 
+      - name: Install browser audit dependencies
+        run: |
+          python -m pip install "playwright>=1.40,<2"
+          python -m playwright install --with-deps chromium
+
       - name: Run tests (gate — bad code must not publish data)
         run: python -m pytest market-analysis/tests -q
 
@@ -62,6 +67,11 @@ jobs:
 
       - name: Signal alerts (state changes only)
         run: python market-analysis/scripts/alert_check.py
+
+      - name: Browser site audit (desktop + mobile)
+        run: |
+          python tools/site_audit.py --ci
+          python tools/site_audit.py --mobile --ci
 
       - name: Open alert issue (GitHub emails you automatically)
         env:
