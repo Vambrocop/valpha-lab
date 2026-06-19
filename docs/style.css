@@ -23,10 +23,9 @@ header h1 span { color: var(--green); }
 
 /* ── Layout：顶层五视图（今日/计划/实验/研究/我的）── */
 main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
-.view-nav { position: sticky; top: 0; z-index: 200; display: flex; gap: .4rem;
+.view-nav { position: sticky; top: 0; z-index: 200; display: flex; flex-wrap: wrap; gap: .4rem;
   background: rgba(13,17,23,.82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  padding: .6rem 2rem; border-bottom: 1px solid var(--border);
-  overflow-x: auto; }
+  padding: .6rem 2rem; border-bottom: 1px solid var(--border); }
 .view-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted);
   padding: .45rem 1.1rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer;
   white-space: nowrap; transition: all .15s; font-family: inherit; }
