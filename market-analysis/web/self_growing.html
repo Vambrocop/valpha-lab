@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自生长 · Self-growing</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--amber:#e3a008}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1080px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .lead{color:var(--mut);font-size:.9rem;margin:8px 0 4px}
+  .note{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
+  .hero{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin:14px 0}
+  .hero .b{flex:1 1 150px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+  .hero .big{font-size:2.2rem;font-weight:800;line-height:1.1}
+  .hero .l{color:var(--mut);font-size:.78rem;margin-top:4px}
+  .arrow{display:flex;align-items:center;font-size:1.5rem;color:var(--mut)}
+  h2{font-size:1.05rem;margin:22px 0 4px}
+  .sub{color:var(--mut);font-size:.78rem;margin:0 0 8px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 13px;border-left:3px solid var(--grn)}
+  .card .lab{font-weight:700;font-size:.92rem}
+  .card .meta{font-size:.74rem;color:var(--mut);margin-top:3px}
+  .grave{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .gchip{font-size:.76rem;color:var(--mut);background:#0d1117;border:1px dashed var(--border);border-radius:6px;padding:3px 8px;opacity:.8}
+  .fam{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .fbar{font-size:.78rem;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px}
+  .fbar b{color:var(--grn)}
+  .verdict{background:rgba(163,113,247,.08);border:1px solid var(--acc);border-radius:8px;padding:10px 12px;font-size:.86rem;margin:14px 0;color:#d2c2f5}
+  .mut{color:var(--mut);font-size:.78rem;margin-top:18px;border-top:1px solid var(--border);padding-top:8px}
+  #src{color:var(--mut);font-size:.78rem}
+</style>
+</head>
+<body>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang"></button>
+<h1 data-i18n="title"></h1>
+<div class="lead" data-i18n="lead"></div>
+<div class="note" data-i18n="note"></div>
+
+<div class="hero" id="hero"></div>
+<div class="verdict" id="verdict"></div>
+
+<h2 data-i18n="hReg"></h2>
+<p class="sub" data-i18n="sReg"></p>
+<div class="grid" id="registry"></div>
+
+<h2 data-i18n="hFam"></h2>
+<div class="fam" id="families"></div>
+
+<h2 data-i18n="hGrave"></h2>
+<p class="sub" data-i18n="sGrave"></p>
+<div class="grave" id="graveyard"></div>
+
+<div id="src"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const LIVE="https://vambrocop.github.io/valpha-lab/fdr_crossfamily.json";
+const ALPHA=0.05;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG=localStorage.getItem("valpha_lang")||"zh";
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+let D=null;
+
+const I18N={
+  title:{zh:"🌱 自生长 · 诚实知识库",en:"🌱 Self-growing · honest knowledge base"},
+  lead:{zh:"本站把<b>每一个</b>测过的显著性主张都汇进一个池子，做跨族多重检验校正——校正后还站得住的，才认作「真规律」；没站住的坦白进坟场。这页就是那本活账。",
+        en:"Every significance claim we've tested is pooled together and run through a cross-family multiple-testing correction. Only what survives is accepted as a 'real pattern'; the rest is honestly buried. This page is that living ledger."},
+  note:{zh:"<b>这是全站的魂，不是炫技。</b>自动发现规律最容易变成「测一千个、挑最好看的」——那是 p-hacking。把试过的全算进去校正，是逼自己别自欺。存活 ≠ 未来重演，更非买卖建议。",
+        en:"<b>This is the soul of the site, not a flex.</b> Auto-discovering patterns easily becomes 'test a thousand, keep the prettiest' — that's p-hacking. Counting everything you tried into the correction is how you stop fooling yourself. Surviving ≠ repeating; not advice."},
+  hTested:{zh:"测过的假设",en:"hypotheses tested"},
+  hLuck:{zh:"≈ 纯靠运气(p<.05)",en:"≈ by luck alone (p<.05)"},
+  hSurv:{zh:"跨族校正后站得住",en:"survive correction"},
+  hReg:{zh:"📋 登记簿 · 经得起的真规律",en:"📋 Registry · patterns that held up"},
+  sReg:{zh:"跨族 Benjamini-Yekutieli（任意相关稳健）q<0.10 存活。",en:"Survived cross-family Benjamini-Yekutieli (correlation-robust) at q<0.10."},
+  hFam:{zh:"🔬 按检验族",en:"🔬 By test family"},
+  hGrave:{zh:"🪦 坟场 · 试过但没经得起",en:"🪦 Graveyard · tested but didn't hold up"},
+  sGrave:{zh:"这些当初看着「显著」，但把试过的全算进去后没站住——大概率是噪声。失败也公开。",
+          en:"These looked 'significant' alone, but didn't survive once everything tested was counted in — most likely noise. We publish the failures too."},
+  foot:{zh:"数据：实时 fdr_crossfamily.json（汇池：日历/事件因果/路径Granger/因子AUC）。探索性跨族 meta 校正，存活≠真发现，详见方法论页。",
+        en:"Data: live fdr_crossfamily.json (pooled: calendar / event-causal / path-Granger / factor-AUC). Exploratory cross-family meta-correction; surviving ≠ a true discovery — see the methodology page."},
+  err:{zh:"拉不到 fdr_crossfamily.json——确认已部署。",en:"Can't load fdr_crossfamily.json — check deployment."},
+  asof:{zh:"数据日",en:"as of"}
+};
+
+function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
+
+function render(){
+  applyStatic();
+  if(!D){$("src").textContent=t("err");return;}
+  const m=D.m_total||0, surv=D.n_survive_by_10||0, luck=Math.round(m*ALPHA);
+  $("hero").innerHTML=`
+    <div class="b"><div class="big">${m}</div><div class="l">${t("hTested")}</div></div>
+    <div class="arrow">▶</div>
+    <div class="b"><div class="big" style="color:var(--amber)">~${luck}</div><div class="l">${t("hLuck")}</div></div>
+    <div class="arrow">▶</div>
+    <div class="b"><div class="big" style="color:var(--grn)">${surv}</div><div class="l">${t("hSurv")}</div></div>`;
+  $("verdict").innerHTML=D.verdict?esc(D.verdict):"";
+  const claims=D.claims||[];
+  const reg=claims.filter(c=>c.survive_by_10), grave=claims.filter(c=>!c.survive_by_10);
+  $("registry").innerHTML=reg.map(c=>`<div class="card"><div class="lab">${esc(c.label)}</div>
+    <div class="meta">${esc(c.family)} · p=${c.p==null?"—":(+c.p).toPrecision(2)}${c.survive_bonferroni_05?" · 连最严的 Bonferroni 都过":""}</div></div>`).join("")||`<div class="mut">—</div>`;
+  $("families").innerHTML=(D.by_family||[]).map(f=>`<span class="fbar">${esc(f.family)}: <b>${f.n_survive_by_10}</b>/${f.n}</span>`).join("");
+  $("graveyard").innerHTML=grave.map(c=>`<span class="gchip" title="${esc(c.family)} p=${c.p==null?"—":(+c.p).toPrecision(2)}">${esc(c.label)}</span>`).join("")||`<div class="mut">—</div>`;
+  $("src").textContent=D.generated?`${t("asof")} ${esc(D.generated.slice(0,10))}`:"";
+}
+
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);render();};
+(async()=>{applyStatic();try{const r=await fetch(LIVE,{cache:"no-store"});if(r.ok)D=await r.json();}catch(e){}render();})();
+</script>
+</body>
+</html>
