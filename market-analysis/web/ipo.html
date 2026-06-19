@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPO 雷达 · IPO radar</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--amber:#e3a008}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1080px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .note{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
+  h2.tier{font-size:1.02rem;margin:22px 0 4px;display:flex;align-items:center;gap:8px}
+  h2.tier .tag{font-size:.66rem;font-weight:600;border-radius:99px;padding:2px 9px;letter-spacing:.02em}
+  .sub{color:var(--mut);font-size:.78rem;margin:0 0 8px}
+  /* tier accent tags */
+  .t-listed .tag{background:rgba(63,185,80,.16);color:var(--grn);border:1px solid var(--grn)}
+  .t-filed  .tag{background:rgba(88,166,255,.16);color:#58a6ff;border:1px solid #58a6ff}
+  .t-rumor  .tag{background:rgba(139,148,158,.14);color:var(--mut);border:1px dashed var(--mut)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:6px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px 13px;position:relative}
+  .card .co{font-weight:700;font-size:.98rem;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .card .tk{font-size:.7rem;color:var(--mut);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-family:ui-monospace,monospace}
+  .card .sec{font-size:.74rem;color:var(--mut);margin:3px 0 6px}
+  .card .det{font-size:.84rem;color:var(--fg)}
+  /* listed = solid green left bar */
+  .t-listed .card{border-left:3px solid var(--grn)}
+  /* filed = solid blue left bar */
+  .t-filed .card{border-left:3px solid #58a6ff}
+  /* rumor = dimmed, dashed, "?" mark, hatch wash, lower opacity */
+  .t-rumor .card{border-left:3px dashed var(--mut);opacity:.82;background:repeating-linear-gradient(135deg,var(--panel),var(--panel) 9px,rgba(139,148,158,.04) 9px,rgba(139,148,158,.04) 18px)}
+  .t-rumor .card .co{color:var(--mut)}
+  .t-rumor .card .q{color:var(--mut);font-weight:700;font-size:1.1rem;margin-left:auto}
+  .mut{color:var(--mut);font-size:.78rem;margin-top:20px;border-top:1px solid var(--border);padding-top:8px}
+</style>
+</head>
+<body>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang"></button>
+<h1 data-i18n="title"></h1>
+<div class="note" data-i18n="note"></div>
+<div id="tiers"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG=localStorage.getItem("valpha_lang")||"zh";
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+
+const I18N={
+  title:{zh:"🛫 IPO 雷达 · 2026-06 快照",en:"🛫 IPO radar · 2026-06 snapshot"},
+  note:{zh:"<b>数据为 2026-06 快照、IPO 计划常变、可能延期或取消。「已申报」= 已递交 S-1（公开或保密）；「传闻/预期」= 未证实、可能根本不上市。非投资建议。</b>",
+        en:"<b>Data is a 2026-06 snapshot. IPO plans change often and may be delayed or cancelled. “Filed” = an S-1 has been submitted (public or confidential); “Rumor / expected” = unconfirmed and may never list at all. Not investment advice.</b>"},
+  foot:{zh:"分三档：已上市 / 已申报 S-1 / 传闻预期。三档视觉刻意分开——「传闻」更灰、虚线、带「?」，不代表确认。描述性快照、非预测、非荐股。",
+        en:"Three tiers: Listed / Filed S-1 / Rumor or expected. Tiers are deliberately styled apart — “rumor” is dimmer, dashed and marked “?”, never shown as confirmed. Descriptive snapshot, not a forecast, not stock advice."},
+  // tier headers
+  tListed:{zh:"已上市",en:"Listed"},
+  tFiled:{zh:"已申报 S-1",en:"Filed S-1"},
+  tRumor:{zh:"传闻 / 预期",en:"Rumor / expected"},
+  // tier status chips
+  gListed:{zh:"已交易",en:"TRADING"},
+  gFiled:{zh:"已递交",en:"SUBMITTED"},
+  gRumor:{zh:"未证实",en:"UNCONFIRMED"},
+  // tier sublines
+  sListed:{zh:"已在交易所挂牌、可买卖。本站观察池已纳入。",en:"Listed on an exchange and tradable. Already in this site's watch pool."},
+  sFiled:{zh:"已正式向 SEC 递交 S-1（公开或保密）。递交 ≠ 一定上市，时间与定价仍可能变。",en:"An S-1 has been formally filed with the SEC (public or confidential). Filing ≠ guaranteed listing; timing and pricing can still change."},
+  sRumor:{zh:"尚未正式申报，仅见于报道或市场预期。可能延期、改道，或根本不上市。",en:"Not yet formally filed — only reported or market-expected. May be delayed, take another route, or never happen."},
+  noadv:{zh:"未证实",en:"unconfirmed"}
+};
+
+// ---- Static snapshot data (2026-06). Each row carries bilingual sector + detail. ----
+const TIERS=[
+  {
+    id:"listed", cls:"t-listed", head:"tListed", tag:"gListed", sub:"sListed",
+    rows:[
+      {co:"SpaceX", tk:"SPCX",
+       sec:{zh:"航天",en:"Aerospace"},
+       det:{zh:"2026-05 申报、6 月上市，已在本站观察池。",
+            en:"Filed 2026-05, listed in June; already in this site's watch pool."}}
+    ]
+  },
+  {
+    id:"filed", cls:"t-filed", head:"tFiled", tag:"gFiled", sub:"sFiled",
+    rows:[
+      {co:"Cerebras", tk:null,
+       sec:{zh:"半导体 / AI",en:"Semiconductors / AI"},
+       det:{zh:"2026-04-17 公开递交 S-1。",
+            en:"Public S-1 filed 2026-04-17."}},
+      {co:"Discord", tk:null,
+       sec:{zh:"社交 / 科技",en:"Social / Tech"},
+       det:{zh:"2026-01 保密递交，目标 Q2，约 150 亿美元。",
+            en:"Confidential filing 2026-01; targeting Q2, ~$15B."}},
+      {co:"Kraken", tk:null,
+       sec:{zh:"加密货币交易所",en:"Crypto exchange"},
+       det:{zh:"2025-11 保密递交。",
+            en:"Confidential filing 2025-11."}},
+      {co:"Anthropic", tk:null,
+       sec:{zh:"AI",en:"AI"},
+       det:{zh:"2026-06-01 保密递交 S-1。本 AI 的母公司，此处仅作中立陈述。",
+            en:"Confidential S-1 filed 2026-06-01. This AI's parent company; stated here neutrally."}},
+      {co:"Strava", tk:null,
+       sec:{zh:"健身 / 科技",en:"Fitness / Tech"},
+       det:{zh:"约 22 亿美元，据报与高盛筹备。",
+            en:"~$2.2B; reportedly preparing with Goldman Sachs."}}
+    ]
+  },
+  {
+    id:"rumor", cls:"t-rumor", head:"tRumor", tag:"gRumor", sub:"sRumor",
+    rows:[
+      {co:"OpenAI", tk:null,
+       sec:{zh:"AI",en:"AI"},
+       det:{zh:"与投行保密筹备，估值近 1 万亿美元，尚未正式申报。",
+            en:"Confidentially preparing with banks; ~$1T valuation talk; not yet formally filed."}},
+      {co:"Databricks", tk:null,
+       sec:{zh:"数据 / AI",en:"Data / AI"},
+       det:{zh:"预计 2026 年初，未正式申报。",
+            en:"Expected early 2026; not yet formally filed."}},
+      {co:"Canva", tk:null,
+       sec:{zh:"设计软件",en:"Design software"},
+       det:{zh:"二级市场估值约 420 亿美元，未正式申报。",
+            en:"~$42B secondary-market valuation; not yet formally filed."}}
+    ]
+  }
+];
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+
+function L(field){return (field && field[LANG]) || (field && field.zh) || "";}
+
+function render(){
+  let h="";
+  TIERS.forEach(T=>{
+    h+=`<section class="${T.cls}">`;
+    h+=`<h2 class="tier">${esc(t(T.head))}<span class="tag">${esc(t(T.tag))}</span></h2>`;
+    h+=`<p class="sub">${esc(t(T.sub))}</p>`;
+    h+=`<div class="grid">`;
+    T.rows.forEach(r=>{
+      const isRumor=T.id==="rumor";
+      h+=`<div class="card">`;
+      h+=`<div class="co">${esc(r.co)}`;
+      if(r.tk) h+=`<span class="tk">${esc(r.tk)}</span>`;
+      if(isRumor) h+=`<span class="q" title="${esc(t("noadv"))}">?</span>`;
+      h+=`</div>`;
+      h+=`<div class="sec">${esc(L(r.sec))}</div>`;
+      h+=`<div class="det">${esc(L(r.det))}</div>`;
+      h+=`</div>`;
+    });
+    h+=`</div></section>`;
+  });
+  $("tiers").innerHTML=h;
+}
+
+function redraw(){applyStatic();render();}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);redraw();};
+
+redraw();
+</script>
+</body>
+</html>
