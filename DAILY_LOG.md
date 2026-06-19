@@ -7,6 +7,29 @@
 
 ---
 
+## 2026-06-20
+
+### ① 今天做了什么（全部已推）
+- **③ 自生长 Phase 0+1+1b**：`candidate_space.py`(37 预注册候选·有界性测) + `quality_gate.py`(双栏BY-FDR+三态裁决·反自欺7测·纯噪声→存活≈0) + `autodiscovery.py`(候选→真统计路由，**WIP 需提速**见③)。决策已拍 🔴-A=双栏并列 / 🔴-B=DSR纳入(反过拟合诊断不破红线)。计划存 `PLAN_V15_AUTODISCOVERY.md`。
+- **并行子代理**：🔳 heatmap.html(finviz式纯CSS热力图，Sonnet) + SEC Form4 内部人数据 spike(结论GO·draft fetch_insider.py未验·Opus)。
+- **交互/数据灭火**(用户连发现真问题)：导航溢出(flex-wrap)·9工具页加↩返回·lab表格移动端溢出(.panel overflow-x)·**数据陈旧→CI 被禁**(改名后)→借 git 凭证 enable+dispatch **真重启 CI**(bot 已自动续刷)。
+- **新工具 `tools/interaction_audit.py`**(治本)：真浏览器点全部11页每个按钮+查溢出/死按钮/失败请求/新鲜度，接进 site-audit.yml；当场抓出 lab 移动端溢出。
+- **冗余+逻辑审**：清 3 个真未用 import；修 autodiscovery `_seed_for` 用内置 hash()(跨进程随机→种子不可复现)→hashlib。结论:代码本就精简。
+
+### ② 对照计划（核实）
+| 项 | 状态 |
+|---|---|
+| ③ Phase 0/1 | ✅ 建+测完成 |
+| ③ Phase 1b | 🟡 **建好但 WIP**(run_all >280s 太慢) |
+| CI 自动刷新 | ✅ 修复(曾被改名禁用→已 enable) |
+| 交互问题(用户提) | ✅ 全修 |
+
+### ③ 待办 / 未决
+- [ ] **autodiscovery 提速**(下次首要)：run_all(write=False) >280s。瓶颈=日历 perm_test N=1000×10×2 + rebound `rolling().apply` 逐窗。改法:rebound 向量化前向收益、calendar 降N/复用、缓存零分布。提速后才能验证(含 SP500 日历 p 对 placebo 内建校验)+ **独立审(判断密集)** + 接 run_all。**未接 run_all、未上线**。
+- [ ] ③ 续：Phase 2 账本 → 3 前端 → 4 衰减 → 5 DSR。
+- [ ] **教训**(已存记忆 [[review-needs-browser-interaction]]):审查必含浏览器交互+看截图+数据查实测;自动扫描(AST/pyflakes)必 grep 复核(今天 date/timedelta/stats 假阳性)。
+- [ ] 内部人 spike draft fetch_insider.py 待主脑带 UA 实地复核(backlog)。
+
 ## 2026-06-19
 
 ### ① 今天做了什么（全部已推 origin/main，10 提交）
