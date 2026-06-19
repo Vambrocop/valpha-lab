@@ -35,6 +35,7 @@
   <button data-k="稳健" data-i18n="d_sta"></button>
   <button data-k="性价比" data-i18n="d_val"></button>
   <button data-k="反弹空间" data-i18n="d_reb"></button>
+  <button data-k="_avg" data-i18n="d_avg"></button>
   <span id="src" style="margin-left:10px"></span>
 </div>
 <div class="grid" id="grid"></div>
@@ -48,7 +49,8 @@ const I18N={
   title:{zh:"📡 Valpha 雷达图 · 原型",en:"📡 Valpha Radar · prototype"},
   note:{zh:"<b>描述性体检，非预测、非买卖信号。</b>6 维各 0–100：<b>动量</b>(近1年涨)、<b>趋势</b>(均线排列)、<b>稳健</b>(低波动=高分)、<b>性价比</b>(风险调整收益)、<b>独立性</b>(与纳指低相关=高分)、<b>反弹空间</b>(越靠一年低位越高)。一眼看「性格」，而非「该不该买」。",
         en:"<b>A descriptive checkup — not a forecast or a buy signal.</b> 6 axes, each 0–100: <b>Mom</b>(1Y gain), <b>Trend</b>(MA stack), <b>Stab</b>(low vol=high), <b>Value</b>(risk-adj return), <b>Indep</b>(low corr to Nasdaq=high), <b>Rebound</b>(near 1Y low=high). See the 'character', not 'should I buy'."},
-  sortby:{zh:"排序：",en:"Sort: "},d_def:{zh:"默认",en:"Default"},d_mom:{zh:"动量",en:"Momentum"},d_sta:{zh:"稳健",en:"Stability"},d_val:{zh:"性价比",en:"Value"},d_reb:{zh:"反弹空间",en:"Rebound"},
+  sortby:{zh:"排序：",en:"Sort: "},d_def:{zh:"默认",en:"Default"},d_mom:{zh:"动量",en:"Momentum"},d_sta:{zh:"稳健",en:"Stability"},d_val:{zh:"性价比",en:"Value"},d_reb:{zh:"反弹空间",en:"Rebound"},d_avg:{zh:"综合",en:"Overall"},
+  c_avg:{zh:"综合",en:"Overall"},
   foot:{zh:"🔥追涨风险=动量≥80且稳健≤30；🏰稳健=稳健≥80。数据：实时 stocks.json，过去≠未来。",
         en:"🔥chase-risk = Mom≥80 & Stab≤30; 🏰steady = Stab≥80. Data: live stocks.json — past ≠ future."},
   live:{zh:"实时 ✓",en:"Live ✓"},err:{zh:"拉不到实时数据——确认 Pages 已部署。",en:"Can't load live data — check Pages deployment."}
@@ -57,6 +59,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let LANG=localStorage.getItem("valpha_lang")||"zh";
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+const avg=r=>Math.round(DIMS.reduce((s,d)=>s+(r[d]||0),0)/DIMS.length);
 let STOCKS={},sortKey="";
 
 function radarSVG(radar,size){
@@ -71,12 +74,12 @@ function radarSVG(radar,size){
 }
 function render(){
   let items=Object.entries(STOCKS);
-  if(sortKey)items.sort((a,b)=>(b[1].radar[sortKey]||0)-(a[1].radar[sortKey]||0));
+  if(sortKey)items.sort((a,b)=>sortKey==="_avg"?avg(b[1].radar||{})-avg(a[1].radar||{}):(b[1].radar[sortKey]||0)-(a[1].radar[sortKey]||0));
   $("grid").innerHTML=items.map(([s,d])=>{
     const r=d.radar||{},hot=(r["动量"]||0)>=80&&(r["稳健"]||50)<=30,calm=(r["稳健"]||0)>=80,
       nm=LANG==="en"?s:`${esc(d.label)} <span class="sub">${s}</span>`,
       vl=LANG==="en"?"vol":"波动",yl=LANG==="en"?"1Y":"1年";
-    return `<div class="card"><h3>${nm}</h3>${radarSVG(r,170)}
+    return `<div class="card"><h3>${nm}</h3><div style="font-size:.84rem;font-weight:700;color:#a371f7;margin:-2px 0 3px">${t("c_avg")} ${avg(r)}</div>${radarSVG(r,170)}
       <div class="sub">${yl} ${d.chg1y>=0?'+':''}${(d.chg1y??0).toFixed(0)}% · ${vl} ${(d.vol??0).toFixed(0)}%</div>
       <div>${hot?'<span class="tag hot">🔥</span>':''}${calm?'<span class="tag calm">🏰</span>':''}</div></div>`;
   }).join("");

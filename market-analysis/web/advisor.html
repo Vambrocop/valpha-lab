@@ -143,7 +143,7 @@ function recommend(){
 }
 function redraw(){applyStatic();renderGrid();}
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);redraw();render(allocate());};
-$("hz").querySelectorAll("button").forEach(b=>b.onclick=()=>{horizon=b.dataset.h;$("hz").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));});
+$("hz").querySelectorAll("button").forEach(b=>b.onclick=()=>{horizon=b.dataset.h;$("hz").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));if(sel.size)render(allocate());});
 $("go").onclick=()=>render(allocate());
 $("rec").onclick=recommend;
 $("clr").onclick=()=>{sel.clear();renderGrid();$("out").innerHTML="";};

@@ -526,8 +526,9 @@ const RANGE_SEL = {
     {count:10, label:"10年", step:"year", stepmode:"backward"},
     {step:"all", label:"全部"},
   ],
-  bgcolor: "rgba(255,255,255,0.06)", activecolor: "#3498db",
-  font: { color: "#aab", size: 10 }, y: 1.18,
+  bgcolor: "rgba(255,255,255,0.10)", activecolor: "#3498db",
+  bordercolor: "rgba(255,255,255,0.18)", borderwidth: 1,
+  font: { color: "#e6edf3", size: 11 }, y: 1.18,
 };
 
 async function renderCorrChart() {
