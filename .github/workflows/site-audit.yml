@@ -7,12 +7,14 @@ on:
       - "market-analysis/web/**"
       - "docs/**"
       - "tools/site_audit.py"
+      - "tools/interaction_audit.py"
       - ".github/workflows/site-audit.yml"
   pull_request:
     paths:
       - "market-analysis/web/**"
       - "docs/**"
       - "tools/site_audit.py"
+      - "tools/interaction_audit.py"
       - ".github/workflows/site-audit.yml"
   workflow_dispatch: {}
 
@@ -38,6 +40,11 @@ jobs:
         run: |
           python tools/site_audit.py --ci
           python tools/site_audit.py --mobile --ci
+
+      - name: Run interaction audit (点每个按钮抓死按钮 + 查导航/表格溢出)
+        run: |
+          python tools/interaction_audit.py --ci
+          python tools/interaction_audit.py --mobile --ci
 
       - name: Upload audit screenshots
         if: always()

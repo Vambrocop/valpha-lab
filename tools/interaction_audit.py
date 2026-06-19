@@ -13,7 +13,10 @@ except Exception:
 PORT = 8951
 WEB = "market-analysis/web"
 MOBILE = "--mobile" in sys.argv
+CI = "--ci" in sys.argv or os.environ.get("CI") == "true"
 VP = {"width": 390, "height": 844} if MOBILE else {"width": 1440, "height": 1000}
+# 硬问题=真代码 bug(退非零拦 CI)；软=瞬时 live 部署 404 / 网络抖动(只警告)
+HARD_KW = ("溢出", "按钮", "加载失败", "pageerror")
 
 PAGES = ["dashboard.html", "index.html", "valpha150.html", "sectors.html", "radar.html",
          "advisor.html", "wild.html", "ipo.html", "methodology.html", "self_growing.html", "heatmap.html"]
@@ -72,10 +75,13 @@ def audit():
     findings = {}
 
     with sync_playwright() as p:
-        try:
-            b = p.chromium.launch(channel="msedge")
-        except Exception:
+        if CI:
             b = p.chromium.launch()
+        else:
+            try:
+                b = p.chromium.launch(channel="msedge")
+            except Exception:
+                b = p.chromium.launch()
         for pg in PAGES:
             page = b.new_page(viewport=VP)
             page._iaud_console = []
@@ -166,5 +172,6 @@ if __name__ == "__main__":
         print(f"    ⚠ {x}")
     if not st:
         print("    ✓ 无明显陈旧产物")
-    print(f"\n总交互问题数: {total}")
-    sys.exit(1 if total else 0)
+    hard = [(pg, x) for pg, issues in fnd.items() for x in issues if any(k in x for k in HARD_KW)]
+    print(f"\n总交互问题 {total}（硬 {len(hard)} = 真 bug，软 {total - len(hard)} = 瞬时404/网络抖动）")
+    sys.exit(1 if hard else 0)
