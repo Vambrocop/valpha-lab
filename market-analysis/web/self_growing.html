@@ -23,6 +23,8 @@
   .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 13px;border-left:3px solid var(--grn)}
   .card .lab{font-weight:700;font-size:.92rem}
   .card .meta{font-size:.74rem;color:var(--mut);margin-top:3px}
+  .card.decayed{border-left-color:var(--amber)}
+  .dbadge{font-size:.66rem;background:rgba(227,160,8,.16);color:var(--amber);border:1px solid var(--amber);border-radius:5px;padding:1px 5px;margin-left:5px}
   .grave{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
   .gchip{font-size:.76rem;color:var(--mut);background:#0d1117;border:1px dashed var(--border);border-radius:6px;padding:3px 8px;opacity:.8}
   .fam{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
@@ -59,12 +61,13 @@
 
 <script>
 const LIVE="https://vambrocop.github.io/valpha-lab/fdr_crossfamily.json";
+const PLACEBO="https://vambrocop.github.io/valpha-lab/placebo_tests.json";
 const ALPHA=0.05;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let LANG=localStorage.getItem("valpha_lang")||"zh";
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
-let D=null;
+let D=null,PLAC=null;
 
 const I18N={
   title:{zh:"🌱 自生长 · 诚实知识库",en:"🌱 Self-growing · honest knowledge base"},
@@ -76,7 +79,9 @@ const I18N={
   hLuck:{zh:"≈ 纯靠运气(p<.05)",en:"≈ by luck alone (p<.05)"},
   hSurv:{zh:"跨族校正后站得住",en:"survive correction"},
   hReg:{zh:"📋 登记簿 · 经得起的真规律",en:"📋 Registry · patterns that held up"},
-  sReg:{zh:"跨族 Benjamini-Yekutieli（任意相关稳健）q<0.10 存活。",en:"Survived cross-family Benjamini-Yekutieli (correlation-robust) at q<0.10."},
+  sReg:{zh:"跨族 Benjamini-Yekutieli（任意相关稳健）q<0.10 存活。标 ⚠️ 的=已衰减：全样本曾真、现代段(2000后)已失效——真规律也会死，不藏。",en:"Survived cross-family Benjamini-Yekutieli (correlation-robust) at q<0.10. ⚠️ = decayed: real on the full sample but faded post-2000 — real patterns die too, and we don't hide it."},
+  decayed:{zh:"⚠️ 现代段已失效",en:"⚠️ faded post-2000"},
+  decaynote:{zh:"全样本曾显著、2000 后测不到——疑被套利",en:"significant full-sample but not post-2000 — likely arbitraged"},
   hFam:{zh:"🔬 按检验族",en:"🔬 By test family"},
   hGrave:{zh:"🪦 坟场 · 试过但没经得起",en:"🪦 Graveyard · tested but didn't hold up"},
   sGrave:{zh:"这些当初看着「显著」，但把试过的全算进去后没站住——大概率是噪声。失败也公开。",
@@ -102,15 +107,17 @@ function render(){
   $("verdict").innerHTML=D.verdict?esc(D.verdict):"";
   const claims=D.claims||[];
   const reg=claims.filter(c=>c.survive_by_10), grave=claims.filter(c=>!c.survive_by_10);
-  $("registry").innerHTML=reg.map(c=>`<div class="card"><div class="lab">${esc(c.label)}</div>
-    <div class="meta">${esc(c.family)} · p=${c.p==null?"—":(+c.p).toPrecision(2)}${c.survive_bonferroni_05?" · 连最严的 Bonferroni 都过":""}</div></div>`).join("")||`<div class="mut">—</div>`;
+  const decay={}; if(PLAC&&PLAC.tests)PLAC.tests.forEach(tt=>{if(tt.recent_significant===false)decay[tt.panel]=true;});
+  $("registry").innerHTML=reg.map(c=>{const dead=decay[c.label];
+    return `<div class="card${dead?' decayed':''}"><div class="lab">${esc(c.label)}${dead?`<span class="dbadge">${t("decayed")}</span>`:""}</div>
+    <div class="meta">${esc(c.family)} · p=${c.p==null?"—":(+c.p).toPrecision(2)}${dead?` · ${t("decaynote")}`:c.survive_bonferroni_05?" · 连最严的 Bonferroni 都过":""}</div></div>`;}).join("")||`<div class="mut">—</div>`;
   $("families").innerHTML=(D.by_family||[]).map(f=>`<span class="fbar">${esc(f.family)}: <b>${f.n_survive_by_10}</b>/${f.n}</span>`).join("");
   $("graveyard").innerHTML=grave.map(c=>`<span class="gchip" title="${esc(c.family)} p=${c.p==null?"—":(+c.p).toPrecision(2)}">${esc(c.label)}</span>`).join("")||`<div class="mut">—</div>`;
   $("src").textContent=D.generated?`${t("asof")} ${esc(D.generated.slice(0,10))}`:"";
 }
 
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);render();};
-(async()=>{applyStatic();try{const r=await fetch(LIVE,{cache:"no-store"});if(r.ok)D=await r.json();}catch(e){}render();})();
+(async()=>{applyStatic();const g=u=>fetch(u,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);[D,PLAC]=await Promise.all([g(LIVE),g(PLACEBO)]);render();})();
 </script>
 </body>
 </html>
