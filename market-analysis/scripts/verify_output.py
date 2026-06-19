@@ -288,6 +288,26 @@ except Exception as e:
     errors.append(f"market_regime 形状检查失败: {e}")
     print(f"  ✗ market_regime 形状检查失败: {e}")
 
+# 3m. 因子现代段透镜形状（#5：segment_lens 计数非负 int、每因子 segment.status 合法。
+#     嵌在 signals.json.factor_audit，存在才查、缺失不致命）
+try:
+    with open(WEB_DIR / "signals.json", encoding="utf-8") as fh:
+        _sig2 = json.load(fh)
+    _fa = _sig2.get("factor_audit") or {}
+    _sl = _fa.get("segment_lens")
+    if _sl:
+        VALID_SEG = {"现代仍有效", "现代已淡", "现代检验力不足", "两段均无显著边际"}
+        counts_ok = all(isinstance(_sl.get(k), int) and _sl[k] >= 0
+                        for k in ("n_alive", "n_faded", "n_underpowered"))
+        statuses = [(r.get("segment") or {}).get("status")
+                    for r in _fa.get("factors", []) if r.get("segment")]
+        status_ok = all(s in VALID_SEG for s in statuses)
+        check(counts_ok and status_ok and isinstance(_sl.get("window_years"), int),
+              f"factor_audit 现代段透镜形状正常（仍有效{_sl.get('n_alive')}/已淡{_sl.get('n_faded')}/不足{_sl.get('n_underpowered')}）")
+except Exception as e:
+    errors.append(f"factor_audit segment 形状检查失败: {e}")
+    print(f"  ✗ factor_audit segment 形状检查失败: {e}")
+
 # 4. 账本完整性（append-only 数据的硬约束）
 try:
     import csv

@@ -610,10 +610,21 @@ function renderFactorAudit() {
   const VC = { INFORMATIVE: ["#2ecc71", "稳健"], FRAGILE: ["#f39c12", "regime依赖"],
                MISLEADING: ["#e74c3c", "反向误导"], NOISE: ["#8b949e", "噪声"] };
   const esc2 = s => esc(s);
+  const SEGC = { "现代仍有效": ["#2ecc71", "仍有效"], "现代已淡": ["#f39c12", "已淡·疑套利"],
+                 "现代检验力不足": ["#8b949e", "样本不足"], "两段均无显著边际": ["#6e7681", "本无边际"] };
   const rows = (fa.factors || []).map(f => {
     const [c, txt] = VC[f.verdict] || ["#8b949e", f.verdict];
     const hd = f.holdout_diff_pp == null ? "—" : (f.holdout_diff_pp > 0 ? "+" : "") + f.holdout_diff_pp;
     const sgn = f.n_folds_signed ? `${Math.round((f.sign_agree_frac||0)*f.n_folds_signed)}/${f.n_folds_signed}` : "—";
+    const sg = f.segment;
+    let segHtml = `<span style="color:var(--muted);">—</span>`;
+    if (sg) {
+      const [sc, sl] = SEGC[sg.status] || ["#8b949e", sg.status];
+      const rd = sg.recent_diff_pp == null ? "" :
+        ` <span style="color:var(--muted);font-size:.72rem">${sg.recent_diff_pp>0?"+":""}${Number(sg.recent_diff_pp)}pp</span>`;
+      const tip = `全段 ${sg.full_diff_pp>0?"+":""}${Number(sg.full_diff_pp)}pp(p=${Number(sg.full_p)}) → 最近${sg.window_years}年触发${sg.recent_n_fires}次`;
+      segHtml = `<span style="color:${sc};font-weight:600;" title="${esc2(tip)}">${sl}</span>${rd}`;
+    }
     return `<tr style="border-top:1px solid var(--border-faint);">
       <td style="padding:.25rem .5rem;">${esc2(f.name)}</td>
       <td style="padding:.25rem .5rem;text-align:center;color:var(--muted);">${f.assumed_dir>0?"看涨":"看跌"}</td>
@@ -622,6 +633,7 @@ function renderFactorAudit() {
       <td style="padding:.25rem .5rem;text-align:center;color:var(--muted);" title="逐折符号一致折数">${sgn}</td>
       <td style="padding:.25rem .5rem;text-align:right;">${hd}pp</td>
       <td style="padding:.25rem .5rem;text-align:center;"><span style="color:${c};font-weight:600;">${txt}</span></td>
+      <td style="padding:.25rem .5rem;text-align:center;">${segHtml}</td>
     </tr>`;
   }).join("");
   const s = fa.summary || {};
@@ -635,6 +647,13 @@ function renderFactorAudit() {
       ${df.note ? `<br><span style="color:var(--muted);font-size:0.76rem">${esc2(df.note)}</span>` : ""}
       ${df.caveat ? `<br><span style="color:var(--muted);font-size:0.72rem">⚠ ${esc2(df.caveat)}</span>` : ""}
     </div>` : "";
+  const sl = fa.segment_lens;   // 时间衰减透镜（口径异于 OOS：in-sample 描述原始边际是否随时间消失）
+  const segNote = sl ? `<div class="insight" style="margin-top:.7rem;border-left:3px solid #f39c12;">
+      <strong>🕰️ 现代段透镜（最近 ${sl.window_years} 年 vs 全段 · 描述性）：</strong>原始边际近年仍在 ${sl.n_alive} 个、
+      <b style="color:#f39c12">已淡(疑被套利) ${sl.n_faded} 个</b>、现代样本不足 ${sl.n_underpowered} 个。
+      <br><span style="color:var(--muted);font-size:0.76rem">${esc2(sl.method||"")}</span>
+      <br><span style="color:var(--muted);font-size:0.74rem">⚠ 「现代仍有效」=<b>原始边际</b>近年还在，<b>不等于可交易</b>——须对照同行「裁决」列：如 BTC 动量段位仍有效、但 OOS 裁决=FRAGILE(2017-21 加密牛 regime，不可外推)。${esc2(sl.note||"")}</span>
+    </div>` : "";
   el.innerHTML = `
     <div style="color:var(--muted);font-size:0.78rem;line-height:1.6;margin-bottom:.7rem;">
       方法：测试折拼接为样本外序列算「触发胜率−基率」（块自助 CI）；purged+embargo 扩窗用于跨折<b>符号稳定性</b>检验；
@@ -647,6 +666,7 @@ function renderFactorAudit() {
         <th style="padding:.25rem .5rem;text-align:right;">开发集差</th><th style="padding:.25rem .5rem;text-align:right;">块自助p</th>
         <th style="padding:.25rem .5rem;">符号</th>
         <th style="padding:.25rem .5rem;text-align:right;">holdout</th><th style="padding:.25rem .5rem;">裁决</th>
+        <th style="padding:.25rem .5rem;" title="描述性：原始边际在最近${fa.segment_lens?.window_years||8}年还在不在(口径异于OOS裁决)">现代段(${fa.segment_lens?.window_years||8}年)</th>
       </tr></thead><tbody>${rows}</tbody>
     </table>
     <div class="insight" style="margin-top:.85rem;">
@@ -660,7 +680,7 @@ function renderFactorAudit() {
       <strong>换靶子探针：</strong>方向 AUC 跨 regime 摆动（2012-2024 拼接 <b>${dirAuc ?? "?"}</b>，单一 2024-2026 ${probe.direction_auc_holdout ?? "?"}）——
       这种不稳定本身就是非平稳性；波动率 AUC <b style="color:#2ecc71">${volAuc ?? "?"}</b> 更高（单点 holdout，仍需多 regime 复核）。
       <b>数据倾向：把 ML/深度学习力气投向"预测波动率/市场状态"，而非"预测涨跌方向"。</b>
-    </div>${deflHtml}`;
+    </div>${deflHtml}${segNote}`;
 }
 
 // ── 波动率状态预测原型（P2-6，研究面板）──

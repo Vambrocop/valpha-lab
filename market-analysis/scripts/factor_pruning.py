@@ -34,6 +34,7 @@ RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 
 HORIZON = 20
+RECENT_YEARS = 8       # 现代段透镜窗口：最近 N 年（用户 2026-06-19 定 A·最近8年）
 EMBARGO = 20            # 交易日，=前向窗口，切掉跨界泄漏的训练样本
 HOLDOUT_START = 2024    # 2024+ 从未进过任何折
 FDR_Q = 0.10           # 多重检验校正阈值（与 p_boot 显著阈一致，单一来源避免漂移）
@@ -78,9 +79,48 @@ def _purged_train(df, train_end, test_start_pos, sorted_dates):
     return train[train["date"] < cutoff_date]
 
 
+def _segment_lens(df, col, assumed, cutoff):
+    """描述性「时间衰减透镜」——把 placebo 的「全样本 vs 现代段」口径推广到二值因子：
+    对因子的 raw edge「触发胜率 − 基率」在 全观测段 vs 最近段(cutoff 后) 各算一次(块自助)。
+    **与上方 OOS 裁决口径不同**：那是从未训练过的样本外严格裁决；这里只描述「原始边际随
+    时间还在不在」(in-sample、方向门控、检验力不足则不下结论)——同 placebo 的诚实纪律。
+
+    三态：现代仍有效 / 现代已淡(全段有边际、现代测不到→很可能被套利) / 现代检验力不足。
+    """
+    obs = df[df[col].notna()]
+    sel = (obs[col] == 1).values
+    if len(obs) < 50 or int(sel.sum()) < 30:
+        return None
+    full = block_bootstrap_diff(sel, obs["fwd_up_20d"].values, block=HORIZON)
+    full_sig = bool(full["p_boot"] < 0.10 and np.sign(full["diff"]) == assumed)
+
+    rec = obs[obs["date"] >= cutoff]
+    rsel = (rec[col] == 1).values
+    nfire, nnon = int(rsel.sum()), int((~rsel).sum())
+    seg = {"window_years": RECENT_YEARS, "recent_start": str(pd.Timestamp(cutoff).date()),
+           "full_diff_pp": full["diff"], "full_p": full["p_boot"],
+           "recent_n_obs": int(len(rec)), "recent_n_fires": nfire,
+           "recent_diff_pp": None, "recent_p": None}
+    # 检验力门(抄 placebo recent_min_group_n：现代段够样本才下结论，否则只标"样本不足")
+    if len(rec) < 200 or nfire < 30 or nnon < 30:
+        seg["status"] = "现代检验力不足"
+        return seg
+    rb = block_bootstrap_diff(rsel, rec["fwd_up_20d"].values, block=HORIZON)
+    seg["recent_diff_pp"], seg["recent_p"] = rb["diff"], rb["p_boot"]
+    recent_sig = bool(rb["p_boot"] < 0.10 and np.sign(rb["diff"]) == assumed)
+    if recent_sig:
+        seg["status"] = "现代仍有效"
+    elif full_sig:
+        seg["status"] = "现代已淡"          # 全段有边际、现代测不到 → 很可能被套利
+    else:
+        seg["status"] = "两段均无显著边际"   # 本就没有原始边际(多数技术因子)
+    return seg
+
+
 def factor_scorecard(df):
     """每个二值因子在拼接 OOS 测试折上的尸检"""
     sorted_dates = df.sort_values("date")["date"].reset_index(drop=True)
+    cutoff = df["date"].max() - pd.DateOffset(years=RECENT_YEARS)   # 现代段透镜起点
     test_pools, per_fold_sign = [], {c: [] for c, _ in BINARY_FEATURES}
 
     for (_, train_end, test_end) in DEV_FOLDS:
@@ -133,6 +173,7 @@ def factor_scorecard(df):
         # 关键：sign_stable 进裁决——拼接显著但逐折符号翻转 = regime 依赖，不可外推（FRAGILE）。
         diff, p_boot = bb["diff"], bb["p_boot"]
         assumed = ASSUMED_DIR.get(col, +1)
+        seg = _segment_lens(df, col, assumed, cutoff)   # 时间衰减透镜(描述性,口径异于OOS)
         agrees_dev = np.sign(diff) == assumed
         agrees_hold = hold_diff is None or np.sign(hold_diff) == assumed
         sig = p_boot < 0.10
@@ -151,7 +192,7 @@ def factor_scorecard(df):
             "dev_diff_pp": diff, "dev_ci95": bb["ci95"], "dev_p_boot": p_boot,
             "sign_stable": sign_stable, "n_folds_signed": n_signs,
             "sign_agree_frac": round(agree_frac, 2), "holdout_diff_pp": hold_diff,
-            "verdict": verdict,
+            "verdict": verdict, "segment": seg,
         })
     order = {"INFORMATIVE": 0, "FRAGILE": 1, "MISLEADING": 2, "NOISE": 3}
     rows.sort(key=lambda r: (order.get(r["verdict"], 9), -abs(r["dev_diff_pp"])))
@@ -231,6 +272,9 @@ def run():
     n_info = sum(r["verdict"] == "INFORMATIVE" for r in rows)
     n_frag = sum(r["verdict"] == "FRAGILE" for r in rows)
     n_mis  = sum(r["verdict"] == "MISLEADING" for r in rows)
+    seg_alive = sum((r.get("segment") or {}).get("status") == "现代仍有效" for r in rows)
+    seg_faded = sum((r.get("segment") or {}).get("status") == "现代已淡" for r in rows)
+    seg_weak  = sum((r.get("segment") or {}).get("status") == "现代检验力不足" for r in rows)
     print(f"\n=== P2-5 因子尸检（OOS 拼接 n={n_pool}，holdout 2024+ n={n_hold}）===")
     print(f"{'因子':<26}{'假设':>5}{'触发%':>7}{'dev差pp':>9}{'p_boot':>8}{'符号稳':>7}{'holdout':>9}  裁决")
     for r in rows:
@@ -241,6 +285,7 @@ def run():
               f"{r['dev_p_boot']:>8.3f}{ss:>7}{hd:>9}  {r['verdict']}")
     print(f"\n  INFORMATIVE={n_info}  FRAGILE={n_frag}  MISLEADING={n_mis}  NOISE={len(rows)-n_info-n_frag-n_mis}")
     print(f"  Deflation：{m} 因子(方向一致 p<{FDR_Q}={n_raw_sig}) → BY稳健留{n_by_sig}/BH乐观留{n_bh_sig}/最佳因子Bonferroni p={best_bonf}")
+    print(f"  现代段透镜(最近{RECENT_YEARS}年)：仍有效{seg_alive} / 已淡{seg_faded} / 检验力不足{seg_weak}")
     print(f"  主观事件LR（无样本支撑，建议标注/移出）：{', '.join(SUBJECTIVE_EVENT_LRS)}")
     if probe:
         print(f"\n=== 靶子探针（holdout）===")
@@ -261,6 +306,15 @@ def run():
         "target_probe": probe,
         "summary": {"informative": n_info, "fragile": n_frag, "misleading": n_mis,
                     "noise": len(rows) - n_info - n_frag - n_mis},
+        "segment_lens": {
+            "window_years": RECENT_YEARS,
+            "n_alive": seg_alive, "n_faded": seg_faded, "n_underpowered": seg_weak,
+            "method": (f"描述性时间衰减透镜：因子 raw edge「触发胜率−基率」在 全观测段 vs 最近 {RECENT_YEARS} 年 "
+                       "各算块自助；方向门控、现代段检验力不足(<200 样本或触发<30)则不下结论。"
+                       "**口径异于上方 OOS 裁决**——这里是 in-sample 描述『原始边际是否随时间消失』，"
+                       "非样本外严格裁决，同 placebo 的诚实分段。"),
+            "note": "「现代已淡」=全段有边际、现代段测不到 → 很可能被套利；非『会失效』的预测，仅描述历史。",
+        },
         "deflation": {
             "method": "对 N 个因子(方向一致者)做多重检验校正。因子互为补/同源→负相关，BH(PRDS)不适用→以 BY(任意相关,保守)为稳健口径，另报 BH(乐观)与最佳因子 Bonferroni(FWER)。数据挖掘校正，不预测方向。",
             "q_level": FDR_Q, "n_factors": m, "n_raw_dir_sig_p10": n_raw_sig,
