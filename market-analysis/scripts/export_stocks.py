@@ -17,7 +17,8 @@ LABELS = {
     "AAPL": "苹果", "MSFT": "微软", "GOOGL": "谷歌", "AMZN": "亚马逊",
     "NVDA": "英伟达", "META": "Meta", "TSLA": "特斯拉",
     "AVGO": "博通", "TSM": "台积电", "COST": "好市多",
-    "LLY": "礼来", "BRK-B": "伯克希尔", "SNDK": "闪迪",
+    "LLY": "礼来", "BRK-B": "伯克希尔", "SNDK": "闪迪", "MU": "美光",
+    "AMD": "超微", "PLTR": "帕兰提尔", "COIN": "Coinbase", "UBER": "优步",
 }
 MAG7 = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA"]
 
