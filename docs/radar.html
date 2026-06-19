@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Valpha Radar</title>
 <style>
-  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--acc:#a371f7}
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--acc:#a371f7}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:16px;max-width:1040px;margin:0 auto}
   h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
@@ -26,7 +26,7 @@
 </head>
 <body>
 <a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
-<button id="lang"></button>
+<button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
 <div class="note" data-i18n="note"></div>
 <div class="bar"><span data-i18n="sortby"></span>
@@ -57,7 +57,7 @@ const I18N={
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let LANG=localStorage.getItem("valpha_lang")||"zh";
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 const avg=r=>Math.round(DIMS.reduce((s,d)=>s+(r[d]||0),0)/DIMS.length);
 let STOCKS={},sortKey="";
@@ -85,7 +85,7 @@ function render(){
   }).join("");
 }
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
-$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);applyStatic();render();$("src").textContent=Object.keys(STOCKS).length?`${t("live")}（${Object.keys(STOCKS).length}）`:"";};
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};applyStatic();render();$("src").textContent=Object.keys(STOCKS).length?`${t("live")}（${Object.keys(STOCKS).length}）`:"";};
 document.querySelectorAll(".bar button[data-k]").forEach(b=>b.onclick=()=>{sortKey=b.dataset.k;document.querySelectorAll(".bar button[data-k]").forEach(x=>x.classList.toggle("on",x===b));render();});
 async function load(){
   applyStatic();

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Valpha Lab</title>
 <style>
-  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--grn:#3fb950;--red:#f85149;--amb:#d29922;--acc:#a371f7;--blu:#58a6ff}
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--amb:#d29922;--acc:#a371f7;--blu:#58a6ff}
   *{box-sizing:border-box}
   body{margin:0;background:radial-gradient(1200px 500px at 50% -200px,rgba(163,113,247,.10),transparent),var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:18px;max-width:960px;margin:0 auto}
   header{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
@@ -33,7 +33,7 @@
 <header>
   <h1><span class="hex">⬡</span> Valpha Lab</h1>
   <span class="tag" data-i18n="tag"></span>
-  <button id="lang"></button>
+  <button id="lang" aria-label="切换语言 / switch language"></button>
 </header>
 <div class="baseline" data-i18n="baseline"></div>
 
@@ -86,7 +86,7 @@ const I18N={
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let LANG=localStorage.getItem("valpha_lang")||"zh";
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 let SIG=null,REG=null,DIG=null,PAPER=null,V150=null;
 
@@ -97,7 +97,7 @@ function tools(){
 }
 function paint(){
   applyStatic();tools();
-  if(SIG){$("sig").innerHTML=`tier ${SIG.latest_tier} · <span class="mut" style="font-size:1rem">prob</span> ${(SIG.latest_prob??0).toFixed(2)}`;$("signote").textContent=t("signote");}
+  if(SIG){$("sig").innerHTML=`tier ${esc(String(SIG.latest_tier??"—"))} · <span class="mut" style="font-size:1rem">prob</span> ${(SIG.latest_prob??0).toFixed(2)}`;$("signote").textContent=t("signote");}
   if(REG){$("env").textContent=REG.composite||"—";$("envas").textContent=(LANG==="en"?"as of ":"数据日 ")+(REG.asof||"");}
   if(DIG){$("dig").innerHTML=(DIG.tier1_facts||[]).map(f=>`<li>${esc(f)}</li>`).join("")||`<li class="mut">—</li>`;}
   if(PAPER){const ss=Object.values(PAPER.strategies||{}).sort((a,b)=>(b.ret_pct||0)-(a.ret_pct||0));
@@ -116,7 +116,7 @@ function paint(){
     ? `Signal is <b>experimental</b> (no out-of-sample edge)${hotSec?`; heat concentrated in <b>${esc(hotSec)}</b> (chase zone)`:''}. <b>→ Manage risk, don't chase direction, take it slow.</b>`
     : `信号是<b>实验性的</b>（无样本外优势）${hotSec?`；热门挤在<b>${esc(hotSec)}</b>（追涨区）`:''}。<b>→ 控风险、别追方向、慢慢来。</b>`;
 }
-$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);paint();};
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();};
 async function get(f){try{const r=await fetch(B+f,{cache:"no-store"});return r.ok?await r.json():null;}catch(e){return null;}}
 (async()=>{paint();[SIG,REG,DIG,PAPER,V150]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json")]);paint();})();
 </script>

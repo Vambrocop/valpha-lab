@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Valpha150</title>
 <style>
-  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1080px;margin:0 auto}
   h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
@@ -30,7 +30,7 @@
 </head>
 <body>
 <a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
-<button id="lang"></button>
+<button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
 <div class="note" data-i18n="note"></div>
 <div class="chips" id="chips"></div>
@@ -53,7 +53,7 @@ const I18N={
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let LANG=localStorage.getItem("valpha_lang")||"zh";
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 let DATA=[],sortCol="c6",dir=-1,filt="";
 
@@ -90,7 +90,7 @@ function chips(){
   $("chips").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{filt=c.dataset.s;chips();render();});
 }
 function redraw(){applyStatic();chips();render();}
-$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);redraw();
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};redraw();
   $("src").textContent=(DATA.length?`${t("live")} ${DATA.length} · ${t("asof")} ${window._gen||""}`:"");};
 
 async function load(){

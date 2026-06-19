@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>🔥 野蛮专区 · Wild Zone</title>
 <style>
-  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:920px;margin:0 auto}
   h1{font-size:1.35rem;margin:.2em 0;display:inline-block}
@@ -42,7 +42,7 @@
 </head>
 <body>
 <a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
-<button id="lang"></button>
+<button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
 
 <div class="banner">
@@ -85,7 +85,7 @@
 const BASE="https://vambrocop.github.io/valpha-lab/";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let LANG=localStorage.getItem("valpha_lang")||"zh";
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 
 const I18N={
@@ -245,7 +245,7 @@ function renderAll(){
   $("src").textContent=g?`${t("src")} ${esc(g)}`:"";
 }
 
-$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);renderAll();};
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};renderAll();};
 
 async function fetchJSON(name){
   try{const r=await fetch(BASE+name,{cache:"no-store"});if(!r.ok)return null;return await r.json();}
