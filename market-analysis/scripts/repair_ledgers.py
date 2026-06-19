@@ -28,6 +28,19 @@ JOBS = [
 ]
 
 
+def repair_frame(df, hash_fields, keys):
+    """纯逻辑：去重(keep=last) + 排序 + 重封链。与 load_ledger/load_log 同口径。
+
+    把原 repair_all 循环体里的核心数据变换抽成无 I/O 的纯函数，便于单测；
+    行为与抽取前逐字一致。
+    """
+    df = (df.reindex(columns=hash_fields + HASH_COLS)
+            .drop_duplicates(subset=keys, keep="last")
+            .sort_values(keys)
+            .reset_index(drop=True))
+    return seal_hash_chain(df, hash_fields)
+
+
 def repair_all():
     for fname, hash_fields, keys in JOBS:
         path = PROC / fname
@@ -35,11 +48,7 @@ def repair_all():
             continue
         df = pd.read_csv(path)
         before = len(df)
-        df = (df.reindex(columns=hash_fields + HASH_COLS)
-                .drop_duplicates(subset=keys, keep="last")
-                .sort_values(keys)
-                .reset_index(drop=True))
-        df = seal_hash_chain(df, hash_fields)
+        df = repair_frame(df, hash_fields, keys)
         df.to_csv(path, index=False)
         dropped = before - len(df)
         print(f"  {fname}: {before} -> {len(df)} 行" +
