@@ -92,6 +92,28 @@ def _weekly_norm(s, start):
     }
 
 
+def _scale(x, lo, hi):
+    """把 x 从 [lo,hi] 线性映射到 0..100（lo>hi 即反向：原值越大分越低），裁剪到 [0,100]。"""
+    if x is None:
+        return None
+    t = (x - lo) / (hi - lo) * 100
+    return round(max(0.0, min(100.0, t)))
+
+
+def _radar(st):
+    """6 维 0-100 描述性雷达（非预测、非买卖信号；全部来自 _stats 现成指标）。
+    维度：动量/趋势/稳健/性价比/独立性/反弹空间。稳健·独立性·反弹空间为反向（原值越大分越低）。"""
+    r = {
+        "动量":     _scale(st.get("chg_1y"),          -40, 120),   # 近1年涨幅
+        "趋势":     _scale(st.get("dist_ma200"),       -20,  40),  # 距MA200，多头排列强度
+        "稳健":     _scale(st.get("vol20_ann"),         80,  15),  # 年化波动，低=稳健（反向）
+        "性价比":   _scale(st.get("ret_vol_1y"),       -0.5, 2.5), # 风险调整收益（非夏普，同向）
+        "独立性":   _scale(st.get("r2_nasdaq_1y"),      0.8, 0.1),  # 与纳指R²，低=分散价值（反向）
+        "反弹空间": _scale(st.get("range_pctile_52w"), 100,   0),   # 52周区间位置，低=空间大（反向）
+    }
+    return {k: v for k, v in r.items() if v is not None}
+
+
 # ── SPCX（SpaceX，2026-06-12 上市）────────────────────────────
 # 新股历史不足 260 天进不了常规观察池（_stats 直接返回 None），
 # 单独导出一个轻量块供"我的"视图 SPCX 监视卡使用。
@@ -185,6 +207,7 @@ def main():
             "label":  LABELS.get(sym, sym),
             "is_mag7": sym in MAG7,
             "stats":  stats,
+            "radar":  _radar(stats),
             "series": series,
         }
         print(f"  {sym:<6} {LABELS.get(sym, sym):<5} 最新={stats['last']:>10}  "
