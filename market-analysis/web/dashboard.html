@@ -15,12 +15,15 @@
 <header>
   <div>
     <h1>⬡ <span>Valpha Lab</span> — 美股诚实统计</h1>
-    <div class="header-sub"><b>诚实统计</b> · 测风险不测方向 · 拆穿真假规律 · 实盘公开问责　|　📈 观点区是唯一"出格"例外（带战绩，娱乐非建议）</div>
+    <div class="header-sub" data-i18n="hdr-sub"><b>诚实统计</b> · 测风险不测方向 · 拆穿真假规律 · 实盘公开问责　|　📈 观点区是唯一"出格"例外（带战绩，娱乐非建议）</div>
     <div class="header-sub" id="data-freshness" style="margin-top:.25rem;font-size:0.74rem;">📡 数据新鲜度加载中…</div>
     <div id="data-health-drawer" hidden style="margin:.4rem auto .2rem;max-width:720px;padding:.5rem .7rem;background:rgba(127,127,127,0.08);border:1px solid var(--border-faint,rgba(127,127,127,0.25));border-radius:8px;overflow-x:auto;text-align:left;"></div>
   </div>
   <div style="display:flex;align-items:center;gap:.55rem;">
     <div style="color:var(--muted);font-size:0.8rem;" id="updated-time">—</div>
+    <button id="lang-toggle" aria-label="切换语言 / switch language"
+      style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
+      padding:.3rem .7rem;border-radius:6px;font-size:0.76rem;cursor:pointer;">EN</button>
     <button id="refresh-data-btn" title="重新拉取全部数据并刷新页面内容（不丢失当前位置）"
       style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
       padding:.3rem .7rem;border-radius:6px;font-size:0.76rem;cursor:pointer;white-space:nowrap;">🔄 刷新</button>
@@ -54,8 +57,11 @@
 
 <main>
 
+<div id="en-mode-note" style="display:none;max-width:720px;margin:.5rem auto;padding:.4rem .7rem;font-size:.78rem;color:var(--muted);background:rgba(127,127,127,.08);border:1px solid var(--border-faint,rgba(127,127,127,.25));border-radius:8px;text-align:center;">🌐 Navigation & section intros are in English; detailed panel analyses stay in Chinese for now.</div>
+
 <!-- 新手引导（首次访问显示，可关闭） -->
 <div class="onboarding" id="onboarding" style="display:none">
+  <div data-i18n="ob">
   <h3>👋 第一次来?30 秒看懂</h3>
   这是个<b>诚实统计</b>工具——<b>不荐股、不预测涨跌</b>,只帮你分清「真规律 vs 幻觉」、看清「风险有多深」,自己做更好的判断。
   <ul>
@@ -65,18 +71,19 @@
     <li><b>🌡️ 风险体制</b>:当前市场环境(波动/曲线/信用/羊群),描述非预测。</li>
   </ul>
   ⚠ <b>页面上任何数字都不是操作建议</b>,投资有风险、亏损自负。
+  </div>
   <div><button class="ob-dismiss">知道了,开始看</button></div>
 </div>
 
 <!-- ════════ 观点/预测：用户授权的"出格"区（直说方向 + 看好看淡） ════════ -->
 <section id="view-outlook" style="display:none">
-  <div class="view-intro">📈 <b>观点 / 预测：直说方向 + 看好看淡。</b>这一区<b>有意越出</b>全站"测风险不测方向"——直接给纳指方向和个股观点。⚠ 仅供参考、<b>非投资建议</b>；方向预测的真实准确率见 🎲 试胆区（提示：≈掷硬币）。</div>
+  <div class="view-intro" data-i18n="vi-outlook">📈 <b>观点 / 预测：直说方向 + 看好看淡。</b>这一区<b>有意越出</b>全站"测风险不测方向"——直接给纳指方向和个股观点。⚠ 仅供参考、<b>非投资建议</b>；方向预测的真实准确率见 🎲 试胆区（提示：≈掷硬币）。</div>
   <div class="panel" id="outlook-panel"><div id="outlook">加载中…</div></div>
 </section>
 
 <!-- ════════ 今日：现在该不该动手 ════════ -->
 <section id="view-today">
-  <div class="view-intro">📊 <b>今日：现在该不该动手。</b>信号、每日简报、风险红绿灯、卖出评估——一屏看完当下状态。⚠ 信号为实验性，方向不可靠预测，仅供参考。</div>
+  <div class="view-intro" data-i18n="vi-today">📊 <b>今日：现在该不该动手。</b>信号、每日简报、风险红绿灯、卖出评估——一屏看完当下状态。⚠ 信号为实验性，方向不可靠预测，仅供参考。</div>
   <div class="panel" id="daily-digest-panel" style="display:none">
     <div class="panel-title">📋 今日摘要 <span style="font-weight:400;color:var(--muted);font-size:.7rem;">描述 + 诚实留意点，不预测方向、不荐股</span></div>
     <div id="daily-digest"></div>
@@ -161,7 +168,7 @@
 
 <!-- ════════ 计划：未来的操作窗口 ════════ -->
 <section id="view-plan" style="display:none">
-  <div class="view-intro">🗓 <b>计划：未来的操作窗口。</b>日历概率、最佳/最弱时点、经济事件——提前知道哪几天值得留意。日历效应样本内成立，样本外仅供参考。</div>
+  <div class="view-intro" data-i18n="vi-plan">🗓 <b>计划：未来的操作窗口。</b>日历概率、最佳/最弱时点、经济事件——提前知道哪几天值得留意。日历效应样本内成立，样本外仅供参考。</div>
   <div class="view-stack">
     <!-- 未来40个交易日信号日历 -->
     <div class="chart-wrap" style="padding:1.25rem;">
@@ -238,7 +245,7 @@
 <!-- ════════ 实验：模型问责与模拟盘 ════════ -->
 <!-- ════════ 长期：持有期基率统计（统计学的正确用法）════════ -->
 <section id="view-longterm" style="display:none">
-  <div class="view-intro">⏳ <b>长期视角：持有 N 年的历史结果分布。</b>不预测明天涨跌（已被我们自己的实验证伪），
+  <div class="view-intro" data-i18n="vi-longterm">⏳ <b>长期视角：持有 N 年的历史结果分布。</b>不预测明天涨跌（已被我们自己的实验证伪），
     只回答一个可验证的问题：历史上任意一天买入并持有 6个月/1年/3年/5年/10年，结果分布长什么样。
     持有期越长、上涨概率越高——这是全站最稳健的统计规律。</div>
   <div class="view-stack">
@@ -265,7 +272,7 @@
 </section>
 
 <section id="view-lab" style="display:none">
-  <div class="view-intro">🧪 <b>实验：模型问责。</b>每个模型 vs 它的诚实基线，模拟盘前向竞技，append-only 成绩单无法事后美化——这里只讲"说了什么、对了没有"。</div>
+  <div class="view-intro" data-i18n="vi-lab">🧪 <b>实验：模型问责。</b>每个模型 vs 它的诚实基线，模拟盘前向竞技，append-only 成绩单无法事后美化——这里只讲"说了什么、对了没有"。</div>
 
   <!-- Benchmark 记分卡置顶：全局诚实总览 -->
   <div class="view-stack" style="margin-bottom:1.5rem;">
@@ -321,7 +328,7 @@
 
 <!-- ════════ 登记簿：诚实统计总览（试过什么·结果如何，含空/否结果） ════════ -->
 <section id="view-registry" style="display:none">
-  <div class="view-intro">📋 <b>登记簿：试过什么 · 结果如何。</b>先看顶部🧾自动汇总，下面按用途分五组展开：<b>🔬规律真伪</b>（真规律 vs 幻觉）· <b>🌡️风险与不确定性</b>（描述当前环境）· <b>🩺个股因子</b> · <b>🎯事件因果</b> · <b>🔭探索中 vs 已死</b>（未验证/被套利，别交易）。⚠ 全站测的是"真规律 vs 幻觉""风险何时更深"，<b>不预测方向、不荐股</b>。</div>
+  <div class="view-intro" data-i18n="vi-registry">📋 <b>登记簿：试过什么 · 结果如何。</b>先看顶部🧾自动汇总，下面按用途分五组展开：<b>🔬规律真伪</b>（真规律 vs 幻觉）· <b>🌡️风险与不确定性</b>（描述当前环境）· <b>🩺个股因子</b> · <b>🎯事件因果</b> · <b>🔭探索中 vs 已死</b>（未验证/被套利，别交易）。⚠ 全站测的是"真规律 vs 幻觉""风险何时更深"，<b>不预测方向、不荐股</b>。</div>
   <div class="view-stack" id="registry-panels">
     <!-- 自动汇总表（从各方法 JSON 实时抓 verdict，含空/否） -->
     <div class="chart-wrap" style="padding:1.25rem;">
@@ -336,7 +343,7 @@
 
 <!-- ════════ 研究：图表库 ════════ -->
 <section id="view-research" style="display:none">
-  <div class="view-intro">🔬 <b>研究：分清真规律 vs 幻觉。</b>能用的（波动率/隔夜异象/相关性体制/事件影响）与不可测的（短期方向，因子尸检证明）——都老实摊开，再加传统图表库。</div>
+  <div class="view-intro" data-i18n="vi-research">🔬 <b>研究：分清真规律 vs 幻觉。</b>能用的（波动率/隔夜异象/相关性体制/事件影响）与不可测的（短期方向，因子尸检证明）——都老实摊开，再加传统图表库。</div>
   <div class="panel" id="tipjar-panel" style="display:none">
     <div class="panel-title">🎲 试胆区 <span style="font-weight:400;color:var(--muted);font-size:.7rem;">玩具预测器 · 公开计分 · 娱乐，非建议</span></div>
     <div id="tipjar"></div>
@@ -664,7 +671,7 @@
 <!-- ════════ 我的：个人工具（数据只存浏览器本地） ════════ -->
 <!-- ════════ 量化：方法论（把项目映射到专业量化文献） ════════ -->
 <section id="view-quant" style="display:none">
-  <div class="view-intro">🎓 <b>量化方法论：这是不是"真量化"？</b>是——而且是当代最严谨的一派。这一屏把项目用的每个方法映射到专业量化文献，并坦白我们用它证伪了什么。</div>
+  <div class="view-intro" data-i18n="vi-quant">🎓 <b>量化方法论：这是不是"真量化"？</b>是——而且是当代最严谨的一派。这一屏把项目用的每个方法映射到专业量化文献，并坦白我们用它证伪了什么。</div>
   <div class="view-stack">
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
@@ -676,7 +683,7 @@
 </section>
 
 <section id="view-mine" style="display:none">
-  <div class="view-intro">💼 <b>我的：个人工具。</b>持仓盈亏、澳洲 CGT 税务、SpaceX 追踪——数据只存你浏览器本地，不上传。含站长个人观点（已明确标注，非模型信号）。</div>
+  <div class="view-intro" data-i18n="vi-mine">💼 <b>我的：个人工具。</b>持仓盈亏、澳洲 CGT 税务、SpaceX 追踪——数据只存你浏览器本地，不上传。含站长个人观点（已明确标注，非模型信号）。</div>
   <div class="view-grid">
     <!-- SpaceX IPO 追踪器 -->
     <div class="panel" id="spcx-panel">
@@ -829,5 +836,57 @@
 <script src="app-3.js"></script>
 <script src="app-4.js"></script>
 <script src="app-5.js"></script>
+<script>
+/* 轻量双语外壳（lite shell，2026-06-19）：只译 导航 + 各 view-intro + onboarding + 头部副标题。
+   深度面板叙述暂留中文（EN 模式顶部 #en-mode-note 说明）。与工具页共用 localStorage "valpha_lang"。
+   只动 [data-i18n] 元素与 .view-btn 文案，不碰 app-*.js 渲染的面板内文 → 低风险、可独立回退。 */
+(function(){
+  const EN = {
+    "hdr-sub": `<b>Honest statistics</b> · measure risk, not direction · expose real vs fake patterns · live & publicly accountable　|　📈 the Outlook tab is the only "out-of-bounds" exception (with a scorecard — entertainment, not advice)`,
+    "ob": `<h3>👋 First time here? A 30-second guide</h3>
+  This is an <b>honest-statistics</b> tool — <b>no stock tips, no up/down calls</b>. It just helps you tell <b>real patterns from illusions</b> and see <b>how deep the risk runs</b>, so you decide better yourself.
+  <ul>
+    <li><b>📊 Today's signal</b>: read it as a <b>thermometer</b> — we've verified it has <b>no out-of-sample predictive power</b>, don't treat it as conviction;</li>
+    <li><b>🧾 Registry</b>: which "patterns" are real, which are illusions / already arbitraged (🪦 graveyard) / not yet verified (🔬 exploratory);</li>
+    <li><b>🩺 Stock check-up</b>: one stock's risk profile (volatility / drawdown / full picture after big drops) — not buy/sell advice;</li>
+    <li><b>🌡️ Risk regime</b>: the current market environment (volatility / yield curve / credit / herding) — descriptive, not a forecast.</li>
+  </ul>
+  ⚠ <b>No number on this page is an instruction to act</b>; investing carries risk, losses are your own.`,
+    "vi-outlook": `📈 <b>Outlook / forecast: direction stated, bull or bear.</b> This zone <b>deliberately steps outside</b> the site's "measure risk, not direction" rule — giving an outright Nasdaq direction and per-stock views. ⚠ Reference only, <b>not investment advice</b>; the real hit-rate of these direction calls is in the 🎲 Tip-jar (hint: ≈ a coin flip).`,
+    "vi-today": `📊 <b>Today: should you act now?</b> Signal, daily brief, risk traffic-light, sell-side check — the current state on one screen. ⚠ The signal is experimental; direction is not reliably predictable — reference only.`,
+    "vi-plan": `🗓 <b>Plan: upcoming action windows.</b> Calendar odds, best/weakest timing, economic events — know in advance which days are worth watching. Calendar effects hold in-sample; out-of-sample they are reference only.`,
+    "vi-longterm": `⏳ <b>Long-term view: the historical outcome distribution of holding N years.</b> It doesn't predict tomorrow (our own experiments falsified that) — it answers one verifiable question: across history, buying on any given day and holding 6mo / 1 / 3 / 5 / 10 years, what does the outcome distribution look like? The longer you hold, the higher the probability of being up — the most robust statistical regularity on the whole site.`,
+    "vi-lab": `🧪 <b>Lab: model accountability.</b> Every model vs its honest baseline, a simulated forward contest, an append-only scorecard that can't be prettified after the fact — here we only discuss "what was said, and whether it was right".`,
+    "vi-registry": `📋 <b>Registry: what we tried · how it turned out.</b> Start with the 🧾 auto-summary on top, then five groups by purpose: <b>🔬 real vs fake patterns</b> · <b>🌡️ risk & uncertainty</b> · <b>🩺 single-stock factors</b> · <b>🎯 event causality</b> · <b>🔭 exploratory vs dead</b> (unverified / arbitraged — don't trade). ⚠ The whole site tests "real patterns vs illusions" and "when risk runs deeper" — it does <b>not predict direction or recommend stocks</b>.`,
+    "vi-research": `🔬 <b>Research: telling real patterns from illusions.</b> What's usable (volatility / overnight anomaly / correlation regime / event impact) vs what's unmeasurable (short-term direction, proven by the factor autopsy) — all laid out honestly, plus a traditional chart library.`,
+    "vi-quant": `🎓 <b>Quant methodology: is this "real quant"?</b> Yes — and one of its most rigorous schools. This screen maps every method the project uses onto the professional quant literature, and admits what we used it to falsify.`,
+    "vi-mine": `💼 <b>Mine: personal tools.</b> Holdings P&L, Australian CGT tax, SpaceX tracking — data lives only in your browser, nothing uploaded. Includes the author's personal opinions (clearly labelled, not model signals).`,
+  };
+  const NAV_VIEW = {today:"📊 Today", outlook:"📈 Outlook", plan:"🗓 Plan", longterm:"⏳ Long-term",
+                    research:"🔬 Research", lab:"🧪 Lab", registry:"📋 Registry", quant:"🎓 Quant", mine:"💼 Mine"};
+  const NAV_HREF = {"index.html":"🏠 Home","valpha150.html":"🛰️ Board","sectors.html":"📊 Sectors",
+                    "radar.html":"📡 Radar","advisor.html":"🎲 Allocate","wild.html":"🔥 Wild",
+                    "ipo.html":"🛫 IPO","methodology.html":"🛡️ Method","self_growing.html":"🌱 Self-grow"};
+  let lang="zh"; try{lang=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+  const nodes=[].slice.call(document.querySelectorAll("[data-i18n]"));
+  nodes.forEach(n=>n.dataset._zh=n.innerHTML);
+  const navs=[].slice.call(document.querySelectorAll(".view-nav .view-btn"));
+  navs.forEach(b=>b.dataset._zh=b.textContent);
+  function apply(){
+    nodes.forEach(n=>{const k=n.dataset.i18n; n.innerHTML=(lang==="en"&&EN[k]!=null)?EN[k]:n.dataset._zh;});
+    navs.forEach(b=>{let en=null;
+      if(b.dataset.view) en=NAV_VIEW[b.dataset.view];
+      else{const h=(b.getAttribute("href")||"").split("/").pop(); en=NAV_HREF[h];}
+      b.textContent=(lang==="en"&&en)?en:b.dataset._zh;});
+    const note=document.getElementById("en-mode-note"); if(note) note.style.display=lang==="en"?"":"none";
+    const btn=document.getElementById("lang-toggle"); if(btn) btn.textContent=lang==="en"?"中":"EN";
+    document.documentElement.lang=lang==="en"?"en":"zh-CN";
+  }
+  const btn=document.getElementById("lang-toggle");
+  if(btn) btn.addEventListener("click",()=>{lang=lang==="en"?"zh":"en";
+    try{localStorage.setItem("valpha_lang",lang);}catch(e){} apply();});
+  apply();
+})();
+</script>
 </body>
 </html>
