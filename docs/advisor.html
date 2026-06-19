@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valpha 配置建议器 · 原型</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;
+        --grn:#3fb950;--red:#f85149;--amb:#d29922;--blu:#58a6ff;--acc:#a371f7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:16px;max-width:860px;margin:0 auto}
+  h1{font-size:1.35rem;margin:.2em 0}
+  .warn-banner{background:rgba(163,113,247,.12);border:1px solid var(--acc);border-radius:8px;padding:10px 12px;font-size:.86rem;margin:10px 0;color:#d2c2f5}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin:12px 0}
+  label{color:var(--mut);font-size:.85rem}
+  input[type=number]{background:#0d1117;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:6px 8px;width:120px;font-size:1rem}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .seg button{background:transparent;color:var(--mut);border:0;padding:7px 14px;cursor:pointer;font-size:.9rem}
+  .seg button.on{background:var(--acc);color:#fff}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:8px;margin-top:8px}
+  .stk{border:1px solid var(--border);border-radius:8px;padding:8px;cursor:pointer;background:#0d1117;transition:.12s}
+  .stk.sel{border-color:var(--acc);background:rgba(163,113,247,.1)}
+  .stk b{font-size:.95rem}
+  .stk .sub{font-size:.74rem;color:var(--mut);margin-top:2px}
+  .chip{display:inline-block;font-size:.66rem;padding:1px 5px;border-radius:4px;margin-right:3px}
+  .hot{background:rgba(248,81,73,.18);color:#ff9b94}
+  .calm{background:rgba(63,185,80,.16);color:#7ee787}
+  .btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 18px;font-size:1rem;cursor:pointer;margin-right:8px}
+  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--fg)}
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--border)}
+  th:first-child,td:first-child{text-align:left}
+  .bar{height:7px;background:var(--acc);border-radius:4px;display:inline-block;vertical-align:middle}
+  .bill{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .bill .b{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:10px}
+  .bill .big{font-size:1.25rem;font-weight:700}
+  .alert{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:10px 12px;margin:8px 0;font-size:.86rem;color:#ffb3ad}
+  .mut{color:var(--mut);font-size:.8rem}
+  .src{font-size:.74rem;color:var(--mut)}
+</style>
+</head>
+<body>
+<h1>🎲 Valpha 配置建议器 <span style="color:var(--mut);font-size:.8rem">· 原型</span></h1>
+<div class="warn-banner">
+  <b>出格区 · 教育演示。</b> 这是把诚实风险数据拼成一个配置示例的玩具，<b>不是个人理财建议</b>。
+  股票会亏钱、过去涨不代表未来、配置逻辑是简化的。你是自己钱的唯一负责人。
+</div>
+
+<div class="panel">
+  <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end">
+    <div><label>投入金额（澳元 AUD）</label><br><input id="amt" type="number" value="10000" min="100" step="100"></div>
+    <div><label>AUD→USD 汇率（估股数用）</label><br><input id="fx" type="number" value="0.65" min="0.1" max="1.5" step="0.01"></div>
+    <div><label>持有期（决定风险容忍）</label><br>
+      <span class="seg" id="hz">
+        <button data-h="short">短期</button>
+        <button data-h="mid" class="on">约1年</button>
+        <button data-h="long">长期</button>
+      </span>
+    </div>
+  </div>
+  <div style="margin-top:12px">
+    <label>选股（点选；或让我推荐）</label>
+    <div style="float:right">
+      <button class="btn ghost" id="rec" style="padding:5px 12px;font-size:.85rem">💡 我推荐</button>
+      <button class="btn ghost" id="clr" style="padding:5px 12px;font-size:.85rem">清空</button>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <div style="margin-top:14px;text-align:center">
+    <button class="btn" id="go">算配置 →</button>
+  </div>
+</div>
+
+<div id="out"></div>
+
+<div class="src" id="src"></div>
+<div class="mut" style="margin-top:18px;border-top:1px solid var(--border);padding-top:10px">
+  逻辑（简化、可解释）：<b>逆波动率配权</b>（波动越大配越少）× <b>持有期</b>（短期更避险 λ=2 / 长期更容忍 λ=0.5）。
+  诚实账单的「历史最深回撤」是整段历史（含远古崩盘），组合波动是按权重加权的<b>偏高估</b>（没算分散对冲）。
+  追涨警告 = 动量极高(≥80)且稳健极低(≤30)。 — 全是描述性，不预测未来。
+</div>
+
+<script>
+const SNAP = {"AAPL":{"label":"苹果","last":298.01,"vol":24.8,"beta":0.62,"chg1y":52.93,"maxdd":-81.8,"radar":{"动量":58,"趋势":52,"稳健":85,"性价比":95,"独立性":83,"反弹空间":14}},"MSFT":{"label":"微软","last":379.4,"vol":38.3,"beta":0.71,"chg1y":-20.0,"maxdd":-68.7,"radar":{"动量":12,"趋势":7,"稳健":64,"性价比":0,"独立性":81,"反弹空间":87}},"GOOGL":{"label":"谷歌","last":368.03,"vol":29.0,"beta":0.95,"chg1y":109.76,"maxdd":-65.3,"radar":{"动量":94,"趋势":64,"稳健":78,"性价比":100,"独立性":69,"反弹空间":14}},"AMZN":{"label":"亚马逊","last":244.39,"vol":32.9,"beta":1.1,"chg1y":13.77,"maxdd":-93.3,"radar":{"动量":34,"趋势":42,"稳健":72,"性价比":32,"独立性":59,"反弹空间":40}},"NVDA":{"label":"英伟达","last":210.69,"vol":45.3,"beta":1.47,"chg1y":46.39,"maxdd":-89.7,"radar":{"动量":54,"趋势":52,"稳健":53,"性价比":61,"独立性":39,"反弹空间":27}},"META":{"label":"Meta","last":577.22,"vol":45.0,"beta":1.11,"chg1y":-16.94,"maxdd":-76.7,"radar":{"动量":14,"趋势":14,"稳健":54,"性价比":1,"独立性":74,"反弹空间":80}},"TSLA":{"label":"特斯拉","last":400.49,"vol":45.8,"beta":1.54,"chg1y":26.6,"maxdd":-73.6,"radar":{"动量":42,"趋势":27,"稳健":53,"性价比":37,"独立性":63,"反弹空间":46}},"AVGO":{"label":"博通","last":411.35,"vol":72.7,"beta":1.7,"chg1y":66.29,"maxdd":-48.3,"radar":{"动量":66,"趋势":57,"稳健":11,"性价比":65,"独立性":56,"反弹空间":30}},"TSM":{"label":"台积电","last":462.12,"vol":51.3,"beta":1.54,"chg1y":118.43,"maxdd":-84.6,"radar":{"动量":99,"趋势":98,"稳健":44,"性价比":100,"独立性":41,"反弹空间":0}},"COST":{"label":"好市多","last":951.45,"vol":22.8,"beta":-0.09,"chg1y":-2.14,"maxdd":-53.4,"radar":{"动量":24,"趋势":32,"稳健":88,"性价比":13,"独立性":100,"反弹空间":58}},"LLY":{"label":"礼来","last":1098.57,"vol":31.4,"beta":0.19,"chg1y":39.82,"maxdd":-68.3,"radar":{"动量":50,"趋势":57,"稳健":75,"性价比":52,"独立性":100,"反弹空间":12}},"BRK-B":{"label":"伯克希尔","last":489.46,"vol":13.1,"beta":-0.05,"chg1y":1.24,"maxdd":-53.9,"radar":{"动量":26,"趋势":33,"稳健":100,"性价比":20,"独立性":100,"反弹空间":45}},"KO":{"label":"可口可乐","last":79.39,"vol":24.5,"beta":-0.26,"chg1y":17.26,"maxdd":-41.6,"radar":{"动量":36,"趋势":49,"稳健":85,"性价比":51,"独立性":100,"反弹空间":20}},"SNDK":{"label":"闪迪","last":2184.75,"vol":101.3,"beta":2.87,"chg1y":4855.21,"maxdd":-47.5,"radar":{"动量":100,"趋势":100,"稳健":0,"性价比":100,"独立性":79,"反弹空间":0}},"MU":{"label":"美光","last":1133.99,"vol":120.4,"beta":2.46,"chg1y":844.58,"maxdd":-98.2,"radar":{"动量":100,"趋势":100,"稳健":0,"性价比":100,"独立性":63,"反弹空间":0}},"AMD":{"label":"超微","last":537.37,"vol":81.7,"beta":2.32,"chg1y":322.79,"maxdd":-96.6,"radar":{"动量":100,"趋势":100,"稳健":0,"性价比":100,"独立性":63,"反弹空间":2}},"PLTR":{"label":"帕兰提尔","last":128.47,"vol":64.2,"beta":1.47,"chg1y":-7.04,"maxdd":-84.6,"radar":{"动量":21,"趋势":1,"稳健":24,"性价比":12,"独立性":79,"反弹空间":99}},"COIN":{"label":"Coinbase","last":163.26,"vol":64.4,"beta":2.37,"chg1y":-35.69,"maxdd":-90.9,"radar":{"动量":3,"趋势":0,"稳健":24,"性价比":0,"独立性":66,"反弹空间":92}},"UBER":{"label":"优步","last":71.64,"vol":37.5,"beta":0.8,"chg1y":-15.48,"maxdd":-68.0,"radar":{"动量":15,"趋势":12,"稳健":65,"性价比":1,"独立性":90,"反弹空间":90}}};
+const LIVE = "https://vambrocop.github.io/valpha-lab/stocks.json";
+
+let DATA = SNAP, srcLabel = "内嵌快照", horizon = "mid", sel = new Set();
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function tryLive(){
+  try{
+    const r = await fetch(LIVE, {cache:"no-store"});
+    if(!r.ok) throw 0;
+    const j = await r.json(), out = {};
+    for(const [s,o] of Object.entries(j.stocks||{})){
+      const st = o.stats||{};
+      out[s] = {label:o.label||s, last:st.last, vol:st.vol20_ann, beta:st.beta_nasdaq_1y,
+                chg1y:st.chg_1y, maxdd:st.max_dd, radar:o.radar||{}};
+    }
+    if(Object.keys(out).length){ DATA = out; srcLabel = "实时数据 ✓"; }
+  }catch(e){ /* 用内嵌快照 */ }
+  renderGrid(); $("src").textContent = "数据来源：" + srcLabel + "（拉不到实时就用内嵌快照演示）";
+}
+
+function isHot(d){ return (d.radar["动量"]||0) >= 80 && (d.radar["稳健"]||50) <= 30; }
+
+function renderGrid(){
+  $("grid").innerHTML = Object.entries(DATA).map(([s,d])=>{
+    const hot = isHot(d);
+    return `<div class="stk ${sel.has(s)?'sel':''}" data-s="${s}">
+      <b>${esc(d.label)}</b> <span class="mut">${s}</span>
+      <div class="sub">1年 ${d.chg1y>=0?'+':''}${(d.chg1y??0).toFixed(0)}% · 波动 ${(d.vol??0).toFixed(0)}%</div>
+      <div style="margin-top:3px">${hot?'<span class="chip hot">🔥追涨风险</span>':''}${(d.radar["稳健"]||0)>=80?'<span class="chip calm">🏰稳健</span>':''}</div>
+    </div>`;
+  }).join("");
+  document.querySelectorAll(".stk").forEach(el=>el.onclick=()=>{
+    const s=el.dataset.s; sel.has(s)?sel.delete(s):sel.add(s); renderGrid();
+  });
+}
+
+function allocate(){
+  const syms=[...sel]; if(!syms.length) return null;
+  const amt=+$("amt").value||0, fx=+$("fx").value||0.65;
+  const lam = horizon==="short"?2 : horizon==="long"?0.5 : 1;
+  const raw = syms.map(s=>Math.pow(1/Math.max(DATA[s].vol||30,1), lam));
+  const sum = raw.reduce((a,b)=>a+b,0);
+  const rows = syms.map((s,i)=>{
+    const w=raw[i]/sum, audAmt=amt*w, usd=audAmt*fx, sh=usd/(DATA[s].last||1);
+    return {s, d:DATA[s], w, audAmt, sh};
+  }).sort((a,b)=>b.w-a.w);
+  // 诚实账单
+  const portVol = rows.reduce((a,r)=>a + r.w*(r.d.vol||0), 0);
+  const worst = rows.reduce((m,r)=>(r.d.maxdd||0)<m.dd?{dd:r.d.maxdd,s:r.d.label}:m, {dd:0,s:""});
+  const maxW = rows[0].w;
+  const hots = rows.filter(r=>isHot(r.d));
+  return {rows, amt, portVol, worst, maxW, hots};
+}
+
+function render(res){
+  if(!res){ $("out").innerHTML=`<div class="panel mut">先选至少一只股票。</div>`; return; }
+  const fmt=n=>n.toLocaleString('en-AU',{maximumFractionDigits:0});
+  let html=`<div class="panel"><h3 style="margin:.2em 0">建议配置（${res.rows.length} 只 · 共 A$${fmt(res.amt)}）</h3>
+    <table><thead><tr><th>股票</th><th>权重</th><th>金额(AUD)</th><th>约股数</th><th>波动</th></tr></thead><tbody>`;
+  res.rows.forEach(r=>{
+    html+=`<tr><td>${esc(r.d.label)} <span class="mut">${r.s}</span></td>
+      <td><span class="bar" style="width:${(r.w*60).toFixed(0)}px"></span> ${(r.w*100).toFixed(1)}%</td>
+      <td>A$${fmt(r.audAmt)}</td><td>${r.sh<1?r.sh.toFixed(2):fmt(r.sh)}</td>
+      <td>${(r.d.vol||0).toFixed(0)}%</td></tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  // 诚实账单
+  html+=`<div class="panel"><h3 style="margin:.2em 0">🧾 诚实账单（先看下跌，再决定）</h3><div class="bill">
+    <div class="b"><div class="mut">粗略组合年化波动<br>(加权·偏高估)</div><div class="big">${res.portVol.toFixed(0)}%</div></div>
+    <div class="b"><div class="mut">持仓里历史最深回撤<br>(${esc(res.worst.s)}，整段历史)</div><div class="big" style="color:var(--red)">${res.worst.dd.toFixed(0)}%</div></div>
+    <div class="b"><div class="mut">最大单仓集中度</div><div class="big">${(res.maxW*100).toFixed(0)}%</div></div>
+    <div class="b"><div class="mut">持有期设定</div><div class="big">${horizon==="short"?"短期·避险":horizon==="long"?"长期·容忍波动":"约1年·中性"}</div></div>
+  </div></div>`;
+  // 追涨警告
+  if(res.hots.length){
+    html+=`<div class="alert"><b>⚠️ 追涨警告：</b>你选了 ${res.hots.map(r=>esc(r.d.label)).join("、")}——
+      动量极高但波动极大（稳健≤30）。它们近期已大涨，<b>上车=接在高位</b>，回撤风险很大。
+      不是不能买，是要清楚你在追什么。</div>`;
+  }
+  html+=`<div class="warn-banner">再说一遍：这是<b>教育演示</b>，不是叫你买。逆波动率只是一种简化分法，没考虑你的处境、税（澳洲 CGT）、汇率波动、个股基本面。亏了算你的——所以请只用你输得起的钱。</div>`;
+  $("out").innerHTML=html;
+}
+
+function recommend(){
+  // 主脑推荐：性价比+稳健+独立性 高，惩罚极端动量（不追涨）；取前5
+  const scored = Object.entries(DATA).map(([s,d])=>{
+    const r=d.radar, score=(r["性价比"]||0)+(r["稳健"]||0)+0.5*(r["独立性"]||0)-Math.max(0,(r["动量"]||0)-80);
+    return {s, score};
+  }).sort((a,b)=>b.score-a.score).slice(0,5);
+  sel = new Set(scored.map(x=>x.s)); renderGrid();
+  render(allocate());
+}
+
+// 事件
+$("hz").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  horizon=b.dataset.h; $("hz").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+});
+$("go").onclick=()=>render(allocate());
+$("rec").onclick=recommend;
+$("clr").onclick=()=>{sel.clear();renderGrid();$("out").innerHTML="";};
+tryLive();
+</script>
+</body>
+</html>
