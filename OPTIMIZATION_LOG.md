@@ -148,6 +148,8 @@
 - **per-perm 置换缓存 → 否决(测量驱动)**:实测 placebo 2.9s、stock_checkup 10s,1.2万次置换才 2.9s → **置换非瓶颈**,缓存徒增复杂度零收益。真瓶颈=KO 每次走 yfinance(未进缓存),已修(加进 fetch_data 清单)。**教训:先测量再优化**。
 - **cycles 分段(全样本 vs 近期)→ 否决(诚实异议)**:谱周期检测需长历史,近 5 年根本测不出周期,硬切=制造噪声。故 placebo 做了分段(日历效应近期可测)、cycles 不做。
 - **精简审查一轮(2026-06-16,受 ponytail 极简理念启发)**:扫本程新增代码。**仅 1 处真冗余**——登记簿/坟场/探索区各内联一份相同 fetch-json 助手 → 合为模块级 `_fetchJson`(3→1,7c332c1)。其余候选(market_regime/stock_checkup/overreaction 的分位 `(x<v).mean()*100`、各方法 SP500 加载)**跨模块、各有差异,强行 DRY 增耦合 → 按纪律不动**。**结论:代码本就精简**(既有"不加框架/复用已审 primitive/先测量后优化"的纪律,已达 ponytail 想要的极简效果,无需装该插件)。
+- **event_study 升置换检验 → 否决/缓做(诚实红线,2026-06-19,子代理A 撞线停手)**：`event_study.py:153` 现用参数 t 检验算 `p_value`/`significant`，已嵌进**已发布的 signals.json**。换置换检验会**翻转已发布的 `significant`**(n=2~7 极小样本、厚尾)，属"擅改公开统计结论"，越线。**两个降险事实**：①前端本就**不渲染** event_study 的 significant/裸 p(app-1.js:424 / app-5.js:740 注释"去掉绿红方向色与裸 p")；②跨族 FDR 收的"事件因果"族走的是 **event_causal.json(方法B,已是 block-bootstrap 非参)**，不是这条 t 检验。故 event_study t 检验=遗留**展示型**链路、显著性已被前端隐藏。**结论：保留不动(方案A)**；若将来要透明对照，可加 `p_value_perm` 附加列、不改原字段(方案B,待用户拍)。
+- **CSP meta → no-go(调研结论,2026-06-19,子代理A)**：清点全 10 页——0 外部 CDN(Plotly 同源)、0 内联 `onclick=` 属性，但**每页都有内联 `<script>` + 海量内联 `style=`，且 Plotly 用 `new Function`(刚需 `unsafe-eval`)**。任何能跑的 CSP 必须 `script-src 'unsafe-eval' + 内联`、`style-src 'unsafe-inline'` → **等于没加**(XSS 防护被抵消，而本站本就 0 外部源、收益≈0)。**将来想加的前置**：Plotly 换 strict-CSP bundle(去 unsafe-eval)、内联 script 抽外部 .js、内联 style 迁 style.css/class，**然后浏览器逐条实测**(盲加必白屏)。未写任何 CSP。
 - (后续否决决策续记于此)
 
 ## §5 工作流原则(资源 & 数据卫生)
