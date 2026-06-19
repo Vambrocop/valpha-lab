@@ -10,7 +10,8 @@
 - ✅ P0/P1/P2/P4 全完成；06-14 全库 Opus 三方审查(统计/安全/前端)主项全修——**S1/S6/S5/S2 已全部完成**(详见 `LOOP_DECISIONS.md`)；06-15 验证强化批(#1 CPCV/PBO·#2 VIX体制保形·#3 校准漂移·#4 路径回撤)均独立审过上线
 - ✅ **Valpha Lab 三层体系 + 工具页全建好（06-19）**：🛰️Valpha150大盘(152票·日刷) · 📊板块 · 📡雷达(综合评分) · 🎲配置器(AUD·CGT币种切换) · 🔥野蛮 · 🛫IPO三档 · 🛡️方法论 · 🌱v2.0自生长(跨族FDR知识库+衰减追踪)；index.html=根入口、dashboard.html=完整仪表盘
 - ✅ **5 路多维审查 + 修复闭环（06-19）**：correctness/security/a11y/honesty/simplicity——**诚实审零越界通过**、简洁审确认自包含合理；已修 localStorage防抛(打不开根因)·对比度达AA·esc(ffb43a3) + 9页移动端@media·表头键盘排序·首屏占位(1a0bd09)
-- **下一步（均非缺陷，待你拍板方向）**：① **#5 分段透镜→factor_audit**——唯一真欠的旧任务，spec 已写 `SPEC_FACTOR_SEGMENT.md`，**动手前先定 🔴 现代段怎么切**(A/B/C + 年限) ② 主盘 dashboard.html 的 Phase2/3 双语 ③ v1.5 自生长**自动发现**闭环(现仅展示层) ④ 可选更深:conformal 合成覆盖测试·event_study 置换·CSP meta(需浏览器实测)
+- ✅ **#5 分段透镜→factor_audit（74c5f46）+ ② 主盘轻量双语外壳（56eb8df）本会话完成**：#5 揭 2 因子(纳指动量/高波动)现代段被套利、口径异于 OOS、含段位门+三态单测；② 译导航+9 intro+onboarding，深度面板留中文(EN 顶部说明)、自包含内联脚本低风险
+- **下一步（均非缺陷，待你拍板）**：① **v1.5 自生长自动发现闭环**(现仅展示层；最大工程，建议单独立项 + 重审) ② 可选更深:conformal 合成覆盖测试·event_study 置换·CSP meta(需浏览器实测) ③ 主盘"全量"双语(现为轻量外壳) · IPO 数据定期更新 · Valpha150 成分自动发现
 
 ## 运行环境（Windows）
 
