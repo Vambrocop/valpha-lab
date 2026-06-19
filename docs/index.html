@@ -49,6 +49,11 @@
   <div class="card"><h3 data-i18n="c_paper"></h3>
     <div id="paper" style="font-size:.92rem"></div>
     <div class="note" id="papernote" style="margin-top:6px"></div></div>
+  <div class="card"><h3 data-i18n="c_heat"></h3>
+    <div id="heat" style="font-size:.95rem">—</div>
+    <div class="note" id="heatnote" style="margin-top:6px"></div></div>
+  <div class="card"><h3 data-i18n="c_bottom"></h3>
+    <div id="bottom" style="font-size:.95rem;line-height:1.65">—</div></div>
 </div>
 
 <div class="tools" id="tools"></div>
@@ -64,6 +69,8 @@ const I18N={
   c_env:{zh:"🌡️ 市场环境（描述性）",en:"🌡️ Market environment (descriptive)"},
   c_dig:{zh:"📋 今日摘要",en:"📋 Today's digest"},
   c_paper:{zh:"💼 模拟盘问责",en:"💼 Paper trading"},papernote:{zh:"前向竞技 · 无法事后美化",en:"forward-tested · no hindsight polishing"},
+  c_heat:{zh:"🔥 板块热度",en:"🔥 Sector heat"},c_bottom:{zh:"🧭 今日底线",en:"🧭 Bottom line"},
+  heatnote:{zh:"最热=追涨区，往往高波动；看结构别照单买",en:"Hottest = chase zone, usually high vol; read structure, don't just buy"},
   signote:{zh:"walk-forward 未发现样本外优势——当心，别当预测",en:"No out-of-sample edge in walk-forward — caution, not a forecast"},
   foot:{zh:"数据实时拉自流水线 · 描述性历史、非预测 · 仅供学习研究。这是优化版着陆原型，正式站见「完整仪表盘」。",
         en:"Data pulled live from the pipeline · descriptive history, not forecasts · for study only. This is an optimized landing prototype; see 'Full dashboard' for the live site."},
@@ -77,7 +84,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let LANG=localStorage.getItem("valpha_lang")||"zh";
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
-let SIG=null,REG=null,DIG=null,PAPER=null;
+let SIG=null,REG=null,DIG=null,PAPER=null,V150=null;
 
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
 function tools(){
@@ -91,10 +98,23 @@ function paint(){
   if(DIG){$("dig").innerHTML=(DIG.tier1_facts||[]).map(f=>`<li>${esc(f)}</li>`).join("")||`<li class="mut">—</li>`;}
   if(PAPER){const ss=Object.values(PAPER.strategies||{}).sort((a,b)=>(b.ret_pct||0)-(a.ret_pct||0));
     $("paper").innerHTML=ss.map(s=>`<div style="display:flex;justify-content:space-between;padding:3px 0"><span>${esc(s.label)}</span><span style="color:${(s.ret_pct||0)>=0?'var(--grn)':'var(--red)'};font-weight:600">${(s.ret_pct||0)>=0?'+':''}${s.ret_pct}%</span></div>`).join("");$("papernote").textContent=t("papernote");}
+  // 🔥 板块热度（最热/最冷板块·近6月均值）+ 🧭 今日底线
+  let hotSec=null;
+  if(V150&&V150.stocks){
+    const g={};V150.stocks.forEach(d=>{if(d&&d.sec!=null&&d.c6!=null)(g[d.sec]||(g[d.sec]=[])).push(d.c6);});
+    const secs=Object.keys(g).map(s=>({s,a:g[s].reduce((x,y)=>x+y,0)/g[s].length})).sort((x,y)=>y.a-x.a);
+    if(secs.length){const hot=secs[0],cold=secs[secs.length-1];hotSec=hot.s;
+      const HOT=LANG==="en"?"Hottest":"最热",COLD=LANG==="en"?"Coldest":"最冷";
+      $("heat").innerHTML=`🔥 ${HOT} <b>${esc(hot.s)}</b> ${hot.a>=0?'+':''}${hot.a.toFixed(0)}%　❄️ ${COLD} <b>${esc(cold.s)}</b> ${cold.a>=0?'+':''}${cold.a.toFixed(0)}%`;
+      $("heatnote").textContent=t("heatnote");}
+  }
+  $("bottom").innerHTML = LANG==="en"
+    ? `Signal is <b>experimental</b> (no out-of-sample edge)${hotSec?`; heat concentrated in <b>${esc(hotSec)}</b> (chase zone)`:''}. <b>→ Manage risk, don't chase direction, take it slow.</b>`
+    : `信号是<b>实验性的</b>（无样本外优势）${hotSec?`；热门挤在<b>${esc(hotSec)}</b>（追涨区）`:''}。<b>→ 控风险、别追方向、慢慢来。</b>`;
 }
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);paint();};
 async function get(f){try{const r=await fetch(B+f,{cache:"no-store"});return r.ok?await r.json():null;}catch(e){return null;}}
-(async()=>{paint();[SIG,REG,DIG,PAPER]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json")]);paint();})();
+(async()=>{paint();[SIG,REG,DIG,PAPER,V150]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json")]);paint();})();
 </script>
 </body>
 </html>

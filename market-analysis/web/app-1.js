@@ -453,7 +453,8 @@ function renderEventRefToday() {
 function _darkLayout() {
   return { paper_bgcolor:"transparent", plot_bgcolor:"transparent",
     font:{color:"#e6edf3",size:11}, xaxis:{gridcolor:"#30363d",zerolinecolor:"#30363d"},
-    yaxis:{gridcolor:"#30363d",zerolinecolor:"#30363d"}, margin:{t:30,b:40,l:50,r:20} };
+    yaxis:{gridcolor:"#30363d",zerolinecolor:"#30363d"}, margin:{t:30,b:40,l:50,r:20},
+    hoverlabel:{bgcolor:"#161b22", bordercolor:"#30363d", font:{color:"#e6edf3", size:12}} };
 }
 Object.defineProperty(globalThis, "DARK", { get: _darkLayout });
 
