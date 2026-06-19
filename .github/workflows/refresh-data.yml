@@ -67,6 +67,11 @@ jobs:
           # 真错(代码/数据问题)会两次都失败 → 仍正确地红，不被掩盖。
           $CMD || { echo "::warning::pipeline 首次失败，60s 后重试一次（疑似瞬时抓取抖动）"; sleep 60; $CMD; }
 
+      - name: Refresh Valpha150 大盘数据 (每交易日一次，仅盘后全量/手动)
+        # ~152 只批量抓价较重 → 不进盘中 light，只在盘后全量(21:30)或手动跑；失败不阻断主刷新
+        if: github.event.schedule == '30 21 * * 1-5' || github.event_name == 'workflow_dispatch'
+        run: python market-analysis/scripts/build_valpha150.py || echo "::warning::valpha150 刷新失败(非致命，下次重试)"
+
       - name: Signal alerts (state changes only)
         run: python market-analysis/scripts/alert_check.py
 
