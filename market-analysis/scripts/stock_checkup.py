@@ -34,7 +34,7 @@ TICKER_NAMES = {
     "AAPL": "苹果", "MSFT": "微软", "GOOGL": "谷歌", "AMZN": "亚马逊", "NVDA": "英伟达",
     "META": "Meta", "TSLA": "特斯拉", "AVGO": "博通", "TSM": "台积电", "COST": "好市多",
     "LLY": "礼来", "BRK-B": "伯克希尔", "KO": "可口可乐", "SNDK": "闪迪", "MU": "美光",
-    "AMD": "超微", "PLTR": "帕兰提尔", "COIN": "Coinbase", "UBER": "优步",
+    "AMD": "超微", "INTC": "英特尔", "NFLX": "网飞", "HOOD": "罗宾汉",
 }
 MIN_DAYS = 250          # 基础风险至少需 ~1 年日线，否则判 insufficient
 SEED = 20260613         # 固定种子 → 置换检验可复现（已发布统计结论的硬要求）

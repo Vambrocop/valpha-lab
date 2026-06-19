@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valpha 雷达图 · 原型</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--acc:#a371f7;--red:#f85149;--grn:#3fb950}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:16px;max-width:1040px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0}
+  .note{background:rgba(163,113,247,.1);border:1px solid var(--acc);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#d2c2f5}
+  .bar{margin:10px 0;font-size:.85rem;color:var(--mut)}
+  .bar button{background:transparent;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;margin:2px;cursor:pointer;font-size:.82rem}
+  .bar button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(186px,1fr));gap:10px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px;text-align:center}
+  .card h3{margin:2px 0;font-size:.98rem}
+  .card .sub{font-size:.74rem;color:var(--mut)}
+  .card .tag{font-size:.66rem;padding:1px 5px;border-radius:4px}
+  .hot{background:rgba(248,81,73,.18);color:#ff9b94}
+  .calm{background:rgba(63,185,80,.16);color:#7ee787}
+  text{font-family:inherit}
+  .mut{color:var(--mut);font-size:.8rem;margin-top:14px;border-top:1px solid var(--border);padding-top:8px}
+</style>
+</head>
+<body>
+<h1>📡 Valpha 雷达图 <span style="color:var(--mut);font-size:.8rem">· 原型</span></h1>
+<div class="note"><b>描述性体检，非预测、非买卖信号。</b>6 维各 0–100：<b>动量</b>(近1年涨)、<b>趋势</b>(均线排列)、
+  <b>稳健</b>(低波动=高分)、<b>性价比</b>(风险调整收益)、<b>独立性</b>(与纳指低相关=高分)、<b>反弹空间</b>(越靠一年低位越高)。
+  一眼看"性格"，而非"该不该买"。</div>
+<div class="bar">排序：
+  <button data-k="" class="on">默认</button>
+  <button data-k="动量">动量</button>
+  <button data-k="稳健">稳健</button>
+  <button data-k="性价比">性价比</button>
+  <button data-k="反弹空间">反弹空间</button>
+  <span id="src" style="margin-left:10px"></span>
+</div>
+<div class="grid" id="grid"></div>
+<div class="mut">数据：拉 GitHub Pages 实时 <code>stocks.json</code>。🔥追涨风险=动量≥80且稳健≤30；🏰稳健=稳健≥80。过去≠未来。</div>
+
+<script>
+const LIVE = "https://vambrocop.github.io/valpha-lab/stocks.json";
+const DIMS = ["动量","趋势","稳健","性价比","独立性","反弹空间"];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let STOCKS = {}, sortKey = "";
+
+function radarSVG(radar, size){
+  const cx=size/2, cy=size/2, R=size*0.34;
+  const ang = i => -Math.PI/2 + i*Math.PI/3;
+  let g="";
+  [0.25,0.5,0.75,1].forEach(f=>{
+    const ring=DIMS.map((_,i)=>`${(cx+R*f*Math.cos(ang(i))).toFixed(1)},${(cy+R*f*Math.sin(ang(i))).toFixed(1)}`).join(" ");
+    g+=`<polygon points="${ring}" fill="none" stroke="#30363d" stroke-width="0.5"/>`;
+  });
+  DIMS.forEach((d,i)=>{ g+=`<line x1="${cx}" y1="${cy}" x2="${(cx+R*Math.cos(ang(i))).toFixed(1)}" y2="${(cy+R*Math.sin(ang(i))).toFixed(1)}" stroke="#30363d" stroke-width="0.5"/>`; });
+  const pts=DIMS.map((d,i)=>{const r=(radar[d]||0)/100*R; return `${(cx+r*Math.cos(ang(i))).toFixed(1)},${(cy+r*Math.sin(ang(i))).toFixed(1)}`;}).join(" ");
+  g+=`<polygon points="${pts}" fill="rgba(163,113,247,.32)" stroke="#a371f7" stroke-width="1.4"/>`;
+  DIMS.forEach((d,i)=>{const lx=cx+(R+13)*Math.cos(ang(i)), ly=cy+(R+13)*Math.sin(ang(i));
+    g+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="8.5" fill="#8b949e" text-anchor="middle" dominant-baseline="middle">${d}</text>`;});
+  return `<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:172px">${g}</svg>`;
+}
+
+function render(){
+  let items = Object.entries(STOCKS);
+  if(sortKey) items.sort((a,b)=>(b[1].radar[sortKey]||0)-(a[1].radar[sortKey]||0));
+  $("grid").innerHTML = items.map(([s,d])=>{
+    const r=d.radar||{}, hot=(r["动量"]||0)>=80&&(r["稳健"]||50)<=30, calm=(r["稳健"]||0)>=80;
+    return `<div class="card">
+      <h3>${esc(d.label)} <span class="sub">${s}</span></h3>
+      ${radarSVG(r,170)}
+      <div class="sub">1年 ${d.chg1y>=0?'+':''}${(d.chg1y??0).toFixed(0)}% · 波动 ${(d.vol??0).toFixed(0)}%</div>
+      <div>${hot?'<span class="tag hot">🔥追涨风险</span>':''}${calm?'<span class="tag calm">🏰稳健</span>':''}</div>
+    </div>`;
+  }).join("");
+}
+
+async function load(){
+  try{
+    const r=await fetch(LIVE,{cache:"no-store"}); if(!r.ok) throw 0;
+    const j=await r.json();
+    for(const [s,o] of Object.entries(j.stocks||{})){
+      const st=o.stats||{};
+      STOCKS[s]={label:o.label||s,chg1y:st.chg_1y,vol:st.vol20_ann,radar:o.radar||{}};
+    }
+    $("src").textContent = `实时 ✓（${Object.keys(STOCKS).length} 只）`;
+    render();
+  }catch(e){
+    $("src").textContent="拉不到实时数据——确认 Pages 已部署、stocks.json 可访问。";
+    $("grid").innerHTML=`<div class="card" style="grid-column:1/-1">无法加载 ${LIVE}</div>`;
+  }
+}
+document.querySelectorAll(".bar button").forEach(b=>b.onclick=()=>{
+  sortKey=b.dataset.k; document.querySelectorAll(".bar button").forEach(x=>x.classList.toggle("on",x===b)); render();
+});
+load();
+</script>
+</body>
+</html>

@@ -133,9 +133,9 @@ STOCK_TICKERS = {
     "SNDK":  "SNDK",   # 闪迪（存储，次新股，极高波动）
     "MU":    "MU",     # 美光（内存/HBM，强周期）
     "AMD":   "AMD",    # 超微（半导体动量）
-    "PLTR":  "PLTR",   # 帕兰提尔（AI 软件，极高估值=高风险典型）
-    "COIN":  "COIN",   # Coinbase（加密交易所，非AI，配合 BTC/ETH 追踪，极高波动）
-    "UBER":  "UBER",   # 优步（出行/消费成长，非AI，板块分散）
+    "INTC":  "INTC",   # 英特尔（半导体困境反转，逆势观察，非追热点）
+    "NFLX":  "NFLX",   # 网飞（流媒体，非AI，质量成长）
+    "HOOD":  "HOOD",   # 罗宾汉（金融科技/零售券商，板块分散）
 }
 
 def _cache_fallback(name):
