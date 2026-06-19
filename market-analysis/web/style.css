@@ -43,6 +43,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 @media (max-width: 900px) {
   .view-nav { padding: .5rem .75rem; }
   .view-grid { grid-template-columns: 1fr; }
+  .panel { overflow-x: auto; }   /* 宽表格(模型问责/记分卡)窄屏内部横滚，不撑破整页 */
 }
 /* 今日页：masonry 多列——grid 行高对齐到最高面板会在矮面板下方留大片空白；
    改 CSS 多列流式排布(break-inside:avoid 保面板完整)，紧密填充、白块消失。自动响应列数。 */
