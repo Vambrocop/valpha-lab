@@ -5,6 +5,11 @@
   --red: #e74c3c; --blue: #3498db; --purple: #9b59b6;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 8px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--border); }
+::-webkit-scrollbar-track { background: transparent; }
 body { background: radial-gradient(1100px 460px at 50% -150px, rgba(155,89,182,.10), transparent), var(--bg); color: var(--text); font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; -webkit-font-smoothing: antialiased; }
 
 /* ── 工具类（约定：仅"整条 style 完全相同"的高频模式抽到此；一次性布局样式保留内联，别强抽） ── */
