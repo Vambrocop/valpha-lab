@@ -90,7 +90,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let LANG=localStorage.getItem("valpha_lang")||"zh";
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
-let DATA=SNAP,horizon="mid",sel=new Set();
+let DATA=SNAP,horizon="mid",sel=new Set(),fromRec=false;
 const isHot=d=>(d.radar["动量"]||0)>=80&&(d.radar["稳健"]||50)<=30;
 const nm=(s,d)=>LANG==="en"?s:`${esc(d.label)} <span class="mut">${s}</span>`;
 
@@ -108,7 +108,7 @@ function renderGrid(){
       <div class="sub">${yl} ${d.chg1y>=0?'+':''}${(d.chg1y??0).toFixed(0)}% · ${vl} ${(d.vol??0).toFixed(0)}%</div>
       <div style="margin-top:3px">${hot?`<span class="chip hot">${hc}</span>`:''}${(d.radar["稳健"]||0)>=80?`<span class="chip calm">${cc}</span>`:''}</div></div>`;
   }).join("");
-  document.querySelectorAll(".stk").forEach(el=>el.onclick=()=>{const s=el.dataset.s;sel.has(s)?sel.delete(s):sel.add(s);renderGrid();});
+  document.querySelectorAll(".stk").forEach(el=>el.onclick=()=>{const s=el.dataset.s;sel.has(s)?sel.delete(s):sel.add(s);fromRec=false;renderGrid();});
 }
 function allocate(){
   const syms=[...sel];if(!syms.length)return null;
@@ -138,12 +138,15 @@ function render(res){
   $("out").innerHTML=h;
 }
 function recommend(){
-  const scored=Object.entries(DATA).map(([s,d])=>{const r=d.radar;return {s,score:(r["性价比"]||0)+(r["稳健"]||0)+0.5*(r["独立性"]||0)-Math.max(0,(r["动量"]||0)-80)};}).sort((a,b)=>b.score-a.score).slice(0,5);
+  fromRec=true;
+  // 持有期改变选股口径：短期偏稳健、长期偏性价比/容忍动量
+  const w=horizon==="short"?{st:1.5,va:1,ind:.5,mp:.35}:horizon==="long"?{st:.6,va:1.4,ind:.4,mp:0}:{st:1,va:1,ind:.5,mp:.15};
+  const scored=Object.entries(DATA).map(([s,d])=>{const r=d.radar;return {s,score:w.st*(r["稳健"]||0)+w.va*(r["性价比"]||0)+w.ind*(r["独立性"]||0)-w.mp*Math.max(0,(r["动量"]||0)-50)};}).sort((a,b)=>b.score-a.score).slice(0,5);
   sel=new Set(scored.map(x=>x.s));renderGrid();render(allocate());
 }
 function redraw(){applyStatic();renderGrid();}
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);redraw();render(allocate());};
-$("hz").querySelectorAll("button").forEach(b=>b.onclick=()=>{horizon=b.dataset.h;$("hz").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));if(sel.size)render(allocate());});
+$("hz").querySelectorAll("button").forEach(b=>b.onclick=()=>{horizon=b.dataset.h;$("hz").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));if(fromRec)recommend();else if(sel.size)render(allocate());});
 $("go").onclick=()=>render(allocate());
 $("rec").onclick=recommend;
 $("clr").onclick=()=>{sel.clear();renderGrid();$("out").innerHTML="";};
