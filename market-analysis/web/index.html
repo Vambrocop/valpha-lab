@@ -68,6 +68,7 @@ const I18N={
   foot:{zh:"数据实时拉自流水线 · 描述性历史、非预测 · 仅供学习研究。这是优化版着陆原型，正式站见「完整仪表盘」。",
         en:"Data pulled live from the pipeline · descriptive history, not forecasts · for study only. This is an optimized landing prototype; see 'Full dashboard' for the live site."},
   t_board:{zh:"大盘",en:"Board"},t_board_d:{zh:"152 只·按板块·可排序",en:"152 names · by sector · sortable"},
+  t_sec:{zh:"板块",en:"Sectors"},t_sec_d:{zh:"12 板块均值·可排序",en:"12 sectors · averages · sortable"},
   t_radar:{zh:"雷达",en:"Radar"},t_radar_d:{zh:"个股六维体检",en:"6-axis stock checkup"},
   t_adv:{zh:"配置",en:"Allocator"},t_adv_d:{zh:"出格区·配置建议",en:"out-of-bounds · allocation"},
   t_full:{zh:"完整仪表盘",en:"Full dashboard"},t_full_d:{zh:"全部诚实统计 + 登记簿",en:"all honest stats + registry"}
@@ -80,7 +81,7 @@ let SIG=null,REG=null,DIG=null,PAPER=null;
 
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
 function tools(){
-  const T=[["t_board","🛰️","valpha150.html"],["t_radar","📡","radar.html"],["t_adv","🎲","advisor.html"],["t_full","🧭","dashboard.html"]];
+  const T=[["t_board","🛰️","valpha150.html"],["t_sec","📊","sectors.html"],["t_radar","📡","radar.html"],["t_adv","🎲","advisor.html"],["t_full","🧭","dashboard.html"]];
   $("tools").innerHTML=T.map(([k,ico,href])=>`<a class="tool" href="${href}"><div class="ico">${ico}</div><div class="nm">${t(k)}</div><div class="ds">${t(k+"_d")}</div></a>`).join("");
 }
 function paint(){

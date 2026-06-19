@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>板块概览 · Sector overview</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1080px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .note{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:6px}
+  th,td{padding:5px 7px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  th:nth-child(1),td:nth-child(1){text-align:left}
+  th{position:sticky;top:0;background:#161b22;cursor:pointer;user-select:none;color:var(--mut);font-weight:600}
+  th.s::after{content:" ▾"}
+  tr:hover{background:rgba(163,113,247,.06)}
+  .pos{color:var(--grn)} .neg{color:var(--red)}
+  .mut{color:var(--mut);font-size:.78rem;margin-top:14px;border-top:1px solid var(--border);padding-top:8px}
+  #src{color:var(--mut);font-size:.78rem}
+</style>
+</head>
+<body>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang"></button>
+<h1 data-i18n="title"></h1>
+<div class="note" data-i18n="note"></div>
+<div style="overflow-x:auto"><table id="tbl"></table></div>
+<div id="src"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const LIVE="https://vambrocop.github.io/valpha-lab/valpha150.json";
+const SEC={"半导体":"#a371f7","科技":"#58a6ff","通信服务":"#56d4dd","可选消费":"#e3a008","必需消费":"#3fb950","医疗":"#2dd4bf","金融":"#d4a017","工业":"#8b949e","能源":"#f85149","公用":"#a3b18a","材料":"#7d8590","房地产":"#f778ba"};
+const SEC_EN={"半导体":"Semis","科技":"Tech","通信服务":"Comms","可选消费":"Cons.Disc.","必需消费":"Staples","医疗":"Health","金融":"Financials","工业":"Industrials","能源":"Energy","公用":"Utilities","材料":"Materials","房地产":"Real Estate"};
+const I18N={
+  title:{zh:"📊 板块概览 · 原型",en:"📊 Sector overview · prototype"},
+  note:{zh:"<b>板块均值 = 已经发生的、只含当前在册的（幸存者偏差）。</b>某板块此刻领涨是这一波的主题，<b>不代表未来</b>，均值掩盖了内部分化（少数巨涨拉高全组）。看结构，别照单追涨。",
+        en:"<b>Sector averages = what already happened, survivors only (survivorship bias).</b> A sector leading now is this cycle's theme, <b>not the future</b>; an average hides internal spread (a few huge gainers lift the whole group). Read the structure, don't chase."},
+  foot:{zh:"点列头排序。均值跳过缺失值（None）。数据：实时 valpha150.json，描述性历史、非预测。",
+        en:"Click a header to sort. Averages skip missing (None) values. Data: live valpha150.json — descriptive history, not a forecast."},
+  csec:{zh:"板块",en:"Sector"},cn:{zh:"股票数",en:"# Stocks"},c6:{zh:"平均6月%",en:"Avg 6M%"},c1:{zh:"平均1年%",en:"Avg 1Y%"},cv:{zh:"平均波动%",en:"Avg Vol%"},
+  live:{zh:"实时 ✓",en:"Live ✓"},err:{zh:"拉不到 valpha150.json——确认已部署。",en:"Can't load valpha150.json — check deployment."},asof:{zh:"数据日",en:"as of"}
+};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG=localStorage.getItem("valpha_lang")||"zh";
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+let DATA=[],sortCol="c6",dir=-1;
+
+function avg(arr,key){let s=0,n=0;arr.forEach(d=>{const v=d[key];if(v!=null){s+=v;n++;}});return n?s/n:null;}
+function round1(v){return v==null?null:Math.round(v*10)/10;}
+function aggregate(){
+  const groups={};
+  DATA.forEach(d=>{if(!d||d.sec==null)return;(groups[d.sec]||(groups[d.sec]=[])).push(d);});
+  const rows=[];
+  Object.keys(groups).forEach(sec=>{
+    const g=groups[sec];
+    rows.push({sec:sec,n:g.length,c6:round1(avg(g,"c6")),c1:round1(avg(g,"c1")),v:round1(avg(g,"v"))});
+  });
+  return rows;
+}
+function secName(s){return LANG==="en"?(SEC_EN[s]||s):s;}
+function pn(v){if(v==null)return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}</span>`;}
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+function render(){
+  const COLS=[["sec","csec"],["n","cn"],["c6","c6"],["c1","c1"],["v","cv"]];
+  let rows=aggregate();
+  rows.sort((a,b)=>{const x=a[sortCol],y=b[sortCol];if(x==null)return 1;if(y==null)return -1;
+    return (typeof x==="number")?(y-x)*dir*-1:String(x).localeCompare(String(y),'zh')*dir*-1;});
+  let h="<thead><tr>";
+  COLS.forEach(([k,lk])=>h+=`<th data-k="${k}" class="${k===sortCol?'s':''}">${t(lk)}</th>`);
+  h+="</tr></thead><tbody>";
+  rows.forEach(d=>{h+=`<tr>
+    <td><span class="dot" style="background:${SEC[d.sec]||'#888'}"></span>${esc(secName(d.sec))}</td>
+    <td>${d.n}</td>
+    <td>${pn(d.c6)}</td><td>${pn(d.c1)}</td><td>${d.v==null?'<span class="mut">—</span>':d.v}</td></tr>`;});
+  h+="</tbody>";$("tbl").innerHTML=h;
+  $("tbl").querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===sortCol)dir*=-1;else{sortCol=k;dir=-1;}render();});
+}
+function redraw(){applyStatic();render();
+  $("src").textContent=(DATA.length?`${t("live")} ${DATA.length} · ${t("asof")} ${window._gen||""}`:"");}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);redraw();};
+
+async function load(){
+  applyStatic();
+  try{
+    const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;
+    const j=await r.json();DATA=j.stocks||[];window._gen=j.generated;
+    $("src").textContent=`${t("live")} ${DATA.length} · ${t("asof")} ${j.generated}`;
+    render();
+  }catch(e){$("src").textContent=t("err");}
+}
+load();
+</script>
+</body>
+</html>
