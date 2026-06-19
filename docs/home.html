@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valpha Lab</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--grn:#3fb950;--red:#f85149;--amb:#d29922;--acc:#a371f7;--blu:#58a6ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 500px at 50% -200px,rgba(163,113,247,.10),transparent),var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:18px;max-width:960px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  h1{font-size:1.7rem;margin:.1em 0;font-weight:800;letter-spacing:.5px}
+  h1 .hex{color:var(--acc)}
+  .tag{color:var(--mut);font-size:.9rem}
+  #lang{margin-left:auto;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:.84rem}
+  .baseline{background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.3);border-radius:10px;padding:11px 14px;font-size:.9rem;margin:14px 0;color:#cfe3ff}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:14px 0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .card h3{margin:0 0 8px;font-size:.92rem;color:var(--mut);font-weight:600}
+  .big{font-size:1.6rem;font-weight:700}
+  .pill{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:20px;margin:2px 3px 2px 0;background:#0d1117;border:1px solid var(--border);color:var(--mut)}
+  .facts{list-style:none;padding:0;margin:0;font-size:.88rem}
+  .facts li{padding:4px 0;border-bottom:1px solid var(--border)}.facts li:last-child{border:0}
+  .tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+  .tool{display:block;text-decoration:none;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;color:var(--fg);transition:.14s}
+  .tool:hover{border-color:var(--acc);transform:translateY(-2px)}
+  .tool .ico{font-size:1.5rem}.tool .nm{font-weight:700;margin-top:4px}.tool .ds{color:var(--mut);font-size:.78rem;margin-top:2px}
+  .mut{color:var(--mut)}.note{color:var(--amb);font-size:.8rem}
+  footer{color:var(--mut);font-size:.78rem;margin-top:20px;border-top:1px solid var(--border);padding-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="hex">⬡</span> Valpha Lab</h1>
+  <span class="tag" data-i18n="tag"></span>
+  <button id="lang"></button>
+</header>
+<div class="baseline" data-i18n="baseline"></div>
+
+<div class="cards">
+  <div class="card"><h3 data-i18n="c_sig"></h3>
+    <div class="big" id="sig">—</div>
+    <div class="note" id="signote"></div></div>
+  <div class="card"><h3 data-i18n="c_env"></h3>
+    <div id="env" style="font-size:.9rem">—</div>
+    <div class="mut" id="envas" style="font-size:.76rem;margin-top:6px"></div></div>
+  <div class="card"><h3 data-i18n="c_dig"></h3>
+    <ul class="facts" id="dig"></ul></div>
+</div>
+
+<div class="tools" id="tools"></div>
+<footer data-i18n="foot"></footer>
+
+<script>
+const B="https://vambrocop.github.io/valpha-lab/";
+const I18N={
+  tag:{zh:"美股诚实统计",en:"Honest US-stock statistics"},
+  baseline:{zh:"<b>测风险不测方向 · 拆穿真假规律 · 实盘公开问责</b>　|　📈 观点区是唯一「出格」例外（带战绩，娱乐非建议）",
+            en:"<b>Measure risk, not direction · expose real vs fake patterns · publicly accountable paper trading</b>　|　📈 Outlook is the only 'out-of-bounds' exception (with track record, entertainment not advice)"},
+  c_sig:{zh:"📊 纳指信号（实验性）",en:"📊 Nasdaq signal (experimental)"},
+  c_env:{zh:"🌡️ 市场环境（描述性）",en:"🌡️ Market environment (descriptive)"},
+  c_dig:{zh:"📋 今日摘要",en:"📋 Today's digest"},
+  signote:{zh:"walk-forward 未发现样本外优势——当心，别当预测",en:"No out-of-sample edge in walk-forward — caution, not a forecast"},
+  foot:{zh:"数据实时拉自流水线 · 描述性历史、非预测 · 仅供学习研究。这是优化版着陆原型，正式站见「完整仪表盘」。",
+        en:"Data pulled live from the pipeline · descriptive history, not forecasts · for study only. This is an optimized landing prototype; see 'Full dashboard' for the live site."},
+  t_board:{zh:"大盘",en:"Board"},t_board_d:{zh:"152 只·按板块·可排序",en:"152 names · by sector · sortable"},
+  t_radar:{zh:"雷达",en:"Radar"},t_radar_d:{zh:"个股六维体检",en:"6-axis stock checkup"},
+  t_adv:{zh:"配置",en:"Allocator"},t_adv_d:{zh:"出格区·配置建议",en:"out-of-bounds · allocation"},
+  t_full:{zh:"完整仪表盘",en:"Full dashboard"},t_full_d:{zh:"全部诚实统计 + 登记簿",en:"all honest stats + registry"}
+};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG=localStorage.getItem("valpha_lang")||"zh";
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+let SIG=null,REG=null,DIG=null;
+
+function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
+function tools(){
+  const T=[["t_board","🛰️","valpha150.html"],["t_radar","📡","radar.html"],["t_adv","🎲","advisor.html"],["t_full","🧭","index.html"]];
+  $("tools").innerHTML=T.map(([k,ico,href])=>`<a class="tool" href="${href}"><div class="ico">${ico}</div><div class="nm">${t(k)}</div><div class="ds">${t(k+"_d")}</div></a>`).join("");
+}
+function paint(){
+  applyStatic();tools();
+  if(SIG){$("sig").innerHTML=`tier ${SIG.latest_tier} · <span class="mut" style="font-size:1rem">prob</span> ${(SIG.latest_prob??0).toFixed(2)}`;$("signote").textContent=t("signote");}
+  if(REG){$("env").textContent=REG.composite||"—";$("envas").textContent=(LANG==="en"?"as of ":"数据日 ")+(REG.asof||"");}
+  if(DIG){$("dig").innerHTML=(DIG.tier1_facts||[]).map(f=>`<li>${esc(f)}</li>`).join("")||`<li class="mut">—</li>`;}
+}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);paint();};
+async function get(f){try{const r=await fetch(B+f,{cache:"no-store"});return r.ok?await r.json():null;}catch(e){return null;}}
+(async()=>{paint();[SIG,REG,DIG]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json")]);paint();})();
+</script>
+</body>
+</html>
