@@ -379,9 +379,13 @@ async function fetchFearAndGreed() {
     if (typeof loadQuotes === "function") { try { await loadQuotes(); } catch (e) { /* 用已有 QUOTES */ } }
     let data = QUOTES?.fear_greed;
     if (!data || !data.length) {
-      const r = await fetch("https://api.alternative.me/fng/?limit=7&format=json");  // 兜底:直连境外
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      data = (await r.json()).data || [];
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 4000);   // 兜底直连境外，境内易卡→4s 上限，免长 TCP 超时
+      try {
+        const r = await fetch("https://api.alternative.me/fng/?limit=7&format=json", { signal: ctrl.signal });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        data = (await r.json()).data || [];
+      } finally { clearTimeout(to); }
     }
     renderFearGreed(data);
   } catch(e) {
@@ -781,8 +785,14 @@ let STOCKS = null;
 async function loadStocksPanel() {
   try {
     const r = await fetch("stocks.json?_=" + Date.now());
+    if (!r.ok) throw new Error("HTTP " + r.status);   // 404 返 HTML 会让 r.json() 抛错→面板静默不渲染；显式判
     STOCKS = await r.json();
-  } catch(e) { console.warn("stocks.json 未找到", e); return; }
+  } catch(e) {
+    console.warn("stocks.json 未找到", e);
+    const el = document.getElementById("stocks-table");
+    if (el) el.innerHTML = `<div style="color:var(--muted);font-size:0.8rem;padding:.5rem">个股数据暂不可用（稍后自动重试或刷新页面）</div>`;
+    return;
+  }
   renderStocksTable();
   const first = Object.keys(STOCKS.stocks)[0];
   if (first) renderStockChart(first);

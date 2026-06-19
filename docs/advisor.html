@@ -68,6 +68,7 @@
 <div class="mut" data-i18n="foot" style="margin-top:18px;border-top:1px solid var(--border);padding-top:10px"></div>
 
 <script>
+// SNAP 兜底快照：仅当实时 stocks.json 拉取失败时用；同步于 2026-06-19，主要漂移时刷新
 const SNAP={"AAPL":{"label":"苹果","last":298.01,"vol":24.8,"chg1y":52.93,"maxdd":-81.8,"radar":{"动量":58,"稳健":85}},"MSFT":{"label":"微软","last":379.4,"vol":38.3,"chg1y":-20,"maxdd":-68.7,"radar":{"动量":12,"稳健":64}},"NVDA":{"label":"英伟达","last":210.69,"vol":45.3,"chg1y":46.39,"maxdd":-89.7,"radar":{"动量":54,"稳健":53}}};
 const LIVE="https://vambrocop.github.io/valpha-lab/stocks.json";
 const I18N={
@@ -106,7 +107,7 @@ function renderGrid(){
   $("grid").innerHTML=Object.entries(DATA).map(([s,d])=>{const hot=isHot(d);
     const yl=LANG==="en"?"1Y":"1年",vl=LANG==="en"?"vol":"波动",hc=LANG==="en"?"🔥chase":"🔥追涨",cc=LANG==="en"?"🏰steady":"🏰稳健";
     return `<div class="stk ${sel.has(s)?'sel':''}" data-s="${s}"><b>${LANG==="en"?s:esc(d.label)}</b> ${LANG==="en"?"":'<span class="mut">'+s+'</span>'}
-      <div class="sub">${yl} ${d.chg1y>=0?'+':''}${(d.chg1y??0).toFixed(0)}% · ${vl} ${(d.vol??0).toFixed(0)}%</div>
+      <div class="sub">${yl} ${(d.chg1y??0)>=0?'+':''}${(d.chg1y??0).toFixed(0)}% · ${vl} ${(d.vol??0).toFixed(0)}%</div>
       <div style="margin-top:3px">${hot?`<span class="chip hot">${hc}</span>`:''}${(d.radar["稳健"]||0)>=80?`<span class="chip calm">${cc}</span>`:''}</div></div>`;
   }).join("");
   document.querySelectorAll(".stk").forEach(el=>el.onclick=()=>{const s=el.dataset.s;sel.has(s)?sel.delete(s):sel.add(s);fromRec=false;renderGrid();});
