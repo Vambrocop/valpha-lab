@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🔥 野蛮专区 · Wild Zone</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:920px;margin:0 auto}
+  h1{font-size:1.35rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .banner{background:linear-gradient(135deg,#7d1128 0%,#5b21b6 100%);border:2px solid #f85149;border-radius:12px;padding:14px 16px;margin:12px 0 18px;font-size:.92rem;line-height:1.55;box-shadow:0 0 0 1px rgba(248,81,73,.25),0 8px 24px rgba(123,17,40,.35)}
+  .banner b{color:#fff}
+  .banner .big{font-size:1.05rem;font-weight:700;color:#fff;display:block;margin-bottom:5px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin:14px 0}
+  .card h2{font-size:1.02rem;margin:0 0 4px}
+  .card .sub{color:var(--mut);font-size:.8rem;margin-bottom:10px}
+  .huge{font-size:2.6rem;font-weight:800;line-height:1.1;margin:6px 0}
+  .huge.up{color:var(--grn)} .huge.down{color:var(--red)}
+  .pill{display:inline-block;padding:3px 11px;border-radius:14px;font-size:.82rem;border:1px solid var(--border);background:#0d1117;margin:2px 4px 2px 0}
+  .pill.up{border-color:var(--grn);color:#7ee787}.pill.down{border-color:var(--red);color:#ff9b94}
+  .honest{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:8px 11px;font-size:.8rem;margin-top:10px;color:#ffb3ad}
+  .grid{display:flex;flex-wrap:wrap;gap:12px}
+  .grid .col{flex:1 1 240px}
+  .lst{list-style:none;padding:0;margin:6px 0 0}
+  .lst li{padding:6px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .lst li:last-child{border-bottom:none}
+  .sym{font-weight:700}
+  .pos{color:var(--grn)} .neg{color:var(--red)}
+  .reason{color:var(--mut);font-size:.76rem;text-align:right;flex:1}
+  .stat{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0}
+  .stat .b{font-size:1.5rem;font-weight:800}
+  .stat .l{color:var(--mut);font-size:.74rem}
+  .scorerow{display:flex;gap:3px;flex-wrap:wrap;margin-top:8px}
+  .sq{width:16px;height:16px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:.6rem}
+  .sq.hit{background:rgba(63,185,80,.22);color:#7ee787}.sq.miss{background:rgba(248,81,73,.2);color:#ff9b94}
+  .mut{color:var(--mut);font-size:.78rem;margin-top:18px;border-top:1px solid var(--border);padding-top:8px}
+  #src{color:var(--mut);font-size:.78rem;margin-top:4px}
+  .err{color:var(--red);font-size:.82rem}
+</style>
+</head>
+<body>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang"></button>
+<h1 data-i18n="title"></h1>
+
+<div class="banner">
+  <span class="big" data-i18n="bannerBig"></span>
+  <span data-i18n="bannerBody"></span>
+</div>
+
+<!-- 今日大胆一押 -->
+<div class="card">
+  <h2 data-i18n="betTitle"></h2>
+  <div class="sub" data-i18n="betSub"></div>
+  <div id="betBody"><div class="mut" data-i18n="loading"></div></div>
+</div>
+
+<!-- 博反弹 -->
+<div class="card">
+  <h2 data-i18n="bounceTitle"></h2>
+  <div class="sub" data-i18n="bounceSub"></div>
+  <div id="bounceBody"><div class="mut" data-i18n="loading"></div></div>
+</div>
+
+<!-- 个股看好/看淡 -->
+<div class="card">
+  <h2 data-i18n="pickTitle"></h2>
+  <div class="sub" data-i18n="pickSub"></div>
+  <div id="pickBody"><div class="mut" data-i18n="loading"></div></div>
+</div>
+
+<!-- 玩具战绩 -->
+<div class="card">
+  <h2 data-i18n="tipTitle"></h2>
+  <div class="sub" data-i18n="tipSub"></div>
+  <div id="tipBody"><div class="mut" data-i18n="loading"></div></div>
+</div>
+
+<div id="src"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const BASE="https://vambrocop.github.io/valpha-lab/";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG=localStorage.getItem("valpha_lang")||"zh";
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+
+const I18N={
+  title:{zh:"🔥 野蛮专区",en:"🔥 Wild Zone"},
+  bannerBig:{zh:"🔥 野蛮实验区 · 出格娱乐、非投资建议。",
+             en:"🔥 Wild experimental zone · for fun & out-of-bounds, NOT investment advice."},
+  bannerBody:{zh:"这里把模型输出<b>大胆摊开</b>——但信号是<b>实验性</b>的、walk-forward 未发现样本外优势，<b>会亏钱、过去≠未来</b>。当真你就输了。",
+              en:"Here we lay the model output <b>boldly bare</b> — but the signals are <b>experimental</b>, walk-forward found <b>no out-of-sample edge</b>, you <b>can lose money, past ≠ future</b>. Take it seriously and you lose."},
+
+  betTitle:{zh:"🎯 今日大胆一押",en:"🎯 Today's Bold Bet"},
+  betSub:{zh:"直读 signals.json 的纳指上涨概率，>0.5 叫看涨、否则看跌。",
+          en:"Read straight from signals.json's NASDAQ up-probability: >0.5 → bullish, else bearish."},
+
+  bounceTitle:{zh:"💥 博反弹",en:"💥 Bounce Play"},
+  bounceSub:{zh:"极端下跌日（≤第5百分位）之后，次日是否系统性反弹？",
+             en:"After an extreme down-day (≤5th percentile), does the next day systematically bounce?"},
+
+  pickTitle:{zh:"🚀 个股看好 / 看淡",en:"🚀 Stocks: Bull / Bear"},
+  pickSub:{zh:"按观察池 6 个月动量排序的领先 / 垫底——动量描述，非荐股。",
+           en:"Ranked by 6-month momentum in the watch pool — leaders / laggards. Momentum, not stock tips."},
+
+  tipTitle:{zh:"🎲 玩具预测战绩",en:"🎲 Toy Predictor Scorecard"},
+  tipSub:{zh:"一个朴素玩具（今天涨→赌明天涨）的公开记分。",
+          en:"Public scorecard of a naive toy (up today → bet up tomorrow)."},
+
+  // bet body
+  bullCall:{zh:"看涨纳指",en:"BULLISH on NASDAQ"},
+  bearCall:{zh:"看跌纳指",en:"BEARISH on NASDAQ"},
+  prob:{zh:"上涨概率",en:"up-prob"},
+  tier:{zh:"档位",en:"tier"},
+  asof:{zh:"信号日",en:"signal date"},
+  betHonest:{zh:"诚实注：",en:"Honest note: "},
+
+  // bounce body
+  recentLbl:{zh:"现代（2000后）次日反弹差",en:"Modern (post-2000) next-day bounce gap"},
+  fullLbl:{zh:"全样本次日反弹差",en:"Full-sample next-day bounce gap"},
+  pval:{zh:"p 值",en:"p-value"},
+  ndown:{zh:"极端下跌样本",en:"extreme-down days"},
+  bounceHonest:{zh:"诚实注：这是<b>描述性历史规律，非可交易、非预测</b>。受成本/滑点影响、不一定可交易；现代消失常因被套利。",
+                en:"Honest note: this is a <b>descriptive historical pattern — not tradable, not a forecast</b>. Costs/slippage may make it untradable; modern decay often means it's been arbitraged away."},
+  verdict:{zh:"判定",en:"verdict"},
+
+  // picks
+  bullish:{zh:"看好 🟢",en:"Bullish 🟢"},
+  bearish:{zh:"看淡 🔴",en:"Bearish 🔴"},
+  mom6:{zh:"6月动量",en:"6M mom"},
+
+  // tip
+  hitRate:{zh:"总命中率",en:"hit rate"},
+  hitLast20:{zh:"近20条",en:"last 20"},
+  nScored:{zh:"已记分",en:"scored"},
+  latestCall:{zh:"最新一押",en:"latest call"},
+  recent12:{zh:"近 12 条战绩（绿=中 / 红=错）",en:"Last 12 calls (green=hit / red=miss)"},
+
+  up:{zh:"涨",en:"UP"},down:{zh:"跌",en:"DOWN"},
+
+  loading:{zh:"加载中…",en:"loading…"},
+  err:{zh:"拉不到数据——确认 JSON 已部署。",en:"Can't load data — check the JSON is deployed."},
+  foot:{zh:"全部数字来自实时 JSON（signals / overreaction / outlook / tipjar），本页只重新包装、绝不自编预测或数字。本站其余页面守「测风险不测方向」；本页为已授权的出格娱乐区。",
+        en:"All numbers come from live JSON (signals / overreaction / outlook / tipjar). This page only re-packages them — it never invents predictions or numbers. The rest of the site measures risk, not direction; this page is an authorized out-of-bounds fun zone."},
+  src:{zh:"实时 ✓ · 生成于",en:"Live ✓ · generated"}
+};
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+
+const num=(v,d=2)=>(v==null||isNaN(v))?"—":Number(v).toFixed(d);
+const pct=v=>(v==null||isNaN(v))?"—":`${v>=0?'+':''}${Number(v).toFixed(1)}%`;
+
+let DATA={};
+
+function renderBet(){
+  const s=DATA.signals;
+  if(!s){$("betBody").innerHTML=`<div class="err">${t("err")}</div>`;return;}
+  const p=s.latest_prob, up=(p??0)>0.5;
+  const date=(s.indices&&s.indices.NASDAQ&&s.indices.NASDAQ.date)||s.generated||"";
+  const callCls=up?"up":"down", call=up?t("bullCall"):t("bearCall");
+  const note=s.model_status_note||"";
+  $("betBody").innerHTML=`
+    <div class="huge ${callCls}">${esc(call)}</div>
+    <div>
+      <span class="pill ${callCls}">${t("prob")} ${p==null?"—":(p*100).toFixed(1)+"%"}</span>
+      <span class="pill">${t("tier")} ${esc(String(s.latest_tier==null?"—":s.latest_tier))}</span>
+      <span class="pill">${t("asof")} ${esc(date)}</span>
+    </div>
+    ${note?`<div class="honest"><b>${t("betHonest")}</b>${esc(note)}</div>`:""}`;
+}
+
+function renderBounce(){
+  const o=DATA.over;
+  if(!o){$("bounceBody").innerHTML=`<div class="err">${t("err")}</div>`;return;}
+  const r=o.recent||{}, f=o.full||{};
+  $("bounceBody").innerHTML=`
+    <div class="grid">
+      <div class="col">
+        <div class="stat">
+          <div><div class="b pos">${pct(r.diff_pct)}</div><div class="l">${t("recentLbl")}</div></div>
+        </div>
+        <div><span class="pill">${t("pval")} ${num(r.p_value,4)}</span>
+        <span class="pill">${t("ndown")} ${esc(String(r.n_down==null?"—":r.n_down))}</span></div>
+      </div>
+      <div class="col">
+        <div class="stat">
+          <div><div class="b pos">${pct(f.diff_pct)}</div><div class="l">${t("fullLbl")}</div></div>
+        </div>
+        <div><span class="pill">${t("pval")} ${num(f.p_value,4)}</span>
+        <span class="pill">${t("ndown")} ${esc(String(f.n_down==null?"—":f.n_down))}</span>
+        <span class="pill">${t("verdict")} ${esc(String(o.verdict==null?"—":o.verdict))}</span></div>
+      </div>
+    </div>
+    <div class="honest">${t("bounceHonest")}</div>`;
+}
+
+function renderPicks(){
+  const ol=DATA.outlook;
+  if(!ol){$("pickBody").innerHTML=`<div class="err">${t("err")}</div>`;return;}
+  const li=arr=>(arr||[]).map(x=>`<li>
+      <span class="sym">${esc(x.symbol)}</span>
+      <span class="${(x.mom_pct??0)>=0?'pos':'neg'}">${pct(x.mom_pct)}</span>
+      <span class="reason">${esc(x.reason||"")}</span></li>`).join("");
+  $("pickBody").innerHTML=`
+    <div class="grid">
+      <div class="col"><div class="pill up">${t("bullish")}</div>
+        <ul class="lst">${li(ol.bullish)||`<li class="mut">—</li>`}</ul></div>
+      <div class="col"><div class="pill down">${t("bearish")}</div>
+        <ul class="lst">${li(ol.bearish)||`<li class="mut">—</li>`}</ul></div>
+    </div>
+    ${ol.disclaimer?`<div class="honest">${esc(ol.disclaimer)}</div>`:""}`;
+}
+
+function renderTip(){
+  const tj=DATA.tipjar;
+  if(!tj){$("tipBody").innerHTML=`<div class="err">${t("err")}</div>`;return;}
+  const lat=tj.latest||{};
+  const callTxt=lat.call==="UP"?t("up"):lat.call==="DOWN"?t("down"):esc(String(lat.call==null?"—":lat.call));
+  const rec=(tj.recent||[]).slice(-12);
+  const squares=rec.map(x=>`<span class="sq ${x.hit?'hit':'miss'}" title="${esc(x.as_of||"")}: ${esc(String(x.call))}→${esc(String(x.actual))}">${x.hit?'✓':'✗'}</span>`).join("");
+  $("tipBody").innerHTML=`
+    <div class="stat">
+      <div><div class="b">${num(tj.hit_rate,1)}%</div><div class="l">${t("hitRate")}</div></div>
+      <div><div class="b">${num(tj.hit_rate_last20,1)}%</div><div class="l">${t("hitLast20")}</div></div>
+      <div><div class="b">${esc(String(tj.n_scored==null?"—":tj.n_scored))}</div><div class="l">${t("nScored")}</div></div>
+      <div><div class="b ${lat.call==='UP'?'pos':lat.call==='DOWN'?'neg':''}">${callTxt}</div><div class="l">${t("latestCall")} ${esc(lat.as_of||"")}</div></div>
+    </div>
+    <div class="l mut" style="margin-top:6px">${t("recent12")}</div>
+    <div class="scorerow">${squares}</div>
+    ${tj.caveat?`<div class="honest">${esc(tj.caveat)}</div>`:""}`;
+}
+
+function renderAll(){
+  applyStatic();
+  renderBet();renderBounce();renderPicks();renderTip();
+  const g=(DATA.signals&&DATA.signals.generated)||(DATA.outlook&&DATA.outlook.generated)||"";
+  $("src").textContent=g?`${t("src")} ${esc(g)}`:"";
+}
+
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);renderAll();};
+
+async function fetchJSON(name){
+  try{const r=await fetch(BASE+name,{cache:"no-store"});if(!r.ok)return null;return await r.json();}
+  catch(e){return null;}
+}
+async function load(){
+  applyStatic();
+  const [signals,over,outlook,tipjar]=await Promise.all([
+    fetchJSON("signals.json"),
+    fetchJSON("overreaction.json"),
+    fetchJSON("outlook.json"),
+    fetchJSON("tipjar.json")
+  ]);
+  DATA={signals,over,outlook,tipjar};
+  renderAll();
+}
+load();
+</script>
+</body>
+</html>
