@@ -9,7 +9,7 @@
 
 **Show HN: I built a stock-signal site, then proved most of my own signals have no edge**
 
-Alpha Lab started as "daily entry signals for US indices (Nasdaq/S&P)." Then I did the
+Valpha Lab started as "daily entry signals for US indices (Nasdaq/S&P)." Then I did the
 honest thing most signal projects skip: I rigorously tested whether the signals actually
 work out-of-sample — walk-forward with **block bootstrap** (overlapping-window p-values are
 optimistic), a **2024–2026 holdout that never touched training**, and a **benchmark

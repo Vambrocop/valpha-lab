@@ -81,7 +81,7 @@ def _coingecko():
     ids = ",".join(COIN_IDS.values())
     url = (f"https://api.coingecko.com/api/v3/simple/price"
            f"?ids={ids}&vs_currencies=usd,aud")
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (alpha-lab dashboard)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (valpha-lab dashboard)"})
     d = json.load(urllib.request.urlopen(req, timeout=15))
     crypto, aud_rate = {}, None
     for tk, cid in COIN_IDS.items():
@@ -96,7 +96,7 @@ def _coingecko():
 def _fear_greed():
     """服务端抓 alternative.me 恐惧贪婪指数(7天)→ 同源 quotes.json;中国访客不必直连境外 API。"""
     url = "https://api.alternative.me/fng/?limit=7&format=json"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (alpha-lab dashboard)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (valpha-lab dashboard)"})
     d = json.load(urllib.request.urlopen(req, timeout=15))
     return d.get("data", [])
 

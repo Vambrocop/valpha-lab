@@ -1,4 +1,4 @@
-# Alpha Lab — Claude Code 工作约定
+# Valpha Lab — Claude Code 工作约定
 
 ## 用户与访客（别当过时信息清理）
 

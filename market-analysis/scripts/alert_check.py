@@ -75,7 +75,7 @@ elif not STATE.exists():
         json.dump(cur_state, f, ensure_ascii=False)
 
 if alerts:
-    body = (f"# Alpha Lab 信号告警 {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M UTC')}\n\n"
+    body = (f"# Valpha Lab 信号告警 {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M UTC')}\n\n"
             + "\n\n".join(alerts)
             + "\n\n---\n[打开仪表盘](https://vambrocop.github.io/valpha-lab/) · 自动生成，仅供参考")
     ALERT.write_text(body, encoding="utf-8")

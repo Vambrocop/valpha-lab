@@ -1,11 +1,11 @@
 ---
 name: new-method
-description: 脚手架一个新的"诚实统计"方法,严格遵循本项目六步协议 + 红线/约定。用于给 Alpha Lab 加新的统计/因果检验(新事件研究、新防伪检验、新风险度量等)。Triggers:加方法/新检验/scaffold a new stats method/add method.
+description: 脚手架一个新的"诚实统计"方法,严格遵循本项目六步协议 + 红线/约定。用于给 Valpha Lab 加新的统计/因果检验(新事件研究、新防伪检验、新风险度量等)。Triggers:加方法/新检验/scaffold a new stats method/add method.
 ---
 
 # new-method —— 诚实统计方法脚手架
 
-给 Alpha Lab 加新统计/因果方法时**严格按此六步**,把项目约定烤进每一步。
+给 Valpha Lab 加新统计/因果方法时**严格按此六步**,把项目约定烤进每一步。
 已有范例照抄结构:`placebo_test` / `event_causal` / `risk_dashboard` / `conformal` / `cycles` / `fdr_crossfamily`。
 
 ## 🔴 红线(每步都守)
