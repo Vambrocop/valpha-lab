@@ -5,24 +5,25 @@
   --red: #e74c3c; --blue: #3498db; --purple: #9b59b6;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+body { background: radial-gradient(1100px 460px at 50% -150px, rgba(155,89,182,.10), transparent), var(--bg); color: var(--text); font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; -webkit-font-smoothing: antialiased; }
 
 /* ── 工具类（约定：仅"整条 style 完全相同"的高频模式抽到此；一次性布局样式保留内联，别强抽） ── */
 .u-cap { color: var(--muted); font-size: 0.7rem; }   /* 表头/标签的 muted 小字（原 12 处重复内联） */
 
 /* ── Header ── */
-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
-header h1 { font-size: 1.3rem; font-weight: 700; }
+header { background: linear-gradient(180deg, var(--surface2), var(--surface)); border-bottom: 1px solid var(--border); padding: 1.15rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+header h1 { font-size: 1.45rem; font-weight: 800; letter-spacing: .3px; }
 header h1 span { color: var(--green); }
 .header-sub { color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
 
 /* ── Layout：顶层五视图（今日/计划/实验/研究/我的）── */
 main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
-.view-nav { position: sticky; top: 0; z-index: 200; display: flex; gap: .35rem;
-  background: var(--bg); padding: .6rem 2rem; border-bottom: 1px solid var(--border);
+.view-nav { position: sticky; top: 0; z-index: 200; display: flex; gap: .4rem;
+  background: rgba(13,17,23,.82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  padding: .6rem 2rem; border-bottom: 1px solid var(--border);
   overflow-x: auto; }
 .view-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted);
-  padding: .45rem 1.1rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer;
+  padding: .45rem 1.1rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer;
   white-space: nowrap; transition: all .15s; font-family: inherit; }
 .view-btn:hover { color: var(--text); border-color: var(--muted); }
 .view-btn.active { color: var(--blue); border-color: var(--blue); background: rgba(52,152,219,.12); font-weight: 600; }
@@ -45,7 +46,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 #view-today .view-grid > .panel { break-inside: avoid; margin-bottom: 1.5rem; }
 
 /* ── Panel ── */
-.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.22); }
 .panel-title { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .85rem; padding-bottom: .55rem; border-bottom: 1px solid var(--border-faint); }
 
 /* ── Signal Meter ── */
