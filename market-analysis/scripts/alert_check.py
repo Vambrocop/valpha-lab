@@ -77,7 +77,7 @@ elif not STATE.exists():
 if alerts:
     body = (f"# Alpha Lab 信号告警 {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M UTC')}\n\n"
             + "\n\n".join(alerts)
-            + "\n\n---\n[打开仪表盘](https://vambrocop.github.io/alpha-lab/) · 自动生成，仅供参考")
+            + "\n\n---\n[打开仪表盘](https://vambrocop.github.io/valpha-lab/) · 自动生成，仅供参考")
     ALERT.write_text(body, encoding="utf-8")
     print(f"[ALERT] {len(alerts)} 条告警 → alert.md")
 else:

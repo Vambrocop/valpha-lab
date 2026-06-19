@@ -28,7 +28,7 @@ direction, which an efficient market prices away).
 Everything is static (GitHub Pages), data auto-refreshes via Actions, and there's an
 append-only prediction log so I can't quietly rewrite history.
 
-Live: https://vambrocop.github.io/alpha-lab/ · Code: https://github.com/Vambrocop/alpha-lab
+Live: https://vambrocop.github.io/valpha-lab/ · Code: https://github.com/Vambrocop/valpha-lab
 
 ---
 
@@ -56,7 +56,7 @@ Findings:
 - Real, usable structure elsewhere: overnight anomaly, correlation regimes, mean reversion.
 
 Honest negative results + the methodology to get them. Tear it apart:
-https://github.com/Vambrocop/alpha-lab
+https://github.com/Vambrocop/valpha-lab
 
 ---
 
@@ -73,8 +73,8 @@ BTC 20 日动量站得住、还 regime 依赖。但**波动率确实可测**（A
 其余真规律（隔夜异象、相关性体制、均值回归）也都在。
 
 诚实的负结果 + 拿到它的方法论。欢迎挑刺：
-- 站点 https://vambrocop.github.io/alpha-lab/
-- 代码 https://github.com/Vambrocop/alpha-lab
+- 站点 https://vambrocop.github.io/valpha-lab/
+- 代码 https://github.com/Vambrocop/valpha-lab
 
 ---
 

@@ -1,8 +1,8 @@
 # Valpha Lab — 美股入场信号分析
 
-[![Refresh market data](https://github.com/Vambrocop/alpha-lab/actions/workflows/refresh-data.yml/badge.svg)](https://github.com/Vambrocop/alpha-lab/actions/workflows/refresh-data.yml)
+[![Refresh market data](https://github.com/Vambrocop/valpha-lab/actions/workflows/refresh-data.yml/badge.svg)](https://github.com/Vambrocop/valpha-lab/actions/workflows/refresh-data.yml)
 
-**Live site → https://vambrocop.github.io/alpha-lab/**
+**Live site → https://vambrocop.github.io/valpha-lab/**
 
 用统计 + 机器学习分析美股（纳斯达克 + 标普500），但和大多数信号站相反：
 它**诚实地分清哪些规律是真的、哪些是幻觉**，并用 append-only 实盘日志 + 每模型 vs 硬基线的
