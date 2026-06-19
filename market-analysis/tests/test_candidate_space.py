@@ -32,10 +32,10 @@ def test_ids_stable_across_calls():
 
 
 def test_factor_tracks_binary_features():
-    # 因子族 = BINARY_FEATURES × 2 段；漂移即失败 → 强制有意识更新 N_DECLARED
+    # 因子族 = 每因子 1 候选(全段 p + 现代 recent_p 同候选两字段)；漂移即失败 → 强制更新 N_DECLARED
     from walk_forward import BINARY_FEATURES
-    assert len(factor_candidates()) == len(BINARY_FEATURES) * 2
-    assert N_FACTOR == len(BINARY_FEATURES) * 2
+    assert len(factor_candidates()) == len(BINARY_FEATURES)
+    assert N_FACTOR == len(BINARY_FEATURES)
 
 
 def test_rebound_params_bounded():

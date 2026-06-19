@@ -26,8 +26,8 @@ _CAL_ANNUAL = ("decade_digit", "presidential_cycle")        # 年频，标普 on
 _REB_PCTL = (1, 5, 10)        # 触发 = 跌破第 N 百分位
 _REB_HOLD = (1, 5)            # 持有日
 
-# ── 因子族：BINARY_FEATURES（单一来源，晚 import）× {全样本, 现代段} ──
-_FACTOR_SEGMENTS = ("full", "modern")
+# ── 因子族：BINARY_FEATURES（单一来源，晚 import）。每因子 1 个候选，
+#    全段 p 与现代段 recent_p 是同一候选的两个字段(由 _segment_lens 给)，不拆成两个候选 ──
 
 
 def _cid(family, params):
@@ -54,8 +54,7 @@ def rebound_candidates():
 
 def factor_candidates():
     from walk_forward import BINARY_FEATURES   # 单一来源，避免与生产因子集漂移
-    return [_cand("factor", f"{col}_{seg}", factor=col, segment=seg)
-            for col, _name in BINARY_FEATURES for seg in _FACTOR_SEGMENTS]
+    return [_cand("factor", col, factor=col) for col, _name in BINARY_FEATURES]
 
 
 def enumerate_candidates():
@@ -66,8 +65,8 @@ def enumerate_candidates():
 # 预声明总数（写死；test 对账，漂移即失败 → 强制有意识更新分母）
 N_CALENDAR = len(_CAL_DUAL) * len(INDICES) + len(_CAL_ANNUAL)        # 10
 N_REBOUND = len(_REB_PCTL) * len(_REB_HOLD) * len(INDICES)           # 12
-N_FACTOR = 15 * len(_FACTOR_SEGMENTS)                                # 30（15 = len(BINARY_FEATURES)，test 核对）
-N_DECLARED = N_CALENDAR + N_REBOUND + N_FACTOR                       # 52
+N_FACTOR = 15                                                        # = len(BINARY_FEATURES)，test 核对(每因子1候选)
+N_DECLARED = N_CALENDAR + N_REBOUND + N_FACTOR                       # 37
 
 
 if __name__ == "__main__":

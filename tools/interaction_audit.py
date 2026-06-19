@@ -1,7 +1,7 @@
 # 交互审计：真浏览器加载每一页(含 9 个工具页) + 点每个按钮抓死按钮/报错 + 查横向溢出(导航切掉) +
 # 失败请求 + 本地数据新鲜度。补 site_audit.py 的盲区(它只测 dashboard 视图、不点普通按钮、不测工具页)。
 # 用法: py tools/interaction_audit.py [--mobile]
-import http.server, threading, functools, os, sys, tempfile, json, glob, datetime
+import http.server, threading, functools, os, sys, json, glob, datetime
 
 from playwright.sync_api import sync_playwright
 
