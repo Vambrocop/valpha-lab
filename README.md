@@ -1,4 +1,4 @@
-# Alpha Lab — 美股入场信号分析
+# Valpha Lab — 美股入场信号分析
 
 [![Refresh market data](https://github.com/Vambrocop/alpha-lab/actions/workflows/refresh-data.yml/badge.svg)](https://github.com/Vambrocop/alpha-lab/actions/workflows/refresh-data.yml)
 
