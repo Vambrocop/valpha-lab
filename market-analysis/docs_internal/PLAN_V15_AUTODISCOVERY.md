@@ -3,6 +3,12 @@
 > 2026-06-19 由规划子代理产出、主脑核对存档。是 `SPEC_SELF_GROWING.md`(v2.0 spec) 的**可落地切片化**版。
 > **⚠️ 开工前必须先拍两个 🔴 判断点(见 §5 🔴-A / 🔴-B)** —— 它们决定架构走向。遵守六步协议(判断密集→建后双审)+「先查后动」+红线。
 
+## ✅ 决策已拍（2026-06-20 用户）
+
+- **🔴-A = 双栏并列**：家族内 FDR + 跨族 FDR 两栏（保留"族内成立 vs 全局最严校正后存活"两层信息）。`fdr_crossfamily.collect()` / 前端按两套分母呈现，不让膨胀把信息一刀切没。
+- **🔴-B = DSR 纳入**（Phase 5）。**注：DSR 是反过拟合验证**（按 trials=N 缩水夏普、判"最佳候选是否只是运气"），与 Fable 原则「升级验证(CPCV/Deflated Sharpe)不加模型」一致、REVIEW.md 列为"下一级严谨度"——**防自欺诊断、非收益/方向预测，不破红线**。原标的"张力"撤回。
+- 余 C/D/E（现代已淡处置 / 自动vs手动候选关系 / 复测频率）Phase 1+ 再拍。
+
 ## 现状结论（先查后动）
 
 1. **展示层已成熟，发现层缺失**。`fdr_crossfamily.py:collect()` 从四个已发布 JSON(placebo/event_causal/multivariate/factor_pruning)**被动收集** p 值做 BY/BH/Bonferroni 跨族校正，`self_growing.html` 当"总账"渲染。**没有任何东西"主动生成新候选"**——发现靠人手在 `placebo_test.py` 加 `add(...)`、`factor_pruning.py` 加因子。v1.5 = 补"自动枚举候选 + 喂进这台校正引擎 + 把存活/死亡固化成 append-only 账本 + 持续复测"。
