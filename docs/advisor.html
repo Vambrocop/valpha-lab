@@ -34,6 +34,7 @@
   .bill .big{font-size:1.25rem;font-weight:700}
   .alert{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:10px 12px;margin:8px 0;font-size:.86rem;color:#ffb3ad}
   .mut{color:var(--mut);font-size:.8rem}.src{font-size:.74rem;color:var(--mut)}
+  @media(max-width:560px){body{padding:12px}h1{font-size:1.18rem}.bill{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -150,6 +151,8 @@ $("hz").querySelectorAll("button").forEach(b=>b.onclick=()=>{horizon=b.dataset.h
 $("go").onclick=()=>render(allocate());
 $("rec").onclick=recommend;
 $("clr").onclick=()=>{sel.clear();renderGrid();$("out").innerHTML="";};
+applyStatic();
+$("grid").innerHTML=`<div class="mut" style="grid-column:1/-1;padding:10px">${LANG==="en"?"Loading live data…":"加载实时数据…"}</div>`;
 tryLive();
 </script>
 </body>

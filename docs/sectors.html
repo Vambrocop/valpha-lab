@@ -21,6 +21,8 @@
   .pos{color:var(--grn)} .neg{color:var(--red)}
   .mut{color:var(--mut);font-size:.78rem;margin-top:14px;border-top:1px solid var(--border);padding-top:8px}
   #src{color:var(--mut);font-size:.78rem}
+  th:focus{outline:2px solid var(--acc);outline-offset:-2px}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}table{font-size:.8rem}}
 </style>
 </head>
 <body>
@@ -77,14 +79,14 @@ function render(){
   rows.sort((a,b)=>{const x=a[sortCol],y=b[sortCol];if(x==null)return 1;if(y==null)return -1;
     return (typeof x==="number")?(y-x)*dir*-1:String(x).localeCompare(String(y),'zh')*dir*-1;});
   let h="<thead><tr>";
-  COLS.forEach(([k,lk])=>h+=`<th data-k="${k}" class="${k===sortCol?'s':''}">${t(lk)}</th>`);
+  COLS.forEach(([k,lk])=>{const on=k===sortCol;h+=`<th data-k="${k}" scope="col" tabindex="0" role="button" aria-sort="${on?(dir<0?'descending':'ascending'):'none'}" class="${on?'s':''}">${t(lk)}</th>`;});
   h+="</tr></thead><tbody>";
   rows.forEach(d=>{h+=`<tr>
     <td><span class="dot" style="background:${SEC[d.sec]||'#888'}"></span>${esc(secName(d.sec))}</td>
     <td>${d.n}</td>
     <td>${pn(d.c6)}</td><td>${pn(d.c1)}</td><td>${d.v==null?'<span class="mut">—</span>':d.v}</td></tr>`;});
   h+="</tbody>";$("tbl").innerHTML=h;
-  $("tbl").querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===sortCol)dir*=-1;else{sortCol=k;dir=-1;}render();});
+  $("tbl").querySelectorAll("th").forEach(th=>{const sort=()=>{const k=th.dataset.k;if(k===sortCol)dir*=-1;else{sortCol=k;dir=-1;}render();};th.onclick=sort;th.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();sort();}};});
 }
 function redraw(){applyStatic();render();
   $("src").textContent=(DATA.length?`${t("live")} ${DATA.length} · ${t("asof")} ${window._gen||""}`:"");}
