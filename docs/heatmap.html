@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>热力图 · Heatmap</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1200px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .note{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.35);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
+  .bar{margin:10px 0;font-size:.85rem;color:var(--mut);display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+  .bar button{background:transparent;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem;transition:.1s}
+  .bar button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+  #src{color:var(--mut);font-size:.78rem;margin-left:auto}
+  /* sector groups */
+  #map{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px}
+  .sec-group{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;min-width:180px;flex:1 1 200px}
+  .sec-hdr{font-size:.78rem;font-weight:700;color:var(--mut);margin-bottom:7px;display:flex;align-items:center;gap:5px}
+  .sec-dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  /* tile grid inside each sector */
+  .tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:3px}
+  .tile{border-radius:5px;padding:4px 3px;cursor:default;text-align:center;font-size:.72rem;font-weight:600;line-height:1.25;min-height:42px;display:flex;flex-direction:column;justify-content:center;align-items:center;transition:opacity .1s}
+  .tile:hover{opacity:.82;outline:1px solid rgba(255,255,255,.35)}
+  .tile .tk{font-size:.68rem;font-weight:700;letter-spacing:.3px;color:rgba(0,0,0,.75)}
+  .tile .val{font-size:.75rem;color:rgba(0,0,0,.7)}
+  /* footnotes */
+  .mut{color:var(--mut);font-size:.78rem;margin-top:14px;border-top:1px solid var(--border);padding-top:8px}
+  @media(max-width:560px){
+    body{padding:11px}h1{font-size:1.15rem}
+    .sec-group{min-width:140px;flex:1 1 140px}
+    .tile-grid{grid-template-columns:repeat(auto-fill,minmax(44px,1fr))}
+    .tile{min-height:36px;font-size:.65rem}
+    .tile .tk{font-size:.6rem}.tile .val{font-size:.68rem}
+  }
+</style>
+</head>
+<body>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">&#8592; Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<div class="note" data-i18n="note"></div>
+<div class="bar">
+  <span data-i18n="colorby"></span>
+  <button id="btn6" class="on" data-k="c6" data-i18n="lbl6"></button>
+  <button id="btn1" data-k="c1" data-i18n="lbl1"></button>
+  <span id="src"></span>
+</div>
+<div id="map"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const LIVE="https://vambrocop.github.io/valpha-lab/valpha150.json";
+
+/* Sector colour palette — kept identical to valpha150.html */
+const SEC={"半导体":"#a371f7","科技":"#58a6ff","通信服务":"#56d4dd","可选消费":"#e3a008",
+           "必需消费":"#3fb950","医疗":"#2dd4bf","金融":"#d4a017","工业":"#8b949e",
+           "能源":"#f85149","公用":"#a3b18a","材料":"#7d8590","房地产":"#f778ba"};
+const SEC_EN={"半导体":"Semis","科技":"Tech","通信服务":"Comms","可选消费":"Cons.Disc.",
+              "必需消费":"Staples","医疗":"Health","金融":"Financials","工业":"Industrials",
+              "能源":"Energy","公用":"Utilities","材料":"Materials","房地产":"Real Estate"};
+
+const I18N={
+  title:{zh:"🔳 板块热力图",en:"🔳 Sector Heatmap"},
+  note:{zh:"<b>历史涨跌幅结构快照，非预测、非买卖信号。</b>红绿只表示涨跌幅大小——绿=涨幅较大，红=跌幅较大；仅为描述性对比，与「该不该买」无关。幸存者偏差：仅含当前在册的 150 只。",
+        en:"<b>A descriptive snapshot of historical returns — not a forecast, not a buy/sell signal.</b> Green = larger gain, Red = larger loss; purely descriptive comparison, not investment advice. Survivorship bias: only current 150 names included."},
+  colorby:{zh:"颜色依据：",en:"Color by: "},
+  lbl6:{zh:"6月%",en:"6M%"},
+  lbl1:{zh:"1年%",en:"1Y%"},
+  foot:{zh:"等权格（无市值字段，故每格等大）。颜色阶：全部股票的涨跌幅线性映射，端点截断在 ±50% 避免极值吃光色阶。hover 查看详情。数据：实时 valpha150.json，描述性历史、非预测。",
+        en:"Equal-weight tiles (no market-cap field; all tiles same size). Color scale: returns linearly mapped across all stocks; clamped at ±50% to prevent extremes collapsing the gradient. Hover for details. Data: live valpha150.json — descriptive history, not a forecast."},
+  live:{zh:"实时 ✓",en:"Live ✓"},
+  err:{zh:"暂不可用 — 拉不到 valpha150.json，确认 Pages 已部署。",en:"Unavailable — can't load valpha150.json; check Pages deployment."},
+  asof:{zh:"数据日",en:"as of"},
+  vol:{zh:"波动",en:"vol"},
+  fh:{zh:"距52周高",en:"vs 52W high"}
+};
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+
+let DATA=[], colorKey="c6";
+
+/* ── colour maths ── */
+const CLAMP=50;  /* outlier cap ± in % points */
+function pct2rgb(v){
+  /* v is already clamped to [-CLAMP, CLAMP] */
+  /* centre=0 → neutral #888; +CLAMP → green #27ae60-ish; -CLAMP → red #c0392b-ish */
+  const ratio=v/CLAMP; /* -1..1 */
+  if(ratio>=0){
+    /* 0→neutral, 1→green */
+    const r=Math.round(40 + (0-40)*ratio);   /* 40→0 */
+    const g=Math.round(68 + (185-68)*ratio);  /* 68→185 */
+    const b=Math.round(70 + (80-70)*ratio);   /* 70→80 */
+    return `rgb(${r},${g},${b})`;
+  } else {
+    /* 0→neutral, -1→red */
+    const f=-ratio; /* 0..1 */
+    const r=Math.round(40 + (220-40)*f);   /* 40→220 */
+    const g=Math.round(68 + (50-68)*f);    /* 68→50 */
+    const b=Math.round(70 + (47-70)*f);    /* 70→47 */
+    return `rgb(${r},${g},${b})`;
+  }
+}
+function tileColor(v){
+  if(v==null)return "#2a2a2a";
+  const clamped=Math.max(-CLAMP,Math.min(CLAMP,v));
+  return pct2rgb(clamped);
+}
+
+/* ── text colour: always dark for legibility on mid-to-bright backgrounds ── */
+function textCol(v){
+  /* For very dark neutral tiles (near 0 with dark bg), use lighter text */
+  if(v==null)return "#6e7681";
+  if(Math.abs(v)<3)return "#c9d1d9";  /* near-zero → light grey on dark bg */
+  return "rgba(0,0,0,.72)";
+}
+
+function fmt(v,signed){
+  if(v==null)return "—";
+  return (signed&&v>=0?"+":"")+v+"%";
+}
+
+function secLabel(s){return LANG==="en"?(SEC_EN[s]||s):s;}
+
+function buildTooltip(d){
+  const n6=fmt(d.c6,true), n1=fmt(d.c1,true), nv=fmt(d.v,false), nfh=fmt(d.fh,true);
+  const vol=t("vol"), fhL=t("fh");
+  if(LANG==="en"){
+    return `${d.t} · ${d.n}\nSector: ${SEC_EN[d.sec]||d.sec}\n6M: ${n6}  1Y: ${n1}\n${vol}: ${nv}  ${fhL}: ${nfh}`;
+  }
+  return `${d.t} · ${d.n}\n板块：${d.sec}\n6月: ${n6}  1年: ${n1}\n${vol}: ${nv}  ${fhL}: ${nfh}`;
+}
+
+function render(){
+  if(!DATA.length)return;
+
+  /* group by sector, preserve SEC order */
+  const groups={};
+  DATA.forEach(d=>{if(d&&d.sec)(groups[d.sec]||(groups[d.sec]=[])).push(d);});
+
+  /* sort stocks within each sector by colorKey descending */
+  Object.values(groups).forEach(g=>g.sort((a,b)=>{
+    const av=a[colorKey], bv=b[colorKey];
+    if(av==null)return 1; if(bv==null)return -1;
+    return bv-av;
+  }));
+
+  let html="";
+  Object.keys(SEC).forEach(sec=>{
+    const grp=groups[sec];
+    if(!grp||!grp.length)return;
+    const dotCol=SEC[sec]||"#888";
+    const hdr=esc(secLabel(sec));
+    html+=`<div class="sec-group">
+  <div class="sec-hdr"><span class="sec-dot" style="background:${dotCol}"></span>${hdr} <span style="color:#6e7681;font-weight:400">(${grp.length})</span></div>
+  <div class="tile-grid">`;
+    grp.forEach(d=>{
+      const v=d[colorKey];
+      const bg=tileColor(v);
+      const tc=textCol(v);
+      const valStr=fmt(v,true);
+      const tip=buildTooltip(d);
+      html+=`<div class="tile" style="background:${bg};color:${tc}" title="${esc(tip)}"><span class="tk" style="color:${tc}">${esc(d.t)}</span><span class="val" style="color:${tc}">${esc(valStr)}</span></div>`;
+    });
+    html+="</div></div>";
+  });
+
+  $("map").innerHTML=html||`<span style="color:var(--mut)">${t("err")}</span>`;
+}
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+
+function redraw(){applyStatic();render();}
+
+$("lang").onclick=()=>{
+  LANG=LANG==="zh"?"en":"zh";
+  try{localStorage.setItem("valpha_lang",LANG);}catch(e){}
+  redraw();
+  if(DATA.length){
+    const gen=window._gen||"";
+    $("src").textContent=`${t("live")} ${DATA.length} · ${t("asof")} ${gen}`;
+  }
+};
+
+/* colour-key toggle */
+[$("btn6"),$("btn1")].forEach(btn=>{
+  btn.onclick=()=>{
+    colorKey=btn.dataset.k;
+    [$("btn6"),$("btn1")].forEach(b=>b.classList.toggle("on",b===btn));
+    render();
+  };
+});
+
+async function load(){
+  applyStatic();
+  try{
+    const r=await fetch(LIVE,{cache:"no-store"});
+    if(!r.ok)throw 0;
+    const j=await r.json();
+    DATA=j.stocks||[];
+    window._gen=j.generated||"";
+    $("src").textContent=`${t("live")} ${DATA.length} · ${t("asof")} ${window._gen}`;
+    render();
+  }catch(e){
+    $("src").textContent=t("err");
+    $("map").innerHTML=`<span style="color:var(--mut);font-size:.9rem">${esc(t("err"))}</span>`;
+  }
+}
+load();
+</script>
+</body>
+</html>
