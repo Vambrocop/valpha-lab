@@ -295,6 +295,40 @@ footer a { color: var(--green); text-decoration: none; }
 .cgt-btn:focus-visible, button:focus-visible {
   outline: 2px solid var(--blue); outline-offset: 2px;
 }
+/* ════════════════════════════════════════════════════════════════════
+   视觉协调层（2026-06-19）：把主仪表盘观感对齐到新着陆页（index/valpha150）
+   的「干净现代风」。纯增量、可逆、不改布局结构 / 不动 JS / 复用既有 token。
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Header：从平直渐变 → 顶部带一缕淡紫光晕，呼应全站径向渐变与新页 accent */
+header { position: relative; box-shadow: 0 1px 0 var(--border-faint); }
+header::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(420px 120px at 18% -40px, rgba(155,89,182,.10), transparent); }
+header > * { position: relative; }
+.header-sub { line-height: 1.55; }
+
+/* 吸顶导航：胶囊按钮加轻微浮起 + 选中态柔光，向 index 卡片 hover 看齐 */
+.view-nav { box-shadow: 0 1px 0 var(--border-faint); }
+.view-btn { transition: color .15s, border-color .15s, background .15s, transform .15s, box-shadow .15s; }
+.view-btn:hover { transform: translateY(-1px); }
+.view-btn.active { box-shadow: 0 0 0 1px rgba(52,152,219,.18), 0 2px 10px rgba(52,152,219,.10); }
+
+/* Panel：与新页卡片一致的边框柔化 + hover 轻抬升（保留既有圆角/阴影规则） */
+.panel { border-color: var(--border-faint); transition: box-shadow .25s, border-color .25s, transform .25s; }
+.panel:hover { transform: translateY(-1px); border-color: var(--border); }
+
+/* Signal 环：在既有发光外补一层柔和径向底纹，质感更接近新页 */
+.signal-ring { background-image: radial-gradient(circle at 50% 38%, rgba(255,255,255,.03), transparent 62%); }
+
+/* 导言框 view-intro：补一层轻阴影，靠拢 index 的 .baseline 气质（保留既有左色条+圆角形态） */
+.view-intro { box-shadow: 0 1px 2px rgba(0,0,0,.18); }
+
+/* 表格：仅加安全的悬停行高亮（不碰内联的 padding/border，绝不改布局） */
+.panel table tr:hover, .chart-wrap table tr:hover { background: rgba(155,89,182,.05); }
+
+/* dow / window 卡片：补统一的边框过渡，hover 不再突兀 */
+.dow-card, .window-card { transition: border-color .25s, box-shadow .25s; }
+
 /* ── 尊重"减少动态效果"系统偏好（前庭敏感用户）── */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
