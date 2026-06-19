@@ -54,6 +54,7 @@ steps = [
     ("Benchmark记分卡",    "benchmark.py"),        # 须在 track_predictions 后，读最新预测命中率；在第二遍 build_signals 前以便嵌入
     ("信号嵌入回测结果",   "build_signals.py"),   # 第二遍：嵌入最新回测/验证/追踪
     ("导出图表数据",       "export_chart_data.py"),
+    ("导出货币汇率",       "export_fx.py"),       # fx_rates.json：CGT 计算器"显示货币"切换用(仅显示,不改税务计算)
     ("导出个股数据",       "export_stocks.py"),
     ("个股诚实体检",       "stock_checkup.py"),   # 个股风险画像(块0起)：复用 stocks_prices/combined_prices,非荐股非预测
     ("市场要闻RSS",        "fetch_news.py"),
@@ -75,7 +76,7 @@ full_steps = [
 # 盘中轻量模式：只保留"数据刷新 + 信号 + 前端产物"链路，分析类产物吃缓存
 LIGHT_STEPS = {
     "fetch_data.py", "build_signals.py", "track_predictions.py",
-    "export_chart_data.py", "export_stocks.py", "fetch_news.py",
+    "export_chart_data.py", "export_fx.py", "export_stocks.py", "fetch_news.py",
     "paper_trading.py", "daily_brief.py", "weekly_report.py", "verify_output.py",
 }
 

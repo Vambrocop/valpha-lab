@@ -444,6 +444,110 @@ function renderFearGreed(data) {
 // ═══════════════════════════════════════════════════════
 //  澳洲 CGT 税务计算器
 // ═══════════════════════════════════════════════════════
+// ──「显示货币」切换（AUD / USD / CNY）─────────────────────────────
+// ⚠ 税务红线：calculateCGT 永远在 AUD 里算（澳洲 CGT 法定货币）。
+//   货币切换【只换显示】，绝不改税务计算本身。输入框仍按 AUD 单价填。
+const CGT_CURRENCIES = {
+  AUD: { symbol: "A$", label: "AUD 澳元", locale: "en-AU" },
+  USD: { symbol: "US$", label: "USD 美元", locale: "en-US" },
+  CNY: { symbol: "¥",  label: "CNY 人民币", locale: "zh-CN" },
+};
+let _cgtFX = null;                  // { aud_usd, usd_cny, asof, generated } 来自 fx_rates.json
+let _cgtDisplayCur = (typeof localStorage !== "undefined" &&
+                      localStorage.getItem("cgt_display_cur")) || "AUD";
+if (!CGT_CURRENCIES[_cgtDisplayCur]) _cgtDisplayCur = "AUD";
+
+// 1 AUD = ? 目标币。AUD 优先用盘中实时 aud_rate（quotes.json），fx_rates.json 兜底。
+function _cgtRateFromAUD(cur) {
+  if (cur === "AUD") return 1;
+  // AUD→USD：优先实时 QUOTES.aud_rate（≈0.70），否则 fx_rates.json
+  const audUsd = (typeof QUOTES !== "undefined" && QUOTES && QUOTES.aud_rate)
+    ? QUOTES.aud_rate : (_cgtFX && _cgtFX.aud_usd);
+  if (cur === "USD") return audUsd || null;
+  if (cur === "CNY") {            // AUD→USD→CNY 两段相乘
+    const usdCny = _cgtFX && _cgtFX.usd_cny;
+    return (audUsd && usdCny) ? audUsd * usdCny : null;
+  }
+  return null;
+}
+// 把 AUD 金额格式化成所选显示币种（带正负号/小数位）。换算不可得时回退 AUD 并标注。
+function _cgtFmt(audAmount, { sign = false, decimals = 2 } = {}) {
+  let cur = _cgtDisplayCur;
+  let rate = _cgtRateFromAUD(cur);
+  if (rate == null) { cur = "AUD"; rate = 1; }   // 汇率缺失：诚实回退 AUD，不瞎换
+  const v = audAmount * rate;
+  const c = CGT_CURRENCIES[cur];
+  const num = Math.abs(v).toLocaleString(c.locale,
+    { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  const pre = sign ? (v >= 0 ? "+" : "−") : (v < 0 ? "−" : "");
+  return `${pre}${c.symbol}${num}`;
+}
+
+// 拉取 fx_rates.json（同源，国内访客可用）。失败不阻塞——AUD 始终可算。
+async function loadCgtFXRates() {
+  try {
+    const r = await fetch("fx_rates.json?_=" + Date.now());
+    if (r.ok) _cgtFX = await r.json();
+  } catch (e) { /* 文件可能尚未生成；切 USD/CNY 时会提示并回退 AUD */ }
+  renderCgtCurrencySelector();
+  // 若结果已算过，按新汇率重渲染
+  if (document.getElementById("cgt-result")?.innerHTML.trim()) calculateCGT();
+}
+
+function setCgtDisplayCur(cur) {
+  if (!CGT_CURRENCIES[cur]) return;
+  _cgtDisplayCur = cur;
+  try { localStorage.setItem("cgt_display_cur", cur); } catch (e) {}
+  renderCgtCurrencySelector();
+  if (document.getElementById("cgt-result")?.innerHTML.trim()) calculateCGT();
+}
+
+// 把货币选择器 + 税务红线提示注入到计算器区域（结果容器上方）。纯 JS 渲染，不动 HTML。
+function renderCgtCurrencySelector() {
+  const result = document.getElementById("cgt-result");
+  if (!result) return;
+  let host = document.getElementById("cgt-currency-switch");
+  if (!host) {
+    // 用字面 id="..." 注入（也便于前端审计的 id 正则识别这个动态容器）
+    result.insertAdjacentHTML("beforebegin", '<div id="cgt-currency-switch"></div>');
+    host = document.getElementById("cgt-currency-switch");
+  }
+  if (!host) return;
+  const btns = Object.keys(CGT_CURRENCIES).map(cur => {
+    const active = cur === _cgtDisplayCur;
+    const avail = cur === "AUD" || _cgtRateFromAUD(cur) != null;
+    const c = CGT_CURRENCIES[cur];
+    const style = active
+      ? "background:rgba(52,152,219,.18);border:1px solid #3498db;color:#3498db;font-weight:700;"
+      : "background:var(--surface2);border:1px solid var(--border);color:var(--muted);";
+    const dis = avail ? "" : "opacity:.45;cursor:not-allowed;";
+    return `<button type="button" data-cgt-cur="${cur}" ${avail ? "" : "disabled"}
+      title="${avail ? "" : "汇率暂不可用（fx_rates.json 未生成）"}"
+      style="${style}${dis}padding:.28rem .7rem;border-radius:5px;font-size:0.76rem;cursor:pointer;">${esc(c.label)}</button>`;
+  }).join("");
+  // 当前换算口径（让人看清用了哪条汇率），AUD 不显示
+  let rateNote = "";
+  if (_cgtDisplayCur !== "AUD") {
+    const rate = _cgtRateFromAUD(_cgtDisplayCur);
+    const sym = CGT_CURRENCIES[_cgtDisplayCur].symbol;
+    rateNote = rate != null
+      ? `<span style="color:var(--muted);font-size:0.7rem;">当前：1 AUD ≈ ${sym}${rate.toFixed(4)}${_cgtFX && _cgtFX.asof ? "（汇率 " + esc(_cgtFX.asof) + "）" : ""}</span>`
+      : `<span style="color:#e67e22;font-size:0.7rem;">该币种汇率暂不可用，已回退按 AUD 显示</span>`;
+  }
+  host.innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin:.6rem 0 .35rem;">
+      <span style="font-size:0.76rem;color:var(--muted);">显示货币：</span>
+      ${btns}
+      ${rateNote}
+    </div>
+    <div style="background:rgba(231,126,34,.08);border:1px solid rgba(231,126,34,.3);border-radius:6px;
+                padding:.5rem .7rem;font-size:0.72rem;line-height:1.55;color:var(--muted);margin-bottom:.5rem;">
+      ⚠️ <b>税务红线</b>：澳洲 CGT 法定按 <b>AUD</b> 计税，且买入/卖出各按<b>成交日汇率</b>计税。
+      本货币切换<b>仅方便查看/估算</b>，<b>不能替代</b>按成交日 AUD 记账报税；用单一当前汇率换算会让税额失真。
+      输入框仍请按 <b>AUD 单价</b>填写。
+    </div>`;
+}
+
 function prefillCGT() {
   const asset = document.getElementById("cgt-asset")?.value;
   if (!asset || asset === "custom") return;
@@ -502,29 +606,56 @@ function calculateCGT() {
   const gain_color = rawGain >= 0 ? "#2ecc71" : "#e74c3c";
   const assetName = document.getElementById("cgt-asset")?.value || "资产";
 
+  // ⚠ 以上全部在 AUD 里算（税务红线）。下面只把【显示】换算到所选货币：_cgtFmt(aud)。
+  const curMeta = CGT_CURRENCIES[_cgtRateFromAUD(_cgtDisplayCur) == null ? "AUD" : _cgtDisplayCur];
+  const curTag = curMeta.symbol === "A$" ? ""
+    : `<span style="color:var(--muted);font-weight:400;font-size:0.7rem;margin-left:.3rem;">· 显示币种 ${esc(curMeta.label.split(" ")[0])}（仅换算显示，税仍按 AUD）</span>`;
+
   el.innerHTML = `
     <div style="background:var(--surface2);border-radius:8px;padding:1rem;margin-top:.5rem;">
       <div style="font-size:0.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem;">
         ${assetName !== "custom" && assetName ? assetName : ""}  ${qty} 个 · 持有${heldMonths ? heldMonths+"个月" : "未知"}
-        ${eligible50 ? '<span style="background:rgba(46,204,113,.2);color:#2ecc71;border-radius:3px;padding:1px 6px;font-size:0.7rem;margin-left:.3rem;">✓ 12月折扣</span>' : ""}
+        ${eligible50 ? '<span style="background:rgba(46,204,113,.2);color:#2ecc71;border-radius:3px;padding:1px 6px;font-size:0.7rem;margin-left:.3rem;">✓ 12月折扣</span>' : ""}${curTag}
       </div>
-      <div class="cgt-result-row"><span style="color:var(--muted)">买入总成本</span><span>A$${totalCost.toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
-      <div class="cgt-result-row"><span style="color:var(--muted)">卖出总收入</span><span>A$${totalProceeds.toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
-      <div class="cgt-result-row"><span style="color:var(--muted)">资本利得（税前）</span><span style="color:${gain_color};font-weight:700">${rawGain >= 0 ? '+' : ''}A$${rawGain.toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
-      ${eligible50 ? `<div class="cgt-result-row"><span style="color:var(--muted)">50%折扣（持有>12月）</span><span style="color:#2ecc71">−A$${(rawGain*0.5).toFixed(2)}</span></div>` : ""}
-      <div class="cgt-result-row"><span style="color:var(--muted)">应税金额</span><span>A$${Math.max(0,taxableGain).toFixed(2)}</span></div>
-      <div class="cgt-result-row"><span style="color:var(--muted)">个税（${taxRate}%）</span><span style="color:#e74c3c">−A$${taxOnGain.toFixed(2)}</span></div>
-      <div class="cgt-result-row"><span style="color:var(--muted)">Medicare征费（2%）</span><span style="color:#e74c3c">−A$${medicare.toFixed(2)}</span></div>
+      <div class="cgt-result-row"><span style="color:var(--muted)">买入总成本</span><span>${_cgtFmt(totalCost)}</span></div>
+      <div class="cgt-result-row"><span style="color:var(--muted)">卖出总收入</span><span>${_cgtFmt(totalProceeds)}</span></div>
+      <div class="cgt-result-row"><span style="color:var(--muted)">资本利得（税前）</span><span style="color:${gain_color};font-weight:700">${_cgtFmt(rawGain, {sign:true})}</span></div>
+      ${eligible50 ? `<div class="cgt-result-row"><span style="color:var(--muted)">50%折扣（持有>12月）</span><span style="color:#2ecc71">−${_cgtFmt(rawGain*0.5)}</span></div>` : ""}
+      <div class="cgt-result-row"><span style="color:var(--muted)">应税金额</span><span>${_cgtFmt(Math.max(0,taxableGain))}</span></div>
+      <div class="cgt-result-row"><span style="color:var(--muted)">个税（${taxRate}%）</span><span style="color:#e74c3c">−${_cgtFmt(taxOnGain)}</span></div>
+      <div class="cgt-result-row"><span style="color:var(--muted)">Medicare征费（2%）</span><span style="color:#e74c3c">−${_cgtFmt(medicare)}</span></div>
       <div class="cgt-result-row cgt-highlight"><span>税后净盈亏</span>
-        <span style="color:${netGain >= 0 ? '#2ecc71' : '#e74c3c'}">${netGain >= 0 ? '+' : ''}A$${netGain.toFixed(2)} (${netPct >= 0 ? '+' : ''}${netPct.toFixed(1)}%)</span></div>
+        <span style="color:${netGain >= 0 ? '#2ecc71' : '#e74c3c'}">${_cgtFmt(netGain, {sign:true})} (${netPct >= 0 ? '+' : ''}${netPct.toFixed(1)}%)</span></div>
       ${isGain && !eligible50 && heldMonths > 0 && heldMonths < 12 ? `
       <div style="background:rgba(241,196,15,.1);border:1px solid rgba(241,196,15,.3);border-radius:5px;padding:.5rem .75rem;margin-top:.5rem;font-size:0.78rem;">
-        💡 再持有 <strong style="color:#f1c40f">${12 - heldMonths} 个月</strong>即可享受50%折扣，届时预计少缴税 <strong style="color:#2ecc71">A$${(rawGain*0.5*(taxRate/100+0.02)).toFixed(0)}</strong>
+        💡 再持有 <strong style="color:#f1c40f">${12 - heldMonths} 个月</strong>即可享受50%折扣，届时预计少缴税 <strong style="color:#2ecc71">${_cgtFmt(rawGain*0.5*(taxRate/100+0.02), {decimals:0})}</strong>
       </div>` : ""}
       <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;">
-        保本卖出价（税后回本）≈ <strong>A$${breakEvenAUD.toFixed(4)}/个</strong>
+        保本卖出价（税后回本）≈ <strong>${_cgtFmt(breakEvenAUD, {decimals:4})}/个</strong>
       </div>
     </div>`;
+}
+
+// ── CGT 货币切换的初始化（自给自足，不依赖 app-5.js）──────────────
+// 委派点击：货币按钮由 renderCgtCurrencySelector 动态生成，用委托绑一次即可。
+function _cgtInitCurrencySwitch() {
+  if (_cgtInitCurrencySwitch._done) return;
+  if (!document.getElementById("cgt-result")) return;   // 不在「我的」视图的页面就跳过
+  _cgtInitCurrencySwitch._done = true;
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-cgt-cur]");
+    if (b && !b.disabled) setCgtDisplayCur(b.dataset.cgtCur);
+  });
+  renderCgtCurrencySelector();   // 先用已有/缺省汇率渲染出选择器
+  loadCgtFXRates();              // 再异步拉 fx_rates.json，到了重渲染
+}
+// app-4.js 在 <body> 末尾加载，DOM 通常已就绪；兼容偶发未就绪的情况。
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", _cgtInitCurrencySwitch);
+  } else {
+    _cgtInitCurrencySwitch();
+  }
 }
 
 // ── 自动刷新持仓价格 ──
