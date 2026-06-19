@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Valpha150 大盘 · 原型</title>
+<title>Valpha150</title>
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1080px;margin:0 auto}
-  h1{font-size:1.3rem;margin:.2em 0}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
   .note{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
   .chips{margin:10px 0;font-size:.8rem}
   .chip{display:inline-block;padding:3px 9px;border-radius:12px;margin:2px;cursor:pointer;border:1px solid var(--border);background:#161b22;color:var(--fg)}
@@ -28,60 +29,77 @@
 </style>
 </head>
 <body>
-<h1>🛰️ Valpha150 大盘 <span style="color:var(--mut);font-size:.8rem">· 原型</span></h1>
-<div class="note"><b>涨幅榜 = 已经涨过的 + 只含当前在册的（幸存者偏差）。</b>
-  上榜 ≠ 该买——半导体此刻霸榜是这一波的主题，<b>不代表未来</b>，高涨幅往往伴随高回撤。看结构，别照单追涨。</div>
+<button id="lang"></button>
+<h1 data-i18n="title"></h1>
+<div class="note" data-i18n="note"></div>
 <div class="chips" id="chips"></div>
 <div style="overflow-x:auto"><table id="tbl"></table></div>
 <div id="src"></div>
-<div class="mut">点列头排序。🔥6月涨≥50% · ⚠️波动≥70% · 🏰波动≤25%。数据：实时 <code>valpha150.json</code>，描述性历史、非预测。</div>
+<div class="mut" data-i18n="foot"></div>
 
 <script>
 const LIVE="https://vambrocop.github.io/valpha-lab/valpha150.json";
 const SEC={"半导体":"#a371f7","科技":"#58a6ff","通信服务":"#56d4dd","可选消费":"#e3a008","必需消费":"#3fb950","医疗":"#2dd4bf","金融":"#d4a017","工业":"#8b949e","能源":"#f85149","公用":"#a3b18a","材料":"#7d8590","房地产":"#f778ba"};
-const COLS=[["n","名称",0],["sec","板块",0],["c6","6月%",1],["c1","1年%",1],["v","波动%",1],["fh","距52周高%",1],["tag","标签",0]];
+const SEC_EN={"半导体":"Semis","科技":"Tech","通信服务":"Comms","可选消费":"Cons.Disc.","必需消费":"Staples","医疗":"Health","金融":"Financials","工业":"Industrials","能源":"Energy","公用":"Utilities","材料":"Materials","房地产":"Real Estate"};
+const I18N={
+  title:{zh:"🛰️ Valpha150 大盘 · 原型",en:"🛰️ Valpha150 Board · prototype"},
+  note:{zh:"<b>涨幅榜 = 已经涨过的 + 只含当前在册的（幸存者偏差）。</b>上榜 ≠ 该买——半导体此刻霸榜是这一波的主题，<b>不代表未来</b>，高涨幅往往伴随高回撤。看结构，别照单追涨。",
+        en:"<b>A gainers board = what already rose, survivors only (survivorship bias).</b> On the list ≠ buy it — semis topping it now is this cycle's theme, <b>not the future</b>; big gains usually carry big drawdowns. Read the structure, don't chase."},
+  foot:{zh:"点列头排序。🔥6月涨≥50% · ⚠️波动≥70% · 🏰波动≤25%。数据：实时 valpha150.json，描述性历史、非预测。",
+        en:"Click a header to sort. 🔥6M≥50% · ⚠️vol≥70% · 🏰vol≤25%. Data: live valpha150.json — descriptive history, not a forecast."},
+  cn:{zh:"名称",en:"Name"},csec:{zh:"板块",en:"Sector"},c6:{zh:"6月%",en:"6M%"},c1:{zh:"1年%",en:"1Y%"},cv:{zh:"波动%",en:"Vol%"},cfh:{zh:"距52周高%",en:"vs 52W%"},ctag:{zh:"标签",en:"Tags"},
+  all:{zh:"全部",en:"All"},live:{zh:"实时 ✓",en:"Live ✓"},err:{zh:"拉不到 valpha150.json——确认已部署。",en:"Can't load valpha150.json — check deployment."},asof:{zh:"数据日",en:"as of"}
+};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let DATA=[], sortCol="c6", dir=-1, filt="";
+let LANG=localStorage.getItem("valpha_lang")||"zh";
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+let DATA=[],sortCol="c6",dir=-1,filt="";
 
-function tagOf(d){let t="";if((d.c6??0)>=50)t+='<span class="tag hot">🔥</span>';if((d.v??0)>=70)t+='<span class="tag risk">⚠️</span>';if((d.v??99)<=25)t+='<span class="tag calm">🏰</span>';return t;}
-function pn(v){if(v==null)return '<span class="mut">—</span>';const c=v>=0?'pos':'neg';return `<span class="${c}">${v>=0?'+':''}${v}</span>`;}
+function tagOf(d){let x="";if((d.c6??0)>=50)x+='<span class="tag hot">🔥</span>';if((d.v??0)>=70)x+='<span class="tag risk">⚠️</span>';if((d.v??99)<=25)x+='<span class="tag calm">🏰</span>';return x;}
+function pn(v){if(v==null)return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}</span>`;}
+function secName(s){return LANG==="en"?(SEC_EN[s]||s):s;}
+function nm(d){return LANG==="en"?d.t:`${esc(d.n)} <span class="mut">${d.t}</span>`;}
 
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
 function render(){
+  const COLS=[["n","cn"],["sec","csec"],["c6","c6"],["c1","c1"],["v","cv"],["fh","cfh"],["tag","ctag"]];
   let rows=DATA.filter(d=>!filt||d.sec===filt);
-  rows.sort((a,b)=>{const x=a[sortCol],y=b[sortCol];
-    if(x==null)return 1;if(y==null)return -1;
+  rows.sort((a,b)=>{const x=a[sortCol],y=b[sortCol];if(x==null)return 1;if(y==null)return -1;
     return (typeof x==="number")?(y-x)*dir*-1:String(x).localeCompare(String(y),'zh')*dir*-1;});
   let h="<thead><tr>";
-  COLS.forEach(([k,lbl])=>h+=`<th data-k="${k}" class="${k===sortCol?'s':''}">${lbl}</th>`);
+  COLS.forEach(([k,lk])=>h+=`<th data-k="${k}" class="${k===sortCol?'s':''}">${t(lk)}</th>`);
   h+="</tr></thead><tbody>";
-  rows.forEach(d=>{
-    h+=`<tr><td>${esc(d.n)} <span class="mut">${d.t}</span></td>
-      <td><span class="dot" style="background:${SEC[d.sec]||'#888'}"></span>${esc(d.sec)}</td>
-      <td>${pn(d.c6)}</td><td>${pn(d.c1)}</td><td>${d.v??'—'}</td><td>${pn(d.fh)}</td>
-      <td style="text-align:left">${tagOf(d)}</td></tr>`;
-  });
-  h+="</tbody>";
-  $("tbl").innerHTML=h;
-  $("tbl").querySelectorAll("th").forEach(th=>th.onclick=()=>{
-    const k=th.dataset.k; if(k===sortCol)dir*=-1; else{sortCol=k;dir=-1;} render();});
+  rows.forEach(d=>{h+=`<tr><td>${nm(d)}</td>
+    <td><span class="dot" style="background:${SEC[d.sec]||'#888'}"></span>${esc(secName(d.sec))}</td>
+    <td>${pn(d.c6)}</td><td>${pn(d.c1)}</td><td>${d.v??'—'}</td><td>${pn(d.fh)}</td>
+    <td style="text-align:left">${tagOf(d)}</td></tr>`;});
+  h+="</tbody>";$("tbl").innerHTML=h;
+  $("tbl").querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===sortCol)dir*=-1;else{sortCol=k;dir=-1;}render();});
 }
-
 function chips(){
-  const cnt={}; DATA.forEach(d=>cnt[d.sec]=(cnt[d.sec]||0)+1);
-  let h=`<span class="chip ${filt===''?'on':''}" data-s="">全部 ${DATA.length}</span>`;
-  Object.keys(SEC).forEach(s=>{if(cnt[s])h+=`<span class="chip ${filt===s?'on':''}" data-s="${s}"><span class="dot" style="background:${SEC[s]}"></span>${s} ${cnt[s]}</span>`;});
+  const cnt={};DATA.forEach(d=>cnt[d.sec]=(cnt[d.sec]||0)+1);
+  let h=`<span class="chip ${filt===''?'on':''}" data-s="">${t("all")} ${DATA.length}</span>`;
+  Object.keys(SEC).forEach(s=>{if(cnt[s])h+=`<span class="chip ${filt===s?'on':''}" data-s="${s}"><span class="dot" style="background:${SEC[s]}"></span>${esc(secName(s))} ${cnt[s]}</span>`;});
   $("chips").innerHTML=h;
   $("chips").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{filt=c.dataset.s;chips();render();});
 }
+function redraw(){applyStatic();chips();render();}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);redraw();
+  $("src").textContent=(DATA.length?`${t("live")} ${DATA.length} · ${t("asof")} ${window._gen||""}`:"");};
 
 async function load(){
+  applyStatic();
   try{
     const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;
-    const j=await r.json(); DATA=j.stocks||[];
-    $("src").textContent=`实时 ✓ ${DATA.length} 只 · 数据日 ${j.generated}`;
-    chips(); render();
-  }catch(e){ $("src").textContent="拉不到 valpha150.json——确认已部署。"; }
+    const j=await r.json();DATA=j.stocks||[];window._gen=j.generated;
+    $("src").textContent=`${t("live")} ${DATA.length} · ${t("asof")} ${j.generated}`;
+    chips();render();
+  }catch(e){$("src").textContent=t("err");}
 }
 load();
 </script>
