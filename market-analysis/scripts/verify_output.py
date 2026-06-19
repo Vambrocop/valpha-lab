@@ -30,7 +30,7 @@ def check(cond, msg):
 
 
 # 1. 前端要拉取的文件都必须存在且非空
-for f in ["index.html", "app-1.js", "app-2.js", "app-3.js", "app-4.js",
+for f in ["index.html", "dashboard.html", "app-1.js", "app-2.js", "app-3.js", "app-4.js",
           "app-5.js", "style.css", "signals.json", "prices.json",
           "charts_extra.json", "long_history.json", "stocks.json",
           "overnight.json", "news.json", "signals_history.json",

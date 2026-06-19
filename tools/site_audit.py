@@ -50,7 +50,7 @@ with sync_playwright() as p:
     page.on("requestfailed", lambda r: bad_requests.append(f"{r.url} ({r.failure})"))
     page.on("response", lambda r: bad_requests.append(f"{r.url} HTTP {r.status}")
             if r.status >= 400 else None)
-    page.goto(f"http://127.0.0.1:{PORT}/index.html", wait_until="networkidle")
+    page.goto(f"http://127.0.0.1:{PORT}/dashboard.html", wait_until="networkidle")
     page.wait_for_timeout(2200)
 
     problems = []
