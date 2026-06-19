@@ -80,6 +80,7 @@ const I18N={
   t_adv:{zh:"配置",en:"Allocator"},t_adv_d:{zh:"出格区·配置建议",en:"out-of-bounds · allocation"},
   t_wild:{zh:"野蛮专区",en:"Wild Zone"},t_wild_d:{zh:"出格娱乐·非建议",en:"out-of-bounds fun · not advice"},
   t_ipo:{zh:"IPO 雷达",en:"IPO radar"},t_ipo_d:{zh:"将上市·已申报/传闻分级",en:"upcoming · filed/rumor tiers"},
+  t_method:{zh:"诚实门方法",en:"Honesty gates"},t_method_d:{zh:"大白话讲诚实统计门",en:"the honest-stats gates, plainly"},
   t_full:{zh:"完整仪表盘",en:"Full dashboard"},t_full_d:{zh:"全部诚实统计 + 登记簿",en:"all honest stats + registry"}
 };
 const $=id=>document.getElementById(id);
@@ -90,7 +91,7 @@ let SIG=null,REG=null,DIG=null,PAPER=null,V150=null;
 
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
 function tools(){
-  const T=[["t_board","🛰️","valpha150.html"],["t_sec","📊","sectors.html"],["t_radar","📡","radar.html"],["t_adv","🎲","advisor.html"],["t_wild","🔥","wild.html"],["t_ipo","🛫","ipo.html"],["t_full","🧭","dashboard.html"]];
+  const T=[["t_board","🛰️","valpha150.html"],["t_sec","📊","sectors.html"],["t_radar","📡","radar.html"],["t_adv","🎲","advisor.html"],["t_wild","🔥","wild.html"],["t_ipo","🛫","ipo.html"],["t_method","🛡️","methodology.html"],["t_full","🧭","dashboard.html"]];
   $("tools").innerHTML=T.map(([k,ico,href])=>`<a class="tool" href="${href}"><div class="ico">${ico}</div><div class="nm">${t(k)}</div><div class="ds">${t(k+"_d")}</div></a>`).join("");
 }
 function paint(){

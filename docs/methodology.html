@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>诚实门方法论 · Honesty gates</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#8b949e;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1080px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .lead{color:var(--mut);font-size:.9rem;margin:8px 0 4px}
+  .note{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:14px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+  .card h2{font-size:1.02rem;margin:0 0 7px;line-height:1.3}
+  .card .guard{color:var(--acc);font-size:.82rem;font-weight:600;margin:0 0 8px}
+  .card .how{color:var(--fg);font-size:.85rem;margin:0;opacity:.92}
+  .grave{border-color:var(--acc)}
+  .mut{color:var(--mut);font-size:.82rem;margin-top:18px;border-top:1px solid var(--border);padding-top:10px;text-align:center}
+</style>
+</head>
+<body>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang"></button>
+<h1 data-i18n="title"></h1>
+<div class="lead" data-i18n="lead"></div>
+<div class="note" data-i18n="note"></div>
+<div class="grid" id="grid"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const I18N={
+  title:{zh:"🛡️ 诚实门方法论",en:"🛡️ The honesty gates"},
+  lead:{zh:"本站怎么「拆穿真假规律」——每道门都是一种逼自己别自欺的检验。下面用大白话讲清每一道门防什么、怎么做。",
+        en:"How this site separates real patterns from fake ones — each gate is a check that forces us to stop fooling ourselves. Below: what each gate guards against, in plain words."},
+  note:{zh:"<b>这些门测的是「规律是不是真的」，不是「明天涨不涨」。</b>过了门只说明历史上这条规律站得住，<b>不等于未来会重演</b>，更不是买卖建议。",
+        en:"<b>These gates test whether a pattern is real — not whether it goes up tomorrow.</b> Passing a gate means the pattern held up historically; it does <b>not</b> mean it repeats, and it is not advice."},
+  foot:{zh:"这些不是装饰——是逼自己别自欺的护栏。",
+        en:"These aren't decoration — they're the guardrails that keep us from fooling ourselves."},
+
+  c1t:{zh:"🎭 placebo 安慰剂检验",en:"🎭 Placebo test"},
+  c1g:{zh:"防：方法本身在制造假信号",en:"Guards against: the method manufacturing fake signals"},
+  c1h:{zh:"把同一套效应放到「本不该有效应」的对照上——打乱标签、换到无关时段。如果连对照都「显著」，那是方法在自欺，不是真规律。本站还做「全样本 vs 现代段（2000 年后）」对比：若效应在现代段消失，多半早被套利吃掉了。",
+       en:"Run the same effect on controls that shouldn't show one — shuffle the labels, use an unrelated period. If even the control comes out 'significant,' the method is fooling itself. We also compare full-sample vs the modern era (post-2000): if the effect vanishes in the modern era, it was likely arbitraged away."},
+
+  c2t:{zh:"🧮 FDR 错误发现率",en:"🧮 FDR (false discovery rate)"},
+  c2g:{zh:"防：测得越多，假阳性越多",en:"Guards against: test many, get a pile of false positives"},
+  c2h:{zh:"测 100 个东西，光看 p<0.05 的门槛，平均会有约 5 个纯靠运气「显著」。Benjamini–Hochberg / Yekutieli 控制的是「入选的里面有多大比例是假货」，比单看一个 p 值诚实得多。",
+       en:"Test 100 things and a flat p<0.05 cutoff will, on average, flag about 5 by luck alone. Benjamini–Hochberg / Yekutieli control the share of fakes among everything you accept — far more honest than eyeballing a single p-value."},
+
+  c3t:{zh:"⏳ walk-forward 滚动样本外",en:"⏳ Walk-forward (rolling out-of-sample)"},
+  c3g:{zh:"防：用未来数据回测、自己骗自己",en:"Guards against: backtesting with future data you wouldn't have had"},
+  c3h:{zh:"只拿「过去」训练、拿「未来」测试，然后一格一格往前滚。这样测的是「当时真能用到的信息」。只有在没见过的样本外还站得住，才算数。",
+       en:"Train only on the past, test only on the future, then roll the window forward step by step. This tests what you'd actually have known at the time. It only counts if it holds up out-of-sample, on data it never saw."},
+
+  c4t:{zh:"📉 Deflated Sharpe 缩水夏普",en:"📉 Deflated Sharpe ratio"},
+  c4g:{zh:"防：试到一个好看的就当真",en:"Guards against: trying many strategies and keeping the prettiest"},
+  c4h:{zh:"试了 N 个策略，挑出最好那个，它的夏普比率天然偏高（试得越多越虚）。按「你到底试了多少次」把夏普打折，再看它是不是还实打实地正。",
+       en:"Try N strategies and pick the best, and its Sharpe ratio is inflated by construction (more tries, more inflation). Deflate the Sharpe by how many strategies you actually tried, then check whether it's still genuinely positive."},
+
+  c5t:{zh:"🎯 conformal 保形预测",en:"🎯 Conformal prediction"},
+  c5g:{zh:"防：假装精确地报一个点",en:"Guards against: pretending precision with a single point"},
+  c5h:{zh:"不报一个假装精确的点，而是给预测配一个「诚实的不确定区间」，并且覆盖率有数学保证（比如说 90% 区间，长期就真有约 90% 的真值落在里面）。",
+       en:"Instead of a falsely precise point estimate, it attaches an honest uncertainty interval to each prediction, with a mathematically guaranteed coverage rate (a 90% interval really does contain the truth ~90% of the time over the long run)."},
+
+  c6t:{zh:"🪦 登记簿 / 坟场",en:"🪦 Registry / Graveyard"},
+  c6g:{zh:"防：只晒成功、藏起失败",en:"Guards against: showing only wins, hiding the losses"},
+  c6h:{zh:"过了上面所有门的，进「登记簿」（认定的真规律）；没过的，进「坟场」——并标注死因（败在哪道门）。失败也公开，这是本站的魂。",
+       en:"What passes all the gates above goes into the registry (patterns we accept as real); what fails goes into the graveyard — tagged with its cause of death (which gate it failed). We publish the failures too — that's the soul of this site."}
+};
+const $=id=>document.getElementById(id);
+let LANG=localStorage.getItem("valpha_lang")||"zh";
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+const CARDS=[
+  {n:1},{n:2},{n:3},{n:4},{n:5},{n:6,grave:true}
+];
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+function render(){
+  let h="";
+  CARDS.forEach(c=>{
+    h+=`<div class="card${c.grave?' grave':''}">
+      <h2>${t("c"+c.n+"t")}</h2>
+      <p class="guard">${t("c"+c.n+"g")}</p>
+      <p class="how">${t("c"+c.n+"h")}</p>
+    </div>`;
+  });
+  $("grid").innerHTML=h;
+}
+function redraw(){applyStatic();render();}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";localStorage.setItem("valpha_lang",LANG);redraw();};
+redraw();
+</script>
+</body>
+</html>
