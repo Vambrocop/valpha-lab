@@ -305,7 +305,7 @@ def block_bootstrap_diff(sel, y, block=20, B=2000, seed=42):
     n_dropped = 0                       # 重采样未抽到任何 sel 日 → diff 无定义,跳过
     for _ in range(B):
         starts = rng.integers(0, n, n_blocks)
-        idx = np.concatenate([(s + np.arange(block)) % n for s in starts])[:n]
+        idx = ((starts[:, None] + np.arange(block)) % n).ravel()[:n]   # 向量化(替 Python 推导式)：block=1 时 128s→秒级，索引/结果完全不变
         ys, ss = y[idx], sel[idx]
         if ss.sum() == 0:
             n_dropped += 1

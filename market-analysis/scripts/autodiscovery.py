@@ -1,9 +1,8 @@
 """autodiscovery.py — v1.5 自生长 Phase 1b：把候选路由到真统计算 p，喂裁决引擎，产出 autodiscovery.json。
 
-⚠️ WIP(2026-06-19)：路由逻辑建好、种子已稳定(hashlib)、_daily 已缓存；**但未接 run_all、未端到端验证**——
-   实测 run_all(write=False) >280s 太慢(瓶颈：日历 perm_test N=1000×10候选×2 + rebound 的
-   rolling().apply 逐窗 Python 调用)。**下一步先优化性能**(rebound 向量化前向收益、calendar 复用/降N、
-   或缓存零分布)再验证(含 SP500 日历 p 对 placebo 的内建校验)+ 独立审 + 接 run_all。暂不上线。
+状态(2026-06-20)：已提速到 ~15s(rebound 前向收益 cumsum 向量化 + block_bootstrap 索引向量化)、
+   种子稳定(hashlib)、_daily 缓存。**内建校验通过**：SP500 日历 p 值与 placebo_tests.json 一致。
+   结果(37候选)：仅 1 真存活、7 已淡、25 死、4 检验力不足——诚实。待独立审(判断密集)后接 run_all。
 
 
 复用现有原语（不重写统计）：
@@ -102,8 +101,13 @@ def _rebound(pctl, hold, index, cid):
     ret = _daily(index)
     if ret is None or len(ret) < 1000:
         return None
-    fwd = (1 + ret).rolling(hold).apply(np.prod, raw=True).shift(-hold) - 1
-    df = pd.DataFrame({"ret": ret, "fwd": fwd}).dropna()
+    # 向量化前向 hold 日收益：cumsum(log1p) 差分，替掉慢的 rolling().apply(逐窗 Python 调用，单候选 ~100s)
+    r = ret.values
+    C = np.log1p(r).cumsum()
+    fwd = np.full(len(r), np.nan)
+    m = len(r) - hold
+    fwd[:m] = np.expm1(C[hold:hold + m] - C[:m])   # fwd[t]=prod(1+r[t+1..t+hold])-1
+    df = pd.DataFrame({"ret": r, "fwd": fwd}, index=ret.index).dropna()
     thr = np.percentile(df["ret"].values, pctl)
     sel = (df["ret"].values <= thr)
     y = (df["fwd"].values > 0).astype(float)
