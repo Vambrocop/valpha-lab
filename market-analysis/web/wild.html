@@ -38,7 +38,20 @@
   .mut{color:var(--mut);font-size:.78rem;margin-top:18px;border-top:1px solid var(--border);padding-top:8px}
   #src{color:var(--mut);font-size:.78rem;margin-top:4px}
   .err{color:var(--red);font-size:.82rem}
-  @media(max-width:560px){body{padding:11px}h1{font-size:1.18rem}.huge{font-size:2rem}}
+  /* autodiscovery rebound table */
+  .rb-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:.82rem}
+  .rb-table th{text-align:left;color:var(--mut);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--border)}
+  .rb-table td{padding:5px 8px;border-bottom:1px solid rgba(48,54,61,.5);vertical-align:top}
+  .rb-table tr:last-child td{border-bottom:none}
+  .v-survive{color:#7ee787}.v-faded{color:#e3b341}.v-dead{color:var(--mut)}.v-inconclusive{color:#8b949e}
+  /* macro narrative card */
+  .macro-disclaimer{background:rgba(163,113,247,.12);border:1px solid var(--acc);border-radius:8px;padding:8px 11px;font-size:.78rem;color:#c9b1f7;margin-bottom:12px}
+  .macro-item{border-bottom:1px solid var(--border);padding:10px 0}
+  .macro-item:last-child{border-bottom:none}
+  .macro-item .mi-title{font-weight:700;font-size:.9rem;margin-bottom:3px}
+  .macro-item .mi-thesis{font-size:.82rem;color:var(--fg);margin-bottom:4px}
+  .macro-item .mi-verdict{font-size:.78rem;color:#ffb3ad;background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.3);border-radius:6px;padding:4px 9px;display:inline-block;margin-top:2px}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.18rem}.huge{font-size:2rem}.rb-table th,.rb-table td{padding:4px 5px}}
 </style>
 </head>
 <body>
@@ -59,7 +72,7 @@
   <div id="betBody"><div class="mut" data-i18n="loading"></div></div>
 </div>
 
-<!-- 博反弹 -->
+<!-- 博反弹 — autodiscovery 全量 rebound 族 -->
 <div class="card">
   <h2 data-i18n="bounceTitle"></h2>
   <div class="sub" data-i18n="bounceSub"></div>
@@ -80,189 +93,360 @@
   <div id="tipBody"><div class="mut" data-i18n="loading"></div></div>
 </div>
 
+<!-- 🌍 macro 资金流 / 狂想卡 -->
+<div class="card">
+  <h2 data-i18n="macroTitle"></h2>
+  <div class="sub" data-i18n="macroSub"></div>
+  <div id="macroBody"></div>
+</div>
+
 <div id="src"></div>
 <div class="mut" data-i18n="foot"></div>
 
 <script>
-const BASE="https://vambrocop.github.io/valpha-lab/";
-const $=id=>document.getElementById(id);
-const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
-const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+var BASE='https://vambrocop.github.io/valpha-lab/';
+var $=function(id){return document.getElementById(id);};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+var LANG='zh';try{LANG=localStorage.getItem('valpha_lang')||'zh';}catch(e){}
+function t(k){return(I18N[k]&&I18N[k][LANG])||k;}
 
-const I18N={
-  title:{zh:"🔥 野蛮专区",en:"🔥 Wild Zone"},
-  bannerBig:{zh:"🔥 野蛮实验区 · 出格娱乐、非投资建议。",
-             en:"🔥 Wild experimental zone · for fun & out-of-bounds, NOT investment advice."},
-  bannerBody:{zh:"这里把模型输出<b>大胆摊开</b>——但信号是<b>实验性</b>的、walk-forward 未发现样本外优势，<b>会亏钱、过去≠未来</b>。当真你就输了。",
-              en:"Here we lay the model output <b>boldly bare</b> — but the signals are <b>experimental</b>, walk-forward found <b>no out-of-sample edge</b>, you <b>can lose money, past ≠ future</b>. Take it seriously and you lose."},
+var I18N={
+  title:{zh:'🔥 野蛮专区',en:'🔥 Wild Zone'},
+  bannerBig:{zh:'🔥 野蛮实验区 · 出格娱乐、非投资建议。',
+             en:'🔥 Wild experimental zone · for fun &amp; out-of-bounds, NOT investment advice.'},
+  bannerBody:{zh:'这里把模型输出<b>大胆摊开</b>——但信号是<b>实验性</b>的、walk-forward 未发现样本外优势，<b>会亏钱、过去≠未来</b>。当真你就输了。',
+              en:'Here we lay the model output <b>boldly bare</b> — but the signals are <b>experimental</b>, walk-forward found <b>no out-of-sample edge</b>, you <b>can lose money, past ≠ future</b>. Take it seriously and you lose.'},
 
-  betTitle:{zh:"🎯 今日大胆一押",en:"🎯 Today's Bold Bet"},
-  betSub:{zh:"直读 signals.json 的纳指上涨概率，>0.5 叫看涨、否则看跌。",
-          en:"Read straight from signals.json's NASDAQ up-probability: >0.5 → bullish, else bearish."},
+  betTitle:{zh:'🎯 今日大胆一押',en:'🎯 Today\'s Bold Bet'},
+  betSub:{zh:'直读 signals.json 的纳指上涨概率，>0.5 叫看涨、否则看跌。',
+          en:'Read straight from signals.json\'s NASDAQ up-probability: >0.5 → bullish, else bearish.'},
 
-  bounceTitle:{zh:"💥 博反弹",en:"💥 Bounce Play"},
-  bounceSub:{zh:"极端下跌日（≤第5百分位）之后，次日是否系统性反弹？",
-             en:"After an extreme down-day (≤5th percentile), does the next day systematically bounce?"},
+  bounceTitle:{zh:'💥 博反弹',en:'💥 Bounce Play'},
+  bounceSub:{zh:'Autodiscovery 引擎发现的全部 rebound 族规律（共 12 个配置），按 verdict 排列。',
+             en:'All rebound-family patterns found by the autodiscovery engine (12 configs), sorted by verdict.'},
 
-  pickTitle:{zh:"🚀 个股看好 / 看淡",en:"🚀 Stocks: Bull / Bear"},
-  pickSub:{zh:"按观察池 6 个月动量排序的领先 / 垫底——动量描述，非荐股。",
-           en:"Ranked by 6-month momentum in the watch pool — leaders / laggards. Momentum, not stock tips."},
+  pickTitle:{zh:'🚀 个股看好 / 看淡',en:'🚀 Stocks: Bull / Bear'},
+  pickSub:{zh:'按观察池 6 个月动量排序的领先 / 垫底——动量描述，非荐股。',
+           en:'Ranked by 6-month momentum in the watch pool — leaders / laggards. Momentum, not stock tips.'},
 
-  tipTitle:{zh:"🎲 玩具预测战绩",en:"🎲 Toy Predictor Scorecard"},
-  tipSub:{zh:"一个朴素玩具（今天涨→赌明天涨）的公开记分。",
-          en:"Public scorecard of a naive toy (up today → bet up tomorrow)."},
+  tipTitle:{zh:'🎲 玩具预测战绩',en:'🎲 Toy Predictor Scorecard'},
+  tipSub:{zh:'一个朴素玩具（今天涨→赌明天涨）的公开记分。',
+          en:'Public scorecard of a naive toy (up today → bet up tomorrow).'},
+
+  macroTitle:{zh:'🌍 Macro 资金流 / 狂想叙事',en:'🌍 Macro Money-Flow / Wild Narratives'},
+  macroSub:{zh:'民间热门叙事 + 我们引擎实测结果（能测的已测）。纯娱乐，多为未验证推测。',
+            en:'Popular macro narratives + what our engine actually tested. Entertainment only — mostly unverified speculation.'},
 
   // bet body
-  bullCall:{zh:"看涨纳指",en:"BULLISH on NASDAQ"},
-  bearCall:{zh:"看跌纳指",en:"BEARISH on NASDAQ"},
-  prob:{zh:"上涨概率",en:"up-prob"},
-  tier:{zh:"档位",en:"tier"},
-  asof:{zh:"信号日",en:"signal date"},
-  betHonest:{zh:"诚实注：",en:"Honest note: "},
+  bullCall:{zh:'看涨纳指',en:'BULLISH on NASDAQ'},
+  bearCall:{zh:'看跌纳指',en:'BEARISH on NASDAQ'},
+  prob:{zh:'上涨概率',en:'up-prob'},
+  tier:{zh:'档位',en:'tier'},
+  asof:{zh:'信号日',en:'signal date'},
+  betHonest:{zh:'诚实注：',en:'Honest note: '},
 
-  // bounce body
-  recentLbl:{zh:"现代（2000后）次日反弹差",en:"Modern (post-2000) next-day bounce gap"},
-  fullLbl:{zh:"全样本次日反弹差",en:"Full-sample next-day bounce gap"},
-  pval:{zh:"p 值",en:"p-value"},
-  ndown:{zh:"极端下跌样本",en:"extreme-down days"},
-  bounceHonest:{zh:"诚实注：这是<b>描述性历史规律，非可交易、非预测</b>。受成本/滑点影响、不一定可交易；现代消失常因被套利。",
-                en:"Honest note: this is a <b>descriptive historical pattern — not tradable, not a forecast</b>. Costs/slippage may make it untradable; modern decay often means it's been arbitraged away."},
-  verdict:{zh:"判定",en:"verdict"},
+  // bounce autodiscovery
+  rbColConfig:{zh:'配置',en:'Config'},
+  rbColP:{zh:'p 值(全样本)',en:'p (full)'},
+  rbColRecentP:{zh:'p 值(现代)',en:'p (modern)'},
+  rbColVerdict:{zh:'判定',en:'verdict'},
+  rbSurvive:{zh:'🟢 真存活',en:'🟢 survive'},
+  rbFaded:{zh:'🟡 现代已淡(疑被套利)',en:'🟡 faded (likely arbitraged)'},
+  rbDead:{zh:'⚪ 未过FDR',en:'⚪ dead (failed FDR)'},
+  rbInconclusive:{zh:'⚫ 检验力不足',en:'⚫ inconclusive (low power)'},
+  rbHonest:{zh:'<b>诚实注：</b>这是描述性历史规律、<b>非可交易、非预测</b>。现代已淡（🟡）多因被套利；未过 FDR（⚪）表示没有通过多重检验校正；检验力不足（⚫）指样本太少下不了结论。全部仅供了解历史，不构成交易建议。',
+             en:'<b>Honest note:</b> These are descriptive historical patterns — <b>not tradable, not forecasts</b>. Faded (🟡) patterns were likely arbitraged away; dead (⚪) failed FDR correction; inconclusive (⚫) means too few samples to conclude. For historical reference only — not trading advice.'},
+  rbUnavail:{zh:'暂不可用——autodiscovery.json 未拉到，稍后再试。',
+             en:'Unavailable — could not load autodiscovery.json, please try again later.'},
 
   // picks
-  bullish:{zh:"看好 🟢",en:"Bullish 🟢"},
-  bearish:{zh:"看淡 🔴",en:"Bearish 🔴"},
-  mom6:{zh:"6月动量",en:"6M mom"},
+  bullish:{zh:'看好 🟢',en:'Bullish 🟢'},
+  bearish:{zh:'看淡 🔴',en:'Bearish 🔴'},
+  mom6:{zh:'6月动量',en:'6M mom'},
 
   // tip
-  hitRate:{zh:"总命中率",en:"hit rate"},
-  hitLast20:{zh:"近20条",en:"last 20"},
-  nScored:{zh:"已记分",en:"scored"},
-  latestCall:{zh:"最新一押",en:"latest call"},
-  recent12:{zh:"近 12 条战绩（绿=中 / 红=错）",en:"Last 12 calls (green=hit / red=miss)"},
+  hitRate:{zh:'总命中率',en:'hit rate'},
+  hitLast20:{zh:'近20条',en:'last 20'},
+  nScored:{zh:'已记分',en:'scored'},
+  latestCall:{zh:'最新一押',en:'latest call'},
+  recent12:{zh:'近 12 条战绩（绿=中 / 红=错）',en:'Last 12 calls (green=hit / red=miss)'},
 
-  up:{zh:"涨",en:"UP"},down:{zh:"跌",en:"DOWN"},
+  up:{zh:'涨',en:'UP'},down:{zh:'跌',en:'DOWN'},
 
-  loading:{zh:"加载中…",en:"loading…"},
-  err:{zh:"拉不到数据——确认 JSON 已部署。",en:"Can't load data — check the JSON is deployed."},
-  foot:{zh:"全部数字来自实时 JSON（signals / overreaction / outlook / tipjar），本页只重新包装、绝不自编预测或数字。本站其余页面守「测风险不测方向」；本页为已授权的出格娱乐区。",
-        en:"All numbers come from live JSON (signals / overreaction / outlook / tipjar). This page only re-packages them — it never invents predictions or numbers. The rest of the site measures risk, not direction; this page is an authorized out-of-bounds fun zone."},
-  src:{zh:"实时 ✓ · 生成于",en:"Live ✓ · generated"}
+  loading:{zh:'加载中…',en:'loading…'},
+  err:{zh:'拉不到数据——确认 JSON 已部署。',en:'Can\'t load data — check the JSON is deployed.'},
+  foot:{zh:'全部数字来自实时 JSON（signals / autodiscovery / outlook / tipjar），本页只重新包装、绝不自编预测或数字。本站其余页面守「测风险不测方向」；本页为已授权的出格娱乐区。',
+        en:'All numbers come from live JSON (signals / autodiscovery / outlook / tipjar). This page only re-packages them — it never invents predictions or numbers. The rest of the site measures risk, not direction; this page is an authorized out-of-bounds fun zone.'},
+  src:{zh:'实时 ✓ · 生成于',en:'Live ✓ · generated'}
+};
+
+// macro 叙事内容（硬编码，用户提供，绝不自编数字）
+var MACRO_ITEMS={
+  zh:[
+    {
+      title:'🏆 世界杯 / 大赛资金流',
+      thesis:'传说赌球娱乐赛期吸金、赛后回流美股/币。',
+      verdict:'实测打脸我自己！世界杯年夏季（6-8月）标普平均 -2.9%、7 次里仅约 3 次上涨（43%），而常年夏季 +3.3%/65% 上涨——你的直觉有料，世界杯年夏季确实偏弱。注：样本仅 7 次、且与危机年（2002/2008后）重叠，别当定论。'
+    },
+    {
+      title:'₿ 比特币减半周期',
+      thesis:'每约 4 年减半（供给冲击）后，历史上常伴牛市。',
+      verdict:'4 次减半（2012/16/20/24）后历史上都伴随过牛市——但 4 个样本无法统计证明这是「周期」，每次宏观不同。看个意思，别当规律。'
+    },
+    {
+      title:'🗳️ 大选 / 任期年周期',
+      thesis:'传美股在总统任期第 3 年偏强（选前刺激经济）。',
+      verdict:'实测有料！标普 1928 至今 24 个周期：选举前年（第3年）平均 +14%、24 年里 19 年上涨（79%）——经典「总统周期·第3年效应」；最弱是中期选举年（第2年，+3%/54%）。注：近 25 年样本薄、过去≠未来。'
+    },
+    {
+      title:'🌞 季节性（Sell in May / 圣诞行情）',
+      thesis:'传「五月卖出」夏弱、年末圣诞行情强。',
+      verdict:'实测有料：九月是唯一负收益月（-1.1%、仅 45% 上涨＝真「九月魔咒」），十二月最稳（72% 上涨）；Sell in May 有基础——冬半年(11-4月)+5.2%/70% vs 夏半年(5-10月)+2.5%/66%，冬约 2 倍。注：圣诞/星期等在现代段已淡，过去≠未来。'
+    }
+  ],
+  en:[
+    {
+      title:'🏆 World Cup / Major Events Money Flow',
+      thesis:'The story goes: sports-betting draws capital during tournaments, money flows back to stocks/crypto after.',
+      verdict:'Tested — surprising! World Cup-year summers (Jun-Aug): S&P averaged -2.9%, up in only ~3 of 7 years (43%), vs +3.3%/65% in all years. The hunch has signal — but n=7, overlapping crisis years (post-2002/2008); not a verdict, just notable.'
+    },
+    {
+      title:'₿ Bitcoin Halving Cycle',
+      thesis:'Every ~4 years, supply shock from halving has historically coincided with bull markets.',
+      verdict:'All 4 halvings (2012/16/20/24) were historically followed by bull runs — but 4 samples cannot prove a "cycle," and each had a different macro backdrop. A curiosity, not a rule.'
+    },
+    {
+      title:'🗳️ Presidential Election / Term-Year Cycle',
+      thesis:'US stocks supposedly run stronger in year 3 of a presidential term (pre-election stimulus).',
+      verdict:'Real signal! S&P since 1928, 24 cycles: pre-election (year 3) averaged +14%, up in 19 of 24 years (79%) — the classic year-3 effect; weakest is the midterm year (year 2, +3%/54%). Note: post-2000 sample is thin; past does not equal future.'
+    },
+    {
+      title:'🌞 Seasonality (Sell in May / Santa Rally)',
+      thesis:'The saying: sell in May, weak summer, then a year-end Santa Claus rally.',
+      verdict:'Tested — real: September is the only negative-average month (-1.1%, up just 45% = the real September effect); December is steadiest (up 72%). Sell in May has basis — winter half (Nov-Apr) +5.2%/70% vs summer (May-Oct) +2.5%/66%, ~2x. Note: Christmas/day-of-week faded in the modern era; past does not equal future.'
+    }
+  ]
 };
 
 function applyStatic(){
-  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
-  $("lang").textContent=LANG==="zh"?"EN":"中";
-  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+  document.querySelectorAll('[data-i18n]').forEach(function(el){el.innerHTML=t(el.dataset.i18n);});
+  $('lang').textContent=LANG==='zh'?'EN':'中';
+  document.documentElement.lang=LANG==='zh'?'zh-CN':'en';
 }
 
-const num=(v,d=2)=>(v==null||isNaN(v))?"—":Number(v).toFixed(d);
-const pct=v=>(v==null||isNaN(v))?"—":`${v>=0?'+':''}${Number(v).toFixed(1)}%`;
+var num=function(v,d){d=d==null?2:d;return(v==null||isNaN(v))?'—':Number(v).toFixed(d);};
+var pct=function(v){return(v==null||isNaN(v))?'—':((v>=0?'+':'')+Number(v).toFixed(1)+'%');};
 
-let DATA={};
+var DATA={};
 
 function renderBet(){
-  const s=DATA.signals;
-  if(!s){$("betBody").innerHTML=`<div class="err">${t("err")}</div>`;return;}
-  const p=s.latest_prob, up=(p??0)>0.5;
-  const date=(s.indices&&s.indices.NASDAQ&&s.indices.NASDAQ.date)||s.generated||"";
-  const callCls=up?"up":"down", call=up?t("bullCall"):t("bearCall");
-  const note=s.model_status_note||"";
-  $("betBody").innerHTML=`
-    <div class="huge ${callCls}">${esc(call)}</div>
-    <div>
-      <span class="pill ${callCls}">${t("prob")} ${p==null?"—":(p*100).toFixed(1)+"%"}</span>
-      <span class="pill">${t("tier")} ${esc(String(s.latest_tier==null?"—":s.latest_tier))}</span>
-      <span class="pill">${t("asof")} ${esc(date)}</span>
-    </div>
-    ${note?`<div class="honest"><b>${t("betHonest")}</b>${esc(note)}</div>`:""}`;
+  var s=DATA.signals;
+  if(!s){$('betBody').innerHTML='<div class="err">'+t('err')+'</div>';return;}
+  var p=s.latest_prob, up=(p||0)>0.5;
+  var date=(s.indices&&s.indices.NASDAQ&&s.indices.NASDAQ.date)||s.generated||'';
+  var callCls=up?'up':'down', call=up?t('bullCall'):t('bearCall');
+  var note=s.model_status_note||'';
+  $('betBody').innerHTML=
+    '<div class="huge '+callCls+'">'+esc(call)+'</div>'+
+    '<div>'+
+      '<span class="pill '+callCls+'">'+t('prob')+' '+(p==null?'—':(p*100).toFixed(1)+'%')+'</span>'+
+      '<span class="pill">'+t('tier')+' '+esc(String(s.latest_tier==null?'—':s.latest_tier))+'</span>'+
+      '<span class="pill">'+t('asof')+' '+esc(date)+'</span>'+
+    '</div>'+
+    (note?'<div class="honest"><b>'+t('betHonest')+'</b>'+esc(note)+'</div>':'');
+}
+
+/* key → 大白话映射
+   格式：p{N}_h{M}_{index}
+   p{N}  = 跌破第N百分位日
+   h{M}  = 持有M日
+   nasdaq / sp500 = 纳指 / 标普
+*/
+function keyToLabel(key, lang){
+  if(!key)return esc(String(key));
+  var m=String(key).match(/^p(\d+)_h(\d+)_(nasdaq|sp500)$/i);
+  if(!m)return esc(key);
+  var pN=m[1], hM=m[2], idx=m[3].toLowerCase();
+  if(lang==='zh'){
+    var idxZh=idx==='nasdaq'?'纳指':'标普';
+    return idxZh+' 跌破第'+pN+'百分位日 → 持有'+hM+'日';
+  } else {
+    var idxEn=idx==='nasdaq'?'NASDAQ':'S&P500';
+    return idxEn+' below p'+pN+' → hold '+hM+' day'+(hM==='1'?'':'s');
+  }
+}
+
+function verdictClass(v){
+  if(!v)return '';
+  var vl=String(v).toLowerCase();
+  if(vl==='survive')return 'v-survive';
+  if(vl==='faded')return 'v-faded';
+  if(vl==='dead')return 'v-dead';
+  if(vl==='inconclusive')return 'v-inconclusive';
+  return '';
+}
+
+function verdictLabel(v){
+  if(!v)return '—';
+  var vl=String(v).toLowerCase();
+  if(vl==='survive')return t('rbSurvive');
+  if(vl==='faded')return t('rbFaded');
+  if(vl==='dead')return t('rbDead');
+  if(vl==='inconclusive')return t('rbInconclusive');
+  return esc(v);
+}
+
+/* 排序权：survive > faded > inconclusive > dead */
+function verdictOrder(v){
+  if(!v)return 99;
+  var vl=String(v).toLowerCase();
+  if(vl==='survive')return 0;
+  if(vl==='faded')return 1;
+  if(vl==='inconclusive')return 2;
+  if(vl==='dead')return 3;
+  return 99;
 }
 
 function renderBounce(){
-  const o=DATA.over;
-  if(!o){$("bounceBody").innerHTML=`<div class="err">${t("err")}</div>`;return;}
-  const r=o.recent||{}, f=o.full||{};
-  $("bounceBody").innerHTML=`
-    <div class="grid">
-      <div class="col">
-        <div class="stat">
-          <div><div class="b pos">${pct(r.diff_pct)}</div><div class="l">${t("recentLbl")}</div></div>
-        </div>
-        <div><span class="pill">${t("pval")} ${num(r.p_value,4)}</span>
-        <span class="pill">${t("ndown")} ${esc(String(r.n_down==null?"—":r.n_down))}</span></div>
-      </div>
-      <div class="col">
-        <div class="stat">
-          <div><div class="b pos">${pct(f.diff_pct)}</div><div class="l">${t("fullLbl")}</div></div>
-        </div>
-        <div><span class="pill">${t("pval")} ${num(f.p_value,4)}</span>
-        <span class="pill">${t("ndown")} ${esc(String(f.n_down==null?"—":f.n_down))}</span>
-        <span class="pill">${t("verdict")} ${esc(String(o.verdict==null?"—":o.verdict))}</span></div>
-      </div>
-    </div>
-    <div class="honest">${t("bounceHonest")}</div>`;
+  var ad=DATA.autodiscovery;
+  if(!ad){
+    $('bounceBody').innerHTML='<div class="err">'+t('rbUnavail')+'</div>';
+    return;
+  }
+  var candidates=ad.candidates||[];
+  var items=candidates.filter(function(c){return (c.family||'').toLowerCase()==='rebound';});
+  if(!items.length){
+    $('bounceBody').innerHTML='<div class="err">'+t('rbUnavail')+'</div>';
+    return;
+  }
+  // 排序：verdict 顺序，同 verdict 内 p 值升序
+  items=items.slice().sort(function(a,b){
+    var od=verdictOrder(a.verdict)-verdictOrder(b.verdict);
+    if(od!==0)return od;
+    var pa=parseFloat(a.p)||1, pb=parseFloat(b.p)||1;
+    return pa-pb;
+  });
+  var rows=items.map(function(c){
+    var vc=verdictClass(c.verdict);
+    var vl=verdictLabel(c.verdict);
+    var pFull=c.p==null?'—':Number(c.p).toFixed(4);
+    var pRecent=c.recent_p==null?'—':Number(c.recent_p).toFixed(4);
+    return '<tr>'+
+      '<td>'+keyToLabel(c.key, LANG)+'</td>'+
+      '<td>'+esc(pFull)+'</td>'+
+      '<td>'+esc(pRecent)+'</td>'+
+      '<td class="'+vc+'">'+vl+'</td>'+
+      '</tr>';
+  }).join('');
+  $('bounceBody').innerHTML=
+    '<table class="rb-table">'+
+      '<thead><tr>'+
+        '<th>'+t('rbColConfig')+'</th>'+
+        '<th>'+t('rbColP')+'</th>'+
+        '<th>'+t('rbColRecentP')+'</th>'+
+        '<th>'+t('rbColVerdict')+'</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table>'+
+    '<div class="honest">'+t('rbHonest')+'</div>';
 }
 
 function renderPicks(){
-  const ol=DATA.outlook;
-  if(!ol){$("pickBody").innerHTML=`<div class="err">${t("err")}</div>`;return;}
-  const li=arr=>(arr||[]).map(x=>`<li>
-      <span class="sym">${esc(x.symbol)}</span>
-      <span class="${(x.mom_pct??0)>=0?'pos':'neg'}">${pct(x.mom_pct)}</span>
-      <span class="reason">${esc(x.reason||"")}</span></li>`).join("");
-  $("pickBody").innerHTML=`
-    <div class="grid">
-      <div class="col"><div class="pill up">${t("bullish")}</div>
-        <ul class="lst">${li(ol.bullish)||`<li class="mut">—</li>`}</ul></div>
-      <div class="col"><div class="pill down">${t("bearish")}</div>
-        <ul class="lst">${li(ol.bearish)||`<li class="mut">—</li>`}</ul></div>
-    </div>
-    ${ol.disclaimer?`<div class="honest">${esc(ol.disclaimer)}</div>`:""}`;
+  var ol=DATA.outlook;
+  if(!ol){$('pickBody').innerHTML='<div class="err">'+t('err')+'</div>';return;}
+  function li(arr){
+    return (arr||[]).map(function(x){
+      return '<li>'+
+        '<span class="sym">'+esc(x.symbol)+'</span>'+
+        '<span class="'+(((x.mom_pct||0)>=0)?'pos':'neg')+'">'+pct(x.mom_pct)+'</span>'+
+        '<span class="reason">'+esc(x.reason||'')+'</span>'+
+        '</li>';
+    }).join('');
+  }
+  $('pickBody').innerHTML=
+    '<div class="grid">'+
+      '<div class="col"><div class="pill up">'+t('bullish')+'</div>'+
+        '<ul class="lst">'+(li(ol.bullish)||'<li class="mut">—</li>')+'</ul></div>'+
+      '<div class="col"><div class="pill down">'+t('bearish')+'</div>'+
+        '<ul class="lst">'+(li(ol.bearish)||'<li class="mut">—</li>')+'</ul></div>'+
+    '</div>'+
+    (ol.disclaimer?'<div class="honest">'+esc(ol.disclaimer)+'</div>':'');
 }
 
 function renderTip(){
-  const tj=DATA.tipjar;
-  if(!tj){$("tipBody").innerHTML=`<div class="err">${t("err")}</div>`;return;}
-  const lat=tj.latest||{};
-  const callTxt=lat.call==="UP"?t("up"):lat.call==="DOWN"?t("down"):esc(String(lat.call==null?"—":lat.call));
-  const rec=(tj.recent||[]).slice(-12);
-  const squares=rec.map(x=>`<span class="sq ${x.hit?'hit':'miss'}" title="${esc(x.as_of||"")}: ${esc(String(x.call))}→${esc(String(x.actual))}">${x.hit?'✓':'✗'}</span>`).join("");
-  $("tipBody").innerHTML=`
-    <div class="stat">
-      <div><div class="b">${num(tj.hit_rate,1)}%</div><div class="l">${t("hitRate")}</div></div>
-      <div><div class="b">${num(tj.hit_rate_last20,1)}%</div><div class="l">${t("hitLast20")}</div></div>
-      <div><div class="b">${esc(String(tj.n_scored==null?"—":tj.n_scored))}</div><div class="l">${t("nScored")}</div></div>
-      <div><div class="b ${lat.call==='UP'?'pos':lat.call==='DOWN'?'neg':''}">${callTxt}</div><div class="l">${t("latestCall")} ${esc(lat.as_of||"")}</div></div>
-    </div>
-    <div class="l mut" style="margin-top:6px">${t("recent12")}</div>
-    <div class="scorerow">${squares}</div>
-    ${tj.caveat?`<div class="honest">${esc(tj.caveat)}</div>`:""}`;
+  var tj=DATA.tipjar;
+  if(!tj){$('tipBody').innerHTML='<div class="err">'+t('err')+'</div>';return;}
+  var lat=tj.latest||{};
+  var callTxt=lat.call==='UP'?t('up'):lat.call==='DOWN'?t('down'):esc(String(lat.call==null?'—':lat.call));
+  var rec=(tj.recent||[]).slice(-12);
+  var squares=rec.map(function(x){
+    return '<span class="sq '+(x.hit?'hit':'miss')+'" title="'+esc(x.as_of||'')+': '+esc(String(x.call))+'→'+esc(String(x.actual))+'">'+  (x.hit?'✓':'✗')+'</span>';
+  }).join('');
+  $('tipBody').innerHTML=
+    '<div class="stat">'+
+      '<div><div class="b">'+num(tj.hit_rate,1)+'%</div><div class="l">'+t('hitRate')+'</div></div>'+
+      '<div><div class="b">'+num(tj.hit_rate_last20,1)+'%</div><div class="l">'+t('hitLast20')+'</div></div>'+
+      '<div><div class="b">'+esc(String(tj.n_scored==null?'—':tj.n_scored))+'</div><div class="l">'+t('nScored')+'</div></div>'+
+      '<div><div class="b '+(lat.call==='UP'?'pos':lat.call==='DOWN'?'neg':'')+'">'+callTxt+'</div><div class="l">'+t('latestCall')+' '+esc(lat.as_of||'')+'</div></div>'+
+    '</div>'+
+    '<div class="l mut" style="margin-top:6px">'+t('recent12')+'</div>'+
+    '<div class="scorerow">'+squares+'</div>'+
+    (tj.caveat?'<div class="honest">'+esc(tj.caveat)+'</div>':'');
+}
+
+function renderMacro(){
+  var items=MACRO_ITEMS[LANG]||MACRO_ITEMS.zh;
+  var disclaimerZh='野蛮推测 · 多为未验证民间叙事 · 娱乐非建议';
+  var disclaimerEn='Wild speculation · mostly unverified folk narratives · entertainment, not advice';
+  var disclaimer=LANG==='zh'?disclaimerZh:disclaimerEn;
+  var html='<div class="macro-disclaimer">⚠️ '+esc(disclaimer)+'</div>';
+  html+=items.map(function(item){
+    return '<div class="macro-item">'+
+      '<div class="mi-title">'+esc(item.title)+'</div>'+
+      '<div class="mi-thesis">'+esc(item.thesis)+'</div>'+
+      '<div class="mi-verdict">🔍 '+esc(item.verdict)+'</div>'+
+      '</div>';
+  }).join('');
+  $('macroBody').innerHTML=html;
 }
 
 function renderAll(){
   applyStatic();
-  renderBet();renderBounce();renderPicks();renderTip();
-  const g=(DATA.signals&&DATA.signals.generated)||(DATA.outlook&&DATA.outlook.generated)||"";
-  $("src").textContent=g?`${t("src")} ${esc(g)}`:"";
+  renderBet();
+  renderBounce();
+  renderPicks();
+  renderTip();
+  renderMacro();
+  var g=(DATA.signals&&DATA.signals.generated)||(DATA.outlook&&DATA.outlook.generated)||'';
+  $('src').textContent=g?(t('src')+' '+g):'';
 }
 
-$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};renderAll();};
-
-async function fetchJSON(name){
-  try{const r=await fetch(BASE+name,{cache:"no-store"});if(!r.ok)return null;return await r.json();}
-  catch(e){return null;}
-}
-async function load(){
-  applyStatic();
-  const [signals,over,outlook,tipjar]=await Promise.all([
-    fetchJSON("signals.json"),
-    fetchJSON("overreaction.json"),
-    fetchJSON("outlook.json"),
-    fetchJSON("tipjar.json")
-  ]);
-  DATA={signals,over,outlook,tipjar};
+$('lang').onclick=function(){
+  LANG=LANG==='zh'?'en':'zh';
+  try{localStorage.setItem('valpha_lang',LANG);}catch(e){}
   renderAll();
+};
+
+function fetchJSON(name){
+  try{
+    return fetch(BASE+name,{cache:'no-store'}).then(function(r){
+      if(!r.ok)return null;
+      return r.json().catch(function(){return null;});
+    }).catch(function(){return null;});
+  }catch(e){return Promise.resolve(null);}
+}
+
+function load(){
+  applyStatic();
+  Promise.all([
+    fetchJSON('signals.json'),
+    fetchJSON('autodiscovery.json'),
+    fetchJSON('outlook.json'),
+    fetchJSON('tipjar.json')
+  ]).then(function(results){
+    DATA={signals:results[0],autodiscovery:results[1],outlook:results[2],tipjar:results[3]};
+    renderAll();
+  });
 }
 load();
 </script>
