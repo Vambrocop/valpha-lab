@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>周期与季节性 · Cycles & Seasonality</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--amber:#e3a008}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1080px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .lead{color:var(--mut);font-size:.9rem;margin:8px 0 4px}
+  .note{background:rgba(163,113,247,.1);border:1px solid var(--acc);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#d2c2f5}
+  h2{font-size:1.05rem;margin:22px 0 4px}
+  .sub{color:var(--mut);font-size:.78rem;margin:0 0 8px}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:6px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  th:nth-child(1),td:nth-child(1){text-align:left}
+  th{background:#161b22;color:var(--mut);font-weight:600;position:sticky;top:0}
+  tr:hover{background:rgba(163,113,247,.06)}
+  .pos{color:var(--grn)} .neg{color:var(--red)}
+  .bar{display:inline-block;height:7px;border-radius:4px;vertical-align:middle}
+  .tl{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .layer{flex:1 1 150px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .layer .h{font-size:.72rem;color:var(--mut);margin-bottom:3px}
+  .layer .v{font-size:1.05rem;font-weight:700}
+  .use{font-size:.66rem;padding:1px 6px;border-radius:5px;border:1px solid}
+  .use.tilt{color:var(--grn);border-color:var(--grn);background:rgba(63,185,80,.12)}
+  .use.weak{color:var(--amber);border-color:var(--amber);background:rgba(227,160,8,.12)}
+  .use.noise{color:var(--mut);border-color:var(--mut)}
+  .mut{color:var(--mut);font-size:.78rem;margin-top:18px;border-top:1px solid var(--border);padding-top:8px}
+  #src{color:var(--mut);font-size:.78rem}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}table{font-size:.8rem}.layer{flex-basis:100%}}
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<div class="lead" data-i18n="lead"></div>
+<div class="note" data-i18n="note"></div>
+
+<h2 data-i18n="hMonth"></h2>
+<p class="sub" data-i18n="sMonth"></p>
+<div style="overflow-x:auto"><table id="month"></table></div>
+
+<h2 data-i18n="hTerm"></h2>
+<p class="sub" data-i18n="sTerm"></p>
+<div id="termLayers" class="tl"></div>
+<div style="overflow-x:auto"><table id="term"></table></div>
+
+<h2 data-i18n="hMisc"></h2>
+<div style="overflow-x:auto"><table id="misc"></table></div>
+
+<div id="src"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const SEA="https://vambrocop.github.io/valpha-lab/seasonality.json";
+const PLAC="https://vambrocop.github.io/valpha-lab/placebo_tests.json";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+let SEAD=null,PLACD=null;
+
+const I18N={
+  title:{zh:"🔄 周期与季节性 · 三层透明",en:"🔄 Cycles & Seasonality · 3-layer transparency"},
+  lead:{zh:"原始计数 + 校正前 p + 校正后裁决 三层全给你——「看着强」不等于「统计证明」，你自己判断。",
+        en:"Raw counts + pre-FDR p + post-FDR verdict, all three given to you — 'looks strong' is not 'statistically proven'. You decide."},
+  note:{zh:"<b>这页专治「无定论被讲成没用」。</b>很多季节性原始计数抢眼(比如九月偏弱、任期第3年常涨)，但样本少/方差大时严格检验可能「测不动」——<b>那是「无定论」不是「被否定」</b>。三层并排，强不强、稳不稳、能不能用，一眼看清。描述性、非预测、非荐股。",
+        en:"<b>This page fixes 'inconclusive mis-told as useless'.</b> Many raw counts look striking (Sept weak, term-year-3 often up), but with few samples / high variance the rigorous test may be 'underpowered' — that's <b>'inconclusive', NOT 'rejected'</b>. Three layers side by side. Descriptive, not a forecast, not advice."},
+  hMonth:{zh:"📅 逐月季节性(原始计数)",en:"📅 Monthly seasonality (raw counts)"},
+  sMonth:{zh:"每月历史 平均收益 / 多少年涨 / 样本。九月常是唯一负收益月、十二月最稳——描述性历史，过去≠未来。",
+          en:"Each month: historical avg / how many years up / n. September is often the only negative month, December the steadiest — descriptive, past ≠ future."},
+  hTerm:{zh:"🗳️ 大选/任期年周期 — 三层示范",en:"🗳️ Election/term-year cycle — the 3-layer demo"},
+  sTerm:{zh:"这是最好的教学案例：原始计数抢眼，但严格检验测不动。",en:"The best teaching case: raw counts look strong, but the rigorous test can't confirm."},
+  hMisc:{zh:"🌞 Sell in May · 🏆 世界杯年(原始计数)",en:"🌞 Sell in May · 🏆 World Cup years (raw counts)"},
+  cAvg:{zh:"平均%",en:"Avg%"},cUp:{zh:"涨的年数",en:"Years up"},cPos:{zh:"上涨率",en:"% up"},cN:{zh:"样本",en:"n"},cGrp:{zh:"分组",en:"Group"},
+  L1:{zh:"① 原始计数",en:"① Raw counts"},L2:{zh:"② 校正前 p",en:"② Pre-FDR p"},L3:{zh:"③ 校正后裁决",en:"③ Post-FDR verdict"},
+  termRaw:{zh:"第3年(选举前年) 24年里19年涨/+14%",en:"Year 3 (pre-election) up 19/24 yrs, +14%"},
+  inconc:{zh:"无定论(测不动·非否定)",en:"inconclusive (underpowered, not rejected)"},
+  use_tilt:{zh:"可弱倾斜",en:"weak tilt"},use_weak:{zh:"看个意思",en:"curiosity"},use_noise:{zh:"近噪声",en:"~noise"},
+  foot:{zh:"数据：实时 seasonality.json(原始计数) + placebo_tests.json(校正前/后)。描述性历史、非预测、非荐股；样本少时「无定论」不等于「无效应」。",
+        en:"Data: live seasonality.json (raw) + placebo_tests.json (pre/post-FDR). Descriptive, not a forecast/advice; with few samples 'inconclusive' ≠ 'no effect'."},
+  err:{zh:"拉不到数据——确认已部署。",en:"Can't load data — check deployment."}
+};
+
+function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
+function pn(v){if(v==null)return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}</span>`;}
+function useTag(pos){ // 原始上涨率 → 可用度(纯描述,非保证)
+  if(pos==null)return "";
+  if(pos>=62||pos<=40)return `<span class="use tilt">${t("use_tilt")}</span>`;
+  if(pos>=58||pos<=44)return `<span class="use weak">${t("use_weak")}</span>`;
+  return `<span class="use noise">${t("use_noise")}</span>`;
+}
+function rowsOf(arr){return (arr||[]).map(r=>`<tr><td>${esc(r.label||"")}</td><td>${pn(r.avg_pct)}</td>
+  <td>${r.up==null?'—':r.up}/${r.n}</td><td>${r.pos_pct==null?'—':r.pos_pct+'%'} ${useTag(r.pos_pct)}</td><td>${r.n}</td></tr>`).join("");}
+function head(){return `<thead><tr><th>${t("cGrp")}</th><th>${t("cAvg")}</th><th>${t("cUp")}</th><th>${t("cPos")}</th><th>${t("cN")}</th></tr></thead>`;}
+
+function render(){
+  applyStatic();
+  if(!SEAD){$("src").textContent=t("err");return;}
+  $("month").innerHTML=head()+"<tbody>"+rowsOf(SEAD.monthly)+"</tbody>";
+  $("term").innerHTML=head()+"<tbody>"+rowsOf(SEAD.term_year)+"</tbody>";
+  $("misc").innerHTML=head()+"<tbody>"+rowsOf((SEAD.sell_in_may||[]).concat(SEAD.world_cup||[]))+"</tbody>";
+  // 三层示范：任期年原始计数 ⊕ placebo presidential_cycle 校正前/后
+  const pc=(PLACD&&PLACD.tests||[]).find(x=>x.key==="presidential_cycle")||{};
+  $("termLayers").innerHTML=`
+    <div class="layer"><div class="h">${t("L1")}</div><div class="v">${t("termRaw")}</div></div>
+    <div class="layer"><div class="h">${t("L2")}</div><div class="v">p=${pc.p_value==null?"—":(+pc.p_value).toFixed(2)}</div></div>
+    <div class="layer"><div class="h">${t("L3")}</div><div class="v" style="color:var(--amber)">${t("inconc")}</div></div>`;
+  $("src").textContent=SEAD.generated?("as of "+SEAD.generated.slice(0,10)):"";
+}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};render();};
+(async()=>{applyStatic();const g=u=>fetch(u,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
+  [SEAD,PLACD]=await Promise.all([g(SEA),g(PLAC)]);render();})();
+</script>
+</body>
+</html>
