@@ -31,6 +31,7 @@ steps = [
     ("下载数据",           "fetch_data.py"),
     ("下载长历史数据",     "long_history.py"),
     ("规律置换检验placebo", "placebo_test.py"),         # P4-1：日历效应防伪（须在 long_history 后，复用其 SP500_long.csv）
+    ("季节性原始计数",     "seasonality.py"),          # 补 placebo 没有的原始计数(逐月/任期年/Sell-in-May/世界杯全22届)，复用其数据不重算
     ("反事实事件影响",     "event_causal.py"),         # 方法B：回归反事实+bootstrap（SVB验证事件 + SPCX钩子）
     ("短期反转(过度反应)", "overreaction.py"),         # R3：极端下跌次日反弹检验(描述非建议,全样本vs现代)
     ("风险仪表盘",         "risk_dashboard.py"),       # 方法D：VXN-VIX价差 + 条件下行(测风险不测方向)
@@ -64,6 +65,7 @@ steps = [
     ("每日诚实摘要",       "daily_digest.py"),    # 三层(事实/留意/探索)诚实摘要;红线门禁禁方向/荐股词,须在体制/信号/模拟盘后
     ("试胆区(玩具预测+计分)", "tipjar.py"),       # 故意下方向判断但公开残酷计分(≈掷硬币),娱乐非建议;须在 fetch_data 后
     ("观点/预测(授权出格区)", "outlook.py"),      # 用户授权:直接给纳指方向+个股看好看淡,带免责;读 signals+动量,须在 build_signals 后
+    ("综合读数(出格·加权倾向)", "composite_read.py"),  # 把体制/信用/羊群/季节性/信号按写死透明权重合成当下倾向,每日 append composite_log 计分(自升级地基);须在 market_regime+seasonality+build_signals 后
     ("发布前自检",         "verify_output.py"),   # 失败则终止，不发布坏数据
 ]
 

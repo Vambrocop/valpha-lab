@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🧠 综合读数 · Composite Read</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--amber:#d29922}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:920px;margin:0 auto}
+  h1{font-size:1.35rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+
+  /* 免责横幅 — 出格暗红紫 */
+  .banner{background:linear-gradient(135deg,#7d1128 0%,#5b21b6 100%);border:2px solid #f85149;border-radius:12px;padding:14px 16px;margin:12px 0 18px;font-size:.92rem;line-height:1.55;box-shadow:0 0 0 1px rgba(248,81,73,.25),0 8px 24px rgba(123,17,40,.35)}
+  .banner b{color:#fff}
+  .banner .big{font-size:1.05rem;font-weight:700;color:#fff;display:block;margin-bottom:5px}
+
+  /* 顶部大倾向卡 */
+  .stance-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin:14px 0}
+  .stance-card .label{color:var(--mut);font-size:.78rem;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px}
+  .stance-huge{font-size:2.8rem;font-weight:800;line-height:1.1;margin:4px 0 10px}
+  .stance-def{color:#f97316}   /* 防御 — 橙红 */
+  .stance-neu{color:var(--mut)} /* 中性 */
+  .stance-agg{color:var(--grn)} /* 积极 — 绿 */
+
+  /* -1↔+1 刻度条 */
+  .gauge-wrap{position:relative;margin:10px 0 14px}
+  .gauge-track{height:10px;border-radius:6px;background:linear-gradient(90deg,#f85149 0%,#6e7681 50%,#3fb950 100%);position:relative}
+  .gauge-ptr{position:absolute;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #161b22;box-shadow:0 0 0 2px var(--fg);transition:left .4s}
+  .gauge-labels{display:flex;justify-content:space-between;font-size:.75rem;color:var(--mut);margin-top:5px}
+  .gauge-labels .lbl-def{color:#f97316}
+  .gauge-labels .lbl-agg{color:var(--grn)}
+
+  /* 倾斜 + 置信 */
+  .tilt-row{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;margin:6px 0}
+  .tilt-val{font-size:1.45rem;font-weight:800}
+  .conf-badge{font-size:.8rem;padding:3px 10px;border-radius:12px;border:1px solid var(--border);background:#0d1117;color:var(--mut)}
+  .score-badge{font-size:.8rem;padding:3px 10px;border-radius:12px;border:1px solid var(--border);background:#0d1117;color:var(--fg)}
+
+  /* 因子卡 */
+  .section-title{font-size:1rem;font-weight:700;margin:20px 0 10px;border-bottom:1px solid var(--border);padding-bottom:6px}
+  .factor-list{display:flex;flex-direction:column;gap:10px}
+  .factor-row{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 16px;display:flex;flex-direction:column;gap:6px}
+  .factor-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .factor-name{font-weight:700;font-size:.92rem;flex:1 1 120px}
+  .factor-weight{color:var(--mut);font-size:.76rem;white-space:nowrap}
+
+  /* push 方向条 */
+  .push-wrap{display:flex;align-items:center;gap:7px;min-width:160px}
+  .push-bar-track{flex:1;height:8px;border-radius:4px;background:#21262d;position:relative;overflow:visible}
+  .push-bar-fill{height:100%;border-radius:4px;position:absolute;top:0}
+  .push-agg .push-bar-fill{background:var(--grn);left:50%}   /* push>0: 从中间向右 */
+  .push-def .push-bar-fill{background:var(--red);right:50%}  /* push<0: 从中间向左 */
+  .push-label{font-size:.78rem;font-weight:700;white-space:nowrap}
+  .push-label.agg{color:var(--grn)}
+  .push-label.def{color:var(--red)}
+  .push-label.neu{color:var(--mut)}
+
+  .factor-reason{font-size:.8rem;color:var(--mut);line-height:1.5}
+
+  /* 底部免责 */
+  .bottom-banner{background:linear-gradient(135deg,#7d1128 0%,#5b21b6 100%);border:2px solid #f85149;border-radius:10px;padding:12px 16px;margin:22px 0 10px;font-size:.83rem;line-height:1.55;color:#ffd1cf}
+  .bottom-banner b{color:#fff}
+
+  /* 通用 */
+  .asof{color:var(--mut);font-size:.78rem;margin-top:4px}
+  .err{color:var(--red);font-size:.88rem;padding:18px 0}
+  .loading{color:var(--mut);font-size:.88rem;padding:18px 0}
+  .mut{color:var(--mut);font-size:.78rem;margin-top:14px;border-top:1px solid var(--border);padding-top:8px}
+
+  @media(max-width:560px){
+    body{padding:11px}
+    h1{font-size:1.18rem}
+    .stance-huge{font-size:2rem}
+    .tilt-val{font-size:1.2rem}
+    .factor-top{gap:7px}
+    .push-wrap{min-width:120px}
+  }
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+
+<!-- 顶部免责横幅 -->
+<div class="banner">
+  <span class="big" data-i18n="bannerBig"></span>
+  <span data-i18n="bannerBody"></span>
+</div>
+
+<!-- 主内容区 -->
+<div id="main"><div class="loading" data-i18n="loading"></div></div>
+
+<!-- 底部免责（静态渲染） -->
+<div class="bottom-banner" id="bottomBanner" style="display:none">
+  <b data-i18n="footFlag"></b> <span id="footCaveat"></span>
+</div>
+
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+var BASE='https://vambrocor.github.io/valpha-lab/';
+// 注：URL 以 composite_read.json 路径为准
+var JSON_URL='https://vambrocor.github.io/valpha-lab/composite_read.json';
+// 下面覆盖为任务指定的 URL
+JSON_URL='https://vambrocop.github.io/valpha-lab/composite_read.json';
+
+var $=function(id){return document.getElementById(id);};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+var LANG='zh';
+try{LANG=localStorage.getItem('valpha_lang')||'zh';}catch(e){}
+
+var I18N={
+  title:{zh:'🧠 综合读数',en:'🧠 Composite Read'},
+  bannerBig:{zh:'🚩 出格区 · 把诚实证据加权的当下倾向',
+             en:'🚩 Out-of-bounds zone · evidence-weighted current tilt'},
+  bannerBody:{zh:'这里展示把各项诚实统计信号<b>显式加权</b>后的综合倾向——<b>非预测涨跌、非保证、非荐股</b>。权重和理由全部公开可追责；过去≠未来；信号随时可能错。',
+              en:'This shows an <b>explicitly weighted</b> composite of our honest statistical signals — <b>not a price forecast, not a guarantee, not a stock tip</b>. Weights and reasons are fully public and accountable; past ≠ future; signals can always be wrong.'},
+  stanceLabel:{zh:'综合倾向',en:'Composite Stance'},
+  scoreLabel:{zh:'得分',en:'Score'},
+  tiltLabel:{zh:'可用倾斜',en:'Usable Tilt'},
+  confLabel:{zh:'置信',en:'Confidence'},
+  factorsTitle:{zh:'📐 因子拆解（透明计分）',en:'📐 Factor Breakdown (transparent scoring)'},
+  factorColW:{zh:'权重',en:'Weight'},
+  pushAgg:{zh:'推积极',en:'→ bullish'},
+  pushDef:{zh:'推防御',en:'→ defensive'},
+  pushNeu:{zh:'中性',en:'neutral'},
+  asofLabel:{zh:'数据日',en:'as of'},
+  unavail:{zh:'暂不可用 — composite_read.json 未拉到，稍后再试。',
+           en:'Unavailable — could not load composite_read.json, please try again later.'},
+  loading:{zh:'加载中…',en:'loading…'},
+  footFlag:{zh:'🚩 免责：',en:'🚩 Disclaimer:'},
+  foot:{zh:'综合读数页为授权出格区，仅展示把诚实统计因子显式加权后的当下倾向。权重和理由全部公开，可随时追责。本站其余页面守「测风险不测方向」原则；此页为有意出格的例外。历史实测结论仍不等于可交易信号，过去≠未来，严肃投资决策请咨询专业人士。',
+        en:'The Composite Read page is an authorized out-of-bounds zone showing an explicitly weighted view of our honest statistical factors. All weights and reasons are fully public and accountable. The rest of this site adheres to the principle of "measure risk, not direction"; this page is a deliberate exception. Historical test results are still not tradable signals. Past ≠ future. For serious investment decisions, consult a professional.'}
+};
+
+function t(k){return(I18N[k]&&I18N[k][LANG])||k;}
+
+function applyStatic(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){el.innerHTML=t(el.dataset.i18n);});
+  $('lang').textContent=LANG==='zh'?'EN':'中';
+  document.documentElement.lang=LANG==='zh'?'zh-CN':'en';
+}
+
+/* 倾向 → CSS 类 */
+function stanceClass(stance){
+  if(!stance)return'stance-neu';
+  var s=String(stance);
+  if(s.indexOf('积极')!==-1||s.toLowerCase().indexOf('bull')!==-1||s.toLowerCase().indexOf('aggress')!==-1)return'stance-agg';
+  if(s.indexOf('防御')!==-1||s.toLowerCase().indexOf('def')!==-1||s.toLowerCase().indexOf('bear')!==-1)return'stance-def';
+  return'stance-neu';
+}
+
+/* score(-1..+1) → 刻度条左侧百分比 */
+function scoreToLeft(score){
+  var s=Math.max(-1,Math.min(1,Number(score)||0));
+  return((s+1)/2*100).toFixed(1)+'%';
+}
+
+/* push(-1..+1) → 方向条宽度(0..50%) */
+function pushToWidth(push){
+  var p=Math.max(-1,Math.min(1,Number(push)||0));
+  return(Math.abs(p)*50).toFixed(1)+'%';
+}
+
+function renderFactor(f){
+  var push=Number(f.push)||0;
+  var isAgg=push>0.02, isDef=push<-0.02;
+  var barClass=isAgg?'push-agg':isDef?'push-def':'';
+  var labelCls=isAgg?'agg':isDef?'def':'neu';
+  var labelTxt=isAgg?t('pushAgg'):isDef?t('pushDef'):t('pushNeu');
+  var wPct=pushToWidth(push);
+  var fillStyle=isAgg
+    ?'left:50%;width:'+wPct
+    :isDef
+      ?'right:50%;width:'+wPct
+      :'width:0';
+
+  var wt=f.weight==null?'—':(Number(f.weight)*100).toFixed(0)+'%';
+
+  return '<div class="factor-row">'+
+    '<div class="factor-top">'+
+      '<span class="factor-name">'+esc(f.name||'—')+'</span>'+
+      '<span class="factor-weight">'+t('factorColW')+' '+esc(wt)+'</span>'+
+      '<div class="push-wrap '+barClass+'">'+
+        '<div class="push-bar-track"><div class="push-bar-fill" style="'+fillStyle+'"></div></div>'+
+        '<span class="push-label '+labelCls+'">'+labelTxt+'</span>'+
+      '</div>'+
+    '</div>'+
+    (f.reason?'<div class="factor-reason">'+esc(f.reason)+'</div>':'')+
+  '</div>';
+}
+
+function render(data){
+  var stance=data.stance||'—';
+  var score=Number(data.score);
+  var conf=data.confidence||'—';
+  var tilt=data.usable_tilt||'—';
+  var asof=data.asof||'';
+  var factors=Array.isArray(data.factors)?data.factors:[];
+  var caveat=data.caveat||'';
+
+  var scl=stanceClass(stance);
+  var left=scoreToLeft(score);
+  var scoreStr=isNaN(score)?'—':(score>=0?'+':'')+score.toFixed(2);
+
+  var html=
+    '<div class="stance-card">'+
+      '<div class="label">'+t('stanceLabel')+'</div>'+
+      '<div class="stance-huge '+scl+'">'+esc(stance)+'</div>'+
+
+      '<div class="gauge-wrap">'+
+        '<div class="gauge-track"><div class="gauge-ptr" id="gptr" style="left:'+left+'"></div></div>'+
+        '<div class="gauge-labels">'+
+          '<span class="lbl-def">← '+t('pushDef').replace('→ ','')+'</span>'+
+          '<span>0</span>'+
+          '<span class="lbl-agg">'+t('pushAgg').replace('→ ','')+'→</span>'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="tilt-row">'+
+        '<span class="score-badge">'+t('scoreLabel')+' '+esc(scoreStr)+'</span>'+
+        '<span class="tilt-val">'+esc(tilt)+'</span>'+
+        '<span class="conf-badge">'+t('confLabel')+' '+esc(conf)+'</span>'+
+      '</div>'+
+      (asof?'<div class="asof">'+t('asofLabel')+' '+esc(asof)+'</div>':'')+
+    '</div>'+
+
+    '<div class="section-title">'+t('factorsTitle')+'</div>'+
+    '<div class="factor-list">'+
+      (factors.length
+        ? factors.map(renderFactor).join('')
+        : '<div class="mut" style="padding:10px 0">—</div>')+
+    '</div>';
+
+  $('main').innerHTML=html;
+
+  /* 底部免责 */
+  if(caveat||true){
+    $('footCaveat').textContent=caveat||'';
+    $('bottomBanner').style.display='';
+  }
+}
+
+function load(){
+  applyStatic();
+  try{
+    fetch(JSON_URL,{cache:'no-store'}).then(function(r){
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      return r.json();
+    }).then(function(data){
+      render(data);
+    }).catch(function(){
+      $('main').innerHTML='<div class="err">'+esc(t('unavail'))+'</div>';
+    });
+  }catch(e){
+    $('main').innerHTML='<div class="err">'+esc(t('unavail'))+'</div>';
+  }
+}
+
+$('lang').onclick=function(){
+  LANG=LANG==='zh'?'en':'zh';
+  try{localStorage.setItem('valpha_lang',LANG);}catch(e){}
+  applyStatic();
+  // 重新拉数据（语言影响渲染，但数据本身不变——重渲即可）
+  // 若已有数据缓存则重渲，否则重新拉取
+  if(window._compositeData){
+    render(window._compositeData);
+  }else{
+    load();
+  }
+};
+
+// 带缓存的加载版本
+(function(){
+  applyStatic();
+  try{
+    fetch(JSON_URL,{cache:'no-store'}).then(function(r){
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      return r.json();
+    }).then(function(data){
+      window._compositeData=data;
+      render(data);
+    }).catch(function(){
+      $('main').innerHTML='<div class="err">'+esc(t('unavail'))+'</div>';
+    });
+  }catch(e){
+    $('main').innerHTML='<div class="err">'+esc(t('unavail'))+'</div>';
+  }
+})();
+</script>
+</body>
+</html>
