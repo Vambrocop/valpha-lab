@@ -90,8 +90,9 @@ def _calendar(eff, index, cid):
     if eff not in ("decade_digit", "presidential_cycle") and int(rmask.sum()) >= 200:
         rp = pb.perm_test(vals[rmask], lab[rmask], stat,
                           np.random.default_rng(_seed_for(cid) + [2000]))["p_value"]
-        rmin = int(np.unique(lab[rmask], return_counts=True)[1].min())
-        recent_p, powered = rp, rmin >= pb.MIN_GROUP_N
+        if not np.isnan(rp):                       # P2-a 守卫:现代段单标签组→NaN→留 None/False(防 allow_nan=False 崩盘)
+            rmin = int(np.unique(lab[rmask], return_counts=True)[1].min())
+            recent_p, powered = rp, rmin >= pb.MIN_GROUP_N
     return {"p": float(p), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered)}
 
@@ -173,7 +174,8 @@ def run_all(write=True, q=0.10):
         "method": ("自动发现 Phase 1b：预注册有限候选(日历/反弹/因子)各路由到真统计算 p，"
                    "经 quality_gate 双栏 BY-FDR(族内+跨族)+三态裁决。全部候选进分母、禁预筛、固定种子。"),
         "caveat": "存活≠未来重演≠可交易；现代已淡=全段过FDR但现代测不到(疑被套利)；"
-                  "检验力不足=样本太小不下结论。门4样本外待接入。探索性，非预测、非荐股。",
+                  "检验力不足=样本太小不下结论。因子族 FDR 为**无向双侧**(只问'有无可测边际'、不含方向判断，"
+                  "与 factor_pruning 的方向门控透镜口径不同)。门4样本外待接入。探索性，非预测、非荐股。",
         "q": q, "n_declared": cs.N_DECLARED, "summary": s,
         "candidates": sorted(results, key=lambda r: r["p"]),
     }

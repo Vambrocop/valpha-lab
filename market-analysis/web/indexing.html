@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>不想选股？宽基指数怎么买 · Index Investing Guide</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--amb:#d29922;--blu:#58a6ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1080px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .lead{color:var(--mut);font-size:.9rem;margin:8px 0 4px}
+  .disclaimer{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.35);border-radius:8px;padding:9px 13px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
+  .info{background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.28);border-radius:8px;padding:9px 13px;font-size:.84rem;margin:10px 0;color:#cfe3ff}
+  .warn{background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.35);border-radius:8px;padding:9px 13px;font-size:.84rem;margin:10px 0;color:#f0c060}
+  .section{margin:22px 0 8px;font-size:1.08rem;font-weight:700;color:var(--acc);border-bottom:1px solid var(--border);padding-bottom:5px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:12px 0}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+  .card h2{font-size:1rem;margin:0 0 6px;line-height:1.3}
+  .card .sub{color:var(--acc);font-size:.8rem;font-weight:600;margin:0 0 7px}
+  .card p{color:var(--fg);font-size:.85rem;margin:0 0 5px;opacity:.93}
+  .card .tag{display:inline-block;background:#0d1117;border:1px solid var(--border);color:var(--mut);font-size:.72rem;padding:1px 7px;border-radius:12px;margin:2px 2px 0 0}
+  .card .verify{color:var(--amb);font-size:.76rem;margin-top:7px;font-style:italic}
+  /* DCA 表格 */
+  .compare{width:100%;border-collapse:collapse;font-size:.85rem;margin:10px 0}
+  .compare th{background:var(--panel);color:var(--mut);font-weight:600;padding:7px 10px;text-align:left;border:1px solid var(--border)}
+  .compare td{padding:7px 10px;border:1px solid var(--border);vertical-align:top}
+  .compare tr:nth-child(even) td{background:rgba(22,27,34,.7)}
+  /* 澳洲实操 */
+  .step{display:flex;gap:10px;margin:8px 0;align-items:flex-start}
+  .step .num{min-width:26px;height:26px;border-radius:50%;background:var(--acc);color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .step .body{font-size:.87rem;line-height:1.5}
+  /* 崩盘历史 */
+  .crash{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+  .crash-item{background:var(--panel);border:1px solid rgba(248,81,73,.4);border-radius:8px;padding:9px 13px;min-width:140px;flex:1 1 140px}
+  .crash-item .yr{font-size:.92rem;font-weight:700;color:var(--red)}
+  .crash-item .nm{font-size:.8rem;color:var(--mut);margin:2px 0}
+  .crash-item .drop{font-size:1.1rem;font-weight:700;color:var(--red)}
+  .crash-item .rec{font-size:.76rem;color:var(--mut);margin-top:3px}
+  /* 信号栏 */
+  #live-bar{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 13px;font-size:.84rem;margin:10px 0;color:var(--mut)}
+  .mut{color:var(--mut);font-size:.82rem;margin-top:18px;border-top:1px solid var(--border);padding-top:10px;text-align:center}
+  @media(max-width:560px){
+    body{padding:11px}h1{font-size:1.15rem}
+    .grid{grid-template-columns:1fr}
+    .compare{font-size:.78rem}.compare th,.compare td{padding:5px 7px}
+    .crash-item{min-width:110px}
+  }
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<div class="lead" data-i18n="lead"></div>
+<div class="disclaimer" data-i18n="disclaimer"></div>
+
+<div id="live-bar" data-i18n="livebar_loading"></div>
+
+<!-- Section 1: Why index -->
+<div class="section" data-i18n="s1_title"></div>
+<div class="info" data-i18n="s1_spiva"></div>
+<div class="grid" id="why-grid"></div>
+
+<!-- Section 2: Index comparison table -->
+<div class="section" data-i18n="s2_title"></div>
+<div class="warn" data-i18n="s2_warn"></div>
+<div id="idx-table"></div>
+
+<!-- Section 3: DCA vs Lump Sum -->
+<div class="section" data-i18n="s3_title"></div>
+<div id="dca-table"></div>
+<div class="info" data-i18n="s3_note"></div>
+
+<!-- Section 4: Crash history — honesty section -->
+<div class="section" data-i18n="s4_title"></div>
+<div class="warn" data-i18n="s4_warn"></div>
+<div class="crash" id="crash-list"></div>
+
+<!-- Section 5: Australia practical guide -->
+<div class="section" data-i18n="s5_title"></div>
+<div class="warn" data-i18n="s5_warn"></div>
+<div id="au-steps"></div>
+
+<!-- Section 6: Final disclaimer -->
+<div class="disclaimer" data-i18n="final_disclaimer"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const I18N={
+  title:{zh:"🧭 不想选股？宽基指数怎么买",en:"🧭 Skip stock-picking? A plain guide to index investing"},
+  lead:{zh:"大白话讲清楚：什么是宽基指数、为什么大多数人用它比自己选股更稳、在澳洲怎么实际操作。",
+        en:"Plain language: what broad market index funds are, why they work for most people, and how to buy them from Australia."},
+  disclaimer:{zh:"<b>教育页面，非投资建议，不预测涨跌，不荐股。</b>所有具体费率、产品代码、税率规则均会随时变动——本页只给方向，<b>请以发行商官网 / 澳洲税务局（ATO）/ 专业税务顾问为准</b>。",
+              en:"<b>Educational content only — not investment advice, no forecasts, no stock recommendations.</b> All specific fees, product codes and tax rules can change at any time. This page is for orientation only; <b>always verify with the issuer's website, the ATO, or a qualified tax adviser.</b>"},
+  livebar_loading:{zh:"正在拉当前市场数据…",en:"Loading current market data…"},
+  livebar_ok:{zh:"当前标普500 / 纳指 参考点位（实时）：{sp} / {nd}　<span style='color:var(--mut);font-size:.76rem'>— 描述性数据，非买卖信号</span>",
+              en:"Current S&P 500 / Nasdaq reference (live): {sp} / {nd}　<span style='color:var(--mut);font-size:.76rem'>— descriptive data, not a signal</span>"},
+  livebar_err:{zh:"市场数据暂时拉不到，不影响本页内容阅读。",
+               en:"Market data temporarily unavailable — the guide content below is unaffected."},
+
+  /* Section 1 */
+  s1_title:{zh:"① 为什么宽基指数打败了多数选股者？",en:"① Why do index funds beat most stock-pickers?"},
+  s1_spiva:{zh:"<b>SPIVA 报告（S&P 每年发布）的长期统计趋势</b>：10 年期内，约 80–90% 的主动管理基金跑输同类指数。这不是个例——是跨市场、跨时段的持续规律。<b>标「长期统计趋势，非对你个人的保证」。</b>",
+            en:"<b>Long-run trend from the SPIVA report (published annually by S&P):</b> over 10-year periods, roughly 80–90% of actively managed funds underperform their benchmark index. This holds across markets and time periods. <b>Labelled 'long-run statistical trend, not a guarantee for any individual.'</b>"},
+
+  w1t:{zh:"费率复利侵蚀",en:"Fees compound against you"},
+  w1s:{zh:"选股者的负担",en:"The stock-picker's burden"},
+  w1h:{zh:"主动基金年费通常 1–2%，宽基 ETF 通常低于 0.1%（请核实当前费率）。复利 30 年，1% 的费差可吃掉最终财富约 20–30%。指数基金只需「跟上市场」，省去了这笔摩擦。",
+       en:"Active fund fees are often 1–2% per year; broad index ETFs are often under 0.1% (verify current rates). Over 30 years compounding, a 1% fee gap can consume roughly 20–30% of final wealth. Index funds only need to 'match the market' — no friction drag."},
+
+  w2t:{zh:"市场很难持续预判",en:"Markets are very hard to beat consistently"},
+  w2s:{zh:"信息效率的现实",en:"The efficiency reality"},
+  w2h:{zh:"专职分析师、对冲基金每天盯着同一批股票，价格已经把大量公开信息消化进去了。业余投资者要持续找到「别人没发现的便宜货」，统计上非常困难。",
+       en:"Professional analysts and hedge funds watch the same stocks every day — prices already digest most public information. For a part-time investor to consistently find bargains others missed is, statistically, very hard."},
+
+  w3t:{zh:"买对了也会持有不住",en:"Right call, wrong behaviour"},
+  w3s:{zh:"择时和情绪的代价",en:"The timing-and-emotion tax"},
+  w3h:{zh:"研究表明，普通投资者的实际收益比基金本身的收益低——原因是在高点追买、低点恐慌卖出。宽基定投让你省掉「什么时候买」的纠结，减少情绪操作。",
+       en:"Research consistently shows individual investors earn less than the funds they hold — because they buy at peaks and sell in panic. Broad-index auto-investing removes the 'when do I buy' decision and cuts emotional trading."},
+
+  w4t:{zh:"分散风险，天然组合",en:"Built-in diversification"},
+  w4s:{zh:"不押单注",en:"No single-stock bets"},
+  w4h:{zh:"买一只追踪 S&P 500 的 ETF，就等于同时持有 500 家公司的一小份。某家公司出问题，只是几百分之一，而不是全仓倒。",
+       en:"One S&P 500 ETF holds a slice of ~500 companies. If one collapses, it's one in five hundred — not a wipeout. Diversification is automatic and free."},
+
+  /* Section 2 */
+  s2_title:{zh:"② 主要宽基指数对比",en:"② Major broad-market index comparison"},
+  s2_warn:{zh:"下表费率、代码、权重均为参考量级，<b>以各发行商最新官网为准</b>，随时可能变动。此表不构成推荐。",
+           en:"The fees, tickers and weights below are indicative only. <b>Always verify on the issuer's current website</b> — these can change at any time. This table is not a recommendation."},
+
+  /* Section 3 */
+  s3_title:{zh:"③ 定投（DCA）vs 一次性投入",en:"③ Dollar-cost averaging (DCA) vs lump sum"},
+  s3_note:{zh:"<b>没有「必须哪个」。</b>历史平均下来一次性入场略胜（资金越早进市场越久），但定投降低「偏偏买在高点」的后悔风险与心理压力。选你能坚持的那个。",
+           en:"<b>There's no 'must do.'</b> Historically, lump-sum entry wins on average (more time in market). But DCA reduces regret and psychological stress from buying at a peak. Pick the one you can actually stick to."},
+
+  dca_h1:{zh:"比较维度",en:"Dimension"},
+  dca_h2:{zh:"一次性入场",en:"Lump sum"},
+  dca_h3:{zh:"定期定额（DCA）",en:"Dollar-cost averaging"},
+  dca_r1_d:{zh:"历史平均回报",en:"Historical average return"},
+  dca_r1_a:{zh:"略高（市场上涨时，资金更早入场更久）",en:"Slightly higher (more time in market when market trends up)"},
+  dca_r1_b:{zh:"略低（部分资金等待期间没参与涨幅）",en:"Slightly lower (idle cash misses some gains while waiting)"},
+  dca_r2_d:{zh:"心理压力",en:"Psychological stress"},
+  dca_r2_a:{zh:"高——万一「买在最高点」，难以承受",en:"High — if you buy at a peak, it's painful"},
+  dca_r2_b:{zh:"低——分批买，不纠结时机",en:"Low — spread over time, less timing anguish"},
+  dca_r3_d:{zh:"适用场景",en:"Best for"},
+  dca_r3_a:{zh:"一次性收到大笔资金（卖房、遗产、年终奖）且能承受短期波动",en:"Receiving a lump sum (property sale, inheritance, bonus) and can tolerate short-term swings"},
+  dca_r3_b:{zh:"工资收入、每月存入一笔；或对「买在高点」高度敏感",en:"Salary income with monthly savings; or strongly averse to 'buying the top'"},
+  dca_r4_d:{zh:"择时风险",en:"Timing risk"},
+  dca_r4_a:{zh:"较高（一次性入场，完全暴露于当时估值）",en:"Higher (fully exposed to current valuations at entry)"},
+  dca_r4_b:{zh:"较低（分批平均成本，熨平高低）",en:"Lower (average cost over entries, smooths highs and lows)"},
+
+  /* Section 4 */
+  s4_title:{zh:"④ 诚实提醒：指数也会大跌",en:"④ Honest reminder: index funds crash too"},
+  s4_warn:{zh:"<b>宽基指数不是「保本」。</b>过去 25 年，美股曾多次腰斩或接近腰斩。<b>过去表现不保证未来。</b>如果你明年需要这笔钱，长期股市风险不适合你。",
+           en:"<b>Index funds are not 'safe money.'</b> US markets have halved or nearly halved multiple times in the past 25 years. <b>Past performance does not guarantee future results.</b> If you need this money within a year or two, long-term equity risk is not for you."},
+
+  /* Section 5 */
+  s5_title:{zh:"⑤ 澳洲买美股指数实操指南",en:"⑤ Practical guide: buying US index funds from Australia"},
+  s5_warn:{zh:"以下为方向性说明，<b>不是精确的税务或法律建议。所有数字、门槛、规则均需向 ATO、你的税务师或金融顾问核实</b>，它们随时可能变动。",
+           en:"This is an orientation guide only. <b>All figures, thresholds and rules should be verified with the ATO, your accountant or a financial adviser</b> — they can change at any time."},
+
+  au1:{zh:"<b>选平台（券商）</b>——许多澳洲券商支持购买美股 ETF 或澳洲上市版本。手续费结构各异（固定/按比例），<b>请核实当前佣金和外汇费用</b>。",
+       en:"<b>Choose a broker</b> — many Australian brokers support US-listed ETFs or ASX-listed equivalents. Fee structures vary (flat/percentage); <b>verify current brokerage and FX charges</b>."},
+  au2:{zh:"<b>汇率（AUD ↔ USD）</b>——买美股 ETF（如 VOO/IVV/QQQ）需换美元。汇率本身是额外风险：若 AUD 走强，换回来会有汇损；若 AUD 走弱，则有汇益。<b>AUD 长期相对于 USD 波动较大，这是真实风险。</b>",
+       en:"<b>Currency (AUD ↔ USD)</b> — buying US-listed ETFs (VOO/IVV/QQQ) requires converting to USD. The exchange rate adds another layer of risk: AUD strengthening on the way back means currency losses; weakening means gains. <b>AUD/USD has historically been volatile — this is a real, additional risk.</b>"},
+  au3:{zh:"<b>美国注册 ETF（如 VOO/QQQ）的额外手续</b>：需填写 <b>W-8BEN 表格</b>（向美国 IRS 证明你是非美国居民）。股息一般被美国预扣 15%（澳美税务协议税率，请核实）。你需要在澳洲申报美股股息及资本利得。",
+       en:"<b>US-listed ETFs (e.g. VOO/QQQ) involve extra steps:</b> you need to file a <b>W-8BEN form</b> (certifying to the IRS that you are a non-US person). Dividends are typically withheld at 15% by the US under the Australia-US tax treaty (verify current rate). You must declare US dividends and capital gains in your Australian tax return."},
+  au4:{zh:"<b>澳洲注册版 ETF（ASX 上市）</b>——如 IVV.AX（iShares S&P 500）、NDQ.AX（BetaShares 纳指 100）等。优点：<b>AUD 计价、不用 W-8BEN、分红在澳洲按正常规则处理</b>。管理费率通常略高于对应美国版，<b>请以发行商官网现行费率为准</b>。",
+       en:"<b>ASX-listed equivalent ETFs</b> — e.g. IVV.AX (iShares S&P 500), NDQ.AX (BetaShares Nasdaq 100). Advantages: <b>AUD-denominated, no W-8BEN required, dividends handled under standard Australian tax rules.</b> MERs are often slightly higher than the US equivalents; <b>always check the issuer's current fee schedule.</b>"},
+  au5:{zh:"<b>澳洲 CGT（资本利得税）</b>——在澳洲，出售 ETF 时可能产生资本利得。持有超过 12 个月通常享受 50% CGT 折扣（请核实 ATO 当前规则）。亏损可用于抵扣其他资本利得。<b>具体情况因人而异，请咨询税务师。</b>",
+       en:"<b>Australian CGT (capital gains tax)</b> — selling ETFs in Australia may trigger capital gains. Holding for more than 12 months typically qualifies for a 50% CGT discount (verify with current ATO rules). Capital losses can be offset against other capital gains. <b>Your specific situation may differ — consult a tax adviser.</b>"},
+  au6:{zh:"<b>超级年金（Super）</b>——澳洲居民也可通过 Super 间接持有全球指数基金（通过基金的投资选项）。Super 内税率优惠，但有存取年龄限制。如果你的 Super 基金有国际指数选项，这是值得了解的渠道，但属于另一个话题，<b>请向你的 Super 基金或财务顾问咨询。</b>",
+       en:"<b>Superannuation</b> — Australian residents can also access global index funds through their Super fund's investment options. Super contributions have tax advantages but access-age restrictions apply. If your fund offers international index options, this is a channel worth understanding — but it's a separate topic; <b>consult your Super fund or financial adviser.</b>"},
+
+  final_disclaimer:{zh:"<b>再次强调：指数 ETF 不等于「稳赚」。</b>它降低了「选错个股」的风险，但市场系统性风险（整体大跌）仍然存在。2000 年科网泡沫、2008 年金融危机、2020 年疫情冲击——宽基指数均腰斩或接近腰斩，最长恢复超过十年。只投你能承受长期套牢的资金。本页内容均为教育目的，任何具体操作请咨询持牌财务顾问。",
+                   en:"<b>One more time: index ETFs do not mean 'guaranteed gains.'</b> They reduce single-stock risk, but systemic market risk (broad crashes) remains. The 2000 dot-com bust, 2008 financial crisis, and 2020 COVID crash all cut broad indices by half or close to it — with some recovery periods exceeding ten years. Only invest money you can afford to lock up for the long term. Everything on this page is educational; consult a licensed financial adviser for any specific action."},
+
+  foot:{zh:"教育内容 · 非投资建议 · 非买卖信号 · 数据仅供参考 · 所有费率/税率/规则以官方来源为准",
+        en:"Educational content · not investment advice · not a buy/sell signal · data for reference only · all fees/tax rates/rules per official sources"}
+};
+
+/* ——— 宽基 ETF 对比数据 ——— */
+const IDX=[
+  {zh_name:"S&P 500",en_name:"S&P 500",
+   zh_track:"追踪美国最大约 500 家上市公司（按市值加权）",en_track:"Tracks ~500 largest US listed companies (market-cap weighted)",
+   zh_us:"VOO · IVV",en_us:"VOO · IVV",
+   zh_asx:"IVV.AX",en_asx:"IVV.AX",
+   zh_fee:"费率极低量级（约 0.03–0.07%，以发行商为准）",en_fee:"Very low MER range (≈0.03–0.07%; verify with issuer)",
+   zh_conc:"相对均衡；科技占比约 30%（权重随时变，以指数官网为准）",en_conc:"Relatively balanced; tech ≈ 30% (weight changes; verify with index provider)",
+   zh_risk:"宽分散，仍含集中度风险",en_risk:"Broad diversification; concentration risk still exists"},
+  {zh_name:"纳指 100",en_name:"Nasdaq-100",
+   zh_track:"追踪纳斯达克 100 只非金融大型科技股",en_track:"Tracks 100 large non-financial Nasdaq companies (tech-heavy)",
+   zh_us:"QQQ",en_us:"QQQ",
+   zh_asx:"NDQ.AX",en_asx:"NDQ.AX",
+   zh_fee:"费率中低量级（约 0.2%，以发行商为准）",en_fee:"Low-to-mid MER range (≈0.2%; verify with issuer)",
+   zh_conc:"科技占比非常高（约 50–60%，权重随时变）——集中度明显高于 S&P 500",en_conc:"Very tech-heavy (≈50–60%, weight changes) — significantly more concentrated than S&P 500",
+   zh_risk:"更高波动；科技周期影响大",en_risk:"Higher volatility; strongly tied to tech cycles"},
+  {zh_name:"全市场",en_name:"Total Market",
+   zh_track:"追踪整个美国股市（含大中小盘约 3500+ 只）",en_track:"Tracks the entire US stock market (~3,500+ companies, large/mid/small cap)",
+   zh_us:"VTI",en_us:"VTI",
+   zh_asx:"（澳洲无直接对应，可参考全球版 VGS.AX 等，追踪标的不同）",en_asx:"(No direct ASX equivalent; VGS.AX covers global developed markets — different coverage)",
+   zh_fee:"费率极低量级（约 0.03%，以发行商为准）",en_fee:"Very low MER range (≈0.03%; verify with issuer)",
+   zh_conc:"最广分散；大盘权重仍主导",en_conc:"Broadest diversification; large-cap still dominates by weight",
+   zh_risk:"最宽分散，小盘波动略大",en_risk:"Widest diversification; small-cap segment adds some extra volatility"}
+];
+
+/* ——— 崩盘记录 ——— */
+const CRASHES=[
+  {yr:"2000–02",name_zh:"科网泡沫",name_en:"Dot-com bust",sp_drop:"S&P −49%",nd_drop:"纳指 −83%",nd_en:"Nasdaq −83%",rec_zh:"S&P 约 7 年恢复",rec_en:"S&P ~7 yr recovery"},
+  {yr:"2008–09",name_zh:"金融危机",name_en:"Global financial crisis",sp_drop:"S&P −57%",nd_drop:"纳指 −55%",nd_en:"Nasdaq −55%",rec_zh:"S&P 约 5 年恢复",rec_en:"S&P ~5 yr recovery"},
+  {yr:"2020",name_zh:"疫情冲击",name_en:"COVID crash",sp_drop:"S&P −34%",nd_drop:"纳指 −32%",nd_en:"Nasdaq −32%",rec_zh:"约 5 个月快速恢复（历史罕见）",rec_en:"~5 months — unusually fast recovery"},
+  {yr:"2022",name_zh:"加息周期",name_en:"Rate-hike cycle",sp_drop:"S&P −25%",nd_drop:"纳指 −35%",nd_en:"Nasdaq −35%",rec_zh:"约 2 年恢复",rec_en:"~2 yr recovery"}
+];
+
+const $=id=>document.getElementById(id);
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+
+function renderWhy(){
+  const CARDS=["w1","w2","w3","w4"];
+  $("why-grid").innerHTML=CARDS.map(c=>`<div class="card">
+    <h2>${t(c+"t")}</h2>
+    <p class="sub">${t(c+"s")}</p>
+    <p>${t(c+"h")}</p>
+  </div>`).join("");
+}
+
+function renderIdxTable(){
+  const zh=LANG==="zh";
+  const hdr=zh
+    ? `<tr><th>指数</th><th>追踪什么</th><th>美国代码</th><th>澳洲 ASX 版</th><th>费率量级</th><th>集中度特征</th></tr>`
+    : `<tr><th>Index</th><th>Tracks</th><th>US tickers</th><th>ASX version</th><th>Fee range</th><th>Concentration</th></tr>`;
+  const rows=IDX.map(r=>`<tr>
+    <td><b>${zh?r.zh_name:r.en_name}</b></td>
+    <td style="font-size:.82rem">${zh?r.zh_track:r.en_track}</td>
+    <td><b>${zh?r.zh_us:r.en_us}</b></td>
+    <td>${zh?r.zh_asx:r.en_asx}</td>
+    <td style="font-size:.8rem;color:var(--mut)">${zh?r.zh_fee:r.en_fee}</td>
+    <td style="font-size:.82rem">${zh?r.zh_conc:r.en_conc}</td>
+  </tr>`).join("");
+  $("idx-table").innerHTML=`<table class="compare">${hdr}${rows}</table>`;
+}
+
+function renderDCA(){
+  const zh=LANG==="zh";
+  const rows=[
+    [t("dca_r1_d"),t("dca_r1_a"),t("dca_r1_b")],
+    [t("dca_r2_d"),t("dca_r2_a"),t("dca_r2_b")],
+    [t("dca_r3_d"),t("dca_r3_a"),t("dca_r3_b")],
+    [t("dca_r4_d"),t("dca_r4_a"),t("dca_r4_b")]
+  ];
+  $("dca-table").innerHTML=`<table class="compare">
+    <tr><th>${t("dca_h1")}</th><th>✅ ${t("dca_h2")}</th><th>📅 ${t("dca_h3")}</th></tr>
+    ${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}
+  </table>`;
+}
+
+function renderCrash(){
+  $("crash-list").innerHTML=CRASHES.map(c=>`<div class="crash-item">
+    <div class="yr">${esc(c.yr)}</div>
+    <div class="nm">${LANG==="zh"?esc(c.name_zh):esc(c.name_en)}</div>
+    <div class="drop">${esc(c.sp_drop)}</div>
+    <div class="drop" style="font-size:.88rem">${LANG==="zh"?esc(c.nd_drop):esc(c.nd_en)}</div>
+    <div class="rec">${LANG==="zh"?esc(c.rec_zh):esc(c.rec_en)}</div>
+  </div>`).join("");
+}
+
+function renderAU(){
+  const steps=["au1","au2","au3","au4","au5","au6"];
+  $("au-steps").innerHTML=steps.map((k,i)=>`<div class="step">
+    <div class="num">${i+1}</div>
+    <div class="body">${t(k)}</div>
+  </div>`).join("");
+}
+
+function redraw(){applyStatic();renderWhy();renderIdxTable();renderDCA();renderCrash();renderAU();}
+
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}redraw();};
+
+/* ——— 可选：拉标普/纳指参考点位 ——— */
+(async()=>{
+  redraw();
+  try{
+    const r=await fetch("https://vambrocop.github.io/valpha-lab/signals.json",{cache:"no-store"});
+    if(!r.ok)throw new Error("not ok");
+    const d=await r.json();
+    /* signals.json 中找 sp500_close 和 nasdaq_close 字段；键名以实际为准 */
+    const sp=d.sp500_close||d.spx_close||d.latest_sp500||null;
+    const nd=d.nasdaq_close||d.ndx_close||d.latest_nasdaq||null;
+    if(sp||nd){
+      const fmt=v=>v?Number(v).toLocaleString():"—";
+      const tpl=t("livebar_ok").replace("{sp}",fmt(sp)).replace("{nd}",fmt(nd));
+      $("live-bar").innerHTML=tpl;
+    } else {
+      $("live-bar").innerHTML=t("livebar_err");
+    }
+  }catch(e){
+    $("live-bar").innerHTML=t("livebar_err");
+  }
+})();
+</script>
+</body>
+</html>
