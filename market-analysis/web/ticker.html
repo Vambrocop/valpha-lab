@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🔍 任意代码快查 · Any-ticker quick check</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:16px;max-width:760px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .banner{background:linear-gradient(135deg,#5b21b6 0%,#7d1128 100%);border:1px solid #f85149;border-radius:10px;padding:11px 14px;margin:10px 0;font-size:.85rem;color:#fff;line-height:1.5}
+  .box{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
+  #tk{flex:1 1 200px;background:#0d1117;border:1px solid var(--border);color:var(--fg);border-radius:8px;padding:10px 12px;font-size:1.05rem;text-transform:uppercase}
+  #go{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 20px;font-size:1rem;cursor:pointer}
+  .ex{font-size:.78rem;color:var(--mut);margin:-6px 0 4px}
+  .ex b{color:var(--acc);cursor:pointer}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:12px}
+  .card h2{margin:.1em 0;font-size:1.15rem}
+  .row{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px}
+  .m{flex:1 1 110px}.m .l{font-size:.72rem;color:var(--mut)}.m .v{font-size:1.2rem;font-weight:700}
+  .pos{color:var(--grn)}.neg{color:var(--red)}
+  .src{font-size:.74rem;color:var(--mut);margin-top:10px;border-top:1px solid var(--border);padding-top:8px}
+  .err{color:var(--red);font-size:.86rem;margin-top:12px}
+  .mut{color:var(--mut);font-size:.78rem;margin-top:18px;border-top:1px solid var(--border);padding-top:8px}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}}
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='wildhub.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<div class="banner" data-i18n="banner"></div>
+<div class="box">
+  <input id="tk" placeholder="GME / MSTR / COIN ..." autocomplete="off">
+  <button id="go" data-i18n="go"></button>
+</div>
+<div class="ex" data-i18n="ex"></div>
+<div id="out"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+const I18N={
+  title:{zh:"🔍 任意代码快查 · 原型",en:"🔍 Any-ticker quick check · prototype"},
+  banner:{zh:"<b>出格区 · 尽力快查,非雷达级深算、非荐股。</b>输入任意美股代码,直连第三方(Stooq)拉日线、浏览器现算动量/波动/回撤。<b>第三方数据可能有误/延迟/缺失、境外源(澳洲可直连、境内可能连不上)、过去≠未来。</b>要完整诚实体检请用观察池或「点单深算」。",
+          en:"<b>Out-of-bounds · best-effort quick check, not a deep checkup, not advice.</b> Enter any US ticker; we fetch daily bars straight from a third party (Stooq) and compute momentum/vol/drawdown in your browser. <b>Third-party data may be wrong/delayed/missing; overseas source (reachable from AU, maybe not from mainland China); past ≠ future.</b> For a full honest checkup use the watch pool or 'deep-compute on request'."},
+  go:{zh:"快查",en:"Check"},
+  ex:{zh:"试试:<b data-x='GME'>GME</b> <b data-x='MSTR'>MSTR</b> <b data-x='COIN'>COIN</b> <b data-x='PLTR'>PLTR</b> <b data-x='HOOD'>HOOD</b>",
+      en:"Try: <b data-x='GME'>GME</b> <b data-x='MSTR'>MSTR</b> <b data-x='COIN'>COIN</b> <b data-x='PLTR'>PLTR</b> <b data-x='HOOD'>HOOD</b>"},
+  loading:{zh:"拉取中…",en:"Fetching…"},
+  m_last:{zh:"最新价",en:"Last"},m_1m:{zh:"近1月",en:"1M"},m_3m:{zh:"近3月",en:"3M"},m_1y:{zh:"近1年",en:"1Y"},
+  m_vol:{zh:"年化波动",en:"Ann. vol"},m_dd:{zh:"近1年最深回撤",en:"1Y max drawdown"},m_fh:{zh:"距52周高",en:"vs 52W high"},
+  fail:{zh:"拉不到 ‹{x}› 的数据——可能代码不对、第三方暂时不可用、或你的网络拦了境外源。换个代码或稍后再试。",
+        en:"Couldn't fetch ‹{x}› — wrong ticker, third-party down, or your network blocked the overseas source. Try another or later."},
+  src:{zh:"数据源:Stooq(第三方,{n} 条日线,截至 {d})· 描述性、非荐股、非预测",en:"Source: Stooq (third-party, {n} daily bars, to {d}) · descriptive, not advice, not a forecast"},
+  foot:{zh:"快查只算价格派生指标(动量/波动/回撤),不含 EVT/保形/规律真伪等深度统计。出格区,自负盈亏。",
+        en:"Quick check computes price-derived metrics only (momentum/vol/drawdown), no EVT/conformal/pattern tests. Out-of-bounds, at your own risk."}
+};
+function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";bindEx();}
+function bindEx(){document.querySelectorAll(".ex b[data-x]").forEach(b=>b.onclick=()=>{$("tk").value=b.dataset.x;run();});}
+function pn(v,suf){if(v==null||isNaN(v))return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v.toFixed(1)}${suf||''}</span>`;}
+
+async function stooq(tk){
+  // Stooq 日线 CSV：Date,Open,High,Low,Close,Volume
+  const url=`https://stooq.com/q/d/l/?s=${encodeURIComponent(tk.toLowerCase())}.us&i=d`;
+  const r=await fetch(url,{cache:"no-store"}); if(!r.ok)throw 0;
+  const txt=await r.text();
+  const lines=txt.trim().split("\n"); if(lines.length<30||!/Date,/i.test(lines[0]))throw 0;
+  const rows=lines.slice(1).map(l=>l.split(",")).filter(c=>c.length>=5&&+c[4]>0);
+  return rows.map(c=>({d:c[0],close:+c[4],high:+c[2]}));
+}
+function metrics(rows){
+  const n=rows.length, last=rows[n-1].close;
+  const back=k=>{const i=n-1-k;return i>=0?rows[i].close:null;};
+  const chg=(p)=>p?((last/p-1)*100):null;
+  // 年化波动(近1年日收益)
+  const yr=rows.slice(Math.max(0,n-252));
+  const rets=[];for(let i=1;i<yr.length;i++)rets.push(yr[i].close/yr[i-1].close-1);
+  const mean=rets.reduce((a,b)=>a+b,0)/(rets.length||1);
+  const vol=Math.sqrt(rets.reduce((a,b)=>a+(b-mean)**2,0)/(rets.length||1))*Math.sqrt(252)*100;
+  // 近1年最深回撤
+  let peak=-1e9,dd=0;yr.forEach(r=>{peak=Math.max(peak,r.close);dd=Math.min(dd,r.close/peak-1);});
+  // 距52周高
+  const hi=Math.max(...yr.map(r=>r.high||r.close));
+  return {last,m1:chg(back(21)),m3:chg(back(63)),m1y:chg(back(252)),vol,dd:dd*100,fh:(last/hi-1)*100,n,d:rows[n-1].d};
+}
+async function run(){
+  const tk=($("tk").value||"").trim().toUpperCase(); if(!tk)return;
+  $("out").innerHTML=`<div class="mut">${t("loading")}</div>`;
+  try{
+    const rows=await stooq(tk); const m=metrics(rows);
+    $("out").innerHTML=`<div class="card"><h2>${esc(tk)}</h2>
+      <div class="row">
+        <div class="m"><div class="l">${t("m_last")}</div><div class="v">${m.last.toFixed(2)}</div></div>
+        <div class="m"><div class="l">${t("m_1m")}</div><div class="v">${pn(m.m1,'%')}</div></div>
+        <div class="m"><div class="l">${t("m_3m")}</div><div class="v">${pn(m.m3,'%')}</div></div>
+        <div class="m"><div class="l">${t("m_1y")}</div><div class="v">${pn(m.m1y,'%')}</div></div>
+      </div>
+      <div class="row">
+        <div class="m"><div class="l">${t("m_vol")}</div><div class="v">${m.vol.toFixed(0)}%</div></div>
+        <div class="m"><div class="l">${t("m_dd")}</div><div class="v neg">${m.dd.toFixed(0)}%</div></div>
+        <div class="m"><div class="l">${t("m_fh")}</div><div class="v">${pn(m.fh,'%')}</div></div>
+      </div>
+      <div class="src">${t("src").replace("{n}",m.n).replace("{d}",esc(m.d))}</div></div>`;
+  }catch(e){
+    $("out").innerHTML=`<div class="err">${t("fail").replace("{x}",esc(tk))}</div>`;
+  }
+}
+$("go").onclick=run;
+$("tk").addEventListener("keydown",e=>{if(e.key==="Enter")run();});
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};applyStatic();};
+applyStatic();
+</script>
+</body>
+</html>
