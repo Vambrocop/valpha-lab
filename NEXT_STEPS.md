@@ -58,6 +58,30 @@
 
 ---
 
+## 网站吸收清单（2026-06-22，4 站调研：midas诊股 / daily_stock_analysis / 期权助手 / aihot）
+
+**贯穿洞察**：四站都在做「AI 告诉你买」，没一个敢亮自己的战绩/校准——midas、daily_stock 甚至把追踪机器造好了却不显示仪表盘。**这个空白 = Valpha Lab 护城河。** 三层镜头(数据/思想/呈现)：
+
+### 🥇 第一梯队（做实护城河）
+1. **公开计分/校准卡**（来自 daily_stock 的 decision_signal_outcome）：把 prediction_log / tipjar / composite_log / llm_read_log 各预测**汇成一张公开计分卡**；冻结(日期/方向/期限/置信)→ 1/3/5/10日对前向打 hit/miss/neutral(2%死区)、不可验证标 `unable`；**多走一步=按置信分桶看实际命中率(校准)**。← 正在做
+2. **LLM 数据质量门→强制降置信**（daily_stock 的 AnalysisContextPack + 期权助手的 LLM 纪律）：喂 Gemini 前算每项输入覆盖/新鲜度分；prompt 写死「覆盖差→最多'弱'倾向 + 渲染数据限制块」。把诚实变机械强制。
+
+### 🥈 第二梯队
+3. **单框诊股 UX + 自选 watchlist**（midas）：输美股代码→出**诚实**报告(风险画像+哪些规律过 placebo/FDR)。接 stock_checkup。
+4. **规律卡强制 regime+evidence 字段**（daily_stock YAML schema）：每条野蛮/季节规律必带 scope + 证据(测几年/原始计数)，没回测不能存在。
+5. **DeepSeek 当便宜 LLM 层**（midas）：比 Gemini 便宜+中文好，日读省钱杠杆。
+
+### 🥉 第三梯队
+6. 🎓 **期权教育页**（期权助手 bsm.py/payoff.py）：payoff 图+希腊字母沙盒，纯教学手动搭腿、无实时无推荐，教初学者"期权为啥大多数人亏"。
+7. 📊 **呈现/表格**（aihot）：分类筛选 chips + 日报版式 → 因子/规律分类浏览 + 结构化日读。
+8. 📱 **Markdown→图片 + 持仓感知告警**（daily_stock）：Telegram 推校准卡图;只在信号命中 AUD 持仓才告警。
+9. 🔌 **Finnhub 免费 US 交叉源**（daily_stock）给新鲜度门交叉校验。
+
+### ❌ 别碰
+aihot 数据(不相关) · midas 无计分 AI 裁决 · 期权推荐引擎(没历史没法计分+对初学者太险) · adanos 付费情绪(改用免费 Reddit/Polymarket 提及数走自己 placebo) · A股适配器 · 6 渠道推送 · 15 图表策略当信号(只当靶子证伪)。
+
+---
+
 ## 协作铁律（不变）
 - 判断密集 / 出公开结论 = **强编排**（详细 spec + 独立审，审查者 ≠ 建造者）
 - 守质量地基：pytest / verify_output 门禁、append-only 账本绝不手改、秘钥只走 Secrets、公开计分
