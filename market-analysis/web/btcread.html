@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>₿→📈 BTC 动量 → 纳指 · 诚实回测</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#c678dd;--amber:#e3a008}
+  *{box-sizing:border-box}
+  :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:920px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:var(--panel);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .verdict{background:rgba(198,120,221,.12);border:2px solid var(--acc);border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.92rem;line-height:1.7}
+  h2{font-size:1rem;margin:18px 0 6px}
+  .sub{color:var(--mut);font-size:.8rem;margin:0 0 6px}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:4px}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--mut);font-weight:600}
+  .pos{color:var(--grn)}.neg{color:var(--red)}
+  .hi{background:rgba(198,120,221,.08)}
+  .mut{color:var(--mut);font-size:.76rem;margin-top:16px;border-top:1px solid var(--border);padding-top:8px;line-height:1.6}
+  #src{color:var(--mut);font-size:.78rem;margin-top:6px}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.12rem}table{font-size:.8rem}}
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<p class="sub" data-i18n="intro"></p>
+<div class="verdict" id="verdict"></div>
+
+<h2 data-i18n="hCond"></h2>
+<p class="sub" data-i18n="sCond"></p>
+<div style="overflow-x:auto"><table id="cond"></table></div>
+
+<h2 data-i18n="hBt"></h2>
+<p class="sub" id="btRule"></p>
+<div style="overflow-x:auto"><table id="bt"></table></div>
+
+<h2 data-i18n="hReg"></h2>
+<p class="sub" data-i18n="sReg"></p>
+<div style="overflow-x:auto"><table id="reg"></table></div>
+
+<div id="src"></div>
+<div class="mut" id="caveat"></div>
+
+<script>
+const LIVE="https://vambrocop.github.io/valpha-lab/btc_nasdaq.json";
+const I18N={
+  title:{zh:"₿→📈 BTC 动量 → 纳指 · 诚实回测",en:"₿→📈 BTC momentum → NASDAQ · honest backtest"},
+  intro:{zh:"全站唯一穿过 FDR + 现代段 + holdout 的方向规律，此前被「无向」红线剥掉了方向——这里亮出来诚实检验。",
+         en:"The one directional regularity that survives FDR + modern segment + holdout, previously stripped of its sign by the 'no-direction' rule — surfaced here for an honest test."},
+  hCond:{zh:"① 条件前向收益（描述性证据）",en:"① Conditional forward returns (descriptive)"},
+  sCond:{zh:"BTC 20日动量分三态，看纳指未来20日表现。这是「规律本身」，不含交易成本。",
+         en:"NASDAQ next-20d outcome by BTC 20-day momentum state. This is the pattern itself, no trading cost."},
+  hBt:{zh:"② 简单 overlay 回测 vs 买入持有（带成本·无前瞻）",en:"② Simple overlay vs buy-and-hold (with cost, no look-ahead)"},
+  hReg:{zh:"③ 多体制稳健性（FRAGILE 检查）",en:"③ Multi-regime robustness (FRAGILE check)"},
+  sReg:{zh:"方向优势在各时段是否都成立——别被全样本平均骗。",en:"Does the directional edge hold in every sub-period — don't be fooled by the full-sample average."},
+  cState:{zh:"BTC动量态",en:"BTC mom state"},cUp:{zh:"上涨率",en:"up%"},cMean:{zh:"平均%",en:"mean%"},cWorst:{zh:"最差%",en:"worst%"},cN:{zh:"样本",en:"n"},
+  cMetric:{zh:"指标",en:"metric"},cStrat:{zh:"overlay策略",en:"overlay"},cBh:{zh:"买入持有",en:"buy&hold"},
+  cPeriod:{zh:"时段",en:"period"},cEdge:{zh:"优势(pos−neg上涨率)",en:"edge (pos−neg up%)"},
+  rCagr:{zh:"年化%",en:"CAGR%"},rSharpe:{zh:"Sharpe",en:"Sharpe"},rDd:{zh:"最大回撤%",en:"max DD%"},rTot:{zh:"总收益%",en:"total%"},
+  pos:{zh:"看涨 >+5%",en:"bull >+5%"},neutral:{zh:"中性",en:"neutral"},neg:{zh:"看跌 <−5%",en:"bear <−5%"},base:{zh:"基率(不挑)",en:"base (uncond.)"},
+  err:{zh:"拉不到 btc_nasdaq.json——确认已部署。",en:"Can't load btc_nasdaq.json — check deployment."},asof:{zh:"数据日",en:"as of"}
+};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh";try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+const pct=v=>v==null?"—":`<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}</span>`;
+function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
+
+function render(d){
+  applyStatic();
+  $("verdict").innerHTML="🧭 <b>"+esc(d.verdict||"")+"</b>";
+  // 条件表
+  const c=d.conditional||{};
+  let h=`<tr><th>${t("cState")}</th><th>${t("cUp")}</th><th>${t("cMean")}</th><th>${t("cWorst")}</th><th>${t("cN")}</th></tr>`;
+  [["pos",1],["neutral",0],["neg",0],["base",0]].forEach(([s,hi])=>{const x=c[s];if(!x)return;
+    h+=`<tr class="${hi?'hi':''}"><td>${t(s)}</td><td><b>${x.up_rate}%</b></td><td>${pct(x.mean_pct)}</td><td class="neg">${x.worst}%</td><td>${x.n}</td></tr>`;});
+  $("cond").innerHTML=h;
+  // 回测表
+  const b=d.backtest||{},s=b.strategy||{},bh=b.buyhold||{};
+  $("btRule").textContent=(b.rule||"")+" · "+(LANG==="en"?"switches ":"换手 ")+(b.n_switches||"")+" · "+(LANG==="en"?"in-market ":"在场 ")+(b.time_in_market_pct||"")+"%";
+  $("bt").innerHTML=`<tr><th>${t("cMetric")}</th><th>${t("cStrat")}</th><th>${t("cBh")}</th></tr>`
+    +`<tr><td>${t("rCagr")}</td><td><b>${s.cagr_pct}</b></td><td><b>${bh.cagr_pct}</b></td></tr>`
+    +`<tr class="hi"><td>${t("rSharpe")}</td><td><b>${s.sharpe}</b></td><td>${bh.sharpe}</td></tr>`
+    +`<tr class="hi"><td>${t("rDd")}</td><td><b>${s.max_dd_pct}</b></td><td>${bh.max_dd_pct}</td></tr>`
+    +`<tr><td>${t("rTot")}</td><td>${s.total_return_pct}</td><td>${bh.total_return_pct}</td></tr>`;
+  // 体制表
+  let r=`<tr><th>${t("cPeriod")}</th><th>${t("cEdge")}</th><th>${t("cStrat")} ${t("rCagr")}</th><th>${t("cBh")} ${t("rCagr")}</th></tr>`;
+  (d.regimes||[]).forEach(x=>{const ok=x.edge_holds;
+    r+=`<tr><td>${esc(x.period)}</td><td class="${ok?'pos':'neg'}">${ok?'✓ ':''}${x.cond_pos_minus_neg_uprate_pp==null?'—':'+'+x.cond_pos_minus_neg_uprate_pp+'pp'}</td><td>${x.strat_cagr_pct}%</td><td>${x.buyhold_cagr_pct}%</td></tr>`;});
+  $("reg").innerHTML=r;
+  $("caveat").textContent="⚠️ "+(d.caveat||"");
+  $("src").textContent=`${t("asof")} ${esc((d.date_range&&d.date_range[1])||d.generated||"")} · ${d.n_days||""} ${LANG==="en"?"days":"日"}`;
+}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};if(window._d)render(window._d);};
+(async()=>{applyStatic();
+  try{const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;window._d=await r.json();render(window._d);}
+  catch(e){$("verdict").textContent=t("err");}
+})();
+</script>
+</body>
+</html>
