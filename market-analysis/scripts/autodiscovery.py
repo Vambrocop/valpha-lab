@@ -54,6 +54,55 @@ def _daily(index):
     return s
 
 
+# ── 多时间窗：完整 / 2000后 / 2021后 / 近1年（用户要"结果具体·概率·多时间窗"）──
+WINS = [("完整", None), ("2000后", pd.Timestamp("2000-01-01")),
+        ("2021后", pd.Timestamp("2021-01-01")), ("近1年", "y1")]
+
+
+def _wmask(idx, w):
+    idx = pd.DatetimeIndex(idx)
+    if w is None:
+        return np.ones(len(idx), dtype=bool)
+    if w == "y1":
+        return np.asarray(idx >= (idx.max() - pd.Timedelta(days=365)))
+    return np.asarray(idx >= w)
+
+
+def _diff_windows(idx, sel, y, block):
+    """触发条件 sel 下 y 的上涨率 vs 基率，逐时间窗（反弹/因子通用·有清晰"概率"）。"""
+    out = []
+    for lab, w in WINS:
+        mk = _wmask(idx, w)
+        s, yy = sel[mk], y[mk]
+        if int(s.sum()) >= 10 and int((~s).sum()) >= 10:
+            bb = block_bootstrap_diff(s, yy, block=block)
+            out.append({"label": lab, "p": (round(float(bb["p_boot"]), 3) if bb else None),
+                        "up_pct": round(float(yy[s].mean() * 100)), "base_pct": round(float(yy.mean() * 100)),
+                        "diff_pp": round(float((yy[s].mean() - yy.mean()) * 100), 1), "n": int(s.sum())})
+        else:
+            out.append({"label": lab, "p": None, "up_pct": None, "n": int(s.sum())})
+    return out
+
+
+def _cal_windows(idx, vals, lab, stat, cid, eff):
+    """日历效应逐时间窗 p；方向型(节前/圣诞)附触发组上涨率；class 型(周几/月份)omnibus·无单一概率。"""
+    out = []
+    for wi, (wlab, w) in enumerate(WINS):
+        mk = _wmask(idx, w)
+        v, l = vals[mk], lab[mk]
+        cnts = np.unique(l, return_counts=True)[1] if len(l) else np.array([0])
+        if len(v) >= 60 and len(set(l.tolist())) >= 2 and cnts.min() >= 8:
+            pw = pb.perm_test(v, l, stat, np.random.default_rng(_seed_for(cid) + [3000 + wi]))["p_value"]
+            row = {"label": wlab, "p": (None if np.isnan(pw) else round(float(pw), 3)), "n": int(len(v))}
+            if eff in ("pre_holiday", "santa"):
+                row["up_pct"] = round(float((v[l == 1] > 0).mean() * 100)) if (l == 1).any() else None
+                row["base_pct"] = round(float((v[l == 0] > 0).mean() * 100)) if (l == 0).any() else None
+            out.append(row)
+        else:
+            out.append({"label": wlab, "p": None, "n": int(len(v))})
+    return out
+
+
 # ── 日历族：复用 placebo 的统计量与口径，逐候选算 全段 p + 现代段 recent_p ──
 def _calendar(eff, index, cid):
     ret = _daily(index)
@@ -93,8 +142,11 @@ def _calendar(eff, index, cid):
         if not np.isnan(rp):                       # P2-a 守卫:现代段单标签组→NaN→留 None/False(防 allow_nan=False 崩盘)
             rmin = int(np.unique(lab[rmask], return_counts=True)[1].min())
             recent_p, powered = rp, rmin >= pb.MIN_GROUP_N
+    dirf = eff in ("pre_holiday", "santa")
     return {"p": float(p), "recent_p": (None if recent_p is None else float(recent_p)),
-            "recent_powered": bool(powered)}
+            "recent_powered": bool(powered),
+            "windows": _cal_windows(idx, vals, lab, stat, cid, eff),
+            "effect": ("触发组上涨率 vs 基率" if dirf else "组间差异(omnibus·无单一概率)")}
 
 
 # ── 反弹族：跌破第 pctl 百分位日后，持有 hold 日的前向收益 up 率 vs 基率（块自助） ──
@@ -125,7 +177,9 @@ def _rebound(pctl, hold, index, cid):
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
-            "recent_powered": bool(powered)}
+            "recent_powered": bool(powered),
+            "windows": _diff_windows(df.index, sel, y, hold),
+            "effect": "触发日后持有期上涨率 vs 基率"}
 
 
 # ── 因子族：复用 _segment_lens 的 全段 full_p + 现代段 recent_p ──
@@ -136,13 +190,17 @@ def _factor_map(factor_cands):
     for c in factor_cands:
         col = c["params"]["factor"]
         seg = fp._segment_lens(df, col, fp.ASSUMED_DIR.get(col, +1), cutoff)
+        wins = (_diff_windows(df["date"], (df[col] == 1).values, df["fwd_up_20d"].values.astype(float), fp.HORIZON)
+                if col in df.columns else [])
         if seg is None:
-            out[c["candidate_id"]] = {"p": 1.0, "recent_p": None, "recent_powered": False}
+            out[c["candidate_id"]] = {"p": 1.0, "recent_p": None, "recent_powered": False,
+                                      "windows": wins, "effect": "因子为真时20日上涨率 vs 基率"}
         else:
             out[c["candidate_id"]] = {
                 "p": float(seg["full_p"]),
                 "recent_p": (None if seg["recent_p"] is None else float(seg["recent_p"])),
-                "recent_powered": seg["status"] != "现代检验力不足"}
+                "recent_powered": seg["status"] != "现代检验力不足",
+                "windows": wins, "effect": "因子为真时20日上涨率 vs 基率"}
     return out
 
 
