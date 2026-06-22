@@ -68,11 +68,15 @@ function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.i
 function bindEx(){document.querySelectorAll(".ex b[data-x]").forEach(b=>b.onclick=()=>{$("tk").value=b.dataset.x;run();});}
 function pn(v,suf){if(v==null||isNaN(v))return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v.toFixed(1)}${suf||''}</span>`;}
 
+const PROXY="https://api.allorigins.win/raw?url=";   // CORS 代理兜底(出格区·第三方代理可能慢/挂)
+async function _txt(url){
+  try{const r=await fetch(url,{cache:"no-store"});if(r.ok)return await r.text();}catch(e){}
+  const r=await fetch(PROXY+encodeURIComponent(url),{cache:"no-store"});if(!r.ok)throw 0;return await r.text();  // 直连失败走代理
+}
 async function stooq(tk){
   // Stooq 日线 CSV：Date,Open,High,Low,Close,Volume
   const url=`https://stooq.com/q/d/l/?s=${encodeURIComponent(tk.toLowerCase())}.us&i=d`;
-  const r=await fetch(url,{cache:"no-store"}); if(!r.ok)throw 0;
-  const txt=await r.text();
+  const txt=await _txt(url);
   const lines=txt.trim().split("\n"); if(lines.length<30||!/Date,/i.test(lines[0]))throw 0;
   const rows=lines.slice(1).map(l=>l.split(",")).filter(c=>c.length>=5&&+c[4]>0);
   return rows.map(c=>({d:c[0],close:+c[4],high:+c[2]}));
@@ -80,8 +84,7 @@ async function stooq(tk){
 async function yahoo(tk){
   // Yahoo chart API（第2源·JSON）：交叉验证用；CORS 不一定通(澳洲常可)
   const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(tk)}?range=1y&interval=1d`;
-  const r=await fetch(url); if(!r.ok)throw 0;
-  const j=await r.json(); const res=j&&j.chart&&j.chart.result&&j.chart.result[0]; if(!res)throw 0;
+  const j=JSON.parse(await _txt(url)); const res=j&&j.chart&&j.chart.result&&j.chart.result[0]; if(!res)throw 0;
   const ts=res.timestamp||[], q=res.indicators.quote[0], out=[];
   for(let i=0;i<ts.length;i++){if(q.close[i]>0)out.push({d:new Date(ts[i]*1000).toISOString().slice(0,10),close:q.close[i],high:q.high[i]||q.close[i]});}
   if(out.length<30)throw 0; return out;
