@@ -335,9 +335,8 @@ def evaluate_probs(test_df, probs, label):
     return out
 
 
-def evaluate_on_test(test_df, lrs_dict):
-    """在测试期计算各档位实际胜率"""
-    probs = test_df.apply(lambda r: score_row(r, lrs_dict), axis=1)
+def evaluate_on_test(test_df, probs):
+    """在测试期计算各档位实际胜率（probs 由调用方算好，避免与下方对决重复算 score_row）"""
     tiers = probs.apply(_tier)
     actual = test_df["fwd_up_20d"].values
     base_wr = float(actual.mean() * 100)
@@ -404,10 +403,11 @@ def run():
             continue
 
         lrs = learn_lrs(train)
-        perf = evaluate_on_test(test, lrs)
+        naive_probs_s = test.apply(lambda r: score_row(r, lrs), axis=1)  # 朴素概率每折算一次，评分与对决共用
+        perf = evaluate_on_test(test, naive_probs_s)
 
         # ── 双模型同折对决：统一用 AUC + Tier≥4 块自助评估 ──────────
-        naive_probs = test.apply(lambda r: score_row(r, lrs), axis=1).values
+        naive_probs = naive_probs_s.values
         logit, logit_cols = fit_logit(train)
         Xt, _ = build_design_matrix(test)
         logit_probs = logit.predict_proba(Xt)[:, 1]
