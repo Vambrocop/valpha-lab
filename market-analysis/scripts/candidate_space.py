@@ -20,7 +20,11 @@ INDICES = ("nasdaq", "sp500")
 
 # ── 日历族（预声明）──
 _CAL_DUAL = ("dow", "month", "pre_holiday", "santa")        # × 2 指数 = 8
-_CAL_ANNUAL = ("decade_digit", "presidential_cycle")        # 年频，标普 only = 2
+# 2026-06-22 扩声明（append-only）：民俗/学术先验日历效应——非事后挑(HARKing)，是早于本数据已存在的
+#   既有假说，正式接进 FDR 引擎出裁决（方向先验固定：以"先验更强组"为 label==1，配单边置换）。
+#   sell_in_may=万圣节/夏歇先验(冬强夏弱)；world_cup_year=世界杯分心先验(Edmans 等·限夏季 非杯年 vs 杯年)
+_CAL_DUAL2 = ("sell_in_may", "world_cup_year")              # × 2 指数 = 4
+_CAL_ANNUAL = ("decade_digit", "presidential_cycle", "term_year3")  # 年频，标普 only = 3（+任期第3年先验·Hirsch 大选前一年最强）
 
 # ── 超跌反弹族（预声明）：阈值 × 持有 × 指数 ──
 _REB_PCTL = (1, 5, 10)        # 触发 = 跌破第 N 百分位
@@ -42,7 +46,7 @@ def _cand(family, key, **params):
 
 def calendar_candidates():
     out = [_cand("calendar", f"{eff}_{idx}", effect=eff, index=idx)
-           for eff in _CAL_DUAL for idx in INDICES]
+           for eff in _CAL_DUAL + _CAL_DUAL2 for idx in INDICES]
     out += [_cand("calendar", f"{eff}_sp500", effect=eff, index="sp500") for eff in _CAL_ANNUAL]
     return out
 
@@ -63,10 +67,10 @@ def enumerate_candidates():
 
 
 # 预声明总数（写死；test 对账，漂移即失败 → 强制有意识更新分母）
-N_CALENDAR = len(_CAL_DUAL) * len(INDICES) + len(_CAL_ANNUAL)        # 10
+N_CALENDAR = (len(_CAL_DUAL) + len(_CAL_DUAL2)) * len(INDICES) + len(_CAL_ANNUAL)  # 15
 N_REBOUND = len(_REB_PCTL) * len(_REB_HOLD) * len(INDICES)           # 12
 N_FACTOR = 15                                                        # = len(BINARY_FEATURES)，test 核对(每因子1候选)
-N_DECLARED = N_CALENDAR + N_REBOUND + N_FACTOR                       # 37
+N_DECLARED = N_CALENDAR + N_REBOUND + N_FACTOR                       # 42
 
 
 if __name__ == "__main__":

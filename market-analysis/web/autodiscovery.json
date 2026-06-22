@@ -1,18 +1,18 @@
 {
-  "generated": "2026-06-22T01:21:55Z",
+  "generated": "2026-06-22T01:45:55Z",
   "method": "自动发现 Phase 1b：预注册有限候选(日历/反弹/因子)各路由到真统计算 p，经 quality_gate 双栏 BY-FDR(族内+跨族)+三态裁决。全部候选进分母、禁预筛、固定种子。",
   "caveat": "存活≠未来重演≠可交易；现代已淡=全段过FDR但现代测不到(疑被套利)；检验力不足=样本太小不下结论。因子族 FDR 为**无向双侧**(只问'有无可测边际'、不含方向判断，与 factor_pruning 的方向门控透镜口径不同)。门4样本外待接入。探索性，非预测、非荐股。",
   "q": 0.1,
-  "n_declared": 37,
+  "n_declared": 42,
   "summary": {
-    "m_total": 37,
-    "n_survive_cross": 8,
-    "n_survive_cross_bh": 13,
+    "m_total": 42,
+    "n_survive_cross": 9,
+    "n_survive_cross_bh": 15,
     "n_survive_family": 12,
     "n_survive": 1,
-    "n_faded": 7,
-    "n_dead": 25,
-    "n_inconclusive": 4
+    "n_faded": 8,
+    "n_dead": 28,
+    "n_inconclusive": 5
   },
   "candidates": [
     {
@@ -280,6 +280,49 @@
       "reason": "全段过跨族FDR但现代段已淡(疑被套利)"
     },
     {
+      "candidate_id": "cal_11bf800cae",
+      "family": "calendar",
+      "key": "world_cup_year_nasdaq",
+      "p": 0.000999,
+      "recent_p": 0.135864,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.003,
+          "n": 3567,
+          "up_pct": 57,
+          "base_pct": 52
+        },
+        {
+          "label": "2000后",
+          "p": 0.1,
+          "n": 1691,
+          "up_pct": 57,
+          "base_pct": 52
+        },
+        {
+          "label": "2021后",
+          "p": 0.199,
+          "n": 333,
+          "up_pct": 62,
+          "base_pct": 47
+        },
+        {
+          "label": "近1年",
+          "p": null,
+          "n": 65
+        }
+      ],
+      "effect": "触发组上涨率 vs 基率",
+      "survive_cross": true,
+      "survive_cross_bh": true,
+      "survive_family": true,
+      "modern_status": "现代已淡",
+      "verdict": "faded",
+      "reason": "全段过跨族FDR但现代段已淡(疑被套利)"
+    },
+    {
       "candidate_id": "reb_2617209d72",
       "family": "rebound",
       "key": "p10_h5_nasdaq",
@@ -517,6 +560,49 @@
       "reason": "未过跨族 BY-FDR"
     },
     {
+      "candidate_id": "cal_79870937ed",
+      "family": "calendar",
+      "key": "world_cup_year_sp500",
+      "p": 0.014985,
+      "recent_p": 0.171828,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.007,
+          "n": 6338,
+          "up_pct": 53,
+          "base_pct": 52
+        },
+        {
+          "label": "2000后",
+          "p": 0.139,
+          "n": 1691,
+          "up_pct": 56,
+          "base_pct": 51
+        },
+        {
+          "label": "2021后",
+          "p": 0.095,
+          "n": 333,
+          "up_pct": 59,
+          "base_pct": 44
+        },
+        {
+          "label": "近1年",
+          "p": null,
+          "n": 65
+        }
+      ],
+      "effect": "触发组上涨率 vs 基率",
+      "survive_cross": false,
+      "survive_cross_bh": true,
+      "survive_family": false,
+      "modern_status": "现代已淡",
+      "verdict": "dead",
+      "reason": "未过跨族 BY-FDR"
+    },
+    {
       "candidate_id": "cal_7114c0729a",
       "family": "calendar",
       "key": "month_sp500",
@@ -548,7 +634,7 @@
       "effect": "组间差异(omnibus·无单一概率)",
       "survive_cross": false,
       "survive_cross_bh": true,
-      "survive_family": true,
+      "survive_family": false,
       "modern_status": "现代检验力不足",
       "verdict": "inconclusive",
       "reason": "现代段检验力不足"
@@ -597,6 +683,51 @@
       "effect": "触发日后持有期上涨率 vs 基率",
       "survive_cross": false,
       "survive_cross_bh": true,
+      "survive_family": false,
+      "modern_status": "现代已淡",
+      "verdict": "dead",
+      "reason": "未过跨族 BY-FDR"
+    },
+    {
+      "candidate_id": "cal_2a991b85ee",
+      "family": "calendar",
+      "key": "sell_in_may_nasdaq",
+      "p": 0.040959,
+      "recent_p": 0.512488,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.034,
+          "n": 13958,
+          "up_pct": 57,
+          "base_pct": 55
+        },
+        {
+          "label": "2000后",
+          "p": 0.51,
+          "n": 6655,
+          "up_pct": 54,
+          "base_pct": 55
+        },
+        {
+          "label": "2021后",
+          "p": 0.767,
+          "n": 1371,
+          "up_pct": 53,
+          "base_pct": 57
+        },
+        {
+          "label": "近1年",
+          "p": 0.882,
+          "n": 252,
+          "up_pct": 56,
+          "base_pct": 64
+        }
+      ],
+      "effect": "触发组上涨率 vs 基率",
+      "survive_cross": false,
+      "survive_cross_bh": false,
       "survive_family": false,
       "modern_status": "现代已淡",
       "verdict": "dead",
@@ -699,6 +830,45 @@
       "reason": "未过跨族 BY-FDR"
     },
     {
+      "candidate_id": "cal_8d5125126b",
+      "family": "calendar",
+      "key": "term_year3_sp500",
+      "p": 0.04995,
+      "recent_p": null,
+      "recent_powered": false,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.048,
+          "n": 98,
+          "up_pct": 79,
+          "base_pct": 64
+        },
+        {
+          "label": "2000后",
+          "p": null,
+          "n": 26
+        },
+        {
+          "label": "2021后",
+          "p": null,
+          "n": 5
+        },
+        {
+          "label": "近1年",
+          "p": null,
+          "n": 2
+        }
+      ],
+      "effect": "触发组上涨率 vs 基率",
+      "survive_cross": false,
+      "survive_cross_bh": false,
+      "survive_family": false,
+      "modern_status": "现代检验力不足",
+      "verdict": "inconclusive",
+      "reason": "现代段检验力不足"
+    },
+    {
       "candidate_id": "cal_82e1f1d8c9",
       "family": "calendar",
       "key": "pre_holiday_sp500",
@@ -733,6 +903,51 @@
           "n": 252,
           "up_pct": 64,
           "base_pct": 57
+        }
+      ],
+      "effect": "触发组上涨率 vs 基率",
+      "survive_cross": false,
+      "survive_cross_bh": false,
+      "survive_family": false,
+      "modern_status": "现代已淡",
+      "verdict": "dead",
+      "reason": "未过跨族 BY-FDR"
+    },
+    {
+      "candidate_id": "cal_bc77212229",
+      "family": "calendar",
+      "key": "sell_in_may_sp500",
+      "p": 0.082917,
+      "recent_p": 0.248751,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.093,
+          "n": 24732,
+          "up_pct": 53,
+          "base_pct": 52
+        },
+        {
+          "label": "2000后",
+          "p": 0.254,
+          "n": 6655,
+          "up_pct": 54,
+          "base_pct": 53
+        },
+        {
+          "label": "2021后",
+          "p": 0.618,
+          "n": 1371,
+          "up_pct": 53,
+          "base_pct": 55
+        },
+        {
+          "label": "近1年",
+          "p": 0.814,
+          "n": 252,
+          "up_pct": 54,
+          "base_pct": 60
         }
       ],
       "effect": "触发组上涨率 vs 基率",

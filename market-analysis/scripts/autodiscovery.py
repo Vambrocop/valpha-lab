@@ -1,8 +1,10 @@
 """autodiscovery.py — v1.5 自生长 Phase 1b：把候选路由到真统计算 p，喂裁决引擎，产出 autodiscovery.json。
 
-状态(2026-06-20)：已提速到 ~15s(rebound 前向收益 cumsum 向量化 + block_bootstrap 索引向量化)、
-   种子稳定(hashlib)、_daily 缓存。**内建校验通过**：SP500 日历 p 值与 placebo_tests.json 一致。
-   结果(37候选)：仅 1 真存活、7 已淡、25 死、4 检验力不足——诚实。待独立审(判断密集)后接 run_all。
+状态(2026-06-22)：种子稳定(hashlib)、_daily 缓存、每候选带多时间窗(完整/2000后/2021后/近1年)
+   实际上涨率 vs 基率。**内建校验通过**：SP500 日历 p 值与 placebo_tests.json 一致。
+   42 候选(2026-06-22 扩声明：+Sell-in-May/世界杯年/任期第3年 民俗/学术先验日历，append-only)：
+   9 跨族存活、8 已淡、其余死/检验力不足——诚实。任期第3年=79%上涨 vs 64%(p≈.05·样本疏判 inconclusive)。
+   待独立审(判断密集)后接 run_all（现 JSON 仍手动重生成，见审计 B2/D1）。
 
 
 复用现有原语（不重写统计）：
@@ -58,6 +60,9 @@ def _daily(index):
 WINS = [("完整", None), ("2000后", pd.Timestamp("2000-01-01")),
         ("2021后", pd.Timestamp("2021-01-01")), ("近1年", "y1")]
 
+# 二元方向型日历效应（label==1=先验更高组，单边置换才有意义）→ 给"触发组上涨率 vs 基率"
+_DIR_EFFECTS = ("pre_holiday", "santa", "sell_in_may", "world_cup_year", "term_year3")
+
 
 def _wmask(idx, w):
     idx = pd.DatetimeIndex(idx)
@@ -94,7 +99,7 @@ def _cal_windows(idx, vals, lab, stat, cid, eff):
         if len(v) >= 60 and len(set(l.tolist())) >= 2 and cnts.min() >= 8:
             pw = pb.perm_test(v, l, stat, np.random.default_rng(_seed_for(cid) + [3000 + wi]))["p_value"]
             row = {"label": wlab, "p": (None if np.isnan(pw) else round(float(pw), 3)), "n": int(len(v))}
-            if eff in ("pre_holiday", "santa"):
+            if eff in _DIR_EFFECTS:
                 row["up_pct"] = round(float((v[l == 1] > 0).mean() * 100)) if (l == 1).any() else None
                 row["base_pct"] = round(float((v[l == 0] > 0).mean() * 100)) if (l == 0).any() else None
             out.append(row)
@@ -129,6 +134,22 @@ def _calendar(eff, index, cid):
         santa = (((ret.index.month == 12) & (ret.index.day >= 26)) |
                  ((ret.index.month == 1) & (ret.index.day <= 3))).astype(int)
         vals, lab, idx = ret.values, santa, ret.index; stat = pb.make_dir_diff_stat()
+    elif eff == "sell_in_may":
+        # Sell-in-May/万圣节先验：冬季(11-4月)强 > 夏季(5-10月)。label==1=冬季(先验更高组)→单边
+        winter = (~ret.index.month.isin([5, 6, 7, 8, 9, 10])).astype(int)
+        vals, lab, idx = ret.values, winter, ret.index; stat = pb.make_dir_diff_stat()
+    elif eff == "world_cup_year":
+        # 世界杯分心先验：限夏季(6-8月)，常规夏季 > 世界杯年夏季。label==1=非杯年夏季(先验更高组)
+        from seasonality import WORLD_CUP_YEARS                      # 单一来源，避免年份表漂移
+        jja = ret[ret.index.month.isin([6, 7, 8])]
+        nonwc = (~jja.index.year.isin(WORLD_CUP_YEARS)).astype(int)
+        vals, lab, idx = jja.values, nonwc, jja.index; stat = pb.make_dir_diff_stat()
+    elif eff == "term_year3":
+        # Hirsch 总统周期：任期第3年(大选前一年)历史最强。年频，label==1=第3年(先验更高组)
+        an = (1 + ret).resample("YE").prod(min_count=1).dropna() - 1
+        an = an[an.index.year < pd.Timestamp.today().year]
+        y3 = (an.index.year % 4 == 3).astype(int)
+        vals, lab, idx = an.values, y3, an.index; stat = pb.make_dir_diff_stat()
     else:
         return None
 
@@ -136,13 +157,13 @@ def _calendar(eff, index, cid):
     # 现代段(post-2000)：够样本才测；年频(decade/presidential)样本太疏 → 不测 → inconclusive
     rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered = None, False
-    if eff not in ("decade_digit", "presidential_cycle") and int(rmask.sum()) >= 200:
+    if eff not in ("decade_digit", "presidential_cycle", "term_year3") and int(rmask.sum()) >= 200:
         rp = pb.perm_test(vals[rmask], lab[rmask], stat,
                           np.random.default_rng(_seed_for(cid) + [2000]))["p_value"]
         if not np.isnan(rp):                       # P2-a 守卫:现代段单标签组→NaN→留 None/False(防 allow_nan=False 崩盘)
             rmin = int(np.unique(lab[rmask], return_counts=True)[1].min())
             recent_p, powered = rp, rmin >= pb.MIN_GROUP_N
-    dirf = eff in ("pre_holiday", "santa")
+    dirf = eff in _DIR_EFFECTS
     return {"p": float(p), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
             "windows": _cal_windows(idx, vals, lab, stat, cid, eff),
