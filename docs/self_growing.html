@@ -133,8 +133,10 @@ function showAD(id){const c=ADC.find(x=>x.candidate_id===id);if(!c)return;
   const pp=v=>v==null?"—":(+v).toPrecision(3);
   const wr=(c.windows||[]).map(w=>{
     const up=w.up_pct==null?"—":w.up_pct+"%",bs=w.base_pct==null?"—":w.base_pct+"%";
-    const dp=(w.up_pct!=null&&w.base_pct!=null)?(w.up_pct>=w.base_pct?"var(--grn)":"var(--red)"):"var(--mut)";
-    return `<tr><td style="padding:2px 0">${esc(w.label)}</td><td style="text-align:right;color:${dp};font-weight:600">${up}</td><td style="text-align:right;color:var(--mut)">${bs}</td><td style="text-align:right">${w.p==null?"—":w.p}</td><td style="text-align:right;color:var(--mut)">${w.n}</td></tr>`;
+    const hi=(w.up_pct!=null&&w.base_pct!=null);
+    const dp=hi?(w.up_pct>=w.base_pct?"var(--grn)":"var(--red)"):"var(--mut)";
+    const ar=hi?(w.up_pct>=w.base_pct?"▲ ":"▼ "):"";  // 色盲安全:不只靠红绿，加箭头
+    return `<tr><td style="padding:2px 0">${esc(w.label)}</td><td style="text-align:right;color:${dp};font-weight:600">${ar}${up}</td><td style="text-align:right;color:var(--mut)">${bs}</td><td style="text-align:right">${w.p==null?"—":w.p}</td><td style="text-align:right;color:var(--mut)">${w.n}</td></tr>`;
   }).join("");
   const wt=wr?`<div style="font-size:.75rem;color:var(--acc);margin-top:12px">📊 ${esc(c.effect||"")}（${t("wMulti")}）</div>
     <table style="width:100%;font-size:.8rem;margin-top:3px;border-collapse:collapse">

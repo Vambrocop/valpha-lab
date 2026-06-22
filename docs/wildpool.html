@@ -188,13 +188,13 @@ function render(){
 function chips(){
   const cnt={};
   DATA.forEach(d=>cnt[d.sec]=(cnt[d.sec]||0)+1);
-  let h=`<span class="chip ${filt===''?'on':''}" data-s="">${t("all")} ${DATA.length}</span>`;
+  let h=`<span class="chip ${filt===''?'on':''}" data-s="" tabindex="0" role="button">${t("all")} ${DATA.length}</span>`;
   /* 按 SEC 定义顺序展示板块 chip */
   Object.keys(SEC).forEach(s=>{
-    if(cnt[s])h+=`<span class="chip ${filt===s?'on':''}" data-s="${s}"><span class="dot" style="background:${SEC[s]}"></span>${esc(secName(s))} ${cnt[s]}</span>`;
+    if(cnt[s])h+=`<span class="chip ${filt===s?'on':''}" data-s="${s}" tabindex="0" role="button"><span class="dot" style="background:${SEC[s]}"></span>${esc(secName(s))} ${cnt[s]}</span>`;
   });
   $("chips").innerHTML=h;
-  $("chips").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{filt=c.dataset.s;chips();render();});
+  $("chips").querySelectorAll(".chip").forEach(c=>{const act=()=>{filt=c.dataset.s;chips();render();};c.onclick=act;c.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();act();}};});
 }
 
 function redraw(){applyStatic();chips();render();}

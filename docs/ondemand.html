@@ -74,7 +74,7 @@ function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.i
 
 function render(){
   const COLS=[["t","ct"],["p","cp"],["c6","c6"],["c1","c1"],["v","cv"],["fh","cfh"],["tag","ctag"]];
-  if(!DATA.length){$("tbl").innerHTML=`<tbody><tr><td style="color:var(--mut)">${t("empty")}</td></tr></tbody>`;return;}
+  if(!DATA.length){$("tbl").innerHTML=`<tbody><tr><td style="text-align:center;padding:34px 12px;color:var(--mut);border:0"><div style="font-size:1.8rem;margin-bottom:8px">🎯</div>${t("empty")}</td></tr></tbody>`;return;}
   const rows=[...DATA].sort((a,b)=>{const x=a[sortCol],y=b[sortCol];if(x==null)return 1;if(y==null)return -1;return (typeof x==="number")?(y-x)*dir*-1:String(x).localeCompare(String(y),'en')*dir*-1;});
   let h="<thead><tr>";
   COLS.forEach(([k,lk])=>{const on=k===sortCol;h+=`<th data-k="${k}" scope="col" tabindex="0" role="button" aria-sort="${on?(dir<0?'descending':'ascending'):'none'}" class="${on?'s':''}">${t(lk)}</th>`;});
