@@ -48,6 +48,7 @@ steps = [
     ("滚动样本外验证",     "walk_forward.py"),
     ("因子样本外尸检",     "factor_pruning.py"),   # P2-5：因子记分卡 + 靶子探针（研究面板）
     ("跨检验族FDR收口",    "fdr_crossfamily.py"),  # P4-#5：汇池全站显著性主张做多重比较（须在 factor_pruning 后）
+    ("自生长自动发现(出格)", "autodiscovery.py"),   # v1.5 Phase1b：42预声明候选(日历/反弹/因子)路由真统计→双栏BY-FDR三态裁决；须在 walk_forward+factor_pruning 后；不入 light(盘前/盘后全量才跑、同数据裁决不闪烁)；独立统计审 GO-WITH-FIXES(P1全清)
     ("过拟合概率PBO",      "cpcv.py"),             # 方法G：CSCV/PBO 量化因子选择过拟合风险(升级验证、不加模型)
     ("波动率状态原型",     "vol_model.py"),        # P2-6：高信噪比靶子（研究面板）
     ("市场结构解释",       "market_structure.py"), # PCA共动 + 相关性体制（研究面板）

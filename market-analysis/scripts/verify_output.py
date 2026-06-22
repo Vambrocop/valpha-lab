@@ -262,6 +262,31 @@ except Exception as e:
     errors.append(f"overreaction 形状检查失败: {e}")
     print(f"  ✗ overreaction 形状检查失败: {e}")
 
+# 3l2. 自生长 autodiscovery 形状(候选数==FDR分母、每条带 p/verdict、summary 全。存在才查、缺失不致命)
+#       核心不变量=分母完整(len==n_declared)，与 quality_gate 自身断言一致，防"偷删候选/漏算分母"流到发布。
+try:
+    ad_path = WEB_DIR / "autodiscovery.json"
+    if ad_path.exists():
+        with open(ad_path, encoding="utf-8") as fh:
+            adj = json.load(fh)
+        cands = adj.get("candidates", [])
+        ok = (len(cands) == adj.get("n_declared") and len(cands) >= 37
+              and isinstance(adj.get("summary"), dict)
+              and all(("p" in c and "verdict" in c) for c in cands))
+        check(ok, f"autodiscovery.json 形状正常（{len(cands)} 候选=分母）")
+        # 新鲜度软提示(非致命:周末/盘中 light 本就可能旧;仅异常陈旧时提醒盘后步骤是否在跑)
+        try:
+            import datetime as _dt
+            _gen = _dt.datetime.strptime(adj["generated"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=_dt.timezone.utc)
+            _age = (_dt.datetime.now(_dt.timezone.utc) - _gen).days
+            if _age > 5:
+                print(f"  ⚠ autodiscovery.json 已 {_age} 天未刷新（盘后全量步骤是否在跑？非致命）")
+        except Exception:
+            pass
+except Exception as e:
+    errors.append(f"autodiscovery 形状检查失败: {e}")
+    print(f"  ✗ autodiscovery 形状检查失败: {e}")
+
 # 3j. 方法论完整性护栏(automation-first):个股"真规律"(三关全过)必须先经人工审视,
 #     不得自动发布——若 patterns_fdr_real=True 进了已发布 JSON,说明人工停下被绕过 → 拦住发布。
 try:
