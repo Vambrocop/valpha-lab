@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🎯 点单深算 · On-demand Tickers</title>
+<style>
+  :root{--bg:#0a0510;--panel:#130d1e;--border:#3d2a52;--fg:#e8dff5;--mut:#9585af;--grn:#3fb950;--red:#f85149;--acc:#c678dd}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1000px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:var(--panel);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .note{background:rgba(198,120,221,.12);border:2px solid var(--acc);border-radius:8px;padding:10px 14px;font-size:.84rem;margin:10px 0;color:#e0baff;line-height:1.6}
+  .note strong{color:#c678dd}
+  .note code{background:rgba(0,0,0,.35);padding:1px 5px;border-radius:4px;color:#e0baff}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:6px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  th:nth-child(1),td:nth-child(1){text-align:left}
+  th{position:sticky;top:0;background:var(--panel);cursor:pointer;user-select:none;color:var(--mut);font-weight:600}
+  th.s::after{content:" ▾"}
+  tr:hover{background:rgba(198,120,221,.08)}
+  .pos{color:var(--grn)} .neg{color:var(--red)}
+  .tag{font-size:.66rem;padding:1px 4px;border-radius:4px;margin-left:3px}
+  .hot{background:rgba(248,81,73,.2);color:#ff9b94}
+  .risk{background:rgba(198,120,221,.22);color:#e0baff}
+  .calm{background:rgba(63,185,80,.16);color:#7ee787}
+  .mut{color:var(--mut);font-size:.78rem;margin-top:14px;border-top:1px solid var(--border);padding-top:8px}
+  #src{color:var(--mut);font-size:.78rem}
+  #miss{color:#e3a008;font-size:.78rem;margin-top:6px}
+  th:focus{outline:2px solid var(--acc);outline-offset:-2px}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}table{font-size:.8rem}}
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#9585af;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#9585af;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<div class="note" data-i18n="note"></div>
+<div style="overflow-x:auto"><table id="tbl"></table></div>
+<div id="miss"></div>
+<div id="src"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const LIVE="https://vambrocop.github.io/valpha-lab/ticker_ondemand.json";
+const I18N={
+  title:{zh:"🎯 点单深算 · On-demand",en:"🎯 On-demand Tickers"},
+  note:{zh:"<strong>服务端按需算任意美股</strong>——客户端在澳洲常被第三方源 CORS 拦，这里改由后端抓价算好、前端只读自家 JSON，<b>稳</b>。<br>想加代码：在仓库 <code>data/ticker_requests.txt</code> 每行写一个（如 <code>NVDA</code>），push 后下次盘后/手动跑 CI 自动算。<b>非荐股 · 非预测</b>，纯描述性历史，过去≠未来。",
+        en:"<strong>Server-side metrics for any US ticker</strong> — client-side fetches get CORS-blocked (e.g. in AU), so the backend computes and the page only reads its own JSON — <b>reliable</b>.<br>To add a ticker: put one per line in <code>data/ticker_requests.txt</code> (e.g. <code>NVDA</code>), push, and the next post-close/manual CI run computes it. <b>Not advice · not a forecast</b>, descriptive history only, past ≠ future."},
+  foot:{zh:"点列头排序。🔥6月涨≥50% · ⚠️波动≥70% · 🏰波动≤25%。数据：实时 ticker_ondemand.json，服务端历史指标、非预测。",
+        en:"Click a header to sort. 🔥6M≥50% · ⚠️vol≥70% · 🏰vol≤25%. Data: live ticker_ondemand.json — server-side history, not a forecast."},
+  ct:{zh:"代码",en:"Ticker"},cp:{zh:"现价",en:"Price"},c6:{zh:"6月%",en:"6M%"},c1:{zh:"1年%",en:"1Y%"},
+  cv:{zh:"波动%",en:"Vol%"},cfh:{zh:"距52周高%",en:"vs 52W%"},ctag:{zh:"标签",en:"Tags"},
+  empty:{zh:"点单为空——在 data/ticker_requests.txt 加代码后跑 CI。",en:"No requests yet — add tickers to data/ticker_requests.txt and run CI."},
+  miss:{zh:"未取到/历史太短：",en:"Not fetched / too short: "},
+  live:{zh:"实时 ✓",en:"Live ✓"},asof:{zh:"数据日",en:"as of"},
+  err:{zh:"拉不到 ticker_ondemand.json——确认已部署。",en:"Can't load ticker_ondemand.json — check deployment."}
+};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+let DATA=[],sortCol="c6",dir=-1;
+
+function tagOf(d){let x="";if((d.c6??0)>=50)x+='<span class="tag hot">🔥</span>';if((d.v??0)>=70)x+='<span class="tag risk">⚠️</span>';if((d.v??99)<=25)x+='<span class="tag calm">🏰</span>';return x;}
+function pn(v){if(v==null)return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}</span>`;}
+function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
+
+function render(){
+  const COLS=[["t","ct"],["p","cp"],["c6","c6"],["c1","c1"],["v","cv"],["fh","cfh"],["tag","ctag"]];
+  if(!DATA.length){$("tbl").innerHTML=`<tbody><tr><td style="color:var(--mut)">${t("empty")}</td></tr></tbody>`;return;}
+  const rows=[...DATA].sort((a,b)=>{const x=a[sortCol],y=b[sortCol];if(x==null)return 1;if(y==null)return -1;return (typeof x==="number")?(y-x)*dir*-1:String(x).localeCompare(String(y),'en')*dir*-1;});
+  let h="<thead><tr>";
+  COLS.forEach(([k,lk])=>{const on=k===sortCol;h+=`<th data-k="${k}" scope="col" tabindex="0" role="button" aria-sort="${on?(dir<0?'descending':'ascending'):'none'}" class="${on?'s':''}">${t(lk)}</th>`;});
+  h+="</tr></thead><tbody>";
+  rows.forEach(d=>{h+=`<tr><td><b>${esc(d.t)}</b></td><td>${d.p==null?'—':d.p}</td><td>${pn(d.c6)}</td><td>${pn(d.c1)}</td><td>${d.v==null?'<span class="mut">—</span>':d.v}</td><td>${pn(d.fh)}</td><td style="text-align:left">${tagOf(d)}</td></tr>`;});
+  h+="</tbody>";$("tbl").innerHTML=h;
+  $("tbl").querySelectorAll("th").forEach(th=>{const sort=()=>{const k=th.dataset.k;if(k===sortCol)dir*=-1;else{sortCol=k;dir=-1;}render();};th.onclick=sort;th.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();sort();}};});
+}
+function redraw(){applyStatic();render();}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}redraw();};
+
+async function load(){
+  applyStatic();
+  try{
+    const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;
+    const j=await r.json();DATA=j.stocks||[];
+    $("src").textContent=`${t("live")} ${DATA.length} · ${t("asof")} ${esc(j.generated||"")}`;
+    $("miss").innerHTML=(j.missing&&j.missing.length)?`${t("miss")}${j.missing.map(esc).join(" · ")}`:"";
+    render();
+  }catch(e){$("src").textContent=t("err");}
+}
+load();
+</script>
+</body>
+</html>

@@ -73,6 +73,7 @@ jobs:
         run: |
           python market-analysis/scripts/build_valpha150.py || echo "::warning::valpha150 刷新失败(非致命，下次重试)"
           python market-analysis/scripts/build_wildpool.py || echo "::warning::wildpool 刷新失败(非致命，下次重试)"
+          python market-analysis/scripts/ticker_ondemand.py || echo "::warning::点单深算失败(非致命，下次重试)"
 
       - name: Signal alerts (state changes only)
         run: python market-analysis/scripts/alert_check.py
