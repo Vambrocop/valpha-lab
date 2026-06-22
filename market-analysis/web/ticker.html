@@ -48,8 +48,8 @@ let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 const I18N={
   title:{zh:"🔍 任意代码快查 · 原型",en:"🔍 Any-ticker quick check · prototype"},
-  banner:{zh:"<b>出格区 · 尽力快查,非雷达级深算、非荐股。</b>输入任意美股代码,直连第三方(Stooq)拉日线、浏览器现算动量/波动/回撤。<b>第三方数据可能有误/延迟/缺失、境外源(澳洲可直连、境内可能连不上)、过去≠未来。</b>要完整诚实体检请用观察池或「点单深算」。",
-          en:"<b>Out-of-bounds · best-effort quick check, not a deep checkup, not advice.</b> Enter any US ticker; we fetch daily bars straight from a third party (Stooq) and compute momentum/vol/drawdown in your browser. <b>Third-party data may be wrong/delayed/missing; overseas source (reachable from AU, maybe not from mainland China); past ≠ future.</b> For a full honest checkup use the watch pool or 'deep-compute on request'."},
+  banner:{zh:"<b>出格区 · 尽力快查,非雷达级深算、非荐股。</b>输入任意美股代码,直连第三方(Stooq + Yahoo 双源交叉)拉日线、浏览器现算动量/波动/回撤。<b>第三方数据可能有误/延迟/缺失、境外源(澳洲可直连、境内可能连不上)、过去≠未来。</b>要完整诚实体检请用观察池或「点单深算」。",
+          en:"<b>Out-of-bounds · best-effort quick check, not a deep checkup, not advice.</b> Enter any US ticker; we fetch daily bars from two third parties (Stooq + Yahoo, cross-checked) and compute momentum/vol/drawdown in your browser. <b>Third-party data may be wrong/delayed/missing; overseas source (reachable from AU, maybe not from mainland China); past ≠ future.</b> For a full honest checkup use the watch pool or 'deep-compute on request'."},
   go:{zh:"快查",en:"Check"},
   ex:{zh:"试试:<b data-x='GME'>GME</b> <b data-x='MSTR'>MSTR</b> <b data-x='COIN'>COIN</b> <b data-x='PLTR'>PLTR</b> <b data-x='HOOD'>HOOD</b>",
       en:"Try: <b data-x='GME'>GME</b> <b data-x='MSTR'>MSTR</b> <b data-x='COIN'>COIN</b> <b data-x='PLTR'>PLTR</b> <b data-x='HOOD'>HOOD</b>"},
@@ -58,7 +58,9 @@ const I18N={
   m_vol:{zh:"年化波动",en:"Ann. vol"},m_dd:{zh:"近1年最深回撤",en:"1Y max drawdown"},m_fh:{zh:"距52周高",en:"vs 52W high"},
   fail:{zh:"拉不到 ‹{x}› 的数据——可能代码不对、第三方暂时不可用、或你的网络拦了境外源。换个代码或稍后再试。",
         en:"Couldn't fetch ‹{x}› — wrong ticker, third-party down, or your network blocked the overseas source. Try another or later."},
-  src:{zh:"数据源:Stooq(第三方,{n} 条日线,截至 {d})· 描述性、非荐股、非预测",en:"Source: Stooq (third-party, {n} daily bars, to {d}) · descriptive, not advice, not a forecast"},
+  src:{zh:"数据源:{src}(第三方,{n} 条日线,截至 {d}){x} · 描述性、非荐股、非预测",en:"Source: {src} (third-party, {n} daily bars, to {d}){x} · descriptive, not advice, not a forecast"},
+  xok:{zh:" · 双源交叉一致(差 {p}%)",en:" · two sources agree (Δ {p}%)"},
+  xbad:{zh:" · ⚠️双源不一致(差 {p}%,数据存疑)",en:" · ⚠️ sources disagree (Δ {p}%, data suspect)"},
   foot:{zh:"快查只算价格派生指标(动量/波动/回撤),不含 EVT/保形/规律真伪等深度统计。出格区,自负盈亏。",
         en:"Quick check computes price-derived metrics only (momentum/vol/drawdown), no EVT/conformal/pattern tests. Out-of-bounds, at your own risk."}
 };
@@ -74,6 +76,15 @@ async function stooq(tk){
   const lines=txt.trim().split("\n"); if(lines.length<30||!/Date,/i.test(lines[0]))throw 0;
   const rows=lines.slice(1).map(l=>l.split(",")).filter(c=>c.length>=5&&+c[4]>0);
   return rows.map(c=>({d:c[0],close:+c[4],high:+c[2]}));
+}
+async function yahoo(tk){
+  // Yahoo chart API（第2源·JSON）：交叉验证用；CORS 不一定通(澳洲常可)
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(tk)}?range=1y&interval=1d`;
+  const r=await fetch(url); if(!r.ok)throw 0;
+  const j=await r.json(); const res=j&&j.chart&&j.chart.result&&j.chart.result[0]; if(!res)throw 0;
+  const ts=res.timestamp||[], q=res.indicators.quote[0], out=[];
+  for(let i=0;i<ts.length;i++){if(q.close[i]>0)out.push({d:new Date(ts[i]*1000).toISOString().slice(0,10),close:q.close[i],high:q.high[i]||q.close[i]});}
+  if(out.length<30)throw 0; return out;
 }
 function metrics(rows){
   const n=rows.length, last=rows[n-1].close;
@@ -93,9 +104,18 @@ function metrics(rows){
 async function run(){
   const tk=($("tk").value||"").trim().toUpperCase(); if(!tk)return;
   $("out").innerHTML=`<div class="mut">${t("loading")}</div>`;
-  try{
-    const rows=await stooq(tk); const m=metrics(rows);
-    $("out").innerHTML=`<div class="card"><h2>${esc(tk)}</h2>
+  const tries=await Promise.allSettled([stooq(tk),yahoo(tk)]);
+  const ok=[]; ["Stooq","Yahoo"].forEach((nm,i)=>{if(tries[i].status==="fulfilled")ok.push({src:nm,rows:tries[i].value});});
+  if(!ok.length){$("out").innerHTML=`<div class="err">${t("fail").replace("{x}",esc(tk))}</div>`;return;}
+  const m=metrics(ok[0].rows);
+  let xnote="";
+  if(ok.length===2){
+    const p1=ok[0].rows[ok[0].rows.length-1].close, p2=ok[1].rows[ok[1].rows.length-1].close;
+    const diff=Math.abs(p2/p1-1)*100;
+    xnote=(diff<3?t("xok"):t("xbad")).replace("{p}",diff.toFixed(1));
+  }
+  const srcline=t("src").replace("{src}",ok.map(o=>o.src).join("+")).replace("{n}",m.n).replace("{d}",esc(m.d)).replace("{x}",xnote);
+  $("out").innerHTML=`<div class="card"><h2>${esc(tk)}</h2>
       <div class="row">
         <div class="m"><div class="l">${t("m_last")}</div><div class="v">${m.last.toFixed(2)}</div></div>
         <div class="m"><div class="l">${t("m_1m")}</div><div class="v">${pn(m.m1,'%')}</div></div>
@@ -107,10 +127,7 @@ async function run(){
         <div class="m"><div class="l">${t("m_dd")}</div><div class="v neg">${m.dd.toFixed(0)}%</div></div>
         <div class="m"><div class="l">${t("m_fh")}</div><div class="v">${pn(m.fh,'%')}</div></div>
       </div>
-      <div class="src">${t("src").replace("{n}",m.n).replace("{d}",esc(m.d))}</div></div>`;
-  }catch(e){
-    $("out").innerHTML=`<div class="err">${t("fail").replace("{x}",esc(tk))}</div>`;
-  }
+      <div class="src">${srcline}</div></div>`;
 }
 $("go").onclick=run;
 $("tk").addEventListener("keydown",e=>{if(e.key==="Enter")run();});
