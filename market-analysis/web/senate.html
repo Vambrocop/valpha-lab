@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🏛️ 参议院交易 · 诚实检验</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#c678dd}
+  *{box-sizing:border-box}
+  :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:900px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:var(--panel);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .verdict{background:rgba(198,120,221,.12);border:2px solid var(--acc);border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.92rem;line-height:1.7}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+  .stat{flex:1 1 120px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center}
+  .stat .v{font-size:1.5rem;font-weight:800}.stat .l{color:var(--mut);font-size:.74rem;margin-top:3px}
+  h2{font-size:1rem;margin:18px 0 6px}.sub{color:var(--mut);font-size:.8rem;margin:0 0 6px}
+  table{width:100%;border-collapse:collapse;font-size:.86rem}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--mut);font-weight:600}
+  .pos{color:var(--grn)}.neg{color:var(--red)}
+  .mut{color:var(--mut);font-size:.76rem;margin-top:16px;border-top:1px solid var(--border);padding-top:8px;line-height:1.6}
+  #src{color:var(--mut);font-size:.78rem;margin-top:6px}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.12rem}table{font-size:.8rem}}
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<p class="sub" data-i18n="intro"></p>
+<div class="verdict" id="verdict"></div>
+<div class="stats" id="stats"></div>
+<h2 data-i18n="hSen"></h2>
+<p class="sub" data-i18n="sSen"></p>
+<div style="overflow-x:auto"><table id="sen"></table></div>
+<div id="src"></div>
+<div class="mut" id="caveat"></div>
+
+<script>
+const LIVE="https://vambrocop.github.io/valpha-lab/senate_signal.json";
+const I18N={
+  title:{zh:"🏛️ 参议院交易 · 诚实检验",en:"🏛️ Senate trading · honest test"},
+  intro:{zh:"议员申报有 ~45 天滞后→不是抢跑。测「披露后再跟、持有~3月、相对 SPY 的超额收益」：跟着国会买到底有没有 OOS edge？",
+         en:"Senators report with a ~45-day lag → not front-running. Tests excess return vs SPY when following disclosed BUYS (post-lag, ~3-month hold): is there any OOS edge?"},
+  hSen:{zh:"按议员拆（≥30 笔可统计）",en:"By senator (≥30 testable buys)"},
+  sSen:{zh:"约一半议员正超额本就是抛硬币期望——未做多重检验(FDR)校正，个体正值与噪声无法区分；排名仅透明展示，别把任何议员(含榜首)当 edge。",
+        en:"~half positive is the coin-flip expectation — no multiple-testing (FDR) correction, individual positives are indistinguishable from noise; the ranking is for transparency, not 'senators with edge'."},
+  cSen:{zh:"议员",en:"Senator"},cEx:{zh:"~3月超额%",en:"~3M excess%"},cWin:{zh:"跑赢SPY%",en:"beat SPY%"},cN:{zh:"笔数",en:"n"},
+  err:{zh:"拉不到 senate_signal.json——确认已部署。",en:"Can't load senate_signal.json — check deployment."},
+  sExcess:{zh:"整体超额%",en:"overall excess%"},sBeat:{zh:"跑赢SPY%",en:"beat SPY%"},sN:{zh:"可测买入",en:"tested buys"},sDrop:{zh:"丢弃%(退市)",en:"dropped%"},asof:{zh:"数据",en:"data"}
+};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh";try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+const sv=(v,c)=>`<span class="${(c&&v>=0)?'pos':(c?'neg':'')}">${v==null?'—':(v>=0&&c?'+':'')+v}</span>`;
+function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
+function render(d){
+  applyStatic();
+  $("verdict").innerHTML="🧭 <b>"+esc(d.verdict||"")+"</b>";
+  const o=d.overall||{};
+  $("stats").innerHTML=
+    `<div class="stat"><div class="v ${o.mean_excess_pct>=0?'pos':'neg'}">${o.mean_excess_pct==null?'—':o.mean_excess_pct+'%'}</div><div class="l">${t("sExcess")}</div></div>`
+   +`<div class="stat"><div class="v">${o.beat_mkt_pct==null?'—':o.beat_mkt_pct+'%'}</div><div class="l">${t("sBeat")}</div></div>`
+   +`<div class="stat"><div class="v">${o.n||'—'}</div><div class="l">${t("sN")}</div></div>`
+   +`<div class="stat"><div class="v" style="color:var(--mut)">${d.dropped_pct}%</div><div class="l">${t("sDrop")}</div></div>`;
+  let h=`<tr><th>${t("cSen")}</th><th>${t("cEx")}</th><th>${t("cWin")}</th><th>${t("cN")}</th></tr>`;
+  (d.by_senator||[]).forEach(p=>{h+=`<tr><td>${esc(p.senator)}</td><td>${sv(p.mean_excess_pct,1)}</td><td>${p.beat_mkt_pct}%</td><td>${p.n}</td></tr>`;});
+  $("sen").innerHTML=h;
+  $("caveat").textContent="⚠️ "+(d.caveat||"");
+  $("src").textContent=`${t("asof")} ${esc((d.data_range||[]).join(" → "))} · ${LANG==="en"?"hold":"持有"} ${d.horizon_days}d vs ${d.benchmark}`;
+}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};if(window._d)render(window._d);};
+(async()=>{applyStatic();
+  try{const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;window._d=await r.json();render(window._d);}
+  catch(e){$("verdict").textContent=t("err");}
+})();
+</script>
+</body>
+</html>
