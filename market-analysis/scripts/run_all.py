@@ -67,6 +67,7 @@ steps = [
     ("试胆区(玩具预测+计分)", "tipjar.py"),       # 故意下方向判断但公开残酷计分(≈掷硬币),娱乐非建议;须在 fetch_data 后
     ("观点/预测(授权出格区)", "outlook.py"),      # 用户授权:直接给纳指方向+个股看好看淡,带免责;读 signals+动量,须在 build_signals 后
     ("综合读数(出格·加权倾向)", "composite_read.py"),  # 把体制/信用/羊群/季节性/信号按写死透明权重合成当下倾向,每日 append composite_log 计分(自升级地基);须在 market_regime+seasonality+build_signals 后
+    ("LLM大白话日读(出格)", "llm_daily_read.py"),   # 把 composite_read 真因子喂 Gemini→一段人话解读;须在 composite_read 后;无 GEMINI_API_KEY 则静默跳过;喂真数据防瞎编、带计分
     ("发布前自检",         "verify_output.py"),   # 失败则终止，不发布坏数据
 ]
 

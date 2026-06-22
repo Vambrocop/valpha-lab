@@ -91,6 +91,9 @@
   <span data-i18n="bannerBody"></span>
 </div>
 
+<!-- LLM 大白话日读（出格·有真数据才显示） -->
+<div id="llmRead" style="display:none;background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--acc);border-radius:10px;padding:12px 14px;margin:12px 0"></div>
+
 <!-- 主内容区 -->
 <div id="main"><div class="loading" data-i18n="loading"></div></div>
 
@@ -242,8 +245,22 @@ function render(data){
   }
 }
 
+function loadLLM(){
+  fetch('https://vambrocop.github.io/valpha-lab/llm_read.json',{cache:'no-store'})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(j){
+      if(!j||!j.text)return;
+      var el=$('llmRead');
+      el.innerHTML='<div style="font-size:.8rem;color:var(--acc);margin-bottom:6px">🧠 '
+        +(LANG==='en'?'AI plain-language read':'AI 大白话日读')+' · '+esc(j.stance||'')+'</div>'
+        +'<div style="font-size:.92rem;line-height:1.7">'+esc(j.text)+'</div>'
+        +'<div style="font-size:.7rem;color:var(--mut);margin-top:8px">'+esc(j.caveat||'')+'</div>';
+      el.style.display='';
+    }).catch(function(){});
+}
 function load(){
   applyStatic();
+  loadLLM();
   try{
     fetch(JSON_URL,{cache:'no-store'}).then(function(r){
       if(!r.ok)throw new Error('HTTP '+r.status);
