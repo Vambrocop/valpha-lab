@@ -97,7 +97,7 @@ let SIG=null,REG=null,DIG=null,PAPER=null,V150=null;
 
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
 function tools(){
-  const T=[["t_board","🛰️","valpha150.html"],["t_sec","📊","sectors.html"],["t_radar","📡","radar.html"],["t_heat2","🔳","heatmap.html"],["t_adv","🎲","advisor.html"],["t_wild","🔥","wild.html"],["t_read","🧠","composite.html"],["t_cycle","🔄","seasonal.html"],["t_ipo","🛫","ipo.html"],["t_method","🛡️","methodology.html"],["t_grow","🌱","self_growing.html"],["t_full","🧭","dashboard.html"],["t_index","📘","indexing.html"]];
+  const T=[["t_board","🛰️","valpha150.html"],["t_sec","📊","sectors.html"],["t_radar","📡","radar.html"],["t_heat2","🔳","heatmap.html"],["t_adv","🎲","advisor.html"],["t_wild","🔥","wildhub.html"],["t_read","🧠","composite.html"],["t_cycle","🔄","seasonal.html"],["t_ipo","🛫","ipo.html"],["t_method","🛡️","methodology.html"],["t_grow","🌱","self_growing.html"],["t_full","🧭","dashboard.html"],["t_index","📘","indexing.html"]];
   $("tools").innerHTML=T.map(([k,ico,href])=>`<a class="tool" href="${href}"><div class="ico">${ico}</div><div class="nm">${t(k)}</div><div class="ds">${t(k+"_d")}</div></a>`).join("");
 }
 function paint(){
