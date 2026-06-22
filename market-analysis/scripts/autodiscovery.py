@@ -250,7 +250,8 @@ def _append_log(results, path=LOG):
     today = datetime.date.today().isoformat()
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
-        rows = list(csv.reader(open(path, encoding="utf-8")))
+        with open(path, encoding="utf-8") as f:
+            rows = list(csv.reader(f))
         if len(rows) > 1 and rows[-1][0] == today:   # 同日已记 → 幂等返回(不改历史行)
             return False
     new = not path.exists()
@@ -269,7 +270,8 @@ def _log_days(path=LOG):
     """账本里已记录的不同交易日数（前端显示「已追踪 N 天」）。"""
     if not path.exists():
         return 0
-    rows = list(csv.reader(open(path, encoding="utf-8")))
+    with open(path, encoding="utf-8") as f:
+        rows = list(csv.reader(f))
     return len({r[0] for r in rows[1:]}) if len(rows) > 1 else 0
 
 

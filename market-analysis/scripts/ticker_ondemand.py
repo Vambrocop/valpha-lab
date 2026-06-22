@@ -42,10 +42,14 @@ def build_all():
         print("无点单（data/ticker_requests.txt 为空）；写空 JSON")
     else:
         print(f"点单 {len(reqs)} 只：{reqs}")
-        px = yf.download(reqs, period="2y", interval="1d",
-                         auto_adjust=True, progress=False)["Close"]
+        dl = yf.download(reqs, period="2y", interval="1d",
+                         auto_adjust=True, progress=False)
+        # 全部抓取失败时 dl 为空、无 "Close" 列 → 直接 ["Close"] 会 KeyError 崩、留下旧 JSON。
+        # 降级为空 DataFrame：全部进 missing、仍正常写 JSON（独立审 P1-1）。
+        px = dl["Close"] if (dl is not None and not dl.empty) else pd.DataFrame()
+        single = len(reqs) == 1
         for s in reqs:
-            if isinstance(px, pd.Series):              # 单只时 ["Close"] 返回 Series
+            if single and isinstance(px, pd.Series):   # 仅单只时 ["Close"] 返回 Series（收紧分支，防版本漂移误用）
                 col = px
             elif s in getattr(px, "columns", []):
                 col = px[s]

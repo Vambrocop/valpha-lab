@@ -17,7 +17,8 @@
   th,td{padding:5px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
   th:nth-child(1),td:nth-child(1){text-align:left}
   th{position:sticky;top:0;background:var(--panel);cursor:pointer;user-select:none;color:var(--mut);font-weight:600}
-  th.s::after{content:" ▾"}
+  th[aria-sort="ascending"]::after{content:" ▴"}
+  th[aria-sort="descending"]::after{content:" ▾"}
   tr:hover{background:rgba(198,120,221,.08)}
   .pos{color:var(--grn)} .neg{color:var(--red)}
   .tag{font-size:.66rem;padding:1px 4px;border-radius:4px;margin-left:3px}
@@ -89,7 +90,7 @@ async function load(){
     $("src").textContent=`${t("live")} ${DATA.length} · ${t("asof")} ${esc(j.generated||"")}`;
     $("miss").innerHTML=(j.missing&&j.missing.length)?`${t("miss")}${j.missing.map(esc).join(" · ")}`:"";
     render();
-  }catch(e){$("src").textContent=t("err");}
+  }catch(e){DATA=[];$("src").textContent=t("err");render();}
 }
 load();
 </script>

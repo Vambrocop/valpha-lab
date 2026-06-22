@@ -102,11 +102,7 @@
 <div class="mut" data-i18n="foot"></div>
 
 <script>
-var BASE='https://vambrocor.github.io/valpha-lab/';
-// 注：URL 以 composite_read.json 路径为准
-var JSON_URL='https://vambrocor.github.io/valpha-lab/composite_read.json';
-// 下面覆盖为任务指定的 URL
-JSON_URL='https://vambrocop.github.io/valpha-lab/composite_read.json';
+var JSON_URL='https://vambrocop.github.io/valpha-lab/composite_read.json';
 
 var $=function(id){return document.getElementById(id);};
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -239,9 +235,9 @@ function render(data){
 
   $('main').innerHTML=html;
 
-  /* 底部免责 */
-  if(caveat||true){
-    $('footCaveat').textContent=caveat||'';
+  /* 底部免责（有内容才显示） */
+  if(caveat){
+    $('footCaveat').textContent=caveat;
     $('bottomBanner').style.display='';
   }
 }
@@ -253,6 +249,7 @@ function load(){
       if(!r.ok)throw new Error('HTTP '+r.status);
       return r.json();
     }).then(function(data){
+      window._compositeData=data;
       render(data);
     }).catch(function(){
       $('main').innerHTML='<div class="err">'+esc(t('unavail'))+'</div>';
@@ -275,23 +272,8 @@ $('lang').onclick=function(){
   }
 };
 
-// 带缓存的加载版本
-(function(){
-  applyStatic();
-  try{
-    fetch(JSON_URL,{cache:'no-store'}).then(function(r){
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      return r.json();
-    }).then(function(data){
-      window._compositeData=data;
-      render(data);
-    }).catch(function(){
-      $('main').innerHTML='<div class="err">'+esc(t('unavail'))+'</div>';
-    });
-  }catch(e){
-    $('main').innerHTML='<div class="err">'+esc(t('unavail'))+'</div>';
-  }
-})();
+// 初次加载（load() 已带缓存到 window._compositeData，语言切换时重渲不再二次请求）
+load();
 </script>
 </body>
 </html>
