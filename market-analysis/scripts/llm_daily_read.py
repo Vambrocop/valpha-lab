@@ -19,7 +19,7 @@ SCRIPTS = Path(__file__).parent
 WEB = SCRIPTS.parent / "web"
 DOCS = SCRIPTS.parent.parent / "docs"
 LOG = SCRIPTS.parent / "data" / "llm_read_log.csv"        # append-only 计分账本
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")   # 此 key 免费额度在 lite 上(2.0-flash 该项目 limit:0)
 URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
 PROMPT = """你是给投资初学者讲解的助手。下面是今天系统【真实算出】的市场读数（综合多个诚实因子）：
