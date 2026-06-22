@@ -56,6 +56,13 @@ jobs:
       - name: Run pipeline (intraday 30-min = light, pre-open/post-close = full)
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}   # 取 FRED 全史(BAA10Y 信用利差等日频);未配置则脚本自动回退 graph CSV(~2年)
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}     # LLM 大白话日读(llm_daily_read);未配置则该步静默跳过
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}         # 可选:设 openai 走 DeepSeek 等 OpenAI 兼容(需配 LLM_API_KEY)
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}   # 日读/计分卡 推送(未配置静默跳过)
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           if [ "${{ github.event.schedule }}" = "0,30 14-20 * * 1-5" ]; then
             CMD="python market-analysis/scripts/run_all.py --light"

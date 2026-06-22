@@ -63,6 +63,35 @@ def _gemini(prompt, key):
     return out["candidates"][0]["content"]["parts"][0]["text"].strip()
 
 
+# ── provider 无关：默认 Gemini；设 LLM_PROVIDER=openai 走 OpenAI 兼容(DeepSeek/OpenAI/Ollama 等) ──
+def _provider():
+    return os.environ.get("LLM_PROVIDER", "gemini").lower()
+
+
+def _active_model():
+    return MODEL if _provider() == "gemini" else os.environ.get("LLM_MODEL", "deepseek-chat")
+
+
+def _llm_key():
+    return os.environ.get("GEMINI_API_KEY") if _provider() == "gemini" else os.environ.get("LLM_API_KEY")
+
+
+def _llm(prompt):
+    """统一入口。Gemini 走 _gemini；其余走 OpenAI 兼容 /chat/completions（LLM_BASE_URL/API_KEY/MODEL）。"""
+    if _provider() == "gemini":
+        return _gemini(prompt, os.environ["GEMINI_API_KEY"])
+    base = os.environ.get("LLM_BASE_URL", "https://api.deepseek.com").rstrip("/")
+    body = json.dumps({"model": _active_model(),
+                       "messages": [{"role": "user", "content": prompt}],
+                       "temperature": 0.4, "max_tokens": 400}).encode("utf-8")
+    req = urllib.request.Request(base + "/chat/completions", data=body,
+                                 headers={"Content-Type": "application/json",
+                                          "Authorization": f"Bearer {os.environ['LLM_API_KEY']}"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        out = json.load(r)
+    return out["choices"][0]["message"]["content"].strip()
+
+
 def _append_log(today, stance, text):
     """append-only；同日只记一条。返回是否新写（用于 Telegram 一天只推一次）。"""
     LOG.parent.mkdir(parents=True, exist_ok=True)
@@ -81,9 +110,8 @@ def _append_log(today, stance, text):
 
 
 def run():
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key:
-        print("[LLM日读] 未配置 GEMINI_API_KEY，跳过")
+    if not _llm_key():
+        print("[LLM日读] 未配置 LLM key（GEMINI_API_KEY 或 LLM_API_KEY），跳过")
         return None
     try:
         cr = json.loads((WEB / "composite_read.json").read_text(encoding="utf-8"))
@@ -95,9 +123,9 @@ def run():
     quality, qlevel = _quality(cr, facs)
     prompt = PROMPT.format(quality=quality, stance=cr.get("stance"), score=cr.get("score"), factors=factors)
     try:
-        text = _gemini(prompt, key)
+        text = _llm(prompt)
     except Exception as e:
-        print(f"[LLM日读] Gemini 调用失败（非致命，不阻断流水线）: {e}")
+        print(f"[LLM日读] LLM 调用失败（非致命，不阻断流水线）: {e}")
         return None
     if not text:
         print("[LLM日读] 空返回，跳过")
@@ -105,7 +133,7 @@ def run():
     today = datetime.date.today().isoformat()
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "model": MODEL, "date": today,
+        "model": _active_model(), "date": today,
         "stance": cr.get("stance"), "score": cr.get("score"), "text": text, "coverage_level": qlevel,
         "caveat": "LLM 据当日真实因子生成的大白话解读；喂真数据防瞎编，但仍可能误读。"
                   "非预测、非荐股、会错，过去≠未来。每日 append 到 llm_read_log 公开计分。",
