@@ -7,6 +7,8 @@
 <style>
   :root{--bg:#0a0510;--panel:#130d1e;--border:#3d2a52;--fg:#e8dff5;--mut:#9585af;--grn:#3fb950;--red:#f85149;--acc:#c678dd}
   *{box-sizing:border-box}
+  :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
   body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1000px;margin:0 auto}
   h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
   #lang{float:right;background:var(--panel);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
@@ -21,7 +23,7 @@
   th[aria-sort="descending"]::after{content:" ▾"}
   tr:hover{background:rgba(198,120,221,.08)}
   .pos{color:var(--grn)} .neg{color:var(--red)}
-  .tag{font-size:.66rem;padding:1px 4px;border-radius:4px;margin-left:3px}
+  .tag{font-size:.72rem;padding:1px 4px;border-radius:4px;margin-left:3px}
   .hot{background:rgba(248,81,73,.2);color:#ff9b94}
   .risk{background:rgba(198,120,221,.22);color:#e0baff}
   .calm{background:rgba(63,185,80,.16);color:#7ee787}
