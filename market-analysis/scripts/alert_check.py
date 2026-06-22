@@ -80,6 +80,11 @@ if alerts:
             + "\n\n---\n[打开仪表盘](https://vambrocop.github.io/valpha-lab/) · 自动生成，仅供参考")
     ALERT.write_text(body, encoding="utf-8")
     print(f"[ALERT] {len(alerts)} 条告警 → alert.md")
+    try:                                               # 同时推 Telegram（未配置 Secrets 则静默跳过）
+        import notify_telegram
+        notify_telegram.send(body.replace("**", "").replace("# ", ""))
+    except Exception as e:
+        print(f"  ⚠ Telegram 推送跳过: {e}")
 else:
     if ALERT.exists():
         ALERT.unlink()
