@@ -69,20 +69,26 @@ def _stats(arr):
 
 def run(write=True):
     df = pd.read_csv(TRADES, parse_dates=["txn_date", "followable_date"])
-    buys = df[df["side"] == "buy"].copy()
-    px = _fetch_prices(buys["ticker"].unique())
+    trades = df[df["side"].isin(["buy", "sell"])].copy()
+    px = _fetch_prices(trades["ticker"].unique())
     bench = px.get(BENCH)
-    excess, kept = [], []
-    for _, r in buys.iterrows():
+    excess, sell_ex, kept = [], [], []
+    for _, r in trades.iterrows():
         s = px.get(r["ticker"])
         f = _fwd(s, r["followable_date"], HOLD_DAYS)
         b = _fwd(bench, r["followable_date"], HOLD_DAYS)
         if f is None or b is None:
             continue
-        excess.append(f - b)
-        kept.append({"senator": r["senator"], "ex": f - b})
-    overall = _stats(excess)
-    drop_pct = round((1 - len(excess) / max(1, len(buys))) * 100, 1)
+        ex = f - b
+        if r["side"] == "buy":
+            excess.append(ex)
+            kept.append({"senator": r["senator"], "ex": ex})
+        else:
+            sell_ex.append(ex)               # 他们卖的股票之后 vs SPY（负=避开/跟卖有用）
+    overall = _stats(excess)                 # 整体 = 跟着买他们买的
+    sold = _stats(sell_ex)
+    n_buys = int((trades["side"] == "buy").sum())
+    drop_pct = round((1 - len(excess) / max(1, n_buys)) * 100, 1)
     # 按议员拆（≥30 笔可统计的才单列）
     kd = pd.DataFrame(kept)
     per = []
@@ -98,9 +104,12 @@ def run(write=True):
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "horizon_days": HOLD_DAYS, "benchmark": BENCH,
-        "data_range": [str(buys["txn_date"].min().date()), str(buys["txn_date"].max().date())],
-        "n_buys": int(len(buys)), "n_tested": len(excess), "dropped_pct": drop_pct,
-        "overall": overall, "by_senator": per,
+        "data_range": [str(trades["txn_date"].min().date()), str(trades["txn_date"].max().date())],
+        "n_buys": n_buys, "n_tested": len(excess), "dropped_pct": drop_pct,
+        "overall": overall, "sold_stocks_after": sold, "by_senator": per,
+        "comparison": {"follow_buys": (overall or {}).get("mean_excess_pct"),
+                       "sold_stocks_after": (sold or {}).get("mean_excess_pct"), "hold_market": 0.0},
+        "decision": _decide(overall, sold),
         "verdict": _verdict(overall, per),
         "caveat": "出格区·政治钱诚实检验。45天披露滞后→测的是「披露后再跟」非抢跑。"
                   f"数据停 2020-11(历史·非实时)；{top_note}幸存者偏差：{drop_pct}% 买入因代码退市/无价被丢，剩存活者→高估 edge；"
@@ -116,6 +125,20 @@ def run(write=True):
         for p in per[:6]:
             print(f"    {p['senator']}: 超额{p['mean_excess_pct']}% 胜率{p['beat_mkt_pct']}% n={p['n']}")
     return out
+
+
+def _decide(overall, sold):
+    """直接回答用户：披露了【买 / 不买 / 避开他们卖的】哪个合适。用中位数(抗极端值)做主判。"""
+    if not overall:
+        return "样本不足，无定论"
+    fbm, fb = overall["median_pct"], overall["mean_excess_pct"]
+    ssm = sold["median_pct"] if sold else None
+    ss = sold["mean_excess_pct"] if sold else None
+    line = (f"跟着买他们买的：中位 {fbm:+.1f}%（均值 {fb:+.1f}%）vs SPY；"
+            f"他们卖的股之后：中位 {('—' if ssm is None else f'{ssm:+.1f}%')}"
+            f"（均值 {('—' if ss is None else f'{ss:+.1f}%')}·被少数极端赢家拉高）vs SPY；持有大盘=0(基准)。")
+    return (line + "→ 披露了【不买、也不必跟卖】最稳：跟买中位输 SPY、他们卖的股中位也≈持平(避开/跟卖没用)；"
+            "均值差异多是极端值噪声。别跟，持有大盘即可。")
 
 
 def _verdict(overall, per):

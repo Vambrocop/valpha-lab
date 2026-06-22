@@ -1,5 +1,5 @@
 {
-  "generated": "2026-06-22T12:25:58Z",
+  "generated": "2026-06-22T12:44:32Z",
   "horizon_days": 90,
   "benchmark": "SPY",
   "data_range": [
@@ -7,13 +7,19 @@
     "2020-11-24"
   ],
   "n_buys": 2743,
-  "n_tested": 2177,
-  "dropped_pct": 20.6,
+  "n_tested": 2116,
+  "dropped_pct": 22.9,
   "overall": {
-    "n": 2177,
-    "mean_excess_pct": -0.11,
-    "beat_mkt_pct": 47.1,
-    "median_pct": -0.68
+    "n": 2116,
+    "mean_excess_pct": -0.17,
+    "beat_mkt_pct": 47.0,
+    "median_pct": -0.71
+  },
+  "sold_stocks_after": {
+    "n": 2055,
+    "mean_excess_pct": 12.15,
+    "beat_mkt_pct": 47.8,
+    "median_pct": -0.44
   },
   "by_senator": [
     {
@@ -25,9 +31,9 @@
     },
     {
       "senator": "Pat Roberts",
-      "n": 204,
-      "mean_excess_pct": 2.43,
-      "beat_mkt_pct": 48.0,
+      "n": 194,
+      "mean_excess_pct": 2.49,
+      "beat_mkt_pct": 47.9,
       "median_pct": -0.62
     },
     {
@@ -45,18 +51,18 @@
       "median_pct": 0.37
     },
     {
+      "senator": "Sheldon Whitehouse",
+      "n": 229,
+      "mean_excess_pct": 0.13,
+      "beat_mkt_pct": 56.3,
+      "median_pct": 1.36
+    },
+    {
       "senator": "Shelley M Capito",
       "n": 188,
       "mean_excess_pct": 0.13,
       "beat_mkt_pct": 52.1,
       "median_pct": 0.53
-    },
-    {
-      "senator": "Sheldon Whitehouse",
-      "n": 232,
-      "mean_excess_pct": 0.1,
-      "beat_mkt_pct": 56.0,
-      "median_pct": 1.27
     },
     {
       "senator": "Ron L Wyden",
@@ -81,17 +87,10 @@
     },
     {
       "senator": "Jerry Moran,",
-      "n": 65,
-      "mean_excess_pct": -0.25,
+      "n": 61,
+      "mean_excess_pct": -0.5,
       "beat_mkt_pct": 49.2,
       "median_pct": -0.01
-    },
-    {
-      "senator": "David A Perdue , Jr",
-      "n": 744,
-      "mean_excess_pct": -0.64,
-      "beat_mkt_pct": 44.6,
-      "median_pct": -1.23
     },
     {
       "senator": "Thomas R Carper",
@@ -101,11 +100,18 @@
       "median_pct": -0.53
     },
     {
+      "senator": "David A Perdue , Jr",
+      "n": 703,
+      "mean_excess_pct": -0.84,
+      "beat_mkt_pct": 44.0,
+      "median_pct": -1.36
+    },
+    {
       "senator": "Patty Murray",
-      "n": 63,
-      "mean_excess_pct": -1.71,
-      "beat_mkt_pct": 38.1,
-      "median_pct": -1.14
+      "n": 61,
+      "mean_excess_pct": -1.73,
+      "beat_mkt_pct": 39.3,
+      "median_pct": -1.35
     },
     {
       "senator": "John Hoeven",
@@ -115,6 +121,12 @@
       "median_pct": -2.29
     }
   ],
-  "verdict": "滞后基本磨平：整体 ~3月超额 -0.11%、跑赢SPY 47.1%（n=2177）——披露后再跟整体≈打平。7/14 位议员正超额≈掷硬币期望——14 人未做多重检验校正，个体正值与噪声无法区分，别把任何单个议员(含榜首)当 edge；幸存者偏差未除",
-  "caveat": "出格区·政治钱诚实检验。45天披露滞后→测的是「披露后再跟」非抢跑。数据停 2020-11(历史·非实时)；整体样本中 David A Perdue , Jr 一人占 ~34%、显著影响整体均值；幸存者偏差：20.6% 买入因代码退市/无价被丢，剩存活者→高估 edge；重叠窗口只看描述性均值/胜率不充当显著性；相关≠因果；非荐股、非跟单。每跑 append 计分。"
+  "comparison": {
+    "follow_buys": -0.17,
+    "sold_stocks_after": 12.15,
+    "hold_market": 0.0
+  },
+  "decision": "跟着买他们买的：中位 -0.7%（均值 -0.2%）vs SPY；他们卖的股之后：中位 -0.4%（均值 +12.2%·被少数极端赢家拉高）vs SPY；持有大盘=0(基准)。→ 披露了【不买、也不必跟卖】最稳：跟买中位输 SPY、他们卖的股中位也≈持平(避开/跟卖没用)；均值差异多是极端值噪声。别跟，持有大盘即可。",
+  "verdict": "滞后基本磨平：整体 ~3月超额 -0.17%、跑赢SPY 47.0%（n=2116）——披露后再跟整体≈打平。7/14 位议员正超额≈掷硬币期望——14 人未做多重检验校正，个体正值与噪声无法区分，别把任何单个议员(含榜首)当 edge；幸存者偏差未除",
+  "caveat": "出格区·政治钱诚实检验。45天披露滞后→测的是「披露后再跟」非抢跑。数据停 2020-11(历史·非实时)；整体样本中 David A Perdue , Jr 一人占 ~33%、显著影响整体均值；幸存者偏差：22.9% 买入因代码退市/无价被丢，剩存活者→高估 edge；重叠窗口只看描述性均值/胜率不充当显著性；相关≠因果；非荐股、非跟单。每跑 append 计分。"
 }
