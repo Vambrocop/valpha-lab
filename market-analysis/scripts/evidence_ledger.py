@@ -1,0 +1,93 @@
+"""evidence_ledger.py — 证据库总览（吸收 daily_stock 的 regime+evidence 卡片纪律）。
+
+四站都"AI叫你买"、规律不带证据。这里把全站【已测规律族】汇成一张总览：每族一行，
+强制带 scope(适用条件) + 证据(live headline) + 裁决 + 详情链接——**没证据进不了库**。
+不重复聚合子规律(那些在 self_growing/seasonal 各页已有)；这是"什么成立/什么被证伪"的单一诚实入口。
+
+只读现有产物聚合，非新统计、非荐股。每跑刷新 evidence.json（web+docs）。
+"""
+import json
+import datetime
+from pathlib import Path
+
+BASE = Path(__file__).parent.parent
+WEB = BASE / "web"
+
+
+def _load(name):
+    try:
+        return json.loads((WEB / name).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def run(write=True):
+    rows = []
+
+    ad = _load("autodiscovery.json")
+    if ad and ad.get("summary"):
+        s = ad["summary"]
+        rows.append({"name": "系统自动发现(FDR引擎)", "family": "系统",
+                     "scope": "日历/超跌反弹/因子 · 42 预声明候选 · 跨族 BY-FDR",
+                     "evidence": f"真存活 {s.get('n_survive', 0)} · 已淡 {s.get('n_faded', 0)} · 死 {s.get('n_dead', 0)} · 无定论 {s.get('n_inconclusive', 0)}",
+                     "verdict": "多数是噪声(诚实):预声明全进分母、禁挑好看的", "link": "self_growing.html"})
+
+    pb = _load("placebo_tests.json")
+    if pb and pb.get("tests"):
+        ts = pb["tests"]
+        faded = sum(1 for t in ts if t.get("recent_significant") is False)
+        rows.append({"name": "季节/日历效应", "family": "日历",
+                     "scope": "周几/月份/圣诞/节前/十年位/任期年 · 日频 S&P500",
+                     "evidence": f"{len(ts)} 项检验 · 多数全样本过但现代段已淡({faded} 项)或检验力不足",
+                     "verdict": "民俗日历多被套利/样本不足——别当可交易", "link": "seasonal.html"})
+
+    bt = _load("btc_nasdaq.json")
+    if bt:
+        rows.append({"name": "BTC动量→纳指方向", "family": "动量",
+                     "scope": "BTC 20日动量 ±5% · 前向20日",
+                     "evidence": f"条件上涨率差 {bt.get('cond_pos_minus_neg_uprate_pp', '—')}pp · 4 体制段同号",
+                     "verdict": bt.get("verdict", "—"), "link": "btcread.html"})
+
+    se = _load("senate_signal.json")
+    if se:
+        ov = se.get("overall") or {}
+        rows.append({"name": "政治钱·参议院交易", "family": "另类数据",
+                     "scope": "披露后45天再跟 · 持有~3月 vs SPY · 2012-2020",
+                     "evidence": f"跟着买中位输SPY · 整体 {ov.get('mean_excess_pct', '—')}% · 7/14议员正≈掷硬币",
+                     "verdict": "披露后买/跟卖都不划算,持有大盘最稳", "link": "senate.html"})
+
+    rf = _load("regime_forward.json")
+    if rf:
+        inv = next((r for r in (rf.get("regimes") or []) if str(r.get("state", "")).startswith("曲线倒挂")), {})
+        rows.append({"name": "体制→前向收益分布", "family": "体制",
+                     "scope": "倒挂/VIX/信用利差 → SP500 未来1/3/6/12月 · 2000+",
+                     "evidence": f"倒挂仅 {inv.get('n_episodes', '?')} 个独立事件段 · {rf.get('asset', 'SP500')}",
+                     "verdict": rf.get("verdict", "—"), "link": "regimefwd.html"})
+
+    ov = _load("overreaction.json")
+    if ov and ov.get("status") == "ok":
+        f = ov.get("full") or {}
+        rows.append({"name": "跌后反弹(R3短期反转)", "family": "反弹",
+                     "scope": "极端下跌日 → 次日 · 全样本+现代段",
+                     "evidence": f"现代段 verdict={ov.get('verdict', '—')} · 但仍约半数次日下跌",
+                     "verdict": "小条件边际·会被成本吃掉·非抄底信号", "link": "dashboard.html"})
+
+    out = {
+        "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "n": len(rows), "rows": rows,
+        "note": "全站已测规律族总览。每行强制带 scope+证据+裁决+详情链接——没证据不进库。"
+                "诚实立场:大多数'规律'测下来是噪声/已淡/不可靠,真存活的极少且都标了不确定性。非荐股·会错·过去≠未来。",
+    }
+    if write:
+        payload = json.dumps(out, ensure_ascii=False, indent=2)
+        for d in (WEB, BASE.parent / "docs"):
+            if d.exists():
+                (d / "evidence.json").write_text(payload, encoding="utf-8")
+        print(f"[OK] evidence.json — {len(rows)} 个规律族")
+        for r in rows:
+            print(f"  {r['name']}: {r['verdict'][:40]}")
+    return out
+
+
+if __name__ == "__main__":
+    run()

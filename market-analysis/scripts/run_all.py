@@ -71,6 +71,7 @@ steps = [
     ("BTC动量→纳指回测(出格)", "btc_nasdaq_backtest.py"),  # 红线审计🟡#1:唯一穿过FDR的方向规律,诚实回测(条件分布/带成本overlay/多体制/计分);读 combined_prices,独立审 GO-WITH-FIXES已修
     ("体制→前向分布(出格)", "regime_forward.py"),   # 红线审计🟡#2:倒挂/VIX/信用利差→SP500前向收益分布(重标独立事件段);读 combined_prices,描述性
     ("公开计分/校准卡(吸收)", "scorecard.py"),   # 4站调研吸收:汇 prediction_log/composite/tipjar + walk_forward OOS校准成公开战绩卡(按置信分桶看实际命中=护城河);须在 track_predictions/composite_read/walk_forward 后
+    ("证据库总览(吸收)", "evidence_ledger.py"),   # 把已测规律族汇成单一诚实总览(每族 scope+证据+裁决+详情链接·没证据不进库);须在 autodiscovery/placebo/btc/regime 后
     ("发布前自检",         "verify_output.py"),   # 失败则终止，不发布坏数据
 ]
 
