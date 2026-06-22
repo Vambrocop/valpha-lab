@@ -14,6 +14,7 @@
 每候选 → {p(全段), recent_p(现代段), recent_powered}；交 quality_gate.adjudicate（双栏 BY-FDR + 三态）。
 固定种子、**全部候选进分母（禁预筛）** = 防 p-hacking。Phase 1b 不接门4 OOS（留后续）、不进账本。
 """
+import csv
 import json
 import hashlib
 import datetime
@@ -33,6 +34,7 @@ WEB_DIR = SCRIPTS.parent / "web"
 PROC_DIR = SCRIPTS.parent / "data" / "processed"
 DOCS_DIR = SCRIPTS.parent.parent / "docs"
 RECENT_CUT = pd.Timestamp("2000-01-01")   # 现代段口径，与 placebo 一致
+LOG = SCRIPTS.parent / "data" / "autodiscovery_log.csv"   # append-only 裁决账本(被 CI 提交持久化;Phase4 衰减/建议器自升级的前向史)
 
 
 def _seed_for(cid):
@@ -243,11 +245,41 @@ def compute_results(candidates):
     return results
 
 
+# ── Phase 2：append-only 裁决账本（每交易日一快照=N 行，幂等：盘前+盘后同日不重复）──
+def _append_log(results, path=LOG):
+    today = datetime.date.today().isoformat()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        rows = list(csv.reader(open(path, encoding="utf-8")))
+        if len(rows) > 1 and rows[-1][0] == today:   # 同日已记 → 幂等返回(不改历史行)
+            return False
+    new = not path.exists()
+    with open(path, "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        if new:
+            w.writerow(["date", "candidate_id", "key", "family", "verdict", "p", "recent_p"])
+        for r in sorted(results, key=lambda x: x["candidate_id"]):
+            w.writerow([today, r["candidate_id"], r["key"], r["family"], r.get("verdict", ""),
+                        "" if r.get("p") is None else round(float(r["p"]), 6),
+                        "" if r.get("recent_p") is None else round(float(r["recent_p"]), 6)])
+    return True
+
+
+def _log_days(path=LOG):
+    """账本里已记录的不同交易日数（前端显示「已追踪 N 天」）。"""
+    if not path.exists():
+        return 0
+    rows = list(csv.reader(open(path, encoding="utf-8")))
+    return len({r[0] for r in rows[1:]}) if len(rows) > 1 else 0
+
+
 def run_all(write=True, q=0.10):
     cands = cs.enumerate_candidates()
     results = compute_results(cands)
     adjudicate(results, q=q, expect_n=cs.N_DECLARED)   # 断言分母完整 = 全部候选都算了
     s = summarize(results)
+    if write:
+        _append_log(results)               # 每交易日 append 裁决快照，攒衰减/自升级前向史
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "method": ("自动发现 Phase 1b：预注册有限候选(日历/反弹/因子)各路由到真统计算 p，"
@@ -255,7 +287,7 @@ def run_all(write=True, q=0.10):
         "caveat": "存活≠未来重演≠可交易；现代已淡=全段过FDR但现代测不到(疑被套利)；"
                   "检验力不足=样本太小不下结论。因子族 FDR 为**无向双侧**(只问'有无可测边际'、不含方向判断，"
                   "与 factor_pruning 的方向门控透镜口径不同)。门4样本外待接入。探索性，非预测、非荐股。",
-        "q": q, "n_declared": cs.N_DECLARED, "summary": s,
+        "q": q, "n_declared": cs.N_DECLARED, "days_tracked": _log_days(), "summary": s,
         "candidates": sorted(results, key=lambda r: r["p"]),
     }
     payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)

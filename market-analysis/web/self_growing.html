@@ -111,12 +111,14 @@ const I18N={
   wWin:{zh:"时间窗",en:"window"},wUp:{zh:"上涨率",en:"up%"},wBase:{zh:"基率",en:"base%"},
   wMulti:{zh:"多时间窗",en:"multi-window"},
   wNote:{zh:"上涨率=该组上涨期占比(直观)，绿>基率红<。反弹/因子：基率=全样本上涨率，p 检验上涨率差(与表同口径)。日历方向类(节前/圣诞/夏歇/世界杯/任期年)：基率=对照组上涨率，p 检验两组<b>平均收益</b>差(单边)——与上涨率通常同向但非同一指标。周几/月份为多组整体差异，无单一概率故只列 p。",
-         en:"up% = share of up periods in that group (intuition); green &gt; base, red &lt;. Rebound/factor: base% = whole-sample up-rate and p tests the up-rate gap (same quantity shown). Calendar directional (holiday/santa/sell-in-May/World-Cup/term-year): base% = comparison group's up-rate and p tests the difference in <b>mean returns</b> (one-sided) — usually same sign as up%, but a different quantity. Day/month effects are multi-group omnibus — p only."}
+         en:"up% = share of up periods in that group (intuition); green &gt; base, red &lt;. Rebound/factor: base% = whole-sample up-rate and p tests the up-rate gap (same quantity shown). Calendar directional (holiday/santa/sell-in-May/World-Cup/term-year): base% = comparison group's up-rate and p tests the difference in <b>mean returns</b> (one-sided) — usually same sign as up%, but a different quantity. Day/month effects are multi-group omnibus — p only."},
+  adLedger:{zh:"裁决账本追踪",en:"verdict ledger"},adDays:{zh:"天(累积中,供日后衰减追踪)",en:"d (accruing for decay tracking)"}
 };
 function renderAD(){
   if(!AD||!AD.candidates){$("autodisc").innerHTML=`<div class="mut">—</div>`;$("autoSummary").innerHTML="";return;}
   ADC=AD.candidates; const s=AD.summary||{};
-  $("autoSummary").innerHTML=`${t("hTested")} ${s.m_total} · <b style="color:var(--grn)">${t("vSurvive")} ${s.n_survive}</b> · ${t("vFaded")} ${s.n_faded} · ${t("vInconc")} ${s.n_inconclusive} · ${t("vDead")} ${s.n_dead}`;
+  $("autoSummary").innerHTML=`${t("hTested")} ${s.m_total} · <b style="color:var(--grn)">${t("vSurvive")} ${s.n_survive}</b> · ${t("vFaded")} ${s.n_faded} · ${t("vInconc")} ${s.n_inconclusive} · ${t("vDead")} ${s.n_dead}`
+    +(AD.days_tracked?` · 🌱 ${t("adLedger")} ${AD.days_tracked}${t("adDays")}`:"");
   const ord={survive:0,faded:1,inconclusive:2,dead:3};
   $("autodisc").innerHTML=[...ADC].sort((a,b)=>(ord[a.verdict]-ord[b.verdict])||(a.p-b.p))
     .map(c=>`<span class="gchip" style="cursor:pointer;border-style:solid;border-color:${VCLR[c.verdict]||'var(--border)'};color:${VCLR[c.verdict]||'var(--mut)'}" onclick="showAD('${esc(c.candidate_id)}')">${esc(c.key)}</span>`).join("");
