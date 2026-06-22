@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🌡️ 体制 → 前向收益分布</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#c678dd;--amber:#e3a008}
+  *{box-sizing:border-box}
+  :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:920px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:var(--panel);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .verdict{background:rgba(198,120,221,.12);border:2px solid var(--acc);border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.92rem;line-height:1.7}
+  h2{font-size:1rem;margin:18px 0 6px}.sub{color:var(--mut);font-size:.8rem;margin:0 0 6px}
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  th,td{padding:6px 7px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--mut);font-weight:600}
+  .pos{color:var(--grn)}.neg{color:var(--red)}
+  .base td{color:var(--mut);border-top:2px solid var(--border)}
+  .few{color:var(--amber)}
+  .mut{color:var(--mut);font-size:.76rem;margin-top:16px;border-top:1px solid var(--border);padding-top:8px;line-height:1.6}
+  #src{color:var(--mut);font-size:.78rem;margin-top:6px}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.12rem}table{font-size:.78rem}}
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<p class="sub" data-i18n="intro"></p>
+<div class="verdict" id="verdict"></div>
+<h2 data-i18n="hTab"></h2>
+<p class="sub" data-i18n="sTab"></p>
+<div style="overflow-x:auto"><table id="tab"></table></div>
+<div id="src"></div>
+<div class="mut" id="caveat"></div>
+
+<script>
+const LIVE="https://vambrocop.github.io/valpha-lab/regime_forward.json";
+const I18N={
+  title:{zh:"🌡️ 体制 → 前向收益分布",en:"🌡️ Regime → forward-return distribution"},
+  intro:{zh:"此前只看「当前体制 + 历史分位」，从没算「给定体制下市场未来收益的分布」——这里补上。描述性，非预测。",
+         en:"Previously only 'current regime + historical percentile' — never 'forward-return distribution given the regime'. Added here. Descriptive, not a forecast."},
+  hTab:{zh:"各体制下 SP500 未来收益（聚焦 12 月；中位/上涨率/最差）",en:"SP500 forward returns by regime (12-month focus; median/up-rate/worst)"},
+  sTab:{zh:"⚠️ 看「段数」不是「天数」：稀有体制(倒挂)就几个独立事件段，分布看着精确实则不可靠，琥珀色=段数少。",
+        en:"⚠️ Read 'episodes' not 'days': rare regimes (inversion) are only a few independent episodes — the distribution looks precise but isn't reliable. Amber = few episodes."},
+  cState:{zh:"体制",en:"Regime"},cDays:{zh:"天/段",en:"days/ep"},cMed:{zh:"12月中位",en:"12M median"},cUp:{zh:"上涨率",en:"up%"},cP10:{zh:"差10%分位",en:"p10"},cWorst:{zh:"最差",en:"worst"},
+  base:{zh:"基率(不挑体制)",en:"base (uncond.)"},
+  err:{zh:"拉不到 regime_forward.json——确认已部署。",en:"Can't load regime_forward.json — check deployment."},asof:{zh:"数据",en:"data"}
+};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh";try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+const sp=(v)=>v==null?"—":`<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}%</span>`;
+function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
+function row(name,days,ep,d,cls){
+  const few=(ep!=null&&ep<10);
+  return `<tr class="${cls||''}"><td>${esc(name)}${few?' <span class="few">▲少</span>':''}</td>`
+    +`<td>${days==null?'—':days+(ep!=null?'/'+ep:'')}</td>`
+    +`<td>${sp(d&&d.median)}</td><td>${d&&d.up!=null?d.up+'%':'—'}</td>`
+    +`<td>${sp(d&&d.p10)}</td><td class="neg">${d&&d.worst!=null?d.worst+'%':'—'}</td></tr>`;
+}
+function render(j){
+  applyStatic();
+  $("verdict").innerHTML="🧭 <b>"+esc(j.verdict||"")+"</b>";
+  let h=`<tr><th>${t("cState")}</th><th>${t("cDays")}</th><th>${t("cMed")}</th><th>${t("cUp")}</th><th>${t("cP10")}</th><th>${t("cWorst")}</th></tr>`;
+  (j.regimes||[]).forEach(r=>{h+=row(r.state,r.n_days,r.n_episodes,(r.dist||{})["252"]);});
+  h+=row(t("base"),null,null,(j.base||{})["252"],"base");
+  $("tab").innerHTML=h;
+  $("caveat").textContent="⚠️ "+(j.caveat||"");
+  $("src").textContent=`${t("asof")} ${esc((j.date_range||[]).join(" → "))} · ${esc(j.asset||"")}`;
+}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};if(window._j)render(window._j);};
+(async()=>{applyStatic();
+  try{const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;window._j=await r.json();render(window._j);}
+  catch(e){$("verdict").textContent=t("err");}
+})();
+</script>
+</body>
+</html>
