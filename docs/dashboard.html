@@ -938,6 +938,8 @@
   Promise.all([gj("composite_read.json"),gj("outlook.json"),gj("llm_read.json")]).then(function(a){
     var CR=a[0],OUT=a[1],LLM=a[2],h=g("vp-hero");
     if(!CR){if(h)h.style.display="none";return;}
+    var _d=CR.asof||CR.date||"",_le=document.querySelector(".vp-hero-lbl");
+    if(_le&&_d)_le.textContent="🎯 今日结论 · 数据截至 "+_d+" · 公开计分";
     _score=CR.score; gauge(_score);
     g("vp-act").innerHTML='<span style="color:'+col(_score)+'">'+escc(CR.action||CR.stance)+'</span>';
     var sub=escc(CR.stance)+" "+(_score==null?"":(_score>=0?"+":"")+_score)+(CR.confidence_level?" · 置信"+escc(CR.confidence_level):"");

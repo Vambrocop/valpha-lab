@@ -51,7 +51,7 @@ const I18N={
         en:"<b>A gainers board = what already rose, survivors only (survivorship bias).</b> On the list ≠ buy it — semis topping it now is this cycle's theme, <b>not the future</b>; big gains usually carry big drawdowns. Read the structure, don't chase."},
   foot:{zh:"点列头排序。🔥6月涨≥50% · ⚠️波动≥70% · 🏰波动≤25%。数据：实时 valpha150.json，描述性历史、非预测。",
         en:"Click a header to sort. 🔥6M≥50% · ⚠️vol≥70% · 🏰vol≤25%. Data: live valpha150.json — descriptive history, not a forecast."},
-  cn:{zh:"名称",en:"Name"},csec:{zh:"板块",en:"Sector"},c6:{zh:"6月%",en:"6M%"},c1:{zh:"1年%",en:"1Y%"},cv:{zh:"波动%",en:"Vol%"},cfh:{zh:"距52周高%",en:"vs 52W%"},ctag:{zh:"标签",en:"Tags"},
+  cn:{zh:"名称",en:"Name"},csec:{zh:"板块",en:"Sector"},cp:{zh:"股价$",en:"Price$"},cd1:{zh:"昨日%",en:"1D%"},cw1:{zh:"近一周%",en:"1W%"},cm1:{zh:"近一月%",en:"1M%"},c6:{zh:"6月%",en:"6M%"},c1:{zh:"1年%",en:"1Y%"},cv:{zh:"波动%",en:"Vol%"},cfh:{zh:"距52周高%",en:"vs 52W%"},ctag:{zh:"标签",en:"Tags"},
   all:{zh:"全部",en:"All"},live:{zh:"实时 ✓",en:"Live ✓"},err:{zh:"拉不到 valpha150.json——确认已部署。",en:"Can't load valpha150.json — check deployment."},asof:{zh:"数据日",en:"as of"}
 };
 const $=id=>document.getElementById(id);
@@ -71,7 +71,7 @@ function applyStatic(){
   document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
 }
 function render(){
-  const COLS=[["n","cn"],["sec","csec"],["c6","c6"],["c1","c1"],["v","cv"],["fh","cfh"],["tag","ctag"]];
+  const COLS=[["n","cn"],["sec","csec"],["p","cp"],["d1","cd1"],["w1","cw1"],["m1","cm1"],["c6","c6"],["c1","c1"],["v","cv"],["fh","cfh"],["tag","ctag"]];
   let rows=DATA.filter(d=>!filt||d.sec===filt);
   rows.sort((a,b)=>{const x=a[sortCol],y=b[sortCol];if(x==null)return 1;if(y==null)return -1;
     return (typeof x==="number")?(y-x)*dir*-1:String(x).localeCompare(String(y),'zh')*dir*-1;});
@@ -80,6 +80,7 @@ function render(){
   h+="</tr></thead><tbody>";
   rows.forEach(d=>{h+=`<tr><td>${nm(d)}</td>
     <td><span class="dot" style="background:${SEC[d.sec]||'#888'}"></span>${esc(secName(d.sec))}</td>
+    <td>${d.p==null?'<span class="mut">—</span>':d.p}</td><td>${pn(d.d1)}</td><td>${pn(d.w1)}</td><td>${pn(d.m1)}</td>
     <td>${pn(d.c6)}</td><td>${pn(d.c1)}</td><td>${d.v==null?'<span class="mut">—</span>':d.v}</td><td>${pn(d.fh)}</td>
     <td style="text-align:left">${tagOf(d)}</td></tr>`;});
   h+="</tbody>";$("tbl").innerHTML=h;

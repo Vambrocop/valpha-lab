@@ -140,6 +140,9 @@ const CONF_EN={"高":"high","中":"med","低":"low"};
 function renderHero(){
   drawGauge(CR?CR.score:null);
   if(!CR){return;}
+  const _d=CR.asof||CR.date||"";
+  const _le=document.querySelector('.hero-lbl[data-i18n="heroLbl"]');
+  if(_le&&_d)_le.textContent=t("heroLbl")+(LANG==="en"?" · as of "+_d:" · 数据截至 "+_d);
   const sc=CR.score;
   const act=LANG==="en"?actionEN(sc):(CR.action||CR.stance);
   const col=sc==null?"var(--mut)":sc>0.13?"var(--grn)":sc<-0.13?"var(--red)":"var(--fg)";

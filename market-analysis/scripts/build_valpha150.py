@@ -23,18 +23,26 @@ def compute_metrics(p):
 
     把原 main 循环体里逐股的指标计算抽成无 I/O 的纯函数，便于单测；
     行为与抽取前逐字一致（c6/c1 需 >126/>252 天才算，否则 None）。
-    返回 dict: {p, c6, c1, v, fh}（不含 t/n/sec 等元数据，由调用方拼）。
+    返回 dict: {p, d1, w1, m1, c6, c1, v, fh}（d1/w1/m1=昨日/近一周/近一月涨跌；不含 t/n/sec 等元数据）。
     """
     p = p.dropna()
     if len(p) < MIN_HIST:
         return None
     ret = p.pct_change()
     last = float(p.iloc[-1])
+
+    def chg(n):
+        """近 n 个交易日涨跌 %（n 天前收盘→最新收盘）；历史不够则 None。"""
+        return round((last / p.iloc[-(n + 1)] - 1) * 100, 2) if len(p) > n else None
+
+    d1 = chg(1)    # 昨日→今日
+    w1 = chg(5)    # 近一周（~5 交易日）
+    m1 = chg(21)   # 近一月（~21 交易日）
     c6 = round((last / p.iloc[-126] - 1) * 100, 1) if len(p) > 126 else None
     c1 = round((last / p.iloc[-252] - 1) * 100, 1) if len(p) > 252 else None
     vol = round(float(ret.tail(20).std() * np.sqrt(252) * 100), 1)
     fh = round((last / p.tail(252).max() - 1) * 100, 1)
-    return {"p": round(last, 2), "c6": c6, "c1": c1, "v": vol, "fh": fh}
+    return {"p": round(last, 2), "d1": d1, "w1": w1, "m1": m1, "c6": c6, "c1": c1, "v": vol, "fh": fh}
 
 
 def build_all():

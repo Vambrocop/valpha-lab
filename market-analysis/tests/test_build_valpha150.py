@@ -100,7 +100,20 @@ def test_volatility_annualization_handcomputed():
     assert m["v"] > 0          # 有波动 → 非 0（不是平序列）
 
 
+def test_recent_window_changes_handcomputed():
+    # 近 1/5/21 交易日涨跌（昨日/近一周/近一月）：在对应参照位精确放价手算
+    vals = [100.0] * 260
+    n = len(vals)
+    vals[n - 2] = 80.0      # p.iloc[-2]=80 → d1 = (100/80-1)*100 = +25%
+    vals[n - 6] = 50.0      # p.iloc[-6]=50 → w1 = (100/50-1)*100 = +100%
+    vals[n - 22] = 40.0     # p.iloc[-22]=40 → m1 = (100/40-1)*100 = +150%
+    m = compute_metrics(_series(vals))   # last = 100.0
+    assert m["d1"] == 25.0
+    assert m["w1"] == 100.0
+    assert m["m1"] == 150.0
+
+
 def test_metric_keys_are_stable_contract():
     # 返回 dict 的键集是前端契约，别悄悄改名/漏字段
     m = compute_metrics(_series([100.0] * 260))
-    assert set(m) == {"p", "c6", "c1", "v", "fh"}
+    assert set(m) == {"p", "d1", "w1", "m1", "c6", "c1", "v", "fh"}
