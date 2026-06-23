@@ -174,11 +174,8 @@ def main():
         print("无任何报价（限流/休市异常），保留旧 quotes.json")
         sys.exit(0)
 
-    for d in (WEB, DOCS):
-        if d.exists():
-            with open(d / "quotes.json", "w", encoding="utf-8") as f:
-                json.dump(out, f, ensure_ascii=False, separators=(",", ":"),
-                          allow_nan=False)
+    from util_io import write_json
+    write_json("quotes.json", out, indent=None, separators=(",", ":"), allow_nan=False)
     print(f"[OK] quotes.json → {len(out['quotes'])} 个报价")
 
 

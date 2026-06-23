@@ -69,10 +69,8 @@ def main():
         "bearish": bot,
         "disclaimer": DISCLAIMER,
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (WEB, DOCS):
-        if d.exists():
-            (d / "outlook.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("outlook.json", out, allow_nan=False)
     print(f"[OK] outlook — 纳指{index_call['call'] if index_call else '?'}；看好 {len(top)} / 看淡 {len(bot)}")
     return out
 

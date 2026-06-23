@@ -134,10 +134,8 @@ def _assert_no_forbidden(out):
 
 def run():
     out = build_digest()
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (WEB, DOCS):
-        if d.exists():
-            (d / "digest.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("digest.json", out, allow_nan=False)
     # append-only 历史（保留近 90 条，供周报 rollup）
     hist = []
     if HIST.exists():

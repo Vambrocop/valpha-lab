@@ -111,10 +111,8 @@ def main():
     log.to_csv(LOG, index=False)
     out = scorecard(log)
     out["generated"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (WEB, DOCS):
-        if d.exists():
-            (d / "tipjar.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("tipjar.json", out, allow_nan=False)
     print(f"[OK] tipjar — 战绩 {out['hits']}/{out['n_scored']}"
           + (f" = {out['hit_rate']}%（≈掷硬币就对了）" if out["hit_rate"] is not None else "")
           + (f"；最新判断 {out['latest']['as_of']}→{out['latest']['call']}" if out["latest"] else ""))

@@ -292,15 +292,10 @@ def main():
         print("✗ 一份都没抓到/解析到——保留旧 insider.json（若有），不写坏数据")
         sys.exit(0)
 
-    # 写 web/ + 镜像 docs/（照 quick_quotes.py 双写；SPIKE 阶段也可先只写 processed/）
+    # 写 data/processed + web/ + docs/（proc=True）；SPIKE 阶段 PROCESSED 必写到
+    from util_io import write_json
     PROCESSED.mkdir(parents=True, exist_ok=True)
-    targets = [PROCESSED]
-    for d in (WEB, DOCS):
-        if d.exists():
-            targets.append(d)
-    for d in targets:
-        with open(d / "insider.json", "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False, indent=1, allow_nan=False)
+    write_json("insider.json", out, indent=1, allow_nan=False, proc=True)
     print(f"[OK] insider.json：扫描 {scanned} 份、买入 {len(buys)} 行、失败 {errors} 份")
     if buys:
         top = buys[0]
