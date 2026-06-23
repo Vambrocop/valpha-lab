@@ -17,6 +17,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from stats_util import forward_returns
+
 BASE = Path(__file__).parent.parent
 RAW = BASE / "data" / "raw" / "combined_prices.csv"
 LOG = BASE / "data" / "btc_backtest_log.csv"
@@ -52,7 +54,7 @@ def _dist(fwd):
 
 def _conditional(px):
     """① 条件前向 FWD 日收益 by BTC 动量状态（描述性证据，非交易）。"""
-    fwd = px["NASDAQ"].shift(-FWD) / px["NASDAQ"] - 1.0
+    fwd = forward_returns(px["NASDAQ"], FWD)
     st = _state(px["btc_mom"].values)
     out = {"base": _dist(fwd)}
     for s in ("pos", "neutral", "neg"):
@@ -88,7 +90,7 @@ def _perf(ret, idx=None):
 
 def _regimes(px):
     """③ 多体制稳健性：分时段看「条件优势(pos上涨率−neg上涨率)」与策略 vs 买入持有 是否各段都站得住。"""
-    fwd = px["NASDAQ"].shift(-FWD) / px["NASDAQ"] - 1.0
+    fwd = forward_returns(px["NASDAQ"], FWD)
     st = _state(px["btc_mom"].values)
     pos, strat, bh = _backtest(px)
     rows = []

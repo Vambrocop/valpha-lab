@@ -1,7 +1,19 @@
 """#3 校准漂移诊断（stats_util.calibration_drift）：合成数据，无网络。"""
 import numpy as np
+import pandas as pd
 
-from stats_util import calibration_drift
+from stats_util import calibration_drift, forward_returns
+
+
+def test_forward_returns_equiv_and_no_lookahead():
+    """与内联 `s.shift(-h)/s - 1` 逐元素等价；末 h 个为 NaN（含未来价，调用方自负对齐）。"""
+    s = pd.Series([10.0, 11.0, 12.0, 9.0, 13.5], index=pd.RangeIndex(5))
+    for h in (1, 2):
+        got = forward_returns(s, h)
+        pd.testing.assert_series_equal(got, s.shift(-h) / s - 1)
+        assert got.iloc[-h:].isna().all()          # 末 h 个无未来价 → NaN
+    fr1 = forward_returns(s, 1)
+    assert abs(fr1.iloc[0] - 0.1) < 1e-12 and abs(fr1.iloc[2] - (9 / 12 - 1)) < 1e-12
 
 
 def _make(biases, n=3000, seed=0):

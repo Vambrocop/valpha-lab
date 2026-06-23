@@ -16,6 +16,8 @@ import pandas as pd
 from pathlib import Path
 from scipy import stats
 
+from stats_util import forward_returns
+
 SCRIPTS  = Path(__file__).parent
 RAW_DIR  = SCRIPTS.parent / "data" / "raw"
 PROC_DIR = SCRIPTS.parent / "data" / "processed"
@@ -77,7 +79,7 @@ def vxn_vix_spread(vxn, vix):
 # ── (2) 条件下行风险：VIX 分档 × NASDAQ 前瞻 20 日 5% 分位 ────────
 def conditional_downside(ixic, vix, horizon=HORIZON, q=Q_TAIL, n_bins=N_BINS):
     df = ixic.rename("px").to_frame().join(vix.rename("vix"), how="inner").sort_index()
-    df["fwd"] = df["px"].shift(-horizon) / df["px"] - 1     # 前瞻收益（末 horizon 行为 NaN）
+    df["fwd"] = forward_returns(df["px"], horizon)         # 前瞻收益（末 horizon 行为 NaN）
     df = df.dropna()
     if len(df) < n_bins * horizon * 10:          # 重叠窗口下样本要足够大才有意义（审查 SHOULD-FIX）
         return []

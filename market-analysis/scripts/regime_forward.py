@@ -14,6 +14,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from stats_util import forward_returns
+
 BASE = Path(__file__).parent.parent
 RAW = BASE / "data" / "raw" / "combined_prices.csv"
 LOG = BASE / "data" / "regime_forward_log.csv"
@@ -44,7 +46,7 @@ def run(write=True):
     df = pd.read_csv(RAW, index_col="Date", parse_dates=True).sort_index()
     px = df[ASSET].dropna()
     idx = px.index
-    fwd = {h: px.shift(-h) / px - 1 for h in HORIZONS}          # 前向 h 日收益
+    fwd = {h: forward_returns(px, h) for h in HORIZONS}         # 前向 h 日收益
 
     def _align(col):
         return df[col].reindex(idx).ffill(limit=5)

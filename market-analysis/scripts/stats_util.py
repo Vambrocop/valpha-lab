@@ -124,3 +124,15 @@ def by_reject(pvals, q):
     m = len(pvals)
     c_m = sum(1.0 / i for i in range(1, m + 1))
     return bh_reject(pvals, q / c_m), c_m
+
+
+def forward_returns(prices, h):
+    """前向 h 期简单收益：price[t+h]/price[t] − 1（末 h 个为 NaN）。单一实现。
+
+    供 btc_nasdaq_backtest / regime_forward / risk_dashboard 共用——此前各自写 `s.shift(-h)/s - 1`
+    （审计 B3/D3 提过：look-ahead 敏感、易漂出不一致变体，集中到一处可审计）。
+    ⚠️ 含未来价：只用于「给定 t 状态 → 看未来收益」的描述/回测对齐；调用方须自行把它与 t 时点
+    【已知】的信号对齐（如 pos = sig.shift(1)），别把它当 t 时点可交易的量。
+    prices 为 pandas Series / DataFrame 皆可（按 index 对齐 shift）。
+    """
+    return prices.shift(-h) / prices - 1
