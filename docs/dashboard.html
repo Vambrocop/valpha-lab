@@ -9,6 +9,18 @@
      同源自托管而非 cdn.plot.ly：中国访客访问境外 CDN 不可靠，挂了会全站无图 -->
 <script src="plotly-cartesian-2.35.2.min.js"></script>
 <link rel="stylesheet" href="style.css">
+<style>
+  /* 今日结论 hero（去重④后的 canvas 倾向仪表·先给结论·自包含不依赖 app-*.js）*/
+  .vp-hero{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;background:linear-gradient(135deg,rgba(163,113,247,.13),rgba(88,166,255,.06));border:1px solid #a371f7;border-radius:14px;padding:16px 18px;max-width:760px;margin:0 auto 1.3rem}
+  .vp-hero canvas{display:block}
+  .vp-hero-lbl{font-size:.72rem;letter-spacing:.4px;color:var(--muted)}
+  .vp-hero-act{font-size:1.9rem;font-weight:800;line-height:1.05;margin-top:3px}
+  .vp-hero-sub{font-size:.92rem;margin-top:5px;line-height:1.5}
+  .vp-hero-read{font-size:.83rem;color:var(--muted);margin-top:8px;line-height:1.5}
+  .vp-hero-acct{display:inline-block;margin-top:9px;font-size:.78rem;color:#a371f7;text-decoration:none;border:1px solid #a371f7;border-radius:20px;padding:3px 12px}
+  .vp-hero-acct:hover{background:rgba(163,113,247,.15)}
+  @media(max-width:560px){.vp-hero{grid-template-columns:1fr;text-align:center}.vp-hero canvas{margin:0 auto}}
+</style>
 </head>
 <body>
 
@@ -83,9 +95,21 @@
 
 <!-- ════════ 今日：现在该不该动手 ════════ -->
 <section id="view-today">
-  <div class="view-intro" data-i18n="vi-today">📊 <b>今日：现在该不该动手。</b>信号、每日简报、风险红绿灯、卖出评估——一屏看完当下状态。⚠ 信号为实验性，方向不可靠预测，仅供参考。</div>
+
+  <div class="vp-hero" id="vp-hero">
+    <div><canvas id="vp-gauge" width="240" height="140" aria-label="今日倾向仪表"></canvas></div>
+    <div>
+      <div class="vp-hero-lbl">🎯 今日结论 · 敢给方向 · 公开计分</div>
+      <div class="vp-hero-act" id="vp-act">—</div>
+      <div class="vp-hero-sub" id="vp-sub"></div>
+      <div class="vp-hero-read" id="vp-read"></div>
+      <a class="vp-hero-acct" href="scorecard.html">敢说也敢认账 · 公开战绩卡 →</a>
+    </div>
+  </div>
+
+  <div class="view-intro" data-i18n="vi-today">📊 <b>今日：现在该不该动手。</b>上面是当下结论（倾向 / 方向），下面是支撑它的信号、简报、风险红绿灯、卖出评估——一屏看完。⚠ 实验性、会错，每条都公开计分。</div>
   <div class="panel" id="daily-digest-panel" style="display:none">
-    <div class="panel-title">📋 今日摘要 <span style="font-weight:400;color:var(--muted);font-size:.7rem;">描述 + 诚实留意点，不预测方向、不荐股</span></div>
+    <div class="panel-title">📋 今日摘要 <span style="font-weight:400;color:var(--muted);font-size:.7rem;">描述 + 诚实留意点</span></div>
     <div id="daily-digest"></div>
   </div>
   <div class="view-grid">
@@ -886,6 +910,43 @@
   if(btn) btn.addEventListener("click",()=>{lang=lang==="en"?"zh":"en";
     try{localStorage.setItem("valpha_lang",lang);}catch(e){} apply();});
   apply();
+})();
+</script>
+<script>
+/* 今日结论 hero：自包含、命名空间隔离(不碰 app-*.js)。读 composite_read/outlook/llm_read，画 canvas 倾向仪表，先给 买/持/避 + 方向。*/
+(function(){
+  var _score=null;
+  function g(id){return document.getElementById(id);}
+  function escc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function col(s){return s==null?"#9da7b3":s>0.13?"#3fb950":s<-0.13?"#f85149":"#e6edf3";}
+  function gauge(s){
+    var cv=g("vp-gauge"); if(!cv) return;
+    var ctx=cv.getContext("2d"),dpr=window.devicePixelRatio||1,W=cv.clientWidth||240,H=140;
+    cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+    var cx=W/2,cy=H-22,R=Math.min(W/2-16,H-34),A=function(v){return Math.PI+(v+1)/2*Math.PI;};
+    function zone(a,b,c){ctx.beginPath();ctx.lineWidth=14;ctx.strokeStyle=c;ctx.arc(cx,cy,R,A(a),A(b));ctx.stroke();}
+    zone(-1,-0.13,"#f85149");zone(-0.13,0.13,"#6e7681");zone(0.13,1,"#3fb950");
+    if(s!=null){var th=A(Math.max(-1,Math.min(1,s)));
+      ctx.beginPath();ctx.lineWidth=3;ctx.strokeStyle="#e6edf3";ctx.moveTo(cx,cy);ctx.lineTo(cx+(R-4)*Math.cos(th),cy+(R-4)*Math.sin(th));ctx.stroke();
+      ctx.beginPath();ctx.arc(cx,cy,5,0,6.29);ctx.fillStyle="#e6edf3";ctx.fill();}
+    ctx.fillStyle="#9da7b3";ctx.font="10px sans-serif";
+    ctx.textAlign="left";ctx.fillText("防御",cx-R-2,cy+13);
+    ctx.textAlign="right";ctx.fillText("积极",cx+R+2,cy+13);
+    ctx.textAlign="center";ctx.fillText("中性",cx,cy-R-5);
+  }
+  function gj(f){return fetch(f,{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}
+  Promise.all([gj("composite_read.json"),gj("outlook.json"),gj("llm_read.json")]).then(function(a){
+    var CR=a[0],OUT=a[1],LLM=a[2],h=g("vp-hero");
+    if(!CR){if(h)h.style.display="none";return;}
+    _score=CR.score; gauge(_score);
+    g("vp-act").innerHTML='<span style="color:'+col(_score)+'">'+escc(CR.action||CR.stance)+'</span>';
+    var sub=escc(CR.stance)+" "+(_score==null?"":(_score>=0?"+":"")+_score)+(CR.confidence_level?" · 置信"+escc(CR.confidence_level):"");
+    if(OUT&&OUT.index_call){var ic=OUT.index_call,cc=ic.call==="看涨"?"#3fb950":ic.call==="看跌"?"#f85149":"#e6edf3";
+      sub+=' · 纳指'+escc(ic.horizon)+' <b style="color:'+cc+'">'+escc(ic.call)+'</b> <span style="color:#9da7b3">(prob '+escc(ic.prob)+' · tier '+escc(ic.tier)+')</span>';}
+    g("vp-sub").innerHTML=sub;
+    g("vp-read").textContent=(LLM&&LLM.text)?LLM.text:"";
+  });
+  window.addEventListener("resize",function(){gauge(_score);});
 })();
 </script>
 </body>
