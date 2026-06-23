@@ -292,11 +292,9 @@ def run_all(write=True, q=0.10):
         "q": q, "n_declared": cs.N_DECLARED, "days_tracked": _log_days(), "summary": s,
         "candidates": sorted(results, key=lambda r: r["p"]),
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
     if write:
-        for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-            if d.exists():
-                (d / "autodiscovery.json").write_text(payload, encoding="utf-8")
+        from util_io import write_json
+        write_json("autodiscovery.json", out, proc=True, allow_nan=False)
         print(f"[OK] autodiscovery.json — 测 {s['m_total']} / 跨族存活 {s['n_survive_cross']} "
               f"(族内 {s['n_survive_family']}) / 已淡 {s['n_faded']} / 检验力不足 {s['n_inconclusive']}")
     return out

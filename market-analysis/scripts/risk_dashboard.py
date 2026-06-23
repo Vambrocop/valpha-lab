@@ -230,10 +230,8 @@ def run_all():
         "evt": evt,
         "drawdown": drawdown,
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-        if d.exists():
-            (d / "risk_dashboard.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("risk_dashboard.json", out, proc=True, allow_nan=False)
 
     if spread.get("status") == "ok":
         print(f"  VXN−VIX 价差 = {spread['current']}（历史 {spread['percentile']} 分位 · {spread['regime']}）")

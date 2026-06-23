@@ -116,11 +116,9 @@ def run_all(write=True):
         "verdict": f"全站 {m} 项显著性主张，跨族 BY(任意相关稳健, q=0.10)仅 {len(rej_by10)} 项经得起"
                    f"（BH 乐观留 {len(rej_bh10)}）。存活：{('、'.join(survivors)) or '无'}。",
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
     if write:                                  # 测试传 write=False:不写生产 JSON(防 pytest 污染工作树→时间戳churn)
-        for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-            if d.exists():
-                (d / "fdr_crossfamily.json").write_text(payload, encoding="utf-8")
+        from util_io import write_json
+        write_json("fdr_crossfamily.json", out, proc=True, allow_nan=False)
         print(f"  {out['verdict']}")
         print("[OK] fdr_crossfamily.json")
     return out

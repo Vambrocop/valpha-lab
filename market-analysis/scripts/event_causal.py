@@ -158,10 +158,8 @@ def run_all():
                   "零分布已含系数估计不确定性(偏保守)。",
         "events": events, "spcx": spcx,
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-        if d.exists():
-            (d / "event_causal.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("event_causal.json", out, proc=True, allow_nan=False)
     print(f"[OK] event_causal.json：{len(events)} 个事件 + SPCX 钩子")
     return out
 

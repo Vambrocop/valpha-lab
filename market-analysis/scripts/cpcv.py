@@ -112,10 +112,8 @@ def run_all():
         "source": f"walk_forward 特征 df({len(factors)} 个二值因子)", "s_slices": S_SLICES,
         "horizon": HORIZON, "result": res,
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-        if d.exists():
-            (d / "cpcv.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("cpcv.json", out, proc=True, allow_nan=False)
     print(f"  {res['verdict']}  (n_combos={res['n_combos']}, 因子={len(factors)})")
     print("[OK] cpcv.json")
     return out

@@ -379,10 +379,8 @@ def run_all():
         "summary": summary,
         "tickers": out_tickers,
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-        if d.exists():
-            (d / "stock_checkup.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("stock_checkup.json", out, proc=True, allow_nan=False)
     print(f"[OK] stock_checkup.json（{len(out_tickers)} 票）")
     return out
 

@@ -260,10 +260,8 @@ def run_all():
                  "n_daily": int(len(ret))},
         "tests": tests,
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-        if d.exists():
-            (d / "placebo_tests.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("placebo_tests.json", out, proc=True, allow_nan=False)
 
     icon = {"real": "✓ 真实", "rejected": "✗ 未显现", "inconclusive": "— 无定论"}
     print(f"\n  {'效应':<16}{'p值':>8}{'q值(FDR)':>10}  {'最小组n':>7}  结论")

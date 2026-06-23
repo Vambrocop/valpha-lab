@@ -129,11 +129,9 @@ def run_all(write=True):
                   "方向信号 walk-forward 无样本外优势（权重已压最低）。倾向 = 条件读数，每日 append 到 "
                   "composite_log 公开计分、可追责。市场大体有效，过去≠未来——给你有据的参考，自己拍。",
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
     if write:
-        for d in (PROC, WEB, DOCS):
-            if d.exists():
-                (d / "composite_read.json").write_text(payload, encoding="utf-8")
+        from util_io import write_json
+        write_json("composite_read.json", out, proc=True, allow_nan=False)
         _append_log(today, out)
         print(f"[OK] composite_read.json — 倾向：{out['stance']}（score {out['score']}）· {len(F)} 因子 · {out['usable_tilt']}")
     return out

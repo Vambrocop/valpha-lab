@@ -161,10 +161,8 @@ def run_all():
         "conditional_by_vix": conditional,
         "conditional_period": cond_period,
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-        if d.exists():
-            (d / "conformal.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("conformal.json", out, proc=True, allow_nan=False)
     print(f"[OK] conformal.json")
     return out
 

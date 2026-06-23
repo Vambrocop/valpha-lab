@@ -147,10 +147,8 @@ def run_all():
         "data_start": str(m.index[0].date()), "data_end": str(m.index[-1].date()),
         "n_surrogate": N_SURR, "seed": SEED, "result": res,
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-        if d.exists():
-            (d / "cycles.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("cycles.json", out, proc=True, allow_nan=False)
     if res.get("status") == "ok":
         print(f"  AR1 ρ={res['ar1_rho']} · {res['verdict']}")
     print("[OK] cycles.json")

@@ -157,10 +157,8 @@ def run_all():
                   "信用维度用穆迪 Baa-10Y(ICE 高收益利差在 FRED 仅~2年,访问受限);羊群=8 只大盘股近60日平均两两相关。",
         **res,
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-        if d.exists():
-            (d / "market_regime.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("market_regime.json", out, proc=True, allow_nan=False)
     print("[OK] market_regime.json")
     return out
 

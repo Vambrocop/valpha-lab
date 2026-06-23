@@ -126,11 +126,9 @@ def run_all(write=True):
         "world_cup": world_cup(ret),
         "btc_halving": btc_halving(),
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
     if write:
-        for d in (PROC, WEB, DOCS):
-            if d.exists():
-                (d / "seasonality.json").write_text(payload, encoding="utf-8")
+        from util_io import write_json
+        write_json("seasonality.json", out, proc=True, allow_nan=False)
         sep = out["monthly"]
         worst = min(sep, key=lambda x: x["avg_pct"]); best = max(sep, key=lambda x: x["pos_pct"])
         print(f"[OK] seasonality.json — 最差月 {worst['label']}({worst['avg_pct']}%/{worst['pos_pct']}%涨)、"

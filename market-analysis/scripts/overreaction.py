@@ -121,10 +121,8 @@ def run_all():
         "source": "S&P 500 (^GSPC)", "seed": SEED,
         **res,
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2, allow_nan=False)
-    for d in (PROC_DIR, WEB_DIR, DOCS_DIR):
-        if d.exists():
-            (d / "overreaction.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("overreaction.json", out, proc=True, allow_nan=False)
     print("[OK] overreaction.json")
     return out
 
