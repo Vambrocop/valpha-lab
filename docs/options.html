@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🎓 期权教学沙盒 · Options Sandbox</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#c678dd;--amber:#e3a008}
+  *{box-sizing:border-box}
+  :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:920px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:var(--panel);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .sub{color:var(--mut);font-size:.8rem;margin:0 0 6px}
+  h2{font-size:1rem;margin:20px 0 6px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 14px;margin:10px 0}
+  .ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px 14px;margin:4px 0 10px}
+  .ctrls label{display:block;color:var(--mut);font-size:.76rem;margin-bottom:3px}
+  .ctrls input,.ctrls select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:5px 7px;font-size:.86rem}
+  .seg{display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+  .seg button{flex:1;background:var(--bg);border:0;color:var(--mut);padding:6px 4px;cursor:pointer;font-size:.82rem}
+  .seg button.on{background:var(--acc);color:#fff;font-weight:600}
+  canvas{width:100%;display:block;border-radius:8px;background:#0a0d12;border:1px solid var(--border)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .stat{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 9px;text-align:center}
+  .stat .k{color:var(--mut);font-size:.72rem}
+  .stat .v{font-size:1.05rem;font-weight:700;margin-top:2px}
+  .pos{color:var(--grn)}.neg{color:var(--red)}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:4px}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--mut);font-weight:600}
+  .gk{color:var(--mut);font-size:.74rem;margin-top:2px}
+  .why li{margin:6px 0}
+  .why b{color:var(--fg)}
+  .warn{background:rgba(227,160,8,.1);border:1px solid var(--amber);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:.82rem;color:#f0c674}
+  .mut{color:var(--mut);font-size:.76rem;margin-top:18px;border-top:1px solid var(--border);padding-top:8px;line-height:1.6}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.12rem}.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<p class="sub" data-i18n="intro"></p>
+
+<h2 data-i18n="hPay"></h2>
+<p class="sub" data-i18n="sPay"></p>
+<div class="card">
+  <div class="ctrls">
+    <div><label data-i18n="lType"></label>
+      <div class="seg" id="segType">
+        <button data-v="call" data-i18n="call"></button>
+        <button data-v="put" data-i18n="put"></button>
+      </div></div>
+    <div><label data-i18n="lDir"></label>
+      <div class="seg" id="segDir">
+        <button data-v="buy" data-i18n="buy"></button>
+        <button data-v="sell" data-i18n="sell"></button>
+      </div></div>
+    <div><label data-i18n="lK"></label><input id="K" type="number" value="100" min="1" step="1"></div>
+    <div><label data-i18n="lPrem"></label><input id="prem" type="number" value="5" min="0" step="0.5"></div>
+  </div>
+  <canvas id="cv" height="260" aria-label="payoff diagram"></canvas>
+  <div class="stats">
+    <div class="stat"><div class="k" data-i18n="be"></div><div class="v" id="vBe">—</div></div>
+    <div class="stat"><div class="k" data-i18n="maxP"></div><div class="v pos" id="vMaxP">—</div></div>
+    <div class="stat"><div class="k" data-i18n="maxL"></div><div class="v neg" id="vMaxL">—</div></div>
+  </div>
+  <div class="warn" id="warn" hidden></div>
+</div>
+
+<h2 data-i18n="hBsm"></h2>
+<p class="sub" data-i18n="sBsm"></p>
+<div class="card">
+  <div class="ctrls">
+    <div><label data-i18n="bS"></label><input id="bS" type="number" value="100" min="0.01" step="1"></div>
+    <div><label data-i18n="bK"></label><input id="bK" type="number" value="100" min="0.01" step="1"></div>
+    <div><label data-i18n="bT"></label><input id="bT" type="number" value="30" min="1" step="1"></div>
+    <div><label data-i18n="bVol"></label><input id="bVol" type="number" value="40" min="1" step="1"></div>
+    <div><label data-i18n="bR"></label><input id="bR" type="number" value="4" min="0" step="0.25"></div>
+  </div>
+  <div style="overflow-x:auto"><table id="bsm"></table></div>
+  <div class="gk" id="thetaNote"></div>
+</div>
+
+<h2 data-i18n="hWhy"></h2>
+<ul class="why" id="whyList"></ul>
+
+<div class="mut" id="caveat"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh";try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+const INF="∞";
+
+const I18N={
+  title:{zh:"🎓 期权教学沙盒",en:"🎓 Options Learning Sandbox"},
+  intro:{zh:"纯教学：手动搭一条腿看到期盈亏、用 Black-Scholes 看理论价与希腊字母。无实时行情、不点任何代码、不给买卖建议——只帮你看懂期权的「数学」，尤其是为什么大多数买方长期亏钱。",
+         en:"Pure teaching: build one leg to see its payoff at expiry, and use Black-Scholes to see theoretical price and Greeks. No live quotes, no tickers, no buy/sell advice — just the math of options, especially why most buyers lose over time."},
+  hPay:{zh:"① 到期盈亏图（手动搭一条腿）",en:"① Payoff at expiry (build one leg)"},
+  sPay:{zh:"选类型/方向、填行权价和权利金，看这条腿到期时在不同股价下的盈亏。权利金是你一开始就付/收的钱。",
+        en:"Pick type/direction, enter strike and premium, and see this leg's profit/loss at expiry across stock prices. Premium is the money paid/received up front."},
+  lType:{zh:"类型",en:"Type"},lDir:{zh:"方向",en:"Direction"},
+  lK:{zh:"行权价 K",en:"Strike K"},lPrem:{zh:"权利金",en:"Premium"},
+  call:{zh:"看涨 Call",en:"Call"},put:{zh:"看跌 Put",en:"Put"},
+  buy:{zh:"买入",en:"Buy"},sell:{zh:"卖出",en:"Sell"},
+  be:{zh:"盈亏平衡",en:"Breakeven"},maxP:{zh:"最大盈利",en:"Max profit"},maxL:{zh:"最大亏损",en:"Max loss"},
+  xPrice:{zh:"到期股价",en:"Price at expiry"},yPnl:{zh:"盈亏",en:"P/L"},
+  warnSell:{zh:"⚠️ 卖出期权的亏损「无上限」（卖看涨）/「极大」（卖看跌）——收的权利金有限，亏损可能远超它。这就是为什么裸卖期权对初学者很危险。",
+            en:"⚠️ Selling options has unlimited loss (short call) / very large loss (short put) — the premium you collect is capped, the loss is not. This is why naked selling is dangerous for beginners."},
+  hBsm:{zh:"② 理论定价 + 希腊字母沙盒",en:"② Theoretical price + Greeks sandbox"},
+  sBsm:{zh:"Black-Scholes-Merton 模型：给定现价、行权价、剩余天数、年化波动率、无风险利率，算理论价和敏感度（希腊字母）。真实价格还含供求、偏度等，这只是教学基准。",
+        en:"Black-Scholes-Merton: given spot, strike, days left, annualized vol, and risk-free rate, it gives a theoretical price and sensitivities (Greeks). Real prices also reflect supply/demand and skew — this is a teaching baseline."},
+  bS:{zh:"现价 S",en:"Spot S"},bK:{zh:"行权价 K",en:"Strike K"},bT:{zh:"剩余天数",en:"Days to expiry"},
+  bVol:{zh:"年化波动率 %",en:"Annual vol %"},bR:{zh:"无风险利率 %",en:"Risk-free %"},
+  gMetric:{zh:"指标",en:"Metric"},gCall:{zh:"看涨 Call",en:"Call"},gPut:{zh:"看跌 Put",en:"Put"},
+  gPrice:{zh:"理论价",en:"Theo. price"},gDelta:{zh:"Delta（涨1元期权变）",en:"Delta (per $1 move)"},
+  gGamma:{zh:"Gamma（Delta变化）",en:"Gamma (Δ of Delta)"},gTheta:{zh:"Theta/天（时间损耗）",en:"Theta/day (time decay)"},
+  gVega:{zh:"Vega（波动率+1%）",en:"Vega (per +1% vol)"},gRho:{zh:"Rho（利率+1%）",en:"Rho (per +1% rate)"},
+  thetaNote:{zh:"",en:""},
+  hWhy:{zh:"③ 为什么大多数人在期权上亏钱（数学，不是吓唬）",en:"③ Why most people lose on options (the math, not a scare)"},
+  why1:{zh:"<b>先付权利金</b>：买方一开始就交钱，股价得先涨/跌过「盈亏平衡」你才回本——上图那条线穿过 0 的位置。",
+        en:"<b>Premium paid up front</b>: buyers pay first; the price must move past breakeven (where the curve crosses 0 above) just to get even."},
+  why2:{zh:"<b>时间损耗（Theta）</b>：每过一天，时间价值就漏掉一点（沙盒里 Theta/天为负就是它）。横盘不动，买方也在慢慢亏。",
+        en:"<b>Time decay (Theta)</b>: every day, time value leaks away (the negative Theta/day in the sandbox). Even a flat stock bleeds the buyer."},
+  why3:{zh:"<b>要同时赌对三件事</b>：方向、幅度、时机。股票只需赌对方向；期权三个都得对，难度叠乘。",
+        en:"<b>You must be right on three things</b>: direction, magnitude, and timing. Stocks need only direction; options need all three, and the difficulty compounds."},
+  why4:{zh:"<b>买卖价差 + 手续费</b>：进出各被点差和佣金咬一口，频繁交易把小优势磨光。",
+        en:"<b>Bid-ask spread + fees</b>: every entry/exit pays the spread and commission; frequent trading grinds away any small edge."},
+  why5:{zh:"<b>对手方（卖方）有统计顺风</b>：大量虚值期权到期归零，卖方收时间价值。这不代表「该去裸卖」——见上图卖方亏损无上限的警告。",
+        en:"<b>The seller has a statistical tailwind</b>: many out-of-the-money options expire worthless, and the seller keeps the time value. That does NOT mean 'go sell naked' — see the unlimited-loss warning above."},
+  caveat:{zh:"⚠️ 纯教学工具，全部为客户端计算的理论值，非实时行情、非荐股、非投资建议。BSM 假设（恒定波动率、无跳空、欧式行权）在现实里都会被打破；真实期权还有美式提前行权、分红、波动率微笑等。期权风险高，可能损失全部本金甚至更多（卖方）。",
+          en:"⚠️ Teaching tool only; all values are client-side theoretical, not live quotes, not advice. BSM assumptions (constant vol, no jumps, European exercise) break in reality; real options have American exercise, dividends, vol smile, etc. Options are high-risk — you can lose your entire premium, or more (as a seller)."}
+};
+
+// ── state ──
+let TYPE="call", DIR="buy";
+
+// ── normal cdf / pdf (Abramowitz-Stegun 26.2.17, ~7dp) ──
+function nPdf(x){return 0.3989422804014327*Math.exp(-x*x/2);}
+function nCdf(x){
+  const t=1/(1+0.2316419*Math.abs(x));
+  const d=nPdf(x);
+  let p=d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));
+  return x>0?1-p:p;
+}
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+
+// ── payoff diagram ──
+function payoff(S,K,prem){
+  const intr=TYPE==="call"?Math.max(S-K,0):Math.max(K-S,0);
+  return DIR==="buy"?intr-prem:prem-intr;
+}
+function drawPayoff(){
+  const K=Math.max(0.01,+$("K").value||0), prem=Math.max(0,+$("prem").value||0);
+  const cv=$("cv"),ctx=cv.getContext("2d"),dpr=window.devicePixelRatio||1;
+  const W=cv.clientWidth||600,H=260;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  const lo=Math.max(0,K*0.5),hi=K*1.5,N=140;
+  const xs=[],ys=[];for(let i=0;i<=N;i++){const S=lo+(hi-lo)*i/N;xs.push(S);ys.push(payoff(S,K,prem));}
+  let ymin=Math.min(...ys,0),ymax=Math.max(...ys,0);
+  const padY=Math.max(1,(ymax-ymin)*0.14);ymin-=padY;ymax+=padY;
+  const ml=46,mr=14,mt=14,mb=28;
+  const px=S=>ml+(W-ml-mr)*(S-lo)/(hi-lo);
+  const py=v=>mt+(H-mt-mb)*(1-(v-ymin)/(ymax-ymin));
+  // shaded P/L segments
+  const yz=py(0);
+  for(let i=0;i<N;i++){
+    const x0=px(xs[i]),x1=px(xs[i+1]);
+    ctx.beginPath();ctx.moveTo(x0,yz);ctx.lineTo(x0,py(ys[i]));ctx.lineTo(x1,py(ys[i+1]));ctx.lineTo(x1,yz);ctx.closePath();
+    ctx.fillStyle=(ys[i]+ys[i+1])/2>=0?"rgba(63,185,80,.16)":"rgba(248,81,73,.16)";ctx.fill();
+  }
+  // zero line
+  ctx.strokeStyle="#444c56";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,yz);ctx.lineTo(W-mr,yz);ctx.stroke();
+  // strike marker
+  const xk=px(K);ctx.strokeStyle="#6e7681";ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(xk,mt);ctx.lineTo(xk,H-mb);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle="#8b949e";ctx.font="11px sans-serif";ctx.textAlign="center";ctx.fillText("K",xk,H-mb+13);
+  // breakeven marker
+  const be=TYPE==="call"?K+prem:K-prem;
+  if(be>=lo&&be<=hi){const xb=px(be);ctx.strokeStyle="#c678dd";ctx.setLineDash([2,3]);ctx.beginPath();ctx.moveTo(xb,mt);ctx.lineTo(xb,H-mb);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle="#c678dd";ctx.fillText("BE",xb,mt+10);}
+  // payoff curve
+  ctx.strokeStyle="#e6edf3";ctx.lineWidth=2;ctx.beginPath();
+  xs.forEach((S,i)=>{const X=px(S),Y=py(ys[i]);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.stroke();
+  // axis labels
+  ctx.fillStyle="#9da7b3";ctx.font="10px sans-serif";ctx.textAlign="right";
+  ctx.fillText(ymax.toFixed(0),ml-4,mt+8);ctx.fillText("0",ml-4,yz+3);ctx.fillText(ymin.toFixed(0),ml-4,H-mb);
+  ctx.textAlign="center";
+  ctx.fillText(lo.toFixed(0),ml,H-mb+13);ctx.fillText(hi.toFixed(0),W-mr-6,H-mb+13);
+  ctx.fillStyle="#6e7681";ctx.fillText(t("xPrice"),W/2,H-2);
+  // stats
+  const f=v=>(v>=0?"+":"")+v.toFixed(2);
+  $("vBe").textContent=be.toFixed(2);
+  let maxP,maxL,unlimited=false;
+  if(DIR==="buy"){
+    if(TYPE==="call"){maxP=INF;maxL=-prem;}
+    else{maxP=K-prem;maxL=-prem;}
+  }else{
+    if(TYPE==="call"){maxP=prem;maxL=null;unlimited=true;}   // short call: unlimited loss
+    else{maxP=prem;maxL=-(K-prem);}
+  }
+  $("vMaxP").textContent=maxP===INF?INF:f(maxP);
+  $("vMaxL").textContent=unlimited?("-"+INF):f(maxL);
+  const w=$("warn");
+  if(DIR==="sell"){w.hidden=false;w.textContent=t("warnSell");}else{w.hidden=true;}
+}
+
+// ── BSM ──
+function bsm(){
+  const S=+$("bS").value,K=+$("bK").value,days=Math.max(1,+$("bT").value),
+        vol=Math.max(0.0001,(+$("bVol").value)/100),r=(+$("bR").value)/100,Tt=days/365;
+  const sq=Math.sqrt(Tt),d1=(Math.log(S/K)+(r+vol*vol/2)*Tt)/(vol*sq),d2=d1-vol*sq;
+  const disc=Math.exp(-r*Tt),Nd1=nCdf(d1),Nd2=nCdf(d2),pdf=nPdf(d1);
+  const cPrice=S*Nd1-K*disc*Nd2, pPrice=K*disc*nCdf(-d2)-S*nCdf(-d1);
+  const cDelta=Nd1, pDelta=Nd1-1;
+  const gamma=pdf/(S*vol*sq);
+  const vega=S*pdf*sq/100;                              // per 1% vol
+  const cTheta=(-(S*pdf*vol)/(2*sq)-r*K*disc*Nd2)/365;  // per day
+  const pTheta=(-(S*pdf*vol)/(2*sq)+r*K*disc*nCdf(-d2))/365;
+  const cRho=K*Tt*disc*Nd2/100, pRho=-K*Tt*disc*nCdf(-d2)/100;
+  const row=(k,c,p)=>`<tr><td>${k}</td><td>${c}</td><td>${p}</td></tr>`;
+  const n=(v,d=2)=>(v>=0?"":"")+v.toFixed(d);
+  $("bsm").innerHTML=`<tr><th>${t("gMetric")}</th><th>${t("gCall")}</th><th>${t("gPut")}</th></tr>`
+    +row(t("gPrice"),`<b>${cPrice.toFixed(2)}</b>`,`<b>${pPrice.toFixed(2)}</b>`)
+    +row(t("gDelta"),n(cDelta,3),n(pDelta,3))
+    +row(t("gGamma"),n(gamma,4),n(gamma,4))
+    +row(t("gTheta"),`<span class="neg">${n(cTheta,3)}</span>`,`<span class="neg">${n(pTheta,3)}</span>`)
+    +row(t("gVega"),n(vega,3),n(vega,3))
+    +row(t("gRho"),n(cRho,3),n(pRho,3));
+  const tn=LANG==="zh"
+    ?`📉 这张看涨期权每天约流失 ${Math.abs(cTheta).toFixed(3)} 元时间价值（Theta）；横盘 ${days} 天大约漏掉 ${(Math.abs(cTheta)*days).toFixed(2)} 元——这就是买方的「隐形敌人」。`
+    :`📉 This call loses ~${Math.abs(cTheta).toFixed(3)} per day in time value (Theta); flat for ${days} days bleeds ~${(Math.abs(cTheta)*days).toFixed(2)} — the buyer's hidden enemy.`;
+  $("thetaNote").textContent=tn;
+}
+
+function renderWhy(){
+  $("whyList").innerHTML=["why1","why2","why3","why4","why5"].map(k=>`<li>${t(k)}</li>`).join("");
+}
+function setSeg(id,val,setter){
+  document.querySelectorAll("#"+id+" button").forEach(b=>b.classList.toggle("on",b.dataset.v===val));
+}
+function renderAll(){applyStatic();setSeg("segType",TYPE);setSeg("segDir",DIR);drawPayoff();bsm();renderWhy();$("caveat").textContent=t("caveat");}
+
+// ── wire up ──
+$("segType").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;TYPE=b.dataset.v;setSeg("segType",TYPE);drawPayoff();});
+$("segDir").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;DIR=b.dataset.v;setSeg("segDir",DIR);drawPayoff();});
+["K","prem"].forEach(id=>$(id).addEventListener("input",drawPayoff));
+["bS","bK","bT","bVol","bR"].forEach(id=>$(id).addEventListener("input",bsm));
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};renderAll();};
+window.addEventListener("resize",drawPayoff);
+renderAll();
+</script>
+</body>
+</html>
