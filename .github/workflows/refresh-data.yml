@@ -87,6 +87,7 @@ jobs:
         env:                                  # 可选 Telegram 推送；未配置 Secrets 则脚本静默跳过
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          HOLDINGS: ${{ secrets.HOLDINGS }}   # 个人持仓(逗号/换行分隔)→持仓感知告警;未配置则只发市场级告警
         run: python market-analysis/scripts/alert_check.py
 
       - name: Browser site audit (desktop + mobile)
