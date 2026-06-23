@@ -96,6 +96,33 @@ def _tilt(s):
     return "中性 → 无明显倾斜，按你的计划定投/分散即可"
 
 
+def _action(s):
+    """干脆的行动结论(买/持/避)+程度——红线已解除,敢给方向(每条公开计分认账)。"""
+    if s is None:
+        return "数据不足"
+    if s >= 0.4:
+        return "买 · 可积极配置"
+    if s >= 0.13:
+        return "偏多 · 可逢低加"
+    if s > -0.13:
+        return "持 · 观望为主"
+    if s > -0.4:
+        return "减 · 控波动 / 留缓冲"
+    return "避 · 重避险 / 留现金"
+
+
+def _conf(s, n):
+    """置信(高/中/低):倾向越极端 + 因子覆盖越全 → 越有底气。"""
+    if s is None or n < 3:
+        return "低"
+    m = abs(s)
+    if m >= 0.4 and n >= 5:
+        return "高"
+    if m >= 0.2:
+        return "中"
+    return "低"
+
+
 def _append_log(today, out):
     from util_io import append_daily_log
     append_daily_log(LOG, ["date", "stance", "score"],
@@ -110,18 +137,19 @@ def run_all(write=True):
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "asof": today,
         "stance": syn["stance"], "score": syn["score"],
+        "action": _action(syn["score"]), "confidence_level": _conf(syn["score"], len(F)),
         "factors": F,
-        "confidence": "低-中（条件加权读数，非预测）",
+        "confidence": "低-中（条件加权读数）",
         "usable_tilt": _tilt(syn["score"]),
-        "caveat": "🚩出格区 · 把诚实证据按**写死透明权重**加权出的当下倾向，**非预测涨跌、非保证、非荐股**。"
-                  "方向信号 walk-forward 无样本外优势（权重已压最低）。倾向 = 条件读数，每日 append 到 "
-                  "composite_log 公开计分、可追责。市场大体有效，过去≠未来——给你有据的参考，自己拍。",
+        "caveat": "🚩出格区 · 把诚实证据按**写死透明权重**加权出的当下**行动倾向（买/持/避）**。"
+                  "**敢给方向，但每条 append composite_log 公开计分、可追责**；方向信号 walk-forward 无样本外优势（权重已压最低）。"
+                  "非保证、会错、过去≠未来——给你有据的判断，自己拍。",
     }
     if write:
         from util_io import write_json
         write_json("composite_read.json", out, proc=True, allow_nan=False)
         _append_log(today, out)
-        print(f"[OK] composite_read.json — 倾向：{out['stance']}（score {out['score']}）· {len(F)} 因子 · {out['usable_tilt']}")
+        print(f"[OK] composite_read.json — {out['action']}（{out['stance']} score {out['score']} · 置信{out['confidence_level']}）· {len(F)} 因子")
     return out
 
 

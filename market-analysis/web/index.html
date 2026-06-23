@@ -135,16 +135,22 @@ function drawGauge(score){
   ctx.textAlign="right";ctx.fillText(LANG==="en"?"bullish":"积极",cx+R+2,cy+13);
   ctx.textAlign="center";ctx.fillText(LANG==="en"?"neutral":"中性",cx,cy-R-5);
 }
+function actionEN(s){return s==null?"—":s>=0.4?"BUY · add actively":s>=0.13?"Lean long · buy dips":s>-0.13?"HOLD · wait":s>-0.4?"Trim · cut vol":"AVOID · raise cash";}
+const CONF_EN={"高":"high","中":"med","低":"low"};
 function renderHero(){
   drawGauge(CR?CR.score:null);
   if(!CR){return;}
-  const sc=CR.score,stance=LANG==="en"?(STANCE_EN[CR.stance]||CR.stance):CR.stance;
+  const sc=CR.score;
+  const act=LANG==="en"?actionEN(sc):(CR.action||CR.stance);
   const col=sc==null?"var(--mut)":sc>0.13?"var(--grn)":sc<-0.13?"var(--red)":"var(--fg)";
-  $("h-stance").innerHTML=`<span style="color:${col}">${esc(stance)}</span> <span class="mut" style="font-size:1.05rem">${sc==null?"":(sc>=0?"+":"")+sc}</span>`;
+  $("h-stance").innerHTML=`<span style="color:${col}">${esc(act)}</span>`;
+  const stance=LANG==="en"?(STANCE_EN[CR.stance]||CR.stance):CR.stance;
+  const cf=CR.confidence_level?(LANG==="en"?"conf "+(CONF_EN[CR.confidence_level]||CR.confidence_level):"置信"+CR.confidence_level):"";
+  const sub=`${esc(stance)} ${sc==null?"":(sc>=0?"+":"")+sc}${cf?" · "+cf:""}`;
   let ch="";
   if(OUT&&OUT.index_call){const ic=OUT.index_call,cc=LANG==="en"?(CALL_EN[ic.call]||ic.call):ic.call,ccol=ic.call==="看涨"?"var(--grn)":ic.call==="看跌"?"var(--red)":"var(--fg)";
-    ch=`${LANG==="en"?"Nasdaq "+ic.horizon:"纳指"+ic.horizon} <b style="color:${ccol}">${esc(cc)}</b> <span class="mut">(prob ${ic.prob} · tier ${ic.tier})</span>`;}
-  $("h-call").innerHTML=ch;
+    ch=` · ${LANG==="en"?"Nasdaq "+ic.horizon:"纳指"+ic.horizon} <b style="color:${ccol}">${esc(cc)}</b> <span class="mut">(prob ${ic.prob} · tier ${ic.tier})</span>`;}
+  $("h-call").innerHTML=`<span class="mut">${sub}</span>${ch}`;
   $("h-read").textContent=(LANG==="zh"&&LLM&&LLM.text)?LLM.text:"";
   $("h-tilt").textContent=CR.usable_tilt||"";
   $("h-acct").textContent=t("hAcct");
@@ -172,12 +178,12 @@ function paint(){
       $("heat").innerHTML=`🔥 ${HOT} <b>${esc(hot.s)}</b> ${hot.a>=0?'+':''}${hot.a.toFixed(0)}%　❄️ ${COLD} <b>${esc(cold.s)}</b> ${cold.a>=0?'+':''}${cold.a.toFixed(0)}%`;
       $("heatnote").textContent=t("heatnote");}
   }
-  const _st=CR?(LANG==="en"?(STANCE_EN[CR.stance]||CR.stance):CR.stance):null;
+  const _act=CR?(LANG==="en"?actionEN(CR.score):(CR.action||CR.stance)):null;
   const _call=(OUT&&OUT.index_call)?OUT.index_call.call:null;
   const _ct=_call?(LANG==="en"?` · Nasdaq ${esc(CALL_EN[_call]||_call)}`:` · 纳指${esc(_call)}`):"";
   $("bottom").innerHTML = LANG==="en"
-    ? `Today: <b>${_st?esc(_st):"—"}</b>${_ct}${hotSec?`; heat in <b>${esc(hotSec)}</b>`:''}. <span class="mut">Every call is scored — not a guarantee, we can be wrong.</span>`
-    : `今日：<b>${_st?esc(_st):"—"}</b>${_ct}${hotSec?`；热度在<b>${esc(hotSec)}</b>`:''}。<span class="mut">每条判断都进了公开计分——非保证、会错,自己拍。</span>`;
+    ? `Today: <b>${_act?esc(_act):"—"}</b>${_ct}${hotSec?`; heat in <b>${esc(hotSec)}</b>`:''}. <span class="mut">Every call is scored — not a guarantee, we can be wrong.</span>`
+    : `今日：<b>${_act?esc(_act):"—"}</b>${_ct}${hotSec?`；热度在<b>${esc(hotSec)}</b>`:''}。<span class="mut">每条判断都进了公开计分——非保证、会错,自己拍。</span>`;
 }
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();};
 async function get(f){try{const r=await fetch(B+f,{cache:"no-store"});return r.ok?await r.json():null;}catch(e){return null;}}
