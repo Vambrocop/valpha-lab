@@ -1,0 +1,9 @@
+/* vp.css — Valpha 出格/展示页共享骨架（去重④）。各独立页 <link> 它，删掉内联重复的这几条。
+   只放【8 页逐字节一致】的部分：灰底调色板 + box-sizing + a11y(focus/reduced-motion) + 语言按钮。
+   页面特有的 --amber/--warn、body/h1/table/.card 等仍各自内联（口径不同，留各自）。
+   同源自托管（随 web/→docs/ 镜像部署），不引境外 CDN——中国访客可达不受影响。 */
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#c678dd}
+*{box-sizing:border-box}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+#lang{float:right;background:var(--panel);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
