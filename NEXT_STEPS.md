@@ -72,10 +72,10 @@
 5. **DeepSeek 当便宜 LLM 层**（midas）：比 Gemini 便宜+中文好，日读省钱杠杆。
 
 ### 🥉 第三梯队
-6. 🎓 **期权教育页**（期权助手 bsm.py/payoff.py）：payoff 图+希腊字母沙盒，纯教学手动搭腿、无实时无推荐，教初学者"期权为啥大多数人亏"。
-7. 📊 **呈现/表格**（aihot）：分类筛选 chips + 日报版式 → 因子/规律分类浏览 + 结构化日读。
-8. 📱 **Markdown→图片 + 持仓感知告警**（daily_stock）：Telegram 推校准卡图;只在信号命中 AUD 持仓才告警。
-9. 🔌 **Finnhub 免费 US 交叉源**（daily_stock）给新鲜度门交叉校验。
+6. ✅**完成**：🎓 **期权教学沙盒** `options.html`（payoff 搭腿 + BSM 希腊字母沙盒 + 为什么大多数人亏；BSM 对过 scipy 5 位小数 + put-call parity）— `83a48ec`。
+7. ⏭️**跳过（已评估）**：📊 呈现/分类 chips — 证据库只 6 卡 / 6 族（1 对 1 = 纯 chrome），其他多项页已可按板块筛 → 不为凑数造装饰（enforce-simplicity）。将来若某页真的拥挤再说。
+8. ✅**完成**：📱 **持仓感知告警**（扩 `alert_check.py`）— 只在你持有的票深度回撤才单独提醒，私密走 `HOLDINGS` Secret，措辞守红线（风险提示非买卖）— `5451147`。
+9. ⏸️**暂不做·存档备用（用户 2026-06-23：未来万一）**：🔌 **Finnhub 免费 US 交叉源** 给新鲜度门交叉校验。边际价值一般、需免费 key。**将来要做**：注册 finnhub.io 免费 key → 加 `FINNHUB_API_KEY` Secret → 在新鲜度门里拿它的最新报价/财报日期与现源交叉校验（同 LLM 那套 no-key 静默）。
 
 ### ❌ 别碰
 aihot 数据(不相关) · midas 无计分 AI 裁决 · 期权推荐引擎(没历史没法计分+对初学者太险) · adanos 付费情绪(改用免费 Reddit/Polymarket 提及数走自己 placebo) · A股适配器 · 6 渠道推送 · 15 图表策略当信号(只当靶子证伪)。
