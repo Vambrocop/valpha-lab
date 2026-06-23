@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Valpha Lab | 美股诚实统计</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='85'%3E%E2%AC%A1%3C/text%3E%3C/svg%3E">
-<!-- cartesian 部分包（~1.4MB，全包3.6MB）：本站只用 scatter/bar/heatmap。
-     同源自托管而非 cdn.plot.ly：中国访客访问境外 CDN 不可靠，挂了会全站无图 -->
-<script src="plotly-cartesian-2.35.2.min.js"></script>
 <link rel="stylesheet" href="style.css">
 <style>
   /* 今日结论 hero（去重④后的 canvas 倾向仪表·先给结论·自包含不依赖 app-*.js）*/
@@ -852,6 +849,9 @@
   &nbsp;·&nbsp; 数据来源：Yahoo Finance &nbsp;·&nbsp; 仅供个人学习，不构成投资建议
 </footer>
 
+<!-- Plotly 移到 body 末、app-js 之前（性能①）：首屏（今日视图 + 结论 hero）不画图，不必让 1.4MB 阻塞 <head>；
+     app-js 仍在它之后按序加载、Plotly 全局可用。部分包 ~1.4MB，同源自托管（中国访客可达），不引境外 CDN。 -->
+<script src="plotly-cartesian-2.35.2.min.js"></script>
 <!-- app.js 已按模块拆成 5 个有序经典脚本（共享全局作用域，onclick 处理器照常可用）。
      顺序至关重要，不可重排：app-5 含 init().then 引导，依赖前 4 个已加载。
      拼回 app-1..5 === 原 app.js（逐字节）。改代码后跑 tools/audit_frontend.py 校验。 -->
