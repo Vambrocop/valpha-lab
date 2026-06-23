@@ -14,6 +14,16 @@
   .tag{color:var(--mut);font-size:.9rem}
   #lang{margin-left:auto;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:.84rem}
   .baseline{background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.3);border-radius:10px;padding:11px 14px;font-size:.9rem;margin:14px 0;color:#cfe3ff}
+  .hero{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;background:linear-gradient(135deg,rgba(163,113,247,.13),rgba(88,166,255,.06));border:1px solid var(--acc);border-radius:14px;padding:16px 18px;margin:16px 0}
+  .hero canvas{display:block}
+  .hero-lbl{font-size:.74rem;letter-spacing:.4px}
+  .hero-stance{font-size:1.95rem;font-weight:800;line-height:1.05;margin-top:2px}
+  .hero-call{font-size:1.05rem;margin-top:5px}
+  .hero-read{font-size:.86rem;color:#d8e0ea;margin-top:9px;line-height:1.5}
+  .hero-tilt{font-size:.82rem;color:var(--mut);margin-top:7px}
+  .hero-acct{display:inline-block;margin-top:10px;font-size:.8rem;color:var(--acc);text-decoration:none;border:1px solid var(--acc);border-radius:20px;padding:3px 12px}
+  .hero-acct:hover{background:rgba(163,113,247,.15)}
+  @media(max-width:560px){.hero{grid-template-columns:1fr;text-align:center}.hero-stance{font-size:1.65rem}.hero canvas{margin:0 auto}.hero-acct{margin-left:auto;margin-right:auto}}
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:14px 0}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
   .card h3{margin:0 0 8px;font-size:.92rem;color:var(--mut);font-weight:600}
@@ -36,6 +46,17 @@
   <span class="tag" data-i18n="tag"></span>
   <button id="lang" aria-label="切换语言 / switch language"></button>
 </header>
+<div class="hero" id="hero">
+  <div><canvas id="gauge" width="240" height="140" aria-label="今日倾向仪表"></canvas></div>
+  <div>
+    <div class="hero-lbl mut" data-i18n="heroLbl"></div>
+    <div class="hero-stance" id="h-stance">—</div>
+    <div class="hero-call" id="h-call"></div>
+    <div class="hero-read" id="h-read"></div>
+    <div class="hero-tilt" id="h-tilt"></div>
+    <a class="hero-acct" href="scorecard.html" id="h-acct"></a>
+  </div>
+</div>
 <div class="baseline" data-i18n="baseline"></div>
 
 <div class="cards">
@@ -64,8 +85,10 @@
 const B="https://vambrocop.github.io/valpha-lab/";
 const I18N={
   tag:{zh:"美股诚实统计",en:"Honest US-stock statistics"},
-  baseline:{zh:"<b>测风险不测方向 · 拆穿真假规律 · 实盘公开问责</b>　|　📈 观点区是唯一「出格」例外（带战绩，娱乐非建议）",
-            en:"<b>Measure risk, not direction · expose real vs fake patterns · publicly accountable paper trading</b>　|　📈 Outlook is the only 'out-of-bounds' exception (with track record, entertainment not advice)"},
+  baseline:{zh:"<b>敢给当下倾向与方向——但每条都公开计分、敢认账</b>　|　诚实统计打底,预测/LLM 前沿逐步扩张;不打包票、会错,看战绩自己判断。",
+            en:"<b>We give a current tilt &amp; direction — and publicly score every call</b>　|　honest stats underneath, prediction/LLM frontier expanding; no guarantees, we can be wrong — judge by the track record."},
+  heroLbl:{zh:"今日综合读数 · 敢给倾向 · 已公开计分",en:"TODAY'S READ · WE LEAN · PUBLICLY SCORED"},
+  hCall:{zh:"看涨",en:"Bullish"},hBear:{zh:"看跌",en:"Bearish"},hAcct:{zh:"敢说也敢认账 · 公开战绩卡 →",en:"We own our calls · public scorecard →"},
   c_sig:{zh:"📊 纳指信号（实验性）",en:"📊 Nasdaq signal (experimental)"},
   c_env:{zh:"🌡️ 市场环境（描述性）",en:"🌡️ Market environment (descriptive)"},
   c_dig:{zh:"📋 今日摘要",en:"📋 Today's digest"},
@@ -94,7 +117,38 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
-let SIG=null,REG=null,DIG=null,PAPER=null,V150=null;
+let SIG=null,REG=null,DIG=null,PAPER=null,V150=null,CR=null,OUT=null,LLM=null;
+const STANCE_EN={"强防御":"Strong defense","偏防御":"Lean defensive","中性":"Neutral","偏积极":"Lean bullish","强积极":"Strong bullish","数据不足":"Insufficient data"};
+const CALL_EN={"看涨":"Bullish","看跌":"Bearish","中性":"Neutral","偏多":"Lean long"};
+function drawGauge(score){
+  const cv=$("gauge"); if(!cv) return;
+  const ctx=cv.getContext("2d"),dpr=window.devicePixelRatio||1,W=cv.clientWidth||240,H=140;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+"px";ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  const cx=W/2,cy=H-22,R=Math.min(W/2-16,H-34),A=s=>Math.PI+(s+1)/2*Math.PI;
+  const zone=(s0,s1,c)=>{ctx.beginPath();ctx.lineWidth=14;ctx.strokeStyle=c;ctx.arc(cx,cy,R,A(s0),A(s1));ctx.stroke();};
+  zone(-1,-0.13,"#f85149");zone(-0.13,0.13,"#6e7681");zone(0.13,1,"#3fb950");
+  if(score!=null){const th=A(Math.max(-1,Math.min(1,score)));
+    ctx.beginPath();ctx.lineWidth=3;ctx.strokeStyle="#e6edf3";ctx.moveTo(cx,cy);ctx.lineTo(cx+(R-4)*Math.cos(th),cy+(R-4)*Math.sin(th));ctx.stroke();
+    ctx.beginPath();ctx.arc(cx,cy,5,0,6.29);ctx.fillStyle="#e6edf3";ctx.fill();}
+  ctx.fillStyle="#9da7b3";ctx.font="10px sans-serif";
+  ctx.textAlign="left";ctx.fillText(LANG==="en"?"defense":"防御",cx-R-2,cy+13);
+  ctx.textAlign="right";ctx.fillText(LANG==="en"?"bullish":"积极",cx+R+2,cy+13);
+  ctx.textAlign="center";ctx.fillText(LANG==="en"?"neutral":"中性",cx,cy-R-5);
+}
+function renderHero(){
+  drawGauge(CR?CR.score:null);
+  if(!CR){return;}
+  const sc=CR.score,stance=LANG==="en"?(STANCE_EN[CR.stance]||CR.stance):CR.stance;
+  const col=sc==null?"var(--mut)":sc>0.13?"var(--grn)":sc<-0.13?"var(--red)":"var(--fg)";
+  $("h-stance").innerHTML=`<span style="color:${col}">${esc(stance)}</span> <span class="mut" style="font-size:1.05rem">${sc==null?"":(sc>=0?"+":"")+sc}</span>`;
+  let ch="";
+  if(OUT&&OUT.index_call){const ic=OUT.index_call,cc=LANG==="en"?(CALL_EN[ic.call]||ic.call):ic.call,ccol=ic.call==="看涨"?"var(--grn)":ic.call==="看跌"?"var(--red)":"var(--fg)";
+    ch=`${LANG==="en"?"Nasdaq "+ic.horizon:"纳指"+ic.horizon} <b style="color:${ccol}">${esc(cc)}</b> <span class="mut">(prob ${ic.prob} · tier ${ic.tier})</span>`;}
+  $("h-call").innerHTML=ch;
+  $("h-read").textContent=(LANG==="zh"&&LLM&&LLM.text)?LLM.text:"";
+  $("h-tilt").textContent=CR.usable_tilt||"";
+  $("h-acct").textContent=t("hAcct");
+}
 
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
 function tools(){
@@ -102,7 +156,7 @@ function tools(){
   $("tools").innerHTML=T.map(([k,ico,href])=>`<a class="tool" href="${href}"><div class="ico">${ico}</div><div class="nm">${t(k)}</div><div class="ds">${t(k+"_d")}</div></a>`).join("");
 }
 function paint(){
-  applyStatic();tools();
+  applyStatic();tools();renderHero();
   if(SIG){$("sig").innerHTML=`tier ${esc(String(SIG.latest_tier??"—"))} · <span class="mut" style="font-size:1rem">prob</span> ${(SIG.latest_prob??0).toFixed(2)}`;$("signote").textContent=t("signote");}
   if(REG){$("env").textContent=REG.composite||"—";$("envas").textContent=(LANG==="en"?"as of ":"数据日 ")+(REG.asof||"");}
   if(DIG){$("dig").innerHTML=(DIG.tier1_facts||[]).map(f=>`<li>${esc(f)}</li>`).join("")||`<li class="mut">—</li>`;}
@@ -118,13 +172,17 @@ function paint(){
       $("heat").innerHTML=`🔥 ${HOT} <b>${esc(hot.s)}</b> ${hot.a>=0?'+':''}${hot.a.toFixed(0)}%　❄️ ${COLD} <b>${esc(cold.s)}</b> ${cold.a>=0?'+':''}${cold.a.toFixed(0)}%`;
       $("heatnote").textContent=t("heatnote");}
   }
+  const _st=CR?(LANG==="en"?(STANCE_EN[CR.stance]||CR.stance):CR.stance):null;
+  const _call=(OUT&&OUT.index_call)?OUT.index_call.call:null;
+  const _ct=_call?(LANG==="en"?` · Nasdaq ${esc(CALL_EN[_call]||_call)}`:` · 纳指${esc(_call)}`):"";
   $("bottom").innerHTML = LANG==="en"
-    ? `Signal is <b>experimental</b> (no out-of-sample edge)${hotSec?`; heat concentrated in <b>${esc(hotSec)}</b> (chase zone)`:''}. <b>→ Manage risk, don't chase direction, take it slow.</b>`
-    : `信号是<b>实验性的</b>（无样本外优势）${hotSec?`；热门挤在<b>${esc(hotSec)}</b>（追涨区）`:''}。<b>→ 控风险、别追方向、慢慢来。</b>`;
+    ? `Today: <b>${_st?esc(_st):"—"}</b>${_ct}${hotSec?`; heat in <b>${esc(hotSec)}</b>`:''}. <span class="mut">Every call is scored — not a guarantee, we can be wrong.</span>`
+    : `今日：<b>${_st?esc(_st):"—"}</b>${_ct}${hotSec?`；热度在<b>${esc(hotSec)}</b>`:''}。<span class="mut">每条判断都进了公开计分——非保证、会错,自己拍。</span>`;
 }
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();};
 async function get(f){try{const r=await fetch(B+f,{cache:"no-store"});return r.ok?await r.json():null;}catch(e){return null;}}
-(async()=>{paint();[SIG,REG,DIG,PAPER,V150]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json")]);paint();})();
+(async()=>{paint();[SIG,REG,DIG,PAPER,V150,CR,OUT,LLM]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json"),get("composite_read.json"),get("outlook.json"),get("llm_read.json")]);paint();})();
+window.addEventListener("resize",()=>drawGauge(CR?CR.score:null));
 </script>
 </body>
 </html>
