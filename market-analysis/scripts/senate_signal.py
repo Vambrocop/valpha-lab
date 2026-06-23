@@ -154,21 +154,11 @@ def _verdict(overall, per):
 
 
 def _log(out):
-    import csv as _csv
+    from util_io import append_daily_log
     today = datetime.date.today().isoformat()
-    LOG.parent.mkdir(parents=True, exist_ok=True)
-    if LOG.exists():
-        with open(LOG, encoding="utf-8") as f:
-            rows = list(_csv.reader(f))
-        if len(rows) > 1 and rows[-1][0] == today:
-            return
-    new = not LOG.exists()
-    with open(LOG, "a", newline="", encoding="utf-8") as f:
-        w = _csv.writer(f)
-        if new:
-            w.writerow(["date", "n_tested", "overall_excess_pct", "dropped_pct"])
-        ov = out.get("overall") or {}
-        w.writerow([today, out["n_tested"], ov.get("mean_excess_pct"), out["dropped_pct"]])
+    ov = out.get("overall") or {}
+    append_daily_log(LOG, ["date", "n_tested", "overall_excess_pct", "dropped_pct"],
+                     [[today, out["n_tested"], ov.get("mean_excess_pct"), out["dropped_pct"]]], date=today)
 
 
 if __name__ == "__main__":

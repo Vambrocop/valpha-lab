@@ -15,6 +15,7 @@ run_all 末步仍会再镜像一次 web→docs）；proc=True 时也写 data/pro
     - proc       三处写(PROC+WEB+DOCS)的统计脚本传 True
 WEB/DOCS/PROC 从本文件位置推导，与各脚本原先 BASE/"web"、BASE.parent/"docs"、data/processed 口径一致。
 """
+import csv
 import json
 from pathlib import Path
 
@@ -39,3 +40,27 @@ def write_json(name, payload, *, indent=2, allow_nan=True, separators=None, proc
             (d / name).write_text(text, encoding="utf-8")
             written.append(d)
     return written
+
+
+def append_daily_log(path, header, rows, *, date):
+    """append-only 日志写入 + 同日去重（去重各脚本 _append_log/_log 重复的写法）。
+
+    rows = 行的列表（每行一个序列）；单行就传 [row]，autodiscovery 那种一天多行就传整列表。
+    若文件已存在且【末行首列 == date】（今天已记）→ 跳过、不改任何历史行，返回 False。
+    新文件先写 header。返回是否真的写入（True/False；llm/autodiscovery 用它判断今天要不要推送）。
+    与各脚本原内联 csv.writer 写法逐字节一致（默认 dialect、CRLF、newline=""）。
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        with open(path, encoding="utf-8") as f:
+            existing = list(csv.reader(f))
+        if len(existing) > 1 and existing[-1][0] == date:   # 同日已记 → 幂等(绝不改历史行)
+            return False
+    new = not path.exists()
+    with open(path, "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        if new:
+            w.writerow(header)
+        for r in rows:
+            w.writerow(r)
+    return True

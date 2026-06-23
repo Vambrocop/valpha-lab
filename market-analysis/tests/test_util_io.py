@@ -1,4 +1,5 @@
-"""test_util_io.py — write_json 必须与各脚本原先的内联序列化【逐字节一致】，且只写存在的目录。"""
+"""test_util_io.py — write_json 与 append_daily_log 必须与各脚本原内联写法【逐字节一致】。"""
+import csv
 import json
 import pytest
 import util_io
@@ -64,3 +65,36 @@ def test_allow_nan_false_raises_on_nan(tmp_path, monkeypatch):
     monkeypatch.setattr(util_io, "DOCS", tmp_path / "nope")
     with pytest.raises(ValueError):
         util_io.write_json("bad.json", {"x": float("nan")}, allow_nan=False)
+
+
+# ── append_daily_log（append-only 账本，最敏感，逐字节核对）──────────────────
+
+def test_append_daily_log_byte_identical_to_inline(tmp_path):
+    """与原内联 csv.writer 写法（header + 一行）产出的字节完全一致。"""
+    p1 = tmp_path / "a.csv"
+    util_io.append_daily_log(p1, ["date", "x"], [["2026-01-01", "1"]], date="2026-01-01")
+    p2 = tmp_path / "b.csv"                    # 复刻原内联写法
+    with open(p2, "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f); w.writerow(["date", "x"]); w.writerow(["2026-01-01", "1"])
+    assert p1.read_bytes() == p2.read_bytes()
+
+
+def test_append_daily_log_dedup_never_touches_history(tmp_path):
+    p = tmp_path / "a.csv"
+    assert util_io.append_daily_log(p, ["date", "x"], [["2026-01-01", "1"]], date="2026-01-01") is True
+    before = p.read_bytes()
+    # 同日再写 → 跳过、返回 False、字节不变（绝不改历史）
+    assert util_io.append_daily_log(p, ["date", "x"], [["2026-01-01", "9"]], date="2026-01-01") is False
+    assert p.read_bytes() == before
+    # 新的一天 → 追加、返回 True
+    assert util_io.append_daily_log(p, ["date", "x"], [["2026-01-02", "3"]], date="2026-01-02") is True
+    assert list(csv.reader(open(p, encoding="utf-8"))) == [["date", "x"], ["2026-01-01", "1"], ["2026-01-02", "3"]]
+
+
+def test_append_daily_log_multirow(tmp_path):
+    """autodiscovery 那种一天多行。"""
+    p = tmp_path / "a.csv"
+    n = util_io.append_daily_log(p, ["date", "id"],
+                                 [["2026-01-01", "a"], ["2026-01-01", "b"]], date="2026-01-01")
+    assert n is True
+    assert list(csv.reader(open(p, encoding="utf-8"))) == [["date", "id"], ["2026-01-01", "a"], ["2026-01-01", "b"]]

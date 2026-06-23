@@ -8,7 +8,6 @@
 倾向 ≠ 预测，是"条件加权读数"——给你一个有理有据、分级置信、可追责的当下参考，自己拍。
 """
 import json
-import csv
 import datetime
 from pathlib import Path
 
@@ -98,20 +97,9 @@ def _tilt(s):
 
 
 def _append_log(today, out):
-    LOG.parent.mkdir(parents=True, exist_ok=True)
-    last = None
-    if LOG.exists():
-        rows = list(csv.reader(open(LOG, encoding="utf-8")))
-        if len(rows) > 1:
-            last = rows[-1][0]
-    if last == today:                 # 同日只记一条（append-only 但不刷屏）
-        return
-    new = not LOG.exists()
-    with open(LOG, "a", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        if new:
-            w.writerow(["date", "stance", "score"])
-        w.writerow([today, out["stance"], out["score"]])
+    from util_io import append_daily_log
+    append_daily_log(LOG, ["date", "stance", "score"],
+                     [[today, out["stance"], out["score"]]], date=today)
 
 
 def run_all(write=True):

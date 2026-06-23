@@ -247,23 +247,14 @@ def compute_results(candidates):
 
 # ── Phase 2：append-only 裁决账本（每交易日一快照=N 行，幂等：盘前+盘后同日不重复）──
 def _append_log(results, path=LOG):
+    from util_io import append_daily_log
     today = datetime.date.today().isoformat()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        with open(path, encoding="utf-8") as f:
-            rows = list(csv.reader(f))
-        if len(rows) > 1 and rows[-1][0] == today:   # 同日已记 → 幂等返回(不改历史行)
-            return False
-    new = not path.exists()
-    with open(path, "a", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        if new:
-            w.writerow(["date", "candidate_id", "key", "family", "verdict", "p", "recent_p"])
-        for r in sorted(results, key=lambda x: x["candidate_id"]):
-            w.writerow([today, r["candidate_id"], r["key"], r["family"], r.get("verdict", ""),
-                        "" if r.get("p") is None else round(float(r["p"]), 6),
-                        "" if r.get("recent_p") is None else round(float(r["recent_p"]), 6)])
-    return True
+    header = ["date", "candidate_id", "key", "family", "verdict", "p", "recent_p"]
+    rows = [[today, r["candidate_id"], r["key"], r["family"], r.get("verdict", ""),
+             "" if r.get("p") is None else round(float(r["p"]), 6),
+             "" if r.get("recent_p") is None else round(float(r["recent_p"]), 6)]
+            for r in sorted(results, key=lambda x: x["candidate_id"])]
+    return append_daily_log(path, header, rows, date=today)
 
 
 def _log_days(path=LOG):

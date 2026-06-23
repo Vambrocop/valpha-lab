@@ -8,7 +8,6 @@
 描述性、非预测、非建议；重叠窗口只看分布不算显著性。每跑 append 计分。
 """
 import json
-import csv
 import datetime
 from pathlib import Path
 
@@ -104,19 +103,9 @@ def _verdict(inv, base):
 
 
 def _log(out):
+    from util_io import append_daily_log
     today = datetime.date.today().isoformat()
-    LOG.parent.mkdir(parents=True, exist_ok=True)
-    if LOG.exists():
-        with open(LOG, encoding="utf-8") as f:
-            rows = list(csv.reader(f))
-        if len(rows) > 1 and rows[-1][0] == today:
-            return
-    new = not LOG.exists()
-    with open(LOG, "a", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        if new:
-            w.writerow(["date", "verdict"])
-        w.writerow([today, out["verdict"]])
+    append_daily_log(LOG, ["date", "verdict"], [[today, out["verdict"]]], date=today)
 
 
 if __name__ == "__main__":

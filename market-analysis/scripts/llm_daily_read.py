@@ -10,7 +10,6 @@
 """
 import os
 import json
-import csv
 import datetime
 import urllib.request
 from pathlib import Path
@@ -94,19 +93,9 @@ def _llm(prompt):
 
 def _append_log(today, stance, text):
     """append-only；同日只记一条。返回是否新写（用于 Telegram 一天只推一次）。"""
-    LOG.parent.mkdir(parents=True, exist_ok=True)
-    if LOG.exists():
-        with open(LOG, encoding="utf-8") as f:
-            rows = list(csv.reader(f))
-        if len(rows) > 1 and rows[-1][0] == today:
-            return False
-    new = not LOG.exists()
-    with open(LOG, "a", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        if new:
-            w.writerow(["date", "stance", "text"])
-        w.writerow([today, stance, (text or "").replace("\n", " ")])
-    return True
+    from util_io import append_daily_log
+    return append_daily_log(LOG, ["date", "stance", "text"],
+                            [[today, stance, (text or "").replace("\n", " ")]], date=today)
 
 
 def run():

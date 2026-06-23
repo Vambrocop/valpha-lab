@@ -11,7 +11,6 @@
 非荐股、非保证、会错、过去≠未来；每跑 append 计分。
 """
 import json
-import csv
 import datetime
 from pathlib import Path
 
@@ -111,18 +110,9 @@ def _regimes(px):
 
 
 def _append_log(today, verdict, excess):
-    LOG.parent.mkdir(parents=True, exist_ok=True)
-    if LOG.exists():
-        with open(LOG, encoding="utf-8") as f:
-            rows = list(csv.reader(f))
-        if len(rows) > 1 and rows[-1][0] == today:
-            return
-    new = not LOG.exists()
-    with open(LOG, "a", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        if new:
-            w.writerow(["date", "verdict", "excess_cagr_pp"])
-        w.writerow([today, verdict, excess])
+    from util_io import append_daily_log
+    append_daily_log(LOG, ["date", "verdict", "excess_cagr_pp"],
+                     [[today, verdict, excess]], date=today)
 
 
 def run(write=True):
