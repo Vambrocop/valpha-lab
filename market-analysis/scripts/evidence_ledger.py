@@ -79,10 +79,8 @@ def run(write=True):
                 "诚实立场:大多数'规律'测下来是噪声/已淡/不可靠,真存活的极少且都标了不确定性。非荐股·会错·过去≠未来。",
     }
     if write:
-        payload = json.dumps(out, ensure_ascii=False, indent=2)
-        for d in (WEB, BASE.parent / "docs"):
-            if d.exists():
-                (d / "evidence.json").write_text(payload, encoding="utf-8")
+        from util_io import write_json
+        write_json("evidence.json", out)
         print(f"[OK] evidence.json — {len(rows)} 个规律族")
         for r in rows:
             print(f"  {r['name']}: {r['verdict'][:40]}")

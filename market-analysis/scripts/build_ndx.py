@@ -49,9 +49,8 @@ def build_all():
     out = {"generated": date.today().isoformat(), "n": len(cur),
            "added": added, "removed": removed,
            "not_in_valpha150": not_in, "in_valpha150": len(set(cur) & v150)}
-    for d in (BASE / "web", BASE.parent / "docs"):
-        if d.exists():
-            (d / "ndx.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    from util_io import write_json
+    write_json("ndx.json", out)
     pd.DataFrame({"ticker": cur}).to_csv(SNAP, index=False)
     print(f"[OK] ndx.json — 成分 {len(cur)} · 新进 {added or '—'} · 调出 {removed or '—'} · 150未覆盖 {len(not_in)}")
 

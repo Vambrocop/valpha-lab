@@ -82,9 +82,8 @@ def run(write=True):
                   "别当规律；相关≠因果(体制与收益可能同被第三因素驱动)；重叠窗口只看分布不算显著性。每跑 append 计分。",
     }
     if write:
-        for d in (BASE / "web", BASE.parent / "docs"):
-            if d.exists():
-                (d / "regime_forward.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+        from util_io import write_json
+        write_json("regime_forward.json", out)
         _log(out)
         print(f"[OK] regime_forward.json — {verdict}")
         for r in regimes:

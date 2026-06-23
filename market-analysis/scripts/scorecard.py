@@ -118,10 +118,8 @@ def run(write=True):
                        "高置信≠更准就是诚实负结果(纳指方向 walk-forward 本就无 OOS edge)。非荐股·会错·过去≠未来。",
     }
     if write:
-        payload = json.dumps(out, ensure_ascii=False, indent=2)
-        for d in (BASE / "web", BASE.parent / "docs"):
-            if d.exists():
-                (d / "scorecard.json").write_text(payload, encoding="utf-8")
+        from util_io import write_json
+        write_json("scorecard.json", out)
         mc = out["model_calibration"] or {}
         print(f"[OK] scorecard.json — 模型OOS校准 {len(mc.get('curve', []))} 桶({mc.get('reads', '—')})")
         for k, v in sources.items():

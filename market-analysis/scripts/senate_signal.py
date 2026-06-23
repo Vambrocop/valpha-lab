@@ -116,9 +116,8 @@ def run(write=True):
                   "重叠窗口只看描述性均值/胜率不充当显著性；相关≠因果；非荐股、非跟单。每跑 append 计分。",
     }
     if write:
-        for d in (BASE / "web", BASE.parent / "docs"):
-            if d.exists():
-                (d / "senate_signal.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+        from util_io import write_json
+        write_json("senate_signal.json", out)
         _log(out)
         print(f"[OK] senate_signal.json — {out['verdict']}")
         print(f"  整体: {overall} · 丢弃 {drop_pct}% · 可统计议员 {len(per)} 位")

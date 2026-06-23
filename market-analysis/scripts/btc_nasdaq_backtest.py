@@ -171,9 +171,8 @@ def run(write=True):
                   "(最可能的证伪)；Sharpe/回撤改善属单一历史路径、无置信区间；FRAGILE(符号一致性0.8)→ 看体制段。每跑 append 计分。",
     }
     if write:
-        for d in (BASE / "web", BASE.parent / "docs"):
-            if d.exists():
-                (d / "btc_nasdaq.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+        from util_io import write_json
+        write_json("btc_nasdaq.json", out)
         _append_log(datetime.date.today().isoformat(), verdict, excess)
         print(f"[OK] btc_nasdaq.json — {verdict}")
         print(f"  条件 pos上涨率−neg = {out['cond_pos_minus_neg_uprate_pp']}pp · 年化超额 {excess}pp · "

@@ -138,10 +138,8 @@ def run():
         "caveat": "LLM 据当日真实因子生成的大白话解读；喂真数据防瞎编，但仍可能误读。"
                   "非预测、非荐股、会错，过去≠未来。每日 append 到 llm_read_log 公开计分。",
     }
-    payload = json.dumps(out, ensure_ascii=False, indent=2)
-    for d in (WEB, DOCS):
-        if d.exists():
-            (d / "llm_read.json").write_text(payload, encoding="utf-8")
+    from util_io import write_json
+    write_json("llm_read.json", out)
     wrote = _append_log(today, cr.get("stance"), text)
     print(f"[OK] llm_read.json — {cr.get('stance')} · {len(text)} 字" + ("" if wrote else "（今日已记，不重复）"))
     if wrote:                                            # 一天只推一次 Telegram
