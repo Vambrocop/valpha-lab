@@ -924,6 +924,8 @@
   function g(id){return document.getElementById(id);}
   function escc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function col(s){return s==null?"#9da7b3":s>0.13?"#3fb950":s<-0.13?"#f85149":"#e6edf3";}
+  var GLOSS=[["VIX","衡量市场恐慌情绪，越高越慌"],["收益率曲线","不同期限国债利率的高低对比，倒挂常被当衰退预警"],["信用利差","企业借钱比国债贵多少，越大=市场越担心违约"],["相关性","各只股票是不是一起涨跌，越高越像同涨同跌"],["分散性","不同股票走势分化的程度，分化大=分散投资更有效"]];
+  function plf(text){if(!text)return text;var out=text;for(var i=0;i<GLOSS.length;i++){var term=GLOSS[i][0],exp=GLOSS[i][1],p=out.indexOf(term);if(p<0)continue;var a=out.charAt(p+term.length);if(a==="（"||a==="(")continue;out=out.slice(0,p+term.length)+"（"+exp+"）"+out.slice(p+term.length);}return out;}
   function gauge(s){
     var cv=g("vp-gauge"); if(!cv) return;
     var ctx=cv.getContext("2d"),dpr=window.devicePixelRatio||1,W=cv.clientWidth||240,H=140;
@@ -947,11 +949,12 @@
     if(_le&&_d)_le.textContent="🎯 今日结论 · 数据截至 "+_d+" · 公开计分";
     _score=CR.score; gauge(_score);
     g("vp-act").innerHTML='<span style="color:'+col(_score)+'">'+escc(CR.action||CR.stance)+'</span>';
-    var sub=escc(CR.stance)+" "+(_score==null?"":(_score>=0?"+":"")+_score)+(CR.confidence_level?" · 置信"+escc(CR.confidence_level):"");
-    if(OUT&&OUT.index_call){var ic=OUT.index_call,cc=ic.call==="看涨"?"#3fb950":ic.call==="看跌"?"#f85149":"#e6edf3";
-      sub+=' · 纳指'+escc(ic.horizon)+' <b style="color:'+cc+'">'+escc(ic.call)+'</b> <span style="color:#9da7b3">(prob '+escc(ic.prob)+' · tier '+escc(ic.tier)+')</span>';}
+    var sub=escc(CR.stance)+(CR.confidence_level?" · 把握"+escc(CR.confidence_level):"");
+    if(OUT&&OUT.index_call&&OUT.index_call.prob!=null){var ic=OUT.index_call,pct=Math.round(ic.prob*100),
+      dir=ic.prob<0.5?"偏跌":"偏涨",note=Math.abs(pct-50)<=4?"≈掷硬币，无验证优势，别当真":"短期方向谁都难测，仅参考";
+      sub+=' · <span style="color:#9da7b3">纳指'+escc(ic.horizon||"短期")+'约 '+pct+'% '+dir+'（'+note+'）</span>';}
     g("vp-sub").innerHTML=sub;
-    g("vp-read").textContent=(LLM&&LLM.text)?LLM.text:"";
+    g("vp-read").textContent=(LLM&&LLM.text)?plf(LLM.text):"";
   });
   window.addEventListener("resize",function(){gauge(_score);});
 })();

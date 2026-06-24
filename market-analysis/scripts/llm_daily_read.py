@@ -51,6 +51,30 @@ def _quality(cr, facs):
     return f"{lvl}（覆盖 {n} 个因子，数据 {age} 天前）", lvl
 
 
+_GLOSS = [
+    ("VIX", "衡量市场恐慌情绪，越高越慌"),
+    ("收益率曲线", "不同期限国债利率的高低对比，倒挂常被当衰退预警"),
+    ("信用利差", "企业借钱比国债贵多少，越大=市场越担心违约"),
+    ("相关性", "各只股票是不是一起涨跌，越高越像同涨同跌"),
+    ("分散性", "不同股票走势分化的程度，分化大=分散投资更有效"),
+]
+
+
+def _plainify(text):
+    """给 LLM 解读里的专业词，在【首次出现】且其后没有现成解释时补一句大白话括注。
+    与新版 prompt 互补：prompt 让 LLM 自解释（其后接「（」就跳过，不重复）；此函数兜底旧文本。"""
+    if not text:
+        return text
+    for term, exp in _GLOSS:
+        i = text.find(term)
+        if i < 0:
+            continue
+        if text[i + len(term): i + len(term) + 1] in ("（", "("):
+            continue
+        text = text[:i + len(term)] + f"（{exp}）" + text[i + len(term):]
+    return text
+
+
 def _nasdaq_plain(ic):
     """纳指方向 → 大白话 + 诚实标定：prob≈0.5 就直说掷硬币，绝不把 52% 装成「看涨」。"""
     if not ic or ic.get("prob") is None:
@@ -162,7 +186,7 @@ def run():
             np_line = _nasdaq_plain(ic)
             if np_line:
                 lines.append(f"📈 {np_line}")
-            lines += ["", text, "",
+            lines += ["", _plainify(text), "",
                       "🔗 vambrocop.github.io/valpha-lab/",
                       "（实验性·只读真实算出的数据·会错·已公开计分认账）"]
             notify_telegram.send("\n".join(lines))
