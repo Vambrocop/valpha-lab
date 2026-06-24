@@ -105,8 +105,15 @@ async function load(){
     const j=await r.json();DATA=j.stocks||[];window._gen=j.generated;
     try{const er=await fetch(EARN_URL,{cache:"no-store"});if(er.ok){const em=(await er.json()).earnings||{};DATA.forEach(d=>{if(em[d.t])d._ed=em[d.t];});}}catch(e){}
     $("src").textContent=`${t("live")} ${DATA.length} · ${t("asof")} ${j.generated}`;
-    chips();render();
-  }catch(e){$("src").textContent=t("err");}
+    if(!DATA.length){
+      const msg=LANG==="en"?"No data yet — check back soon":"暂无数据，稍后再试";
+      $("tbl").innerHTML=`<tr><td colspan="11" style="text-align:center;padding:18px;color:var(--mut)">${msg}</td></tr>`;
+    }else{chips();render();}
+  }catch(e){
+    $("src").textContent=t("err");
+    const msg=LANG==="en"?"Failed to load — refresh later":"加载失败，请稍后刷新";
+    $("tbl").innerHTML=`<tr><td colspan="11" style="text-align:center;padding:18px;color:var(--mut)">${msg}</td></tr>`;
+  }
 }
 load();
 </script>

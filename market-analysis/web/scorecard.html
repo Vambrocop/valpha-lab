@@ -81,7 +81,13 @@ function render(d){
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};if(window._d)render(window._d);};
 (async()=>{applyStatic();
   try{const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;window._d=await r.json();render(window._d);}
-  catch(e){$("reads").textContent=t("err");}
+  catch(e){
+    const msg=LANG==="en"?"Failed to load — refresh later":"加载失败，请稍后刷新";
+    $("reads").textContent=t("err");
+    $("track").textContent=msg;
+    $("cal").innerHTML=`<tr><td style="padding:14px;color:var(--mut)">${msg}</td></tr>`;
+    $("live").innerHTML=`<tr><td style="padding:14px;color:var(--mut)">${msg}</td></tr>`;
+  }
 })();
 </script>
 </body>

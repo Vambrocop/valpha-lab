@@ -97,8 +97,16 @@ async function load(){
     const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;
     const j=await r.json();
     for(const[s,o]of Object.entries(j.stocks||{})){const st=o.stats||{};STOCKS[s]={label:o.label||s,chg1y:st.chg_1y,vol:st.vol20_ann,price:st.last,d1:st.chg_1d,w1:st.chg_5d,m1:st.chg_20d,radar:o.radar||{}};}
-    $("src").textContent=`${t("live")}（${Object.keys(STOCKS).length}）`;render();
-  }catch(e){$("src").textContent=t("err");}
+    const n=Object.keys(STOCKS).length;
+    if(!n){
+      const msg=LANG==="en"?"No data yet — check back soon":"暂无数据，稍后再试";
+      $("grid").innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--mut)">${msg}</div>`;
+    }else{$("src").textContent=`${t("live")}（${n}）`;render();}
+  }catch(e){
+    $("src").textContent=t("err");
+    const msg=LANG==="en"?"Failed to load — refresh later":"加载失败，请稍后刷新";
+    $("grid").innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--mut)">${msg}</div>`;
+  }
 }
 load();
 </script>
