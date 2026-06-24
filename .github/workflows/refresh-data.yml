@@ -77,11 +77,14 @@ jobs:
       - name: Refresh Valpha150 大盘数据 (每交易日一次，仅盘后全量/手动)
         # ~152 只批量抓价较重 → 不进盘中 light，只在盘后全量(21:30)或手动跑；失败不阻断主刷新
         if: github.event.schedule == '30 21 * * 1-5' || github.event_name == 'workflow_dispatch'
+        env:
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}   # 财报日历(fetch_earnings);未配置则该步静默跳过
         run: |
           python market-analysis/scripts/build_valpha150.py || echo "::warning::valpha150 刷新失败(非致命，下次重试)"
           python market-analysis/scripts/build_wildpool.py || echo "::warning::wildpool 刷新失败(非致命，下次重试)"
           python market-analysis/scripts/ticker_ondemand.py || echo "::warning::点单深算失败(非致命，下次重试)"
           python market-analysis/scripts/build_ndx.py || echo "::warning::纳指100成分追踪失败(非致命，下次重试)"
+          python market-analysis/scripts/fetch_earnings.py || echo "::warning::财报日历失败(非致命，下次重试)"
 
       - name: Signal alerts (state changes only)
         env:                                  # 可选 Telegram 推送；未配置 Secrets 则脚本静默跳过

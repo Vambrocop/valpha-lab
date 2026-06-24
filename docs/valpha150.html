@@ -43,6 +43,7 @@
 
 <script>
 const LIVE="https://vambrocop.github.io/valpha-lab/valpha150.json";
+const EARN_URL="https://vambrocop.github.io/valpha-lab/earnings.json";
 const SEC={"半导体":"#a371f7","科技":"#58a6ff","通信服务":"#56d4dd","可选消费":"#e3a008","必需消费":"#3fb950","医疗":"#2dd4bf","金融":"#d4a017","工业":"#8b949e","能源":"#f85149","公用":"#a3b18a","材料":"#7d8590","房地产":"#f778ba"};
 const SEC_EN={"半导体":"Semis","科技":"Tech","通信服务":"Comms","可选消费":"Cons.Disc.","必需消费":"Staples","医疗":"Health","金融":"Financials","工业":"Industrials","能源":"Energy","公用":"Utilities","材料":"Materials","房地产":"Real Estate"};
 const I18N={
@@ -60,7 +61,7 @@ let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 let DATA=[],sortCol="c6",dir=-1,filt="";
 
-function tagOf(d){let x="";if((d.c6??0)>=50)x+='<span class="tag hot">🔥</span>';if((d.v??0)>=70)x+='<span class="tag risk">⚠️</span>';if((d.v??99)<=25)x+='<span class="tag calm">🏰</span>';return x;}
+function tagOf(d){let x="";if(d._ed){const dd=Math.round((new Date(d._ed)-new Date())/864e5);if(dd>=0&&dd<=14)x+=`<span class="tag" style="background:rgba(227,160,8,.18);border:1px solid #e3a008;color:#f0c674" title="${d._ed} 财报">📅${dd}d</span>`;}if((d.c6??0)>=50)x+='<span class="tag hot">🔥</span>';if((d.v??0)>=70)x+='<span class="tag risk">⚠️</span>';if((d.v??99)<=25)x+='<span class="tag calm">🏰</span>';return x;}
 function pn(v){if(v==null)return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}</span>`;}
 function secName(s){return LANG==="en"?(SEC_EN[s]||s):s;}
 function nm(d){return LANG==="en"?d.t:`${esc(d.n)} <span class="mut">${d.t}</span>`;}
@@ -102,6 +103,7 @@ async function load(){
   try{
     const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;
     const j=await r.json();DATA=j.stocks||[];window._gen=j.generated;
+    try{const er=await fetch(EARN_URL,{cache:"no-store"});if(er.ok){const em=(await er.json()).earnings||{};DATA.forEach(d=>{if(em[d.t])d._ed=em[d.t];});}}catch(e){}
     $("src").textContent=`${t("live")} ${DATA.length} · ${t("asof")} ${j.generated}`;
     chips();render();
   }catch(e){$("src").textContent=t("err");}
