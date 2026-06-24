@@ -17,6 +17,8 @@
   .vp-hero-acct{display:inline-block;margin-top:9px;font-size:.78rem;color:#a371f7;text-decoration:none;border:1px solid #a371f7;border-radius:20px;padding:3px 12px}
   .vp-hero-acct:hover{background:rgba(163,113,247,.15)}
   @media(max-width:560px){.vp-hero{grid-template-columns:1fr;text-align:center}.vp-hero canvas{margin:0 auto}}
+  /* 今日视图把 7 面板分 3 组 + 留白(分组标题占满整行,在 auto-fit 网格里强制换行起新段) */
+  .group-hdr{grid-column:1/-1;font-size:.92rem;font-weight:700;color:var(--text);margin:.8rem 0 -.4rem;padding-bottom:.35rem;border-bottom:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -111,6 +113,7 @@
   </div>
   <div class="view-grid">
 
+    <div class="group-hdr">🎯 信号与计划</div>
     <!-- 日期选择 + 信号表盘 -->
     <div class="panel">
       <div class="panel-title">选择日期 · 查看入场信号</div>
@@ -152,6 +155,7 @@
       <div id="live-tracking" style="margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border);"></div>
     </div>
 
+    <div class="group-hdr">⚖️ 风险与情绪</div>
     <!-- 市场情绪仪表盘 -->
     <div class="panel" id="sentiment-panel">
       <div class="panel-title">📊 市场情绪仪表盘</div>
@@ -172,6 +176,7 @@
       <div class="insight" id="sell-insight" style="margin-top:.75rem;"></div>
     </div>
 
+    <div class="group-hdr">📰 资讯与事件</div>
     <!-- 今日市场要闻 -->
     <div class="panel">
       <div class="panel-title">📰 今日市场要闻 <span id="news-updated" style="font-weight:400;font-size:0.68rem;color:var(--muted);"></span></div>
