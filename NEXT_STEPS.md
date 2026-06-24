@@ -8,12 +8,13 @@
 
 ## 🚧 在飞 + 待办（2026-06-24 · v1.0/1.5/2.0 一波委派，5 个 worktree 子代理并行）
 
-**在飞（5 子代理·主脑待合并+审+镜像 docs+push）**：
-- v1.0① **可懂性 hover 词典组件全站化**（`vp_gloss.js` + vp.css tooltip·DRY 替掉 index/dashboard 内联 plainify）
-- v1.0② **新手首达引导**（index 首访 "3 步看懂这站" 可关 + 重开按钮）
-- v1.0③ **移动端实测 + 空/错状态**（10 页 @media 不溢出 + fetch 失败友好兜底·纯加法）
-- v1.5 **LLM「本周回顾」周报**（grounded·复用日读 provider/plainify·写 llm_weekly.json + append-only 周账本·无 key 静默）
-- v2.0 **情绪信号可行性 spike**（Reddit/Polymarket 提及数·先验"够长历史能回测+澳洲可达"→ research/ 出 GO/NO-GO + 回测 harness 原型·不上线）
+**✅ 全部合并上线（2026-06-24·5 子代理 worktree 并行 → 主脑合并+审+镜像+push·27301fe 收尾）**：
+- ✅ v1.0① **可懂性 hover 词典组件全站化**（`vp_gloss.js`·11 词·tooltip·DRY 替掉内联 plainify·18 测过）
+- ✅ v1.0② **新手首达引导**（index 首访"3 步看懂这站"·可关·重开按钮·焦点陷阱·Esc）。**审出真 bug**：zh 串里用了 ASCII 引号 → 整段 JS 解析崩，已改全角引号
+- ✅ v1.0③ **移动端实测 + 空/错状态**（index/advisor/valpha150/sectors/radar/scorecard·@media 不溢出 + fetch 失败友好兜底；dashboard 太纠缠按 spec STOP 跳过）
+- ✅ v1.5 **LLM「本周回顾」周报**（grounded·复用日读 provider/plainify·llm_weekly.json + ISO 周 append 账本·无 key 静默·17 测）。**待办**：① 加每周 CI cron（周一 ~06:00 UTC）② 同样等 Gemini key（key 在前，卡片自动隐藏）
+- ✅ v2.0 **情绪信号 spike → 诚实结论**：**Polymarket NO-GO**（pmxt 仅 10 周史 + 无个股覆盖）；**Reddit WSB CONDITIONAL**（Pushshift/Quiver 有 2012+ 史，但反向因果 + GME 后非平稳 + 原始计数信号弱）。harness 建好（IC/placebo×2/BH-FDR·合成数据跑通 NO-GO）。**审出真 bug**：`grp.name` 仅 .apply 有效 → 改传参。详见 `research/sentiment_spike.md`。要推进 = 拿真 WSB 数据灌 harness
+- **委派复盘**：6 步协议有效——「审查者≠建造者」抓出 2 个建造者自测漏掉的真 bug（onboarding 引号崩整页 / spike harness 崩）；冲突最小化设计（hover 加 script 末、mobile 改 @media、onboarding 独立块）让 4 家同改 index.html 只手工解了 2 处
 
 **记住·后续可做（本波之后）**：
 - 🧩 **「两层呈现」全站铺开** = "又专业又能看懂"的工程化落地（每专业结论顶一行大白话 takeaway + 收起"展开看专业细节"）——v1.0 hover 做完后的自然下一步
