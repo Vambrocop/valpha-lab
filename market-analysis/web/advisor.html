@@ -34,7 +34,7 @@
   .bill .big{font-size:1.25rem;font-weight:700}
   .alert{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:10px 12px;margin:8px 0;font-size:.86rem;color:#ffb3ad}
   .mut{color:var(--mut);font-size:.8rem}.src{font-size:.74rem;color:var(--mut)}
-  @media(max-width:560px){body{padding:12px}h1{font-size:1.18rem}.bill{grid-template-columns:1fr}}
+  @media(max-width:560px){body{padding:12px}h1{font-size:1.18rem}.bill{grid-template-columns:1fr}.grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}input[type=number]{width:100%}}
 </style>
 </head>
 <body>
@@ -125,9 +125,9 @@ function render(res){
   if(!res){$("out").innerHTML=`<div class="panel mut">${t("empty")}</div>`;return;}
   const fmt=n=>n.toLocaleString('en-AU',{maximumFractionDigits:0});
   const oT=LANG==="en"?`Suggested allocation (${res.rows.length} · A$${fmt(res.amt)})`:`建议配置（${res.rows.length} 只 · 共 A$${fmt(res.amt)}）`;
-  let h=`<div class="panel"><h3 style="margin:.2em 0">${oT}</h3><table><thead><tr><th>${t("c_stk")}</th><th>${t("c_w")}</th><th>${t("c_amt")}</th><th>${t("c_sh")}</th><th>${t("c_vol")}</th></tr></thead><tbody>`;
+  let h=`<div class="panel"><h3 style="margin:.2em 0">${oT}</h3><div style="overflow-x:auto"><table><thead><tr><th>${t("c_stk")}</th><th>${t("c_w")}</th><th>${t("c_amt")}</th><th>${t("c_sh")}</th><th>${t("c_vol")}</th></tr></thead><tbody>`;
   res.rows.forEach(r=>{h+=`<tr><td>${nm(r.s,r.d)}</td><td><span class="bar" style="width:${(r.w*60).toFixed(0)}px"></span> ${(r.w*100).toFixed(1)}%</td><td>A$${fmt(r.audAmt)}</td><td>${r.sh<1?r.sh.toFixed(2):fmt(r.sh)}</td><td>${(r.d.vol||0).toFixed(0)}%</td></tr>`;});
-  h+=`</tbody></table></div>`;
+  h+=`</tbody></table></div></div>`;
   const hl=horizon==="short"?t("hl_s"):horizon==="long"?t("hl_l"):t("hl_m");
   const ddName=LANG==="en"?res.worst.t:res.worst.s;
   h+=`<div class="panel"><h3 style="margin:.2em 0">${t("bill")}</h3><div class="bill">
