@@ -277,8 +277,7 @@ def placebo_unrelated_ticker(signal_df: pd.DataFrame, returns_df: pd.DataFrame) 
 
     rng = np.random.default_rng(SEED + 99)
 
-    def scramble_ticker(grp):
-        ticker = grp.name
+    def scramble_ticker(grp, ticker):
         alternatives = [t for t in tickers if t != ticker]
         alt = rng.choice(alternatives)
         # get the signal series for alt ticker on the same dates
@@ -290,7 +289,7 @@ def placebo_unrelated_ticker(signal_df: pd.DataFrame, returns_df: pd.DataFrame) 
 
     parts = []
     for ticker, grp in merged.groupby("ticker"):
-        parts.append(scramble_ticker(grp))
+        parts.append(scramble_ticker(grp, ticker))
 
     if not parts:
         return {"unrelated_IC": np.nan}
