@@ -59,7 +59,11 @@ def _model_calibration():
     if len(out) < 2:
         return None
     monotone = all(out[i]["real_wr_pct"] <= out[i + 1]["real_wr_pct"] + 3 for i in range(len(out) - 1))
-    return {"curve": out, "n_total": int(sum(r["n"] for r in out)),
+    n_total = int(sum(r["n"] for r in out))
+    # 市场 H 日窗口的【无条件上涨基率】≈ naive 各桶按样本加权的实际胜率均值（数据算出、不写死，
+    # 供前端诚实横幅引用：高胜率多半来自这个自然漂移，不是择时本事）。
+    base_rate_pct = round(sum(r["real_wr_pct"] * r["n"] for r in out) / n_total, 1) if n_total else None
+    return {"curve": out, "n_total": n_total, "base_rate_pct": base_rate_pct,
             "reads": ("基本单调=略有区分力" if monotone else "不单调=高置信≠更准（无 OOS edge·诚实）")}
 
 

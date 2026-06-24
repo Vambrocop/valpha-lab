@@ -44,10 +44,12 @@ def run():
         return None
     today = datetime.date.today()
     to = today + datetime.timedelta(days=HORIZON_DAYS)
+    # key 走 X-Finnhub-Token 头、不放 URL query → 万一异常被打进 CI 日志也不带 token（审计建议）
     url = (f"https://finnhub.io/api/v1/calendar/earnings"
-           f"?from={today.isoformat()}&to={to.isoformat()}&token={key}")
+           f"?from={today.isoformat()}&to={to.isoformat()}")
     try:
-        with urllib.request.urlopen(url, timeout=30) as r:
+        req = urllib.request.Request(url, headers={"X-Finnhub-Token": key})
+        with urllib.request.urlopen(req, timeout=30) as r:
             data = json.load(r)
     except Exception as e:
         print(f"[财报] 拉取失败（非致命，不阻断）: {e}")

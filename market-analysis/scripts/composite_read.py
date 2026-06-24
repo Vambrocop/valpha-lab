@@ -97,18 +97,19 @@ def _tilt(s):
 
 
 def _action(s):
-    """干脆的行动结论(买/持/避)+程度——红线已解除,敢给方向(每条公开计分认账)。"""
+    """干脆的行动结论(买/持/避)+程度；阈值与 synthesize 的 stance 严格对齐，边界不打架。
+    synthesize: s<-0.4 强防御 / s<-0.13 偏防御 / s<=0.13 中性 / s<=0.4 偏积极 / else 强积极。"""
     if s is None:
         return "数据不足"
-    if s >= 0.4:
-        return "买 · 可积极配置"
-    if s >= 0.13:
-        return "偏多 · 可逢低加"
-    if s > -0.13:
-        return "持 · 观望为主"
-    if s > -0.4:
-        return "减 · 控波动 / 留缓冲"
-    return "避 · 重避险 / 留现金"
+    if s > 0.4:
+        return "买 · 可积极配置"      # 强积极
+    if s > 0.13:
+        return "偏多 · 可逢低加"      # 偏积极
+    if s >= -0.13:
+        return "持 · 观望为主"        # 中性（含 ±0.13 边界，与 synthesize 一致）
+    if s >= -0.4:
+        return "减 · 控波动 / 留缓冲"  # 偏防御
+    return "避 · 重避险 / 留现金"      # 强防御
 
 
 def _conf(s, n):
