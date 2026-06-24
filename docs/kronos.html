@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🔬 我们诚实试了 Kronos · 结果与教训</title>
+<link rel="stylesheet" href="vp.css">
+<style>
+  :root{--amber:#e3a008}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:920px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  h2{font-size:1.04rem;margin:22px 0 7px}
+  .lead{color:var(--mut);font-size:.9rem;margin:8px 0 4px}
+  .verdict{background:rgba(248,81,73,.1);border:2px solid var(--red);border-radius:10px;padding:13px 15px;margin:13px 0;font-size:.92rem;line-height:1.65}
+  .verdict b{color:#ffb3ad}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:4px}
+  th,td{padding:7px 9px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+  th{color:var(--mut);font-weight:600}
+  td.k{font-weight:600;white-space:nowrap}
+  .bad{color:var(--red)}.warn{color:var(--amber)}.ok{color:var(--grn)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;margin-top:10px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+  .card h3{font-size:.98rem;margin:0 0 7px;line-height:1.3}
+  .card p{font-size:.85rem;margin:0;opacity:.93}
+  .scope{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 15px;font-size:.86rem;line-height:1.7}
+  .scope b{color:var(--fg)}
+  .next{background:rgba(63,185,80,.08);border:1px solid var(--grn);border-radius:10px;padding:11px 14px;font-size:.86rem;line-height:1.65;margin-top:10px}
+  .mut{color:var(--mut);font-size:.8rem;margin-top:20px;border-top:1px solid var(--border);padding-top:10px;line-height:1.6}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.14rem}table{font-size:.8rem}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<div class="lead" data-i18n="lead"></div>
+<div class="verdict" data-i18n="verdict"></div>
+
+<h2 data-i18n="hNum"></h2>
+<div style="overflow-x:auto"><table id="numtbl"></table></div>
+
+<h2 data-i18n="hJourney"></h2>
+<div class="lead" data-i18n="sJourney" style="margin:2px 0 6px"></div>
+<div style="overflow-x:auto"><table id="jtbl"></table></div>
+
+<h2 data-i18n="hLearn"></h2>
+<div class="lead" data-i18n="sLearn" style="margin:2px 0 6px"></div>
+<div class="grid" id="grid"></div>
+
+<h2 data-i18n="hScope"></h2>
+<div class="scope" data-i18n="scope"></div>
+<div class="next" data-i18n="next"></div>
+
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const I18N={
+  title:{zh:"🔬 我们诚实试了 Kronos（AAAI-2026 金融大模型）",en:"🔬 We honestly tested Kronos (an AAAI-2026 financial foundation model)"},
+  lead:{zh:"满网都在吹「金融大模型」。我们的铁律：不因为它是顶会大模型就信——拿样本外 walk-forward、和「随机游走」基准比、扣成本后真赢才算数。这是我们测它的全过程与结论，赢写赢、输写输。",
+        en:"The web hypes 'financial foundation models.' Our rule: don't trust it just because it's a top-conference model — judge it on out-of-sample walk-forward, against a random-walk baseline, after costs. Here's the full test and verdict: wins logged as wins, losses as losses."},
+  verdict:{zh:"<b>❌ 结论：开箱即用，Kronos 在美股日线上没有可交易的 edge。</b> 最大、最公平的一轮（n=270 个 5 日预测、10 只美股、T=0.3、固定随机种子）方向命中率仅 <b>51.9%</b>（单边 p=0.29，<b>统计上分不出和掷硬币的区别</b>），而且<b>还低于「无脑猜涨」的 57.4% 基率</b>；收益预测误差是随机游走的 2.5 倍；多空策略扣成本后跑输买入持有。<br>—— 但我们说的是「这套配置下没证出 edge」，<b>不是「Kronos 没用」</b>（界限见下方「测了什么·没测什么」）。",
+           en:"<b>❌ Verdict: out of the box, Kronos shows no tradeable edge on US daily stocks.</b> Our largest, fairest run (n=270 five-day predictions, 10 US names, T=0.3, fixed seed) hit direction just <b>51.9%</b> (one-sided p=0.29 — <b>statistically indistinguishable from a coin flip</b>), and that's even <b>below the 57.4% 'just guess up' base rate</b>; its return error is 2.5× a random walk; the long-short strategy underperforms buy-and-hold after costs.<br>— But we're saying 'no edge proven under this config,' <b>not 'Kronos is useless'</b> (see scope below)."},
+
+  hNum:{zh:"① 大样本结果（n=270 · 测于 2026-06-24）",en:"① Large-sample result (n=270 · tested 2026-06-24)"},
+  cMetric:{zh:"指标",en:"Metric"},cKron:{zh:"Kronos",en:"Kronos"},cBase:{zh:"基准 / 该多少",en:"Baseline / target"},cRead:{zh:"读",en:"Read"},
+
+  hJourney:{zh:"② 诚实轨迹：差点错判、被自己揪回来",en:"② The honest trail: an almost-wrong call, caught by ourselves"},
+  sJourney:{zh:"关键不是结论，是过程——一开始用示例默认温度差点错发「没用」，查出不公平、修正、再加样本，假苗头才现原形。这套自我纠错才是护城河。",
+            en:"The point isn't the verdict, it's the process — we nearly published 'useless' on the example's default temperature, caught that it was unfair, fixed it, scaled up, and the false signal evaporated. That self-correction is the moat."},
+  jCfg:{zh:"配置",en:"Config"},jN:{zh:"样本 n",en:"n"},jDir:{zh:"方向命中",en:"Direction"},jRead:{zh:"读",en:"Read"},
+
+  hLearn:{zh:"③ 即使没 edge，真能学到的东西",en:"③ What's genuinely worth learning, edge or not"},
+  sLearn:{zh:"负结果不等于零收获。下面四条不花算力就能拿走——最值钱的那条，恰好和我们的诚实统计同根。",
+          en:"A negative result isn't a zero result. These four cost no compute to keep — and the most valuable one shares a root with our honest-stats approach."},
+  l1t:{zh:"🔤 把 K 线切成「词表」",en:"🔤 Tokenizing K-lines into a vocabulary"},
+  l1b:{zh:"Kronos 用 BSQ 把 OHLCV 离散成 token，让 transformer 像读语言一样读市场。这其实是我们「体制标签 regime」的远房亲戚：连续行情 → 离散状态。思路被确认可行。",
+       en:"Kronos uses BSQ to discretize OHLCV into tokens so a transformer reads the market like language. That's a cousin of our regime labels: continuous prices → discrete states. The idea is validated."},
+  l2t:{zh:"🎲 多采样 → 分布 → 自带不确定性",en:"🎲 Multi-sample → distribution → built-in uncertainty"},
+  l2b:{zh:"它一次采样 N 条路径，给你一个散布而不是一个点。这正合我们的脾气：别给假装精确的点估计，给诚实的区间和散布（对应我们的 conformal 门）。",
+       en:"It samples N paths at once, giving a spread rather than a single point. That matches our ethos: not a falsely precise point estimate, but an honest interval and spread (cf. our conformal gate)."},
+  l3t:{zh:"🌡️ 温度教训：别信示例默认值",en:"🌡️ The temperature lesson: don't trust example defaults"},
+  l3b:{zh:"生成式预测器对采样温度极敏感。示例默认 T=1.0 让预测狂飞、误差虚高，差点让我们冤判它「没用」；T=0.3 才是合理点预测。任何人拿这类模型下结论前，先把温度调对、做 sanity-check。",
+       en:"Generative forecasters are highly sensitive to sampling temperature. The example default T=1.0 made predictions wild and error inflated — nearly costing it a wrongful 'useless' verdict; T=0.3 gives sane point forecasts. Tune temperature and sanity-check before concluding anything."},
+  l4t:{zh:"🛡️ 负结果本身就是护城河",en:"🛡️ The negative result itself is the moat"},
+  l4b:{zh:"一个 AAAI-2026、一堆 star 的热门模型，我们公平地测、诚实地认——别人晒成功藏失败，我们把「测了、没赢」也公开。这份敢认账，正是 Valpha Lab 区别于满街吹票机的地方。",
+       en:"A hyped, star-laden AAAI-2026 model — we tested it fairly and owned the result. Others show wins and hide losses; we publish 'tested it, didn't win' too. That willingness to own outcomes is what sets Valpha Lab apart from the tip-mills."},
+
+  hScope:{zh:"④ 测了什么 · 没测什么（别过度外推）",en:"④ What we tested · what we didn't (don't over-extrapolate)"},
+  scope:{zh:"<b>测了：</b>Kronos-small + Tokenizer-base、10 只美股（含 SPY，跨板块）、日线、5 交易日预测、每点 5 次蒙特卡洛采样取均值、T=0.3、固定种子 42、walk-forward 滚动样本外、扣 5bps 单边成本、共 270 个预测。<br><br><b>没测 / 不代表：</b>没测 base/large 等更大的 Kronos；没测它训练分布里的市场/频率（它可能在别处更强）；没测更长或更短的持有期；没做超参搜索。<b>所以诚实的说法是「Kronos-small 开箱、美股日线、5 日、默认配置下没证出 edge」，而不是「Kronos 普世没用」。</b>",
+         en:"<b>Tested:</b> Kronos-small + Tokenizer-base, 10 US names (incl. SPY, cross-sector), daily bars, 5-trading-day horizon, mean of 5 Monte-Carlo samples per point, T=0.3, fixed seed 42, rolling walk-forward out-of-sample, 5bps one-side cost, 270 predictions total.<br><br><b>Not tested / not implied:</b> we didn't test base/large Kronos; didn't test markets/frequencies in its training distribution (it may be stronger there); didn't test longer or shorter horizons; ran no hyperparameter search. <b>So the honest claim is 'no edge proven for Kronos-small, US daily, 5-day, default config' — not 'Kronos is universally useless.'</b>"},
+  next:{zh:"<b>下一步（待跑）：</b>金融里有条铁律——<b>波动 σ 是可预测的，方向 μ 几乎谁都测不准。</b>我们这轮只评了方向，把模型预测的「振幅」整个扔了，等于让短跑选手去考游泳。下一步把同一批预测重评成「波动 / 振幅预测」，对比「振幅延续」基准——看它在该擅长的题上是否真有料。还是诚实计分，输也照写。",
+        en:"<b>Next (pending):</b> a finance truism — <b>volatility σ is forecastable; direction μ is near-unpredictable for everyone.</b> This round scored only direction and threw away the model's predicted range — like grading a sprinter on swimming. Next we'll re-score the same predictions as volatility/range forecasts against a persistence baseline, to see if it has skill on the question it should be good at. Still honestly scored — losses logged too."},
+
+  foot:{zh:"方法：walk-forward 样本外 · 随机游走基准 · 扣成本 · 固定随机种子可复现。描述性记录、非荐股、过去≠未来。这页是一次性实验的诚实留档，测于 2026-06-24。",
+        en:"Method: walk-forward out-of-sample · random-walk baseline · after costs · fixed seed, reproducible. Descriptive record, not advice, past ≠ future. An honest log of a one-time experiment, tested 2026-06-24."}
+};
+const NUM=[
+  {k:"cM_dir",kr:"51.9%",base:"掷硬币 50% · 上涨基率 57.4%",base_en:"coin flip 50% · up-rate 57.4%",cls:"bad",r:"cR_dir"},
+  {k:"cM_p",kr:"0.292",base:"<0.05 才算显著",base_en:"need <0.05",cls:"bad",r:"cR_p"},
+  {k:"cM_mae",kr:"6.37%",base:"随机游走(预测0) 2.50%",base_en:"random walk (predict 0) 2.50%",cls:"bad",r:"cR_mae"},
+  {k:"cM_strat",kr:"+0.05%",base:"买入持有 +0.30%",base_en:"buy & hold +0.30%",cls:"bad",r:"cR_strat"}
+];
+const NUMI18N={
+  cM_dir:{zh:"方向命中率",en:"Direction hit-rate"},cR_dir:{zh:"❌ 还低于「无脑猜涨」",en:"❌ below 'just guess up'"},
+  cM_p:{zh:"二项检验 p（单边）",en:"Binomial p (one-sided)"},cR_p:{zh:"不显著＝和运气分不开",en:"not significant = indistinguishable from luck"},
+  cM_mae:{zh:"5 日收益预测 MAE",en:"5-day return MAE"},cR_mae:{zh:"❌ 误差 2.5 倍，没更准",en:"❌ 2.5× the error, not more accurate"},
+  cM_strat:{zh:"多空策略（扣 5bps）",en:"Long-short strat (after 5bps)"},cR_strat:{zh:"❌ 跑输买入持有",en:"❌ underperforms buy & hold"}
+};
+const JOUR=[
+  {cfg:"T=1.0（示例默认·不公平）",cfg_en:"T=1.0 (example default · unfair)",n:"60",dir:"51.7%",read:"差点错发「❌ 没用」",read_en:"nearly published '❌ useless'",cls:"warn"},
+  {cfg:"T=0.3（公平）",cfg_en:"T=0.3 (fair)",n:"60",dir:"55.0%",read:"有苗头，但 p=0.26 不显著",read_en:"a hint, but p=0.26 not significant",cls:"warn"},
+  {cfg:"T=0.3 · 大样本",cfg_en:"T=0.3 · large sample",n:"270",dir:"51.9%",read:"苗头消失＝之前是噪声",read_en:"hint vanished = it was noise",cls:"bad"}
+];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh";try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||(NUMI18N[k]&&NUMI18N[k][LANG])||k;
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+function render(){
+  applyStatic();
+  let h=`<tr><th>${t("cMetric")}</th><th>${t("cKron")}</th><th>${t("cBase")}</th><th>${t("cRead")}</th></tr>`;
+  NUM.forEach(r=>{h+=`<tr><td class="k">${t(r.k)}</td><td class="k ${r.cls}">${esc(r.kr)}</td><td>${esc(LANG==="en"?r.base_en:r.base)}</td><td class="${r.cls}">${t(r.r)}</td></tr>`;});
+  $("numtbl").innerHTML=h;
+  let j=`<tr><th>${t("jCfg")}</th><th>${t("jN")}</th><th>${t("jDir")}</th><th>${t("jRead")}</th></tr>`;
+  JOUR.forEach(r=>{j+=`<tr><td class="k">${esc(LANG==="en"?r.cfg_en:r.cfg)}</td><td>${esc(r.n)}</td><td class="k">${esc(r.dir)}</td><td class="${r.cls}">${esc(LANG==="en"?r.read_en:r.read)}</td></tr>`;});
+  $("jtbl").innerHTML=j;
+  let g="";
+  [1,2,3,4].forEach(i=>{g+=`<div class="card"><h3>${t("l"+i+"t")}</h3><p>${t("l"+i+"b")}</p></div>`;});
+  $("grid").innerHTML=g;
+}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};render();};
+render();
+</script>
+</body>
+</html>
