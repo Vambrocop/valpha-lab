@@ -27,6 +27,7 @@
 <button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
 <p class="sub" data-i18n="intro"></p>
+<div id="track" style="background:rgba(63,185,80,.1);border:1px solid var(--grn);border-radius:10px;padding:11px 14px;margin:12px 0;font-size:.92rem;line-height:1.6"></div>
 <div class="verdict" id="reads"></div>
 <h2 data-i18n="hCal"></h2>
 <p class="sub" data-i18n="sCal"></p>
@@ -62,6 +63,11 @@ function render(d){
   applyStatic();
   const mc=d.model_calibration||{};
   $("reads").innerHTML="🧭 <b>"+esc(mc.reads||"样本不足")+"</b>"+(mc.n_total?` <span style="color:var(--mut);font-weight:400">· n=${mc.n_total}</span>`:"");
+  {const cur=mc.curve||[],wr=cur.map(c=>c.real_wr_pct).filter(x=>x!=null);
+   if(wr.length){const lo=Math.min(...wr),hi=Math.max(...wr),H=d.horizon_days||20;
+     $("track").innerHTML=LANG==="en"
+       ? `📦 <b>${mc.n_total||0} OOS predictions</b> (2012-2024) frozen, settled &amp; public — real ${H}-day win-rate <b>${lo}–${hi}%</b>. Honest: the market itself rises ~65% of ${H}-day windows (drift), so a high win% ≠ skill; high-confidence buckets aren't more right (no timing edge) — and we say so. <b>That honesty is the moat.</b>`
+       : `📦 <b>${mc.n_total||0} 条 OOS 预测</b>（2012-2024）冻结 · 结算 · 公开——真实 ${H} 日胜率 <b>${lo}–${hi}%</b>。诚实说：市场本身 ${H} 天里约 65% 在涨（自然漂移），所以高胜率 ≠ 本事；高置信桶并不更准（无择时 edge）——我们照样标。<b>这份诚实才是护城河。</b>`;}}
   let h=`<tr><th>${t("cBucket")}</th><th>${t("cReal")}</th><th></th><th>${t("cN")}</th></tr>`;
   (mc.curve||[]).forEach(c=>{const w=Math.round((c.real_wr_pct||0)*1.1);
     h+=`<tr><td>${c.prob_mean_pct}%</td><td><b>${c.real_wr_pct}%</b></td><td style="text-align:left"><span class="bar" style="width:${w}px"></span></td><td style="color:var(--mut)">${c.n}</td></tr>`;});
