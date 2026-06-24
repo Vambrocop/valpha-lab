@@ -37,6 +37,7 @@ def _stats(s, bench_ret):
         "last":       round(float(s.iloc[-1]), 2),
         "date":       last.strftime("%Y-%m-%d"),
         "chg_1d":     round(float(ret.iloc[-1] * 100), 2),
+        "chg_5d":     round(float((s.iloc[-1] / s.iloc[-6] - 1) * 100), 2),
         "chg_20d":    round(float((s.iloc[-1] / s.iloc[-21] - 1) * 100), 2),
         "ytd":        round(float((s.iloc[-1] / ytd_start.iloc[-1] - 1) * 100), 2)
                       if len(ytd_start) else None,

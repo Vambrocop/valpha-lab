@@ -62,6 +62,7 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 const avg=r=>Math.round(DIMS.reduce((s,d)=>s+(r[d]||0),0)/DIMS.length);
+function pc(lb,v){if(v==null)return '';const c=v>=0?'#3fb950':'#f85149';return `<span style="color:${c}">${lb}${v>=0?'+':''}${v}%</span>`;}
 let STOCKS={},sortKey="";
 
 function radarSVG(radar,size){
@@ -82,6 +83,7 @@ function render(){
       nm=LANG==="en"?s:`${esc(d.label)} <span class="sub">${s}</span>`,
       vl=LANG==="en"?"vol":"波动",yl=LANG==="en"?"1Y":"1年";
     return `<div class="card"><h3>${nm}</h3><div style="font-size:.84rem;font-weight:700;color:#a371f7;margin:-2px 0 3px">${t("c_avg")} ${avg(r)}</div>${radarSVG(r,170)}
+      <div class="sub" style="margin-top:2px">${d.price!=null?'$'+d.price.toFixed(2):''} · ${pc(LANG==="en"?"1D":"日",d.d1)} ${pc(LANG==="en"?"1W":"周",d.w1)} ${pc(LANG==="en"?"1M":"月",d.m1)}</div>
       <div class="sub">${yl} ${d.chg1y>=0?'+':''}${(d.chg1y??0).toFixed(0)}% · ${vl} ${(d.vol??0).toFixed(0)}%</div>
       <div>${hot?'<span class="tag hot">🔥</span>':''}${calm?'<span class="tag calm">🏰</span>':''}</div></div>`;
   }).join("");
@@ -94,7 +96,7 @@ async function load(){
   try{
     const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;
     const j=await r.json();
-    for(const[s,o]of Object.entries(j.stocks||{})){const st=o.stats||{};STOCKS[s]={label:o.label||s,chg1y:st.chg_1y,vol:st.vol20_ann,radar:o.radar||{}};}
+    for(const[s,o]of Object.entries(j.stocks||{})){const st=o.stats||{};STOCKS[s]={label:o.label||s,chg1y:st.chg_1y,vol:st.vol20_ann,price:st.last,d1:st.chg_1d,w1:st.chg_5d,m1:st.chg_20d,radar:o.radar||{}};}
     $("src").textContent=`${t("live")}（${Object.keys(STOCKS).length}）`;render();
   }catch(e){$("src").textContent=t("err");}
 }
