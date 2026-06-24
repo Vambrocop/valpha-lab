@@ -76,7 +76,11 @@
 7. ⏭️**跳过（已评估）**：📊 呈现/分类 chips — 证据库只 6 卡 / 6 族（1 对 1 = 纯 chrome），其他多项页已可按板块筛 → 不为凑数造装饰（enforce-simplicity）。将来若某页真的拥挤再说。
 8. ✅**完成**：📱 **持仓感知告警**（扩 `alert_check.py`）— 只在你持有的票深度回撤才单独提醒，私密走 `HOLDINGS` Secret，措辞守红线（风险提示非买卖）— `5451147`。
 9. ✅**完成（2026-06-24）**：🔌 **Finnhub 财报日历**。key 实测有效 + 配 `FINNHUB_API_KEY` Secret + `fetch_earnings.py`(免费 `/calendar/earnings`·未来 45 天·过滤到 valpha150+点单 universe) + 大盘表 **📅Nd 财报标**(14 天内才亮) + 接进盘后 workflow(no-key 静默)。注:历史 OHLCV 2024 转付费 → 只用日历/quote,不做价格回测。**将来可加**:个股新闻 / 分析师 buy-hold-sell 快照。— `cca194b`
-10. 🤖 **Kronos DL 诚实实验（进行中·2026-06-24）**：开源金融 K 线基础模型(AAAI2026·MIT·HF)。**已隔离在 `E:/my-projects/Kronos` 搭好**:独立 venv + CPU torch + `kronos_honest_backtest.py`(5 美股 walk-forward·H=5 日·vs 随机游走·扣成本·二项检验)。**初版(sample=1)诚实负结果**:方向 51%(p=0.46≈掷硬币)、收益 MAE 6% 比"预测 0"的 2.9% 还差 2 倍 → 无可交易 edge。**待 sample=5 公平复核定论**(已重跑)。**确认负之后可做一页"我们试了被吹的 Kronos、它没 edge(有计分为证)"= 护城河内容**;若意外赢:多年份 walk-forward 复核 + 公开计分才上 UI。实验码留 Kronos 项目、不进金融主仓。
+10. ✅**完成（2026-06-24）**：🤖 **Kronos DL 诚实实验 → 定论 + 上页**。开源金融 K 线基础模型(AAAI2026·MIT·HF)隔离在 `E:/my-projects/Kronos`(独立 venv·CPU torch·`kronos_honest_backtest.py`)。
+    - **定论**(大样本·公平):**n=270 个 5 日预测、10 美股、T=0.3、seed=42、walk-forward** → 方向 **51.9%**(单边 p=0.29 不显著·还低于 57.4% 上涨基率)、收益 MAE 6.37% vs 随机游走 2.50%(差 2.5 倍)、多空扣成本 +0.05% < 买入持有 +0.30% → **❌ 开箱无可交易 edge**。
+    - **诚实轨迹**(关键教训):T=1.0 示例默认值差点错判"没用"(MAE虚高·乱飞)→ 查出不公平 → T=0.3 n=60 出 55% 假苗头(p=0.26)→ n=270 苗头消失=噪声。**自我纠错过程本身写进了页**。
+    - **上页**:`market-analysis/web/kronos.html`(`f83ff34`)— 结论 hero + 结果表 + 轨迹表 + 4 条真能学的(BSQ词表≈regime/多采样自带不确定性/温度教训/负结果即护城河) + 严格划界(只测 small·美股日线·5日·默认配置,非"普世没用")。index 工具区 🔬 入口。
+    - **待跑(deferred·用户 2026-06-24 说"晚点来")**:🌊 **波动重评**。σ(波动)可测、μ(方向)不可测——这轮只评方向、把预测振幅扔了。`kronos_honest_backtest.py` 已改好(加 `parkinson_vol` + 存 pred/actual/naive_vol·见 `backtest_one`),**只差重跑 ~50min**:对比"振幅延续"基准看它在该擅长的题上有没有料。跑完把结果接进 kronos.html「下一步」块。实验码留 Kronos 项目、不进金融主仓。
 
 ### ❌ 别碰
 aihot 数据(不相关) · midas 无计分 AI 裁决 · 期权推荐引擎(没历史没法计分+对初学者太险) · adanos 付费情绪(改用免费 Reddit/Polymarket 提及数走自己 placebo) · A股适配器 · 6 渠道推送 · 15 图表策略当信号(只当靶子证伪)。
