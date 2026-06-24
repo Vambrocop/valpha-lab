@@ -8,7 +8,7 @@
 
 ## 0. 零散收尾（快 / 需用户动作）
 - [ ] **轮换暴露的 Gemini key**（聊天里露过；AI Studio 删旧建新 → 告诉我，我换 Secret）— 用户动作
-- [ ] **Telegram bot token**（@BotFather 建 bot + 拿 chat_id）→ 我配 Secret，开全推送 + **LLM 日读日推** — 需用户给 token
+- [x] ✅**Telegram 已通**（@Valphabot · 两 Secret 配好 · 修了"空串 LLM_PROVIDER 击穿 .get 默认"的 CI bug → 日推从不发的根因 · 日推已加料：数据日期 + 买/持/避结论 + 纳指方向 + 大白话 + 链接）
 - [ ] **NDX 展示页/卡**：把 `ndx.json`（季度 5进5出 + valpha150 缺口）显示出来 — ~0.5 天
 - [ ] 考虑补缺口大票进 valpha150：SHOP / PDD / APP / AXON / DASH / CDNS / SNPS 等 — 用户拍板
 
@@ -75,7 +75,8 @@
 6. ✅**完成**：🎓 **期权教学沙盒** `options.html`（payoff 搭腿 + BSM 希腊字母沙盒 + 为什么大多数人亏；BSM 对过 scipy 5 位小数 + put-call parity）— `83a48ec`。
 7. ⏭️**跳过（已评估）**：📊 呈现/分类 chips — 证据库只 6 卡 / 6 族（1 对 1 = 纯 chrome），其他多项页已可按板块筛 → 不为凑数造装饰（enforce-simplicity）。将来若某页真的拥挤再说。
 8. ✅**完成**：📱 **持仓感知告警**（扩 `alert_check.py`）— 只在你持有的票深度回撤才单独提醒，私密走 `HOLDINGS` Secret，措辞守红线（风险提示非买卖）— `5451147`。
-9. ⏸️**暂不做·存档备用（用户 2026-06-23：未来万一）**：🔌 **Finnhub 免费 US 交叉源** 给新鲜度门交叉校验。边际价值一般、需免费 key。**将来要做**：注册 finnhub.io 免费 key → 加 `FINNHUB_API_KEY` Secret → 在新鲜度门里拿它的最新报价/财报日期与现源交叉校验（同 LLM 那套 no-key 静默）。
+9. 🔌 **Finnhub 免费 US 源**（用户 2026-06-24 重新点名要用）。实测 free tier(60 calls/min)：✅免费 = 实时 quote / 个股新闻 company-news / **财报日历 earnings calendar** / 分析师推荐趋势 / 内部人交易；❌ **stock candle(历史 OHLCV) 2024 起转付费** → **不能拿它做价格回测**。**最佳用法(都不需历史)**：① **财报日历 → 个股"N 天后财报"风险标**(高价值·无需回测) ② 个股新闻 ③ 分析师 buy/hold/sell 快照(透明展示;要"测它准不准"得攒历史)。需用户拿免费 key → 加 `FINNHUB_API_KEY` Secret(同 LLM no-key 静默)。
+10. 🤖 **Kronos 评估（用户 2026-06-24 发 github.com/shiyu-coder/Kronos）**：开源金融 K 线**基础模型**(decoder-only transformer · 45+ 交易所 OHLCV 预训练 · mini 4M~large 499M · MIT · HF · AAAI2026)；输入历史 OHLCV → 预测未来 OHLCV。**契合用户 DL 野心**，但**诚实工程异议**：价格预测 ≠ 可交易 edge(市场近有效，多数此类模型扣成本后跑不赢随机游走)。**正确做法(项目铁律)**：当**带公开计分的实验**——Kronos-mini 跑几只美股，**walk-forward 比 naive(随机游走/last) OOS 扣成本后真赢了才上**，且像一切**公开认账**；别当"它能预测"直接上 UI。是真 DL 候选，但要先建验证 harness = **单独立项 + 重审**。
 
 ### ❌ 别碰
 aihot 数据(不相关) · midas 无计分 AI 裁决 · 期权推荐引擎(没历史没法计分+对初学者太险) · adanos 付费情绪(改用免费 Reddit/Polymarket 提及数走自己 placebo) · A股适配器 · 6 渠道推送 · 15 图表策略当信号(只当靶子证伪)。

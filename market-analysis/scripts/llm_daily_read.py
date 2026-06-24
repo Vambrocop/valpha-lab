@@ -134,10 +134,20 @@ def run():
     write_json("llm_read.json", out)
     wrote = _append_log(today, cr.get("stance"), text)
     print(f"[OK] llm_read.json — {cr.get('stance')} · {len(text)} 字" + ("" if wrote else "（今日已记，不重复）"))
-    if wrote:                                            # 一天只推一次 Telegram
+    if wrote:                                            # 一天只推一次 Telegram（带结论+方向，不只大白话）
         try:
             import notify_telegram
-            notify_telegram.send(f"🧠 Valpha Lab 今日读数（{cr.get('stance')}）\n\n{text}")
+            try:
+                ic = (json.loads((WEB / "outlook.json").read_text(encoding="utf-8")).get("index_call") or {})
+            except Exception:
+                ic = {}
+            lines = [f"🧠 Valpha Lab 今日读数 · 数据截至 {cr.get('asof') or today}"]
+            if cr.get("action"):
+                lines.append(f"📊 结论：{cr['action']}（{cr.get('stance')} {cr.get('score')}）")
+            if ic.get("call"):
+                lines.append(f"📈 纳指{ic.get('horizon', '')}：{ic['call']}（prob {ic.get('prob')} · tier {ic.get('tier')}）")
+            lines += ["", text, "", "🔗 vambrocop.github.io/valpha-lab/ ·（出格区·会错·已公开计分）"]
+            notify_telegram.send("\n".join(lines))
         except Exception:
             pass
     return out
