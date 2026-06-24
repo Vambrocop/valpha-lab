@@ -6,6 +6,24 @@
 
 ---
 
+## 🚧 在飞 + 待办（2026-06-24 · v1.0/1.5/2.0 一波委派，5 个 worktree 子代理并行）
+
+**在飞（5 子代理·主脑待合并+审+镜像 docs+push）**：
+- v1.0① **可懂性 hover 词典组件全站化**（`vp_gloss.js` + vp.css tooltip·DRY 替掉 index/dashboard 内联 plainify）
+- v1.0② **新手首达引导**（index 首访 "3 步看懂这站" 可关 + 重开按钮）
+- v1.0③ **移动端实测 + 空/错状态**（10 页 @media 不溢出 + fetch 失败友好兜底·纯加法）
+- v1.5 **LLM「本周回顾」周报**（grounded·复用日读 provider/plainify·写 llm_weekly.json + append-only 周账本·无 key 静默）
+- v2.0 **情绪信号可行性 spike**（Reddit/Polymarket 提及数·先验"够长历史能回测+澳洲可达"→ research/ 出 GO/NO-GO + 回测 harness 原型·不上线）
+
+**记住·后续可做（本波之后）**：
+- 🧩 **「两层呈现」全站铺开** = "又专业又能看懂"的工程化落地（每专业结论顶一行大白话 takeaway + 收起"展开看专业细节"）——v1.0 hover 做完后的自然下一步
+- 🌱 **自生长自动发现闭环**（现仅展示层 → 真跑起来）= 最大工程，**建议单独立项 + 全程重审**，别塞进并行波
+- 📈 **Live 计分卡 backfill**：预测越多护城河越有牙，随时间填充
+- 🤖 **更深 DL**：可试，但**上线前必须 walk-forward/CPCV 证它真胜简单模型**（Kronos 就是这纪律的范例：方向无 edge·波动方向仅边缘信号）
+- 🪪 **个性化深化**（持仓感知全面化·AUD/CGT 工具深化）；**多市场(A股/港/日韩) 暂不做**（CLAUDE.md）
+
+---
+
 ## 0. 零散收尾（快 / 需用户动作）
 - [ ] **轮换暴露的 Gemini key**（聊天里露过；AI Studio 删旧建新 → 告诉我，我换 Secret）— 用户动作
 - [x] ✅**Telegram 已通**（@Valphabot · 两 Secret 配好 · 修了"空串 LLM_PROVIDER 击穿 .get 默认"的 CI bug → 日推从不发的根因 · 日推已加料：数据日期 + 买/持/避结论 + 纳指方向 + 大白话 + 链接）
