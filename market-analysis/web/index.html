@@ -39,14 +39,48 @@
   .mut{color:var(--mut)}.note{color:var(--amb);font-size:.8rem}
   footer{color:var(--mut);font-size:.78rem;margin-top:20px;border-top:1px solid var(--border);padding-top:10px}
   @media(max-width:560px){body{padding:12px}h1{font-size:1.32rem}.cards,.tools{gap:9px}.cards{grid-template-columns:1fr}.tools{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}}
+
+  /* ── Onboarding overlay (ob- namespace) ── */
+  #ob-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px}
+  #ob-backdrop.ob-hidden{display:none}
+  #ob-card{background:var(--panel);border:1px solid var(--acc);border-radius:16px;max-width:480px;width:100%;padding:24px 22px 20px;position:relative;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  #ob-title{font-size:1.12rem;font-weight:800;margin:0 0 16px;color:var(--acc)}
+  .ob-step{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}
+  .ob-num{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:rgba(163,113,247,.2);border:1px solid var(--acc);color:var(--acc);font-weight:700;font-size:.82rem;display:flex;align-items:center;justify-content:center}
+  .ob-text{font-size:.88rem;line-height:1.6;color:var(--fg)}
+  .ob-actions{display:flex;align-items:center;gap:10px;margin-top:18px;flex-wrap:wrap}
+  #ob-dismiss{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:.9rem;font-weight:700;cursor:pointer}
+  #ob-dismiss:hover{opacity:.88}
+  #ob-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--mut);font-size:1.2rem;cursor:pointer;line-height:1;padding:2px 6px}
+  #ob-close:hover{color:var(--fg)}
+  /* persistent guide button in header */
+  #ob-guide-btn{background:none;border:1px solid var(--border);border-radius:50%;width:28px;height:28px;color:var(--mut);font-size:.82rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.14s;align-self:center}
+  #ob-guide-btn:hover{border-color:var(--acc);color:var(--acc)}
+  @media(max-width:480px){#ob-card{padding:18px 14px 16px}#ob-title{font-size:1rem}.ob-text{font-size:.84rem}}
 </style>
 </head>
 <body>
 <header>
   <h1><span class="hex">⬡</span> Valpha Lab</h1>
   <span class="tag" data-i18n="tag"></span>
+  <button id="ob-guide-btn" aria-label="新手指南 / Guide" title="新手指南 / Guide">?</button>
   <button id="lang" aria-label="切换语言 / switch language"></button>
 </header>
+
+<!-- Onboarding overlay -->
+<div id="ob-backdrop" class="ob-hidden" role="dialog" aria-modal="true" aria-labelledby="ob-title">
+  <div id="ob-card">
+    <button id="ob-close" aria-label="关闭 / Close">&#x2715;</button>
+    <div id="ob-title"></div>
+    <div class="ob-step"><div class="ob-num">①</div><div class="ob-text" id="ob-s1"></div></div>
+    <div class="ob-step"><div class="ob-num">②</div><div class="ob-text" id="ob-s2"></div></div>
+    <div class="ob-step"><div class="ob-num">③</div><div class="ob-text" id="ob-s3"></div></div>
+    <div class="ob-actions">
+      <button id="ob-dismiss"></button>
+    </div>
+  </div>
+</div>
+
 <div class="hero" id="hero">
   <div><canvas id="gauge" width="240" height="140" aria-label="今日倾向仪表"></canvas></div>
   <div>
@@ -113,7 +147,17 @@ const I18N={
   t_index:{zh:"宽基指数指南",en:"Index guide"},t_index_d:{zh:"不想选股？定投宽基怎么买（澳洲实操）",en:"skip stock-picking · DCA index guide · AU practical"},
   t_opt:{zh:"期权教学",en:"Options 101"},t_opt_d:{zh:"搭腿看盈亏+希腊字母沙盒·纯教学非荐股",en:"payoff + Greeks sandbox · teaching, not advice"},
   t_read:{zh:"综合读数",en:"Composite Read"},t_read_d:{zh:"出格区·诚实证据加权的当下倾向",en:"out-of-bounds · evidence-weighted tilt"},
-  t_cycle:{zh:"周期季节性",en:"Cycles"},t_cycle_d:{zh:"三层透明·原始计数+校正前后",en:"3-layer · raw counts + pre/post-FDR"}
+  t_cycle:{zh:"周期季节性",en:"Cycles"},t_cycle_d:{zh:"三层透明·原始计数+校正前后",en:"3-layer · raw counts + pre/post-FDR"},
+  // onboarding
+  ob_title:{zh:"3 步看懂这站",en:"3 steps to get started"},
+  ob_s1:{zh:"<b>这站是什么：</b>用诚实统计帮你看懂美股——测风险、亮战绩、公开计分。不是又一个“AI 叫你买”的吹票机。",
+         en:"<b>What this is:</b> honest statistics to help you read US stocks — measure risk, show track records, score every call publicly. Not another \"AI says buy\" hype machine."},
+  ob_s2:{zh:"<b>先看什么：</b>顶部“今日结论”先给方向（买/持/避），点“公开战绩卡”看我们历史上对不对，下面的工具按需挑。",
+         en:"<b>Where to start:</b> the \"Today's read\" hero gives the current direction (buy / hold / avoid). Hit \"public scorecard\" to judge our track record. Pick tools below as needed."},
+  ob_s3:{zh:"<b>我们的承诺：</b>会错、不打包票，但每条判断都公开计分、敢认账。短期方向≈掷硬币我们也照实说。",
+         en:"<b>Our promise:</b> we can be wrong and make no guarantees — but every call is scored publicly and we own the result. When short-term direction is a coin-flip, we say so."},
+  ob_dismiss:{zh:"知道了",en:"Got it"},
+  ob_guide:{zh:"新手指南",en:"Guide"}
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -178,6 +222,7 @@ function tools(){
 }
 function paint(){
   applyStatic();tools();renderHero();
+  obRender(); // re-render onboarding text if overlay is open
   if(SIG){$("sig").innerHTML=`tier ${esc(String(SIG.latest_tier??"—"))} · <span class="mut" style="font-size:1rem">prob</span> ${(SIG.latest_prob??0).toFixed(2)}`;$("signote").textContent=t("signote");}
   if(REG){$("env").textContent=REG.composite||"—";$("envas").textContent=(LANG==="en"?"as of ":"数据日 ")+(REG.asof||"");}
   if(DIG){$("dig").innerHTML=(DIG.tier1_facts||[]).map(f=>`<li>${esc(f)}</li>`).join("")||`<li class="mut">—</li>`;}
@@ -200,6 +245,49 @@ function paint(){
     ? `Today: <b>${_act?esc(_act):"—"}</b>${_ct}${hotSec?`; heat in <b>${esc(hotSec)}</b>`:''}. <span class="mut">Every call is scored — not a guarantee, we can be wrong.</span>`
     : `今日：<b>${_act?esc(_act):"—"}</b>${_ct}${hotSec?`；热度在<b>${esc(hotSec)}</b>`:''}。<span class="mut">每条判断都进了公开计分——非保证、会错,自己拍。</span>`;
 }
+
+// ── Onboarding logic ──
+const OB_KEY="valpha_onboarded";
+function obIsOpen(){return !$("ob-backdrop").classList.contains("ob-hidden");}
+function obRender(){
+  $("ob-title").textContent=t("ob_title");
+  $("ob-s1").innerHTML=t("ob_s1");
+  $("ob-s2").innerHTML=t("ob_s2");
+  $("ob-s3").innerHTML=t("ob_s3");
+  $("ob-dismiss").textContent=t("ob_dismiss");
+  $("ob-guide-btn").setAttribute("aria-label",t("ob_guide")+" / Guide");
+  $("ob-guide-btn").setAttribute("title",t("ob_guide"));
+}
+function obShow(){
+  $("ob-backdrop").classList.remove("ob-hidden");
+  obRender();
+  // focus the dismiss button for keyboard users
+  setTimeout(()=>{try{$("ob-dismiss").focus();}catch(e){}},50);
+}
+function obHide(remember){
+  $("ob-backdrop").classList.add("ob-hidden");
+  if(remember){try{localStorage.setItem(OB_KEY,"1");}catch(e){}}
+}
+// Keyboard: Esc to close, focus trap inside card
+$("ob-backdrop").addEventListener("keydown",function(e){
+  if(e.key==="Escape"){obHide(false);e.preventDefault();}
+  // simple focus trap: keep Tab inside ob-card
+  if(e.key==="Tab"){
+    const focusable=$("ob-card").querySelectorAll("button");
+    const first=focusable[0],last=focusable[focusable.length-1];
+    if(e.shiftKey){if(document.activeElement===first){last.focus();e.preventDefault();}}
+    else{if(document.activeElement===last){first.focus();e.preventDefault();}}
+  }
+});
+$("ob-close").onclick=()=>obHide(false);
+$("ob-dismiss").onclick=()=>obHide(true);
+$("ob-guide-btn").onclick=()=>obShow();
+// First-visit gate
+(function(){
+  let seen=false;try{seen=!!localStorage.getItem(OB_KEY);}catch(e){}
+  if(!seen) obShow();
+})();
+
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();};
 async function get(f){try{const r=await fetch(B+f,{cache:"no-store"});return r.ok?await r.json():null;}catch(e){return null;}}
 (async()=>{
