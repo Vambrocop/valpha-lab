@@ -114,6 +114,15 @@
 </div>
 
 <div class="tools" id="tools"></div>
+
+<!-- 本周回顾 card（llm_weekly — grounded · 诚实 · 每周 append 计分）-->
+<div class="card" id="weekly-card" style="margin:14px 0;display:none">
+  <h3 id="weekly-title" style="color:var(--mut);font-size:.92rem;font-weight:600;margin:0 0 8px"></h3>
+  <div id="weekly-text" style="font-size:.88rem;line-height:1.65;color:var(--fg)"></div>
+  <div id="weekly-meta" style="font-size:.76rem;color:var(--mut);margin-top:8px"></div>
+  <div style="font-size:.75rem;color:var(--amb);margin-top:6px;line-height:1.4" id="weekly-caveat"></div>
+</div>
+
 <footer data-i18n="foot"></footer>
 
 <script>
@@ -288,12 +297,35 @@ $("ob-guide-btn").onclick=()=>obShow();
   if(!seen) obShow();
 })();
 
-$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();};
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();renderWeekly();};
 async function get(f){try{const r=await fetch(B+f,{cache:"no-store"});return r.ok?await r.json():null;}catch(e){return null;}}
+// ── 本周回顾 card（llm_weekly — grounded · 诚实 · 每周 append 计分）────────
+let WEEKLY=null;
+function renderWeekly(){
+  const card=$("weekly-card");
+  if(!card) return;
+  if(!WEEKLY||!WEEKLY.text){card.style.display="none";return;}
+  card.style.display="";
+  const title=$("weekly-title"),txt=$("weekly-text"),meta=$("weekly-meta"),cav=$("weekly-caveat");
+  const wlabel=esc(WEEKLY.week_label||WEEKLY.week_of||"");
+  if(title) title.textContent=LANG==="en"
+    ?`📅 Weekly review · ${wlabel||"this week"}`
+    :`📅 本周回顾 · ${wlabel}`;
+  if(txt) txt.textContent=WEEKLY.text;  // LLM text — 已 esc 在服务端；不二次转义避免破坏中文
+  const nd=WEEKLY.n_days!=null?`${WEEKLY.n_days}天数据`:"";
+  const cov=WEEKLY.coverage?`（覆盖：${esc(WEEKLY.coverage)}）`:"";
+  if(meta) meta.textContent=LANG==="en"
+    ?`Generated ${esc(WEEKLY.generated||"")} · ${nd}${cov}`
+    :`生成时间 ${esc(WEEKLY.generated||"")} · ${nd}${cov}`;
+  if(cav) cav.textContent=LANG==="en"
+    ?"LLM plain-language summary grounded in real computed data. Not a prediction. We can be wrong. Past ≠ future. Appended to public weekly log."
+    :(WEEKLY.caveat||"LLM 据本周真实算出因子生成；非预测、非荐股、会错，过去≠未来。已追加到公开周报计分。");
+}
 (async()=>{
   paint();
-  [SIG,REG,DIG,PAPER,V150,CR,OUT,LLM]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json"),get("composite_read.json"),get("outlook.json"),get("llm_read.json")]);
+  [SIG,REG,DIG,PAPER,V150,CR,OUT,LLM,WEEKLY]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json"),get("composite_read.json"),get("outlook.json"),get("llm_read.json"),get("llm_weekly.json")]);
   paint();
+  renderWeekly();
   // Error state: if all critical data sources failed, show a friendly inline notice
   if(!SIG&&!REG&&!DIG&&!CR&&!V150){
     const msg=LANG==="en"?"Failed to load — refresh later":"加载失败，请稍后刷新";
