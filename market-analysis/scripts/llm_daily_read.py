@@ -64,7 +64,10 @@ def _gemini(prompt, key):
 
 # ── provider 无关：默认 Gemini；设 LLM_PROVIDER=openai 走 OpenAI 兼容(DeepSeek/OpenAI/Ollama 等) ──
 def _provider():
-    return os.environ.get("LLM_PROVIDER", "gemini").lower()
+    # ⚠️ 用 `or` 不能用 .get(默认)：CI 把未设的 secret 当【空串】传进来(LLM_PROVIDER="")，
+    # .get("LLM_PROVIDER","gemini") 会返回空串(变量存在)、击穿默认 → provider="" ≠ "gemini"
+    # → 走 else 找 LLM_API_KEY(也空)→ 判"未配置"跳过 → 日报永远不发。空串必须回落 gemini。
+    return (os.environ.get("LLM_PROVIDER") or "gemini").lower()
 
 
 def _active_model():
