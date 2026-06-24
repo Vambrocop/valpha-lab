@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Valpha Lab</title>
+<link rel="stylesheet" href="vp.css">
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--amb:#d29922;--acc:#a371f7;--blu:#58a6ff}
   *{box-sizing:border-box}
@@ -149,18 +150,7 @@ function nasdaqPlain(ic){
     ? ` · <span class="mut">Nasdaq ${hz} ~${pct}% ${dir} (${note})</span>`
     : ` · <span class="mut">纳指${hz}约 ${pct}% ${dir}（${note}）</span>`;
 }
-const GLOSS=[["VIX","衡量市场恐慌情绪，越高越慌"],["收益率曲线","不同期限国债利率的高低对比，倒挂常被当衰退预警"],["信用利差","企业借钱比国债贵多少，越大=市场越担心违约"],["相关性","各只股票是不是一起涨跌，越高越像同涨同跌"],["分散性","不同股票走势分化的程度，分化大=分散投资更有效"]];
-function plainify(text){
-  if(!text||LANG!=="zh") return text;                 // 只给中文段补注；英文段原样
-  let out=text;
-  for(const [term,exp] of GLOSS){
-    const p=out.indexOf(term); if(p<0) continue;
-    const after=out.charAt(p+term.length);
-    if(after==="（"||after==="(") continue;            // LLM 已自解释就不重复
-    out=out.slice(0,p+term.length)+`（${exp}）`+out.slice(p+term.length);
-  }
-  return out;
-}
+/* GLOSS + plainify 已迁移到 vp_gloss.js → vpAnnotate()，此处删除重复副本 */
 function renderHero(){
   drawGauge(CR?CR.score:null);
   if(!CR){return;}
@@ -176,7 +166,7 @@ function renderHero(){
   const sub=`${esc(stance)}${cf?" · "+cf:""}`;
   const ch=nasdaqPlain(OUT&&OUT.index_call);
   $("h-call").innerHTML=`<span class="mut">${sub}</span>${ch}`;
-  $("h-read").textContent=(LANG==="zh"&&LLM&&LLM.text)?plainify(LLM.text):"";
+  $("h-read").innerHTML=(LLM&&LLM.text)?(typeof vpAnnotate==="function"?vpAnnotate(LLM.text):""):"";
   $("h-tilt").textContent=CR.usable_tilt||"";
   $("h-acct").textContent=t("hAcct");
 }
@@ -215,5 +205,6 @@ async function get(f){try{const r=await fetch(B+f,{cache:"no-store"});return r.o
 (async()=>{paint();[SIG,REG,DIG,PAPER,V150,CR,OUT,LLM]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json"),get("composite_read.json"),get("outlook.json"),get("llm_read.json")]);paint();})();
 window.addEventListener("resize",()=>drawGauge(CR?CR.score:null));
 </script>
+<script src="vp_gloss.js"></script>
 </body>
 </html>

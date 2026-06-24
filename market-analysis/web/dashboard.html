@@ -6,6 +6,7 @@
 <title>Valpha Lab | 美股诚实统计</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='85'%3E%E2%AC%A1%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="vp.css">
 <style>
   /* 今日结论 hero（去重④后的 canvas 倾向仪表·先给结论·自包含不依赖 app-*.js）*/
   .vp-hero{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;background:linear-gradient(135deg,rgba(163,113,247,.13),rgba(88,166,255,.06));border:1px solid #a371f7;border-radius:14px;padding:16px 18px;max-width:760px;margin:0 auto 1.3rem}
@@ -924,8 +925,7 @@
   function g(id){return document.getElementById(id);}
   function escc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function col(s){return s==null?"#9da7b3":s>0.13?"#3fb950":s<-0.13?"#f85149":"#e6edf3";}
-  var GLOSS=[["VIX","衡量市场恐慌情绪，越高越慌"],["收益率曲线","不同期限国债利率的高低对比，倒挂常被当衰退预警"],["信用利差","企业借钱比国债贵多少，越大=市场越担心违约"],["相关性","各只股票是不是一起涨跌，越高越像同涨同跌"],["分散性","不同股票走势分化的程度，分化大=分散投资更有效"]];
-  function plf(text){if(!text)return text;var out=text;for(var i=0;i<GLOSS.length;i++){var term=GLOSS[i][0],exp=GLOSS[i][1],p=out.indexOf(term);if(p<0)continue;var a=out.charAt(p+term.length);if(a==="（"||a==="(")continue;out=out.slice(0,p+term.length)+"（"+exp+"）"+out.slice(p+term.length);}return out;}
+  /* GLOSS + plf 已迁移到 vp_gloss.js → vpAnnotate()，此处删除重复副本 */
   function gauge(s){
     var cv=g("vp-gauge"); if(!cv) return;
     var ctx=cv.getContext("2d"),dpr=window.devicePixelRatio||1,W=cv.clientWidth||240,H=140;
@@ -954,10 +954,11 @@
       dir=ic.prob<0.5?"偏跌":"偏涨",note=Math.abs(pct-50)<=4?"≈掷硬币，无验证优势，别当真":"短期方向谁都难测，仅参考";
       sub+=' · <span style="color:#9da7b3">纳指'+escc(ic.horizon||"短期")+'约 '+pct+'% '+dir+'（'+note+'）</span>';}
     g("vp-sub").innerHTML=sub;
-    g("vp-read").textContent=(LLM&&LLM.text)?plf(LLM.text):"";
+    g("vp-read").innerHTML=(LLM&&LLM.text)?(typeof vpAnnotate==="function"?vpAnnotate(LLM.text):""):"";  /* vp_gloss.js */
   });
   window.addEventListener("resize",function(){gauge(_score);});
 })();
 </script>
+<script src="vp_gloss.js"></script>
 </body>
 </html>
