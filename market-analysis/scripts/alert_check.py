@@ -132,7 +132,10 @@ if alerts:
     print(f"[ALERT] {len(alerts)} 条告警 → alert.md")
     try:                                               # 同时推 Telegram（未配置 Secrets 则静默跳过）
         import notify_telegram
-        notify_telegram.send(body.replace("**", "").replace("# ", ""), tag="alert")
+        tg_lines = ([f"Valpha Lab 信号告警 {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M UTC')}", ""]
+                    + [a.replace("**", "") for a in alerts]
+                    + [""] + notify_telegram.footer(extra="（自动生成，仅供参考）").splitlines())
+        notify_telegram.send("\n".join(tg_lines), tag="alert")
     except Exception as e:
         print(f"  ⚠ Telegram 推送跳过: {e}")
 else:

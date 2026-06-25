@@ -71,6 +71,21 @@ def send(text, parse_mode=None, tag="msg"):
         return False
 
 
+_FOOTER_LINK = "🔗 vambrocop.github.io/valpha-lab/"
+_FOOTER_DISC = "（实验性·只读真实算出的数据·会错·已公开计分认账）"
+
+
+def footer(extra: str = "") -> str:
+    """返回标准消息尾巴：链接行 + 免责行（extra 非空时替换免责行）。
+    调用方把 footer() 拆成两行插入消息列表：
+        lines += footer().splitlines()
+    或直接 append：
+        lines += ["", _FOOTER_LINK, _FOOTER_DISC]
+    """
+    disc = extra if extra else _FOOTER_DISC
+    return f"{_FOOTER_LINK}\n{disc}"
+
+
 if __name__ == "__main__":
     msg = " ".join(sys.argv[1:]) or "Valpha Lab Telegram 推送自测 ✅"
     if not send(msg):

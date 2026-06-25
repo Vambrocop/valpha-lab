@@ -175,8 +175,7 @@ def run(write=True, push=True):
                 "这是小幅统计占优、不是「必涨」。",
                 "明天见分晓，本条已 append 公开计分、事后认账。",
                 "",
-                "🔗 vambrocop.github.io/valpha-lab/ ·（出格区·非荐股·会错·过去≠未来）",
-            ]
+            ] + notify_telegram.footer(extra="（出格区·非荐股·会错·过去≠未来）").splitlines()
             notify_telegram.send("\n".join(lines), tag="overreaction")
         except Exception as e:
             print(f"[反弹告警] 推送失败（非致命）: {e}")
