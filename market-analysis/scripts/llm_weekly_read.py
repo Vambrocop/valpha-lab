@@ -325,6 +325,22 @@ def run():
         f"[OK] llm_weekly.json — {week_key} · {len(text)} 字"
         + ("" if wrote else "（本周已记，不重复）")
     )
+
+    if wrote:
+        try:
+            import notify_telegram
+            lines = [
+                f"📅 Valpha Lab 本周回顾 · {summary['week_label']}",
+                "",
+                _plainify(text),
+                "",
+                "🔗 vambrocop.github.io/valpha-lab/",
+                "（数据读数·会错·非预测·已公开计分认账）",
+            ]
+            notify_telegram.send("\n".join(lines), tag="weekly")
+        except Exception:
+            pass
+
     return out
 
 
