@@ -17,7 +17,7 @@
 - **委派复盘**：6 步协议有效——「审查者≠建造者」抓出 2 个建造者自测漏掉的真 bug（onboarding 引号崩整页 / spike harness 崩）；冲突最小化设计（hover 加 script 末、mobile 改 @media、onboarding 独立块）让 4 家同改 index.html 只手工解了 2 处
 
 **记住·后续可做（本波之后）**：
-- 🧩 **「两层呈现」全站铺开** = "又专业又能看懂"的工程化落地（每专业结论顶一行大白话 takeaway + 收起"展开看专业细节"）——v1.0 hover 做完后的自然下一步
+- 🧩 **「两层呈现」全站铺开**（进行中·2026-06-25）= "又专业又能看懂"的工程化落地。**模式已定**：vp.css 的 `.vp-takeaway` + `.vp-more`(原生 `<details>` 折叠·零JS·可访问)。**已铺 4 页**：雷达(试点·加大白话「性格」persona + 折6维定义)/计分卡(折校准+Live表)/综合读数(折6因子拆解)/自生长(折按检验族+自动发现引擎)。**余可续**：seasonal/heatmap/btcread/senate/regimefwd/evidence/ipo/options/ticker 等深页按需套同模式。**可选增强**：composite 因子理由接 vpAnnotate 词典 tooltip
 - 🌱 **自生长自动发现闭环**（现仅展示层 → 真跑起来）= 最大工程，**建议单独立项 + 全程重审**，别塞进并行波
 - 📈 **Live 计分卡 backfill**：预测越多护城河越有牙，随时间填充
 - 🤖 **更深 DL**：可试，但**上线前必须 walk-forward/CPCV 证它真胜简单模型**（Kronos 就是这纪律的范例：方向无 edge·波动方向仅边缘信号）
