@@ -13,16 +13,44 @@
 import os
 import sys
 import json
+import datetime
 import urllib.request
+from pathlib import Path
 
 API = "https://api.telegram.org/bot{token}/sendMessage"
 
 
-def send(text, parse_mode=None):
-    """发一条 Telegram 消息。返回 True/False；未配置或失败均不抛异常（流水线不被拖垮）。"""
+def _log_status(ok, tag, note=""):
+    """把每次推送尝试留痕到 telegram_status.json(web+docs)——让「到底推没推/为啥没推」可查不靠猜。
+    只记 时间/成败/标签/简短原因,不记消息正文(避免泄露 + 没必要)。"""
+    try:
+        rec = {"ts": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "ok": bool(ok), "tag": str(tag), "note": str(note)[:120]}
+        base = Path(__file__).parent.parent
+        for d in (base / "web", base.parent / "docs"):
+            if not d.exists():
+                continue
+            p = d / "telegram_status.json"
+            hist = []
+            if p.exists():
+                try:
+                    hist = json.loads(p.read_text(encoding="utf-8")).get("recent", [])
+                except Exception:
+                    hist = []
+            hist = ([rec] + hist)[:20]                  # 只留最近 20 条
+            p.write_text(json.dumps({"updated": rec["ts"], "recent": hist},
+                                    ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def send(text, parse_mode=None, tag="msg"):
+    """发一条 Telegram 消息。返回 True/False；未配置或失败均不抛异常（流水线不被拖垮）。
+    每次尝试留痕到 telegram_status.json(tag 区分来源:daily/overreaction/alert…)。"""
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat:
+        _log_status(False, tag, "未配置 TELEGRAM_BOT_TOKEN/CHAT_ID")
         return False                                   # 未配置 → 静默跳过
     payload = {"chat_id": chat, "text": (text or "")[:4000],
                "disable_web_page_preview": True}
@@ -35,9 +63,11 @@ def send(text, parse_mode=None):
         with urllib.request.urlopen(req, timeout=15) as r:
             ok = 200 <= r.status < 300
             print("[Telegram] 已推送" if ok else f"[Telegram] 响应 {r.status}")
+            _log_status(ok, tag, "" if ok else f"HTTP {r.status}")
             return ok
     except Exception as e:
         print(f"[Telegram] 推送失败（非致命）: {e}")
+        _log_status(False, tag, repr(e))               # 401=token被吊销 / 403=未/start / 400=chat_id错 一眼可辨
         return False
 
 

@@ -132,7 +132,7 @@ if alerts:
     print(f"[ALERT] {len(alerts)} 条告警 → alert.md")
     try:                                               # 同时推 Telegram（未配置 Secrets 则静默跳过）
         import notify_telegram
-        notify_telegram.send(body.replace("**", "").replace("# ", ""))
+        notify_telegram.send(body.replace("**", "").replace("# ", ""), tag="alert")
     except Exception as e:
         print(f"  ⚠ Telegram 推送跳过: {e}")
 else:

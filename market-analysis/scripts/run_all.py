@@ -34,6 +34,7 @@ steps = [
     ("季节性原始计数",     "seasonality.py"),          # 补 placebo 没有的原始计数(逐月/任期年/Sell-in-May/世界杯全22届)，复用其数据不重算
     ("反事实事件影响",     "event_causal.py"),         # 方法B：回归反事实+bootstrap（SVB验证事件 + SPCX钩子）
     ("短期反转(过度反应)", "overreaction.py"),         # R3：极端下跌次日反弹检验(描述非建议,全样本vs现代)
+    ("极端下跌→次日反弹告警(出格计分)", "overreaction_alert.py"),  # 敢预测敢认账:极端下跌日触发"次日偏涨"信号+Telegram推送+append公开计分+次日自动结算;须在 overreaction 后(引其现代统计);不入 light(盘后触发一次即可)
     ("风险仪表盘",         "risk_dashboard.py"),       # 方法D：VXN-VIX价差 + 条件下行(测风险不测方向)
     ("市场风险体制(R1)",   "market_regime.py"),        # R1：当前风险环境(VIX/收益率曲线/期限结构,描述非预测)
     ("收益区间(保形)",     "conformal.py"),            # 方法E：split-conformal 覆盖区间(测不确定性,非方向)

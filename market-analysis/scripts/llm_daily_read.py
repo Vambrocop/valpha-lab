@@ -189,7 +189,7 @@ def run():
             lines += ["", _plainify(text), "",
                       "🔗 vambrocop.github.io/valpha-lab/",
                       "（实验性·只读真实算出的数据·会错·已公开计分认账）"]
-            notify_telegram.send("\n".join(lines))
+            notify_telegram.send("\n".join(lines), tag="daily")
         except Exception:
             pass
     return out

@@ -112,6 +112,17 @@ def run(write=True):
     except Exception:
         pass
 
+    # ④ 极端下跌→次日反弹告警（overreaction_alert·敢预测敢认账·append 公开计分）
+    try:
+        oas = pd.read_csv(PROC / "overreaction_signal_log.csv")
+        sett = oas["settled"].astype(str).str.lower().isin(["true", "1"])
+        hit = oas.loc[sett, "hit"].astype(str).str.lower().isin(["true", "1"])
+        n = int(sett.sum())
+        sources["极端下跌→次日反弹(出格)"] = {"n_scored": n, "n_pending": int((~sett).sum()),
+                                      "hit_pct": (round(float(hit.mean()) * 100, 1) if n else None)}
+    except Exception:
+        pass
+
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "horizon_days": H,
