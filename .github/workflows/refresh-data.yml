@@ -63,6 +63,8 @@ jobs:
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}   # 日读/计分卡 推送(未配置静默跳过)
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # 仅盘后(21:30 UTC)或手动触发时推日读 Telegram；盘前/盘中不推（数据不是最新盘后）
+          TG_DAILY_PUSH: ${{ github.event.schedule == '30 21 * * 1-5' || github.event_name == 'workflow_dispatch' }}
         run: |
           if [ "${{ github.event.schedule }}" = "0,30 14-20 * * 1-5" ]; then
             CMD="python market-analysis/scripts/run_all.py --light"

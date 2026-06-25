@@ -18,6 +18,7 @@ SCRIPTS = Path(__file__).parent
 WEB = SCRIPTS.parent / "web"
 DOCS = SCRIPTS.parent.parent / "docs"
 LOG = SCRIPTS.parent / "data" / "llm_read_log.csv"        # append-only 计分账本
+TG_PUSH_STATE = SCRIPTS.parent / "data" / "processed" / "tg_daily_push_state.json"  # dedup: last push date
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")   # 此 key 免费额度在 lite 上(2.0-flash 该项目 limit:0)
 URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
@@ -132,6 +133,25 @@ def _llm(prompt):
     return out["choices"][0]["message"]["content"].strip()
 
 
+def _tg_already_pushed_today(today_str: str) -> bool:
+    """Return True if we already pushed Telegram for today (dedup across CI retries)."""
+    try:
+        state = json.loads(TG_PUSH_STATE.read_text(encoding="utf-8"))
+        return state.get("last") == today_str
+    except Exception:
+        return False
+
+
+def _tg_mark_pushed(today_str: str) -> None:
+    """Record today as the last pushed date."""
+    try:
+        TG_PUSH_STATE.write_text(
+            json.dumps({"last": today_str}, ensure_ascii=False), encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+
 def _append_log(today, stance, text):
     """append-only；同日只记一条。返回是否新写（用于 Telegram 一天只推一次）。"""
     from util_io import append_daily_log
@@ -172,26 +192,34 @@ def run():
     write_json("llm_read.json", out)
     wrote = _append_log(today, cr.get("stance"), text)
     print(f"[OK] llm_read.json — {cr.get('stance')} · {len(text)} 字" + ("" if wrote else "（今日已记，不重复）"))
-    if wrote:                                            # 一天只推一次 Telegram（带结论+方向，不只大白话）
-        try:
-            import notify_telegram
+    # Telegram push: only from post-close CI run (TG_DAILY_PUSH=true), once per day.
+    # Decoupled from `wrote` so pre-open runs (which may append the log first) don't
+    # fire the push on yesterday's data.  A tiny state file prevents double-push on
+    # CI retries within the same post-close window.
+    if os.environ.get("TG_DAILY_PUSH") == "true":
+        if _tg_already_pushed_today(today):
+            print("[LLM日读] Telegram 今日已推，跳过重复（dedup）")
+        else:
             try:
-                ic = (json.loads((WEB / "outlook.json").read_text(encoding="utf-8")).get("index_call") or {})
+                import notify_telegram
+                try:
+                    ic = (json.loads((WEB / "outlook.json").read_text(encoding="utf-8")).get("index_call") or {})
+                except Exception:
+                    ic = {}
+                lines = [f"🧠 Valpha Lab 今日读数 · 数据截至 {cr.get('asof') or today}"]
+                if cr.get("action"):
+                    cf = cr.get("confidence_level")
+                    lines.append(f"📊 今日结论：{cr['action']}" + (f"（把握：{cf}）" if cf else ""))
+                np_line = _nasdaq_plain(ic)
+                if np_line:
+                    lines.append(f"📈 {np_line}")
+                lines += ["", _plainify(text), "",
+                          "🔗 vambrocop.github.io/valpha-lab/",
+                          "（实验性·只读真实算出的数据·会错·已公开计分认账）"]
+                notify_telegram.send("\n".join(lines), tag="daily")
+                _tg_mark_pushed(today)
             except Exception:
-                ic = {}
-            lines = [f"🧠 Valpha Lab 今日读数 · 数据截至 {cr.get('asof') or today}"]
-            if cr.get("action"):
-                cf = cr.get("confidence_level")
-                lines.append(f"📊 今日结论：{cr['action']}" + (f"（把握：{cf}）" if cf else ""))
-            np_line = _nasdaq_plain(ic)
-            if np_line:
-                lines.append(f"📈 {np_line}")
-            lines += ["", _plainify(text), "",
-                      "🔗 vambrocop.github.io/valpha-lab/",
-                      "（实验性·只读真实算出的数据·会错·已公开计分认账）"]
-            notify_telegram.send("\n".join(lines), tag="daily")
-        except Exception:
-            pass
+                pass
     return out
 
 
