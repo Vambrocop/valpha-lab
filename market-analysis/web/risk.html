@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valpha 风险画像 · Risk Profile</title>
+<link rel="stylesheet" href="vp.css">
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--amb:#d29922;--acc:#a371f7}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:16px;max-width:780px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin:12px 0}
+  label{color:var(--mut);font-size:.85rem;display:block;margin-bottom:3px}
+  input[type=number]{background:#0d1117;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:6px 8px;width:160px;font-size:1rem;margin-top:2px}
+  input[type=number]:focus{border-color:var(--acc);outline:none}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .seg button{background:transparent;color:var(--mut);border:0;padding:8px 16px;cursor:pointer;font-size:.9rem;transition:.1s}
+  .seg button.on{background:var(--acc);color:#fff}
+  .seg button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+  .cur-seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:2px}
+  .cur-seg button{background:transparent;color:var(--mut);border:0;padding:6px 14px;cursor:pointer;font-size:.88rem;transition:.1s}
+  .cur-seg button.on{background:#30363d;color:var(--fg)}
+  .cur-seg button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+  .row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-bottom:8px}
+  .col{display:flex;flex-direction:column}
+  .btn-calc{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 22px;font-size:1rem;cursor:pointer;margin-top:14px}
+  .btn-calc:hover{opacity:.88}
+  .btn-calc:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:12px 0}
+  .rcard{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+  .rcard .rc-label{font-size:.78rem;color:var(--mut);margin-bottom:4px}
+  .rcard .rc-val{font-size:1.35rem;font-weight:700}
+  .rcard .rc-pct{font-size:.85rem;color:var(--mut);margin-top:2px}
+  .bad{color:var(--red)}
+  .warn{color:var(--amb)}
+  .ok{color:var(--grn)}
+  .bar-wrap{margin:16px 0 4px}
+  .bar-track{height:10px;background:#21262d;border-radius:6px;position:relative;overflow:visible;margin:6px 0 28px}
+  .bar-fill{height:10px;border-radius:6px;position:absolute;top:0}
+  .bar-mark{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px}
+  .bar-tick{position:absolute;top:20px;font-size:.7rem;white-space:nowrap;transform:translateX(-50%)}
+  .caveat{background:rgba(210,153,34,.1);border:1px solid var(--amb);border-radius:8px;padding:9px 12px;font-size:.82rem;color:#e8c96a;margin:10px 0;line-height:1.55}
+  .scope-note{font-size:.79rem;color:var(--mut);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-top:8px}
+  .src{font-size:.74rem;color:var(--mut);margin-top:8px}
+  .mut{color:var(--mut);font-size:.8rem;margin-top:14px;border-top:1px solid var(--border);padding-top:10px}
+  @media(max-width:560px){
+    body{padding:12px}
+    h1{font-size:1.15rem}
+    input[type=number]{width:100%;max-width:240px}
+    .rgrid{grid-template-columns:1fr 1fr}
+    .row{gap:14px}
+    .seg button{padding:7px 10px;font-size:.85rem}
+    .btn-calc{width:100%}
+  }
+  @media(max-width:380px){
+    .rgrid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+
+<div class="vp-takeaway" data-i18n="takeaway"></div>
+
+<details class="vp-more">
+  <summary data-i18n="more_what"></summary>
+  <div data-i18n="more_body" style="color:var(--mut);line-height:1.6;margin-top:4px;font-size:.84rem"></div>
+</details>
+
+<div class="panel">
+  <div class="row">
+    <div class="col">
+      <label id="lbl-amt" data-i18n="l_amt"></label>
+      <input id="amt" type="number" value="10000" min="1" step="100" aria-labelledby="lbl-amt">
+    </div>
+    <div class="col">
+      <label data-i18n="l_cur"></label>
+      <div class="cur-seg" id="cur-seg" role="group" aria-label="currency">
+        <button data-c="AUD" class="on" aria-pressed="true">A$ AUD</button>
+        <button data-c="USD" aria-pressed="false">$ USD</button>
+      </div>
+    </div>
+    <div class="col">
+      <label data-i18n="l_hz"></label>
+      <div class="seg" id="hz-seg" role="group" aria-label="holding horizon">
+        <button data-h="1"  class="on" data-i18n="hz_1"></button>
+        <button data-h="5"  data-i18n="hz_5"></button>
+        <button data-h="20" data-i18n="hz_20"></button>
+      </div>
+    </div>
+  </div>
+  <button class="btn-calc" id="calc" data-i18n="b_calc"></button>
+</div>
+
+<div id="out" role="region" aria-live="polite"></div>
+
+<div class="src" id="src-line"></div>
+<div class="mut" data-i18n="foot" style="margin-top:18px"></div>
+
+<script>
+// ── inline data snapshots (fallback when fetch fails) ─────────────────────
+// Fields confirmed by reading overreaction.json directly:
+// horizon, n, median_pct, p10_pct, p90_pct, worst_pct, best_pct, pct_negative
+const DIST_SNAP=[
+  {horizon:1,  n:1237, median_pct:0.11,  p10_pct:-2.28,  p90_pct:2.42,  worst_pct:-20.47, best_pct:12.53, pct_negative:46.3},
+  {horizon:5,  n:1237, median_pct:0.41,  p10_pct:-5.36,  p90_pct:5.29,  worst_pct:-18.34, best_pct:25.89, pct_negative:44.8},
+  {horizon:20, n:1236, median_pct:1.54,  p10_pct:-9.71,  p90_pct:9.77,  worst_pct:-30.64, best_pct:55.0,  pct_negative:40.0}
+];
+// fx snapshot: aud_usd = USD per 1 AUD (e.g. 0.690036 means A$1 = US$0.690036)
+const FX_SNAP={aud_usd:0.690036, asof:"2026-06-24"};
+
+let DIST=DIST_SNAP, FX=FX_SNAP;
+
+// ── i18n ──────────────────────────────────────────────────────────────────
+const I18N={
+  title:{
+    zh:"📉 Valpha 风险画像 · S&P 500",
+    en:"📉 Valpha Risk Profile · S&P 500"},
+  takeaway:{
+    zh:"这是一个<b>历史风险画像</b>：输入你的持仓金额和打算持有的天数，查看 S&P 500 历史上这段时间最坏跌过多少、有多大概率亏损。<b>这是历史描述，不是预测，不是买卖建议。</b>",
+    en:"This is a <b>historical risk profile</b>: enter your position size and holding period to see how much an S&amp;P 500 position has historically lost — and how often it lost money. <b>Descriptive history only. Not a forecast. Not investment advice.</b>"},
+  more_what:{
+    zh:"数据从哪来？样本范围是？（点开）",
+    en:"Where does this data come from? What's the sample scope? (expand)"},
+  more_body:{
+    zh:"数据基于 S&P 500（^GSPC）历史上<b>极端下跌日</b>（跌幅在全样本最差 5%）之后的 N 日持有收益，共 1 200+ 段历史记录（约 1950 年至今）。<b>p10</b> = 最坏的 10% 情况的门槛；<b>中位</b> = 大多数段落的典型结果；<b>历史最差</b> = 所有段落中最极端的一次。所有数字均为描述性历史统计，<b>不代表未来表现</b>，且基于极端下跌日起点，非任意入场。",
+    en:"Data covers N-day holding returns of S&amp;P 500 (^GSPC) starting on <b>extreme-down days</b> (worst 5th percentile of all daily returns), 1,200+ historical episodes since ~1950. <b>p10</b> = the threshold of the worst 10% of episodes; <b>median</b> = typical result; <b>worst ever</b> = most extreme episode. All are descriptive historical stats — <b>not forecasts</b> — and are anchored to extreme-down-day entry points, not random entry."},
+  l_amt:{zh:"持仓金额",en:"Position size"},
+  l_cur:{zh:"货币",en:"Currency"},
+  l_hz:{zh:"持有天数（交易日）",en:"Holding horizon (trading days)"},
+  hz_1: {zh:"1 天",      en:"1 day"},
+  hz_5: {zh:"5 天",      en:"5 days"},
+  hz_20:{zh:"20 天",     en:"20 days"},
+  b_calc:{zh:"查看风险画像 →",en:"Show risk profile →"},
+  r_median:{zh:"中位结果",         en:"Median result"},
+  r_bad:   {zh:"典型坏情况（p10）",en:"Typical bad case (p10)"},
+  r_worst: {zh:"历史极端最差",     en:"Historical worst"},
+  r_prob:  {zh:"历史下跌概率",     en:"Historical loss rate"},
+  r_best:  {zh:"历史最好",         en:"Historical best"},
+  r_n:     {zh:"历史样本段数",     en:"Historical episodes"},
+  hz_label_1: {zh:"1 个交易日",           en:"1 trading day"},
+  hz_label_5: {zh:"5 个交易日（约 1 周）",en:"5 trading days (~1 wk)"},
+  hz_label_20:{zh:"20 个交易日（约 1 个月）",en:"20 trading days (~1 mo)"},
+  res_head:{
+    zh:"【历史风险画像】{CUR}{AMT} · 持有 {HZ}",
+    en:"[Historical Risk Profile] {CUR}{AMT} held for {HZ}"},
+  bar_label:{
+    zh:"收益区间示意（历史最差 ← 零 → 历史最好）",
+    en:"Return range (worst ← zero → best, historical)"},
+  framing:{
+    zh:"在 {N} 段历史记录中，持有 {HZ}：<b>最坏 10% 情况</b>下跌幅达 {P10_PCT}%，历史极端最坏为 {W_PCT}%，中位结果为 {M_PCT}%。约 {PROB}% 的历史时间段以亏损结束。",
+    en:"Across {N} historical episodes, holding for {HZ}: the <b>worst 10% of cases</b> saw losses of {P10_PCT}%, the all-time worst was {W_PCT}%, and the median outcome was {M_PCT}%. About {PROB}% of episodes ended in a loss."},
+  caveat:{
+    zh:"⚠️ <b>过去不等于未来。</b> 这里展示的全是历史统计，不预测下一段会如何。样本为极端下跌日起点，非所有入场时机。亏损由你承担，只用你输得起的钱投资。",
+    en:"⚠️ <b>Past performance does not predict the future.</b> These are historical statistics only. The sample starts from extreme-down days, not every possible entry. You bear all losses; invest only what you can afford to lose."},
+  scope:{
+    zh:"AUD 金额以实时汇率换算仅供参考（不影响百分比计算）。数据：overreaction.json，S&P 500 1950 至今。",
+    en:"AUD amounts converted at live FX rate for reference only (percentages are currency-neutral). Data: overreaction.json, S&P 500 since 1950."},
+  foot:{
+    zh:"数据：S&P 500 (^GSPC) 约 1950 年至今；极端下跌日 = 跌幅 ≤ 历史第 5 百分位。全部为描述性历史统计，非预测、非荐股，非投资建议。Valpha Lab。",
+    en:"Data: S&P 500 (^GSPC) since ~1950; extreme-down days = daily return ≤ 5th historical percentile. All descriptive history — not predictive, not investment advice. Valpha Lab."}
+};
+
+// ── utils ─────────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let LANG="zh";
+try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+
+// ── state ─────────────────────────────────────────────────────────────────
+let curCur="AUD", curHz=1;
+
+// ── currency toggle ───────────────────────────────────────────────────────
+$("cur-seg").querySelectorAll("button").forEach(btn=>{
+  btn.onclick=()=>{
+    curCur=btn.dataset.c;
+    $("cur-seg").querySelectorAll("button").forEach(b=>{
+      b.classList.toggle("on",b===btn);
+      b.setAttribute("aria-pressed",b===btn?"true":"false");
+    });
+  };
+});
+
+// ── horizon toggle ────────────────────────────────────────────────────────
+$("hz-seg").querySelectorAll("button").forEach(btn=>{
+  btn.onclick=()=>{
+    curHz=+btn.dataset.h;
+    $("hz-seg").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b===btn));
+  };
+});
+
+// ── live data fetch ───────────────────────────────────────────────────────
+// Attempts to fetch from GitHub Pages (same domain as where this page deploys).
+// Falls back silently to DIST_SNAP / FX_SNAP if fetch fails (offline, China, etc.).
+async function loadLive(){
+  const base="https://vambrocop.github.io/valpha-lab/";
+  try{
+    const [r1,r2]=await Promise.all([
+      fetch(base+"overreaction.json",{cache:"no-store"}),
+      fetch(base+"fx_rates.json",{cache:"no-store"})
+    ]);
+    if(r1.ok){
+      const j=await r1.json();
+      if(Array.isArray(j.distribution)&&j.distribution.length>=3) DIST=j.distribution;
+    }
+    if(r2.ok){
+      const j=await r2.json();
+      if(j.aud_usd&&+j.aud_usd>0) FX=j;
+    }
+  }catch(e){}
+  updateSrcLine();
+}
+
+function updateSrcLine(){
+  const asof=esc(FX.asof||"snapshot");
+  $("src-line").textContent=LANG==="zh"
+    ?`数据：S&P 500 · overreaction.json · 汇率 AUD/USD ${FX.aud_usd} (${asof})`
+    :`Source: S&P 500 · overreaction.json · FX AUD/USD ${FX.aud_usd} (${asof})`;
+}
+
+// ── calculation & rendering ───────────────────────────────────────────────
+function fmtMoney(absAmt, cur){
+  const sym=cur==="AUD"?"A$":"$";
+  return sym+absAmt.toLocaleString("en-AU",{maximumFractionDigits:0});
+}
+
+function calc(){
+  const rawAmt=parseFloat($("amt").value)||0;
+  if(rawAmt<=0||!isFinite(rawAmt)){
+    $("out").innerHTML=`<div class="panel" style="color:var(--mut);padding:14px">`+
+      esc(LANG==="zh"?"请输入大于 0 的金额。":"Please enter an amount greater than 0.")+`</div>`;
+    return;
+  }
+
+  // find the distribution row for chosen horizon
+  const row=DIST.find(d=>+d.horizon===curHz)||DIST[0];
+  const {horizon,n,median_pct,p10_pct,worst_pct,best_pct,pct_negative}=row;
+
+  // AUD/USD conversion:
+  // If user entered AUD: display in AUD; note USD equivalent using FX.aud_usd (1 AUD = aud_usd USD)
+  // If user entered USD: display in USD; note AUD equivalent using 1/aud_usd
+  // Percentages are currency-neutral — we just apply them to the input amount.
+  const amt=rawAmt;
+  const curSym=curCur==="AUD"?"A$":"$";
+
+  // dollar change for a given percentage
+  function chg(pct){return amt*pct/100;}
+
+  // format helpers (always show magnitude in chosen currency)
+  function fmtAbsDollar(n){return fmtMoney(Math.abs(n),curCur);}
+  function fmtPct(p){return (p>=0?"+":"")+p.toFixed(2)+"%";}
+  function fmtPctAbs(p){return Math.abs(p).toFixed(2)+"%";}
+
+  const p10Amt  =chg(p10_pct);   // negative
+  const worstAmt=chg(worst_pct); // negative
+  const medAmt  =chg(median_pct);
+  const bestAmt =chg(best_pct);  // positive
+
+  // FX cross-reference line (purely informational)
+  let fxRef="";
+  if(curCur==="AUD"){
+    const usdEq=(amt*FX.aud_usd).toLocaleString("en-AU",{maximumFractionDigits:0});
+    fxRef=LANG==="zh"
+      ?` <span style="color:var(--mut);font-size:.8rem">≈ US$${esc(usdEq)}（汇率 ${FX.aud_usd}）</span>`
+      :` <span style="color:var(--mut);font-size:.8rem">≈ US$${esc(usdEq)} (FX ${FX.aud_usd})</span>`;
+  } else {
+    const audEq=(amt/FX.aud_usd).toLocaleString("en-AU",{maximumFractionDigits:0});
+    fxRef=LANG==="zh"
+      ?` <span style="color:var(--mut);font-size:.8rem">≈ A$${esc(audEq)}（汇率 ${FX.aud_usd}）</span>`
+      :` <span style="color:var(--mut);font-size:.8rem">≈ A$${esc(audEq)} (FX ${FX.aud_usd})</span>`;
+  }
+
+  const hzLabel=t("hz_label_"+horizon);
+
+  // framing paragraph (interpolated — values already escaped individually)
+  const framing=t("framing")
+    .replace("{N}",    esc(String(n)))
+    .replace("{HZ}",   esc(hzLabel))
+    .replace("{P10_PCT}", esc(fmtPctAbs(p10_pct)))
+    .replace("{W_PCT}",   esc(fmtPctAbs(worst_pct)))
+    .replace("{M_PCT}",   esc(fmtPct(median_pct)))
+    .replace("{PROB}",    esc(pct_negative.toFixed(1)));
+
+  const resHead=t("res_head")
+    .replace("{CUR}",esc(curSym))
+    .replace("{AMT}",esc(amt.toLocaleString("en-AU",{maximumFractionDigits:0})))
+    .replace("{HZ}", esc(hzLabel));
+
+  // cards
+  // median sign: "+" if gain, "−" if loss (fmtAbsDollar always gives magnitude without sign)
+  const medSign=medAmt>=0?"+":"−";
+  const cards=[
+    {key:"r_median", val:medSign+fmtAbsDollar(medAmt),             pct:fmtPct(median_pct), cls:medAmt>=0?"ok":"bad"},
+    {key:"r_bad",    val:"−"+fmtAbsDollar(p10Amt),                 pct:fmtPct(p10_pct),    cls:"bad"},
+    {key:"r_worst",  val:"−"+fmtAbsDollar(worstAmt),               pct:fmtPct(worst_pct),  cls:"bad"},
+    {key:"r_prob",   val:pct_negative.toFixed(1)+"%",              pct:"",                  cls:"warn"},
+    {key:"r_best",   val:"+"+fmtAbsDollar(bestAmt),                pct:fmtPct(best_pct),   cls:"ok"},
+    {key:"r_n",      val:String(n),                                 pct:"",                  cls:""},
+  ];
+
+  const cardsHTML=cards.map(c=>{
+    return `<div class="rcard">
+      <div class="rc-label">${t(c.key)}</div>
+      <div class="rc-val ${esc(c.cls)}">${esc(c.val)}</div>
+      ${c.pct?`<div class="rc-pct">${esc(c.pct)}</div>`:""}
+    </div>`;
+  }).join("");
+
+  // visual bar
+  // Map [worst_pct, best_pct] onto 0–100% width
+  const rangeMin=worst_pct, rangeMax=best_pct, span=rangeMax-rangeMin;
+  const pos=pct=>Math.max(0,Math.min(100,((pct-rangeMin)/span)*100));
+
+  const zeroPos  =pos(0);
+  const p10Pos   =pos(p10_pct);
+  const medPos   =pos(median_pct);
+  const redWidth =zeroPos; // 0% → zeroPos = loss zone
+  const greenLeft=zeroPos;
+  const greenWidth=100-zeroPos;
+
+  const barHTML=`
+    <div class="bar-wrap">
+      <div style="font-size:.8rem;color:var(--mut);margin-bottom:6px">${t("bar_label")}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="left:0;width:${redWidth.toFixed(1)}%;background:rgba(248,81,73,.3)"></div>
+        <div class="bar-fill" style="left:${greenLeft.toFixed(1)}%;width:${greenWidth.toFixed(1)}%;background:rgba(63,185,80,.2)"></div>
+        <!-- zero line (white/grey) -->
+        <div class="bar-mark" style="left:${zeroPos.toFixed(1)}%;background:var(--mut)">
+          <span class="bar-tick" style="left:50%;color:var(--mut)">0%</span>
+        </div>
+        <!-- p10 (red) -->
+        <div class="bar-mark" style="left:${p10Pos.toFixed(1)}%;background:var(--red)">
+          <span class="bar-tick" style="left:50%;color:var(--red)">${esc(fmtPct(p10_pct))}</span>
+        </div>
+        <!-- median (green) -->
+        <div class="bar-mark" style="left:${medPos.toFixed(1)}%;background:var(--grn)">
+          <span class="bar-tick" style="left:50%;color:var(--grn)">${esc(fmtPct(median_pct))}</span>
+        </div>
+        <!-- end labels -->
+        <span style="position:absolute;left:0;top:22px;font-size:.7rem;color:var(--red)">${esc(fmtPct(worst_pct))}</span>
+        <span style="position:absolute;right:0;top:22px;font-size:.7rem;color:var(--grn)">${esc(fmtPct(best_pct))}</span>
+      </div>
+    </div>`;
+
+  $("out").innerHTML=`
+    <div class="panel">
+      <h3 style="margin:.2em 0 6px;font-size:.98rem;color:var(--fg)">${esc(resHead)}${fxRef}</h3>
+      <p style="font-size:.88rem;color:var(--mut);margin:0 0 10px;line-height:1.6">${framing}</p>
+      <div class="rgrid">${cardsHTML}</div>
+      ${barHTML}
+      <div class="caveat">${t("caveat")}</div>
+      <div class="scope-note">${t("scope")}</div>
+    </div>`;
+}
+
+// ── lang toggle ───────────────────────────────────────────────────────────
+$("lang").onclick=()=>{
+  LANG=LANG==="zh"?"en":"zh";
+  try{localStorage.setItem("valpha_lang",LANG);}catch(e){}
+  applyStatic();
+  updateSrcLine();
+  if($("out").innerHTML.trim()) calc();
+};
+
+// ── init ──────────────────────────────────────────────────────────────────
+$("calc").onclick=calc;
+$("amt").addEventListener("keydown",e=>{if(e.key==="Enter") calc();});
+
+applyStatic();
+updateSrcLine();
+loadLive();
+</script>
+</body>
+</html>
