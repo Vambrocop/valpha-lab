@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>诚实门方法论 · Honesty gates</title>
+<link rel="stylesheet" href="vp.css">
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
   *{box-sizing:border-box}
@@ -13,7 +14,8 @@
   .lead{color:var(--mut);font-size:.9rem;margin:8px 0 4px}
   .note{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:14px}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+  /* .card 面板样式迁移到 .vp-card token (vp.css) — panel/border/radius/padding 已由 .vp-card 覆盖 */
+  .card{/* base panel via .vp-card */}
   .card h2{font-size:1.02rem;margin:0 0 7px;line-height:1.3}
   .card .guard{color:var(--acc);font-size:.82rem;font-weight:600;margin:0 0 8px}
   .card .how{color:var(--fg);font-size:.85rem;margin:0;opacity:.92}
@@ -82,7 +84,7 @@ function render(){
   const lang=vpLang();
   let h="";
   CARDS.forEach(c=>{
-    h+=`<div class="card${c.grave?' grave':''}">
+    h+=`<div class="card vp-card${c.grave?' grave':''}">
       <h2>${vpT(I18N,"c"+c.n+"t",lang)}</h2>
       <p class="guard">${vpT(I18N,"c"+c.n+"g",lang)}</p>
       <p class="how">${vpT(I18N,"c"+c.n+"h",lang)}</p>

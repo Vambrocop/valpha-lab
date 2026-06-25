@@ -50,6 +50,8 @@
 
 <h2 data-i18n="hMonth"></h2>
 <p class="sub" data-i18n="sMonth"></p>
+<div id="monthChart" style="margin:10px 0 6px;background:var(--panel);border:1px solid var(--border);border-radius:var(--rad,10px);padding:10px 6px 6px"></div>
+<p id="monthChartCaption" style="font-size:.75rem;color:var(--mut);margin:0 0 8px;text-align:center"></p>
 <div style="overflow-x:auto"><table id="month"></table></div>
 
 <h2 data-i18n="hTerm"></h2>
@@ -94,10 +96,62 @@ const I18N={
   use_tilt:{zh:"可弱倾斜",en:"weak tilt"},use_weak:{zh:"看个意思",en:"curiosity"},use_noise:{zh:"近噪声",en:"~noise"},
   foot:{zh:"数据：实时 seasonality.json(原始计数) + placebo_tests.json(校正前/后)。描述性历史、非预测、非荐股；样本少时「无定论」不等于「无效应」。",
         en:"Data: live seasonality.json (raw) + placebo_tests.json (pre/post-FDR). Descriptive, not a forecast/advice; with few samples 'inconclusive' ≠ 'no effect'."},
-  err:{zh:"拉不到数据——确认已部署。",en:"Can't load data — check deployment."}
+  err:{zh:"拉不到数据——确认已部署。",en:"Can't load data — check deployment."},
+  chartCaption:{zh:"S&P 500 各月平均涨跌幅（1928–今）· 描述性历史原始计数 · 非预测",
+                en:"S&P 500 avg monthly return 1928–present · descriptive historical raw counts · not a forecast"}
 };
 
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
+
+/* ── 逐月均值 SVG 条形图 ──────────────────────────────────────────
+   纯内联 SVG，无外部依赖。viewBox=600×170，响应式宽度。
+   坐标原点(0,0)在左上角；baseline=100，正值向上，负值向下。
+   颜色：正 var(--grn) #3fb950 / 负 var(--red) #f85149。 */
+function drawMonthChart(monthly){
+  if(!monthly||!monthly.length){$("monthChart").style.display="none";return;}
+  const W=600,H=170,padL=24,padR=8,padTop=18,padBot=28;
+  const innerW=W-padL-padR,innerH=H-padTop-padBot;
+  const n=monthly.length;
+  const vals=monthly.map(r=>r.avg_pct||0);
+  const maxAbs=Math.max(...vals.map(Math.abs),0.1);
+  const baseline=padTop+innerH*0.65; // ~65% from top = zero line (more room for positives)
+  const upPx=baseline-padTop;        // pixels available above baseline (for positive bars)
+  const dnPx=innerH-upPx;            // pixels available below baseline (for negative bars)
+  const barW=Math.floor((innerW-(n-1)*4)/n); // bar width with 4px gap
+  const esc2=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  let bars="",labels="",vals2="";
+  monthly.forEach((r,i)=>{
+    const v=r.avg_pct||0;
+    const x=padL+i*(barW+4);
+    const pos=v>=0;
+    // bar height proportional to abs value, capped to available space
+    const pxH=Math.round(Math.abs(v)/maxAbs*(pos?upPx:dnPx)*0.88);
+    const barY=pos?(baseline-pxH):baseline;
+    const fill=pos?"#3fb950":"#f85149";
+    bars+=`<rect x="${x}" y="${barY}" width="${barW}" height="${pxH}" fill="${fill}" rx="2"/>`;
+    // month label below baseline
+    labels+=`<text x="${x+barW/2}" y="${baseline+padBot-6}" text-anchor="middle" font-size="9" fill="#9da7b3">${esc2(r.label||"")}</text>`;
+    // value label: positive bars label above bar top; negative bars label just below baseline (at top-inside of bar)
+    const valY=pos?(barY-3):(baseline+10);
+    const valTxt=(v>=0?"+":"")+v.toFixed(2)+"%";
+    vals2+=`<text x="${x+barW/2}" y="${valY}" text-anchor="middle" font-size="8" fill="${fill}">${esc2(valTxt)}</text>`;
+  });
+  // zero line
+  const zeroLine=`<line x1="${padL}" y1="${baseline}" x2="${W-padR}" y2="${baseline}" stroke="#30363d" stroke-width="1"/>`;
+  // y-axis tick labels: +max and 0 and -max(if any neg)
+  const hasNeg=vals.some(v=>v<0);
+  let axTicks=`<text x="${padL-3}" y="${baseline+4}" text-anchor="end" font-size="8" fill="#9da7b3">0</text>`;
+  axTicks+=`<text x="${padL-3}" y="${padTop+4}" text-anchor="end" font-size="8" fill="#9da7b3">+${maxAbs.toFixed(1)}%</text>`;
+  if(hasNeg) axTicks+=`<text x="${padL-3}" y="${H-padBot+12}" text-anchor="end" font-size="8" fill="#9da7b3">-${maxAbs.toFixed(1)}%</text>`;
+
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" style="width:100%;display:block;max-height:170px"
+    role="img" aria-label="${LANG==="zh"?"各月平均涨跌幅条形图":"Monthly avg return bar chart"}">
+    ${zeroLine}${bars}${labels}${vals2}${axTicks}
+  </svg>`;
+  $("monthChart").innerHTML=svg;
+  $("monthChartCaption").textContent=t("chartCaption");
+}
 function pn(v){if(v==null)return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}</span>`;}
 function useTag(pos){ // 原始上涨率 → 可用度(纯描述,非保证)
   if(pos==null)return "";
@@ -112,6 +166,7 @@ function head(){return `<thead><tr><th>${t("cGrp")}</th><th>${t("cAvg")}</th><th
 function render(){
   applyStatic();
   if(!SEAD){$("src").textContent=t("err");return;}
+  drawMonthChart(SEAD.monthly);
   $("month").innerHTML=head()+"<tbody>"+rowsOf(SEAD.monthly)+"</tbody>";
   $("term").innerHTML=head()+"<tbody>"+rowsOf(SEAD.term_year)+"</tbody>";
   $("misc").innerHTML=head()+"<tbody>"+rowsOf((SEAD.sell_in_may||[]).concat(SEAD.world_cup||[]))+"</tbody>";
