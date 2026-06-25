@@ -11,16 +11,21 @@
 import os
 import json
 import datetime
-import urllib.request
 from pathlib import Path
+
+# ── shared LLM helpers (provider-agnostic) ───────────────────────────────────
+from llm_core import (  # noqa: F401  (re-exported for back-compat: tests may import these)
+    MODEL, URL,
+    _provider, _llm_key, _active_model,
+    _gemini, _llm,
+    _GLOSS, _plainify,
+)
 
 SCRIPTS = Path(__file__).parent
 WEB = SCRIPTS.parent / "web"
 DOCS = SCRIPTS.parent.parent / "docs"
 LOG = SCRIPTS.parent / "data" / "llm_read_log.csv"        # append-only 计分账本
 TG_PUSH_STATE = SCRIPTS.parent / "data" / "processed" / "tg_daily_push_state.json"  # dedup: last push date
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")   # 此 key 免费额度在 lite 上(2.0-flash 该项目 limit:0)
-URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
 PROMPT = """你是给【完全不懂金融的新手】讲解的助手。下面是今天系统【真实算出】的市场读数（综合多个诚实因子）：
 
@@ -52,30 +57,6 @@ def _quality(cr, facs):
     return f"{lvl}（覆盖 {n} 个因子，数据 {age} 天前）", lvl
 
 
-_GLOSS = [
-    ("VIX", "衡量市场恐慌情绪，越高越慌"),
-    ("收益率曲线", "不同期限国债利率的高低对比，倒挂常被当衰退预警"),
-    ("信用利差", "企业借钱比国债贵多少，越大=市场越担心违约"),
-    ("相关性", "各只股票是不是一起涨跌，越高越像同涨同跌"),
-    ("分散性", "不同股票走势分化的程度，分化大=分散投资更有效"),
-]
-
-
-def _plainify(text):
-    """给 LLM 解读里的专业词，在【首次出现】且其后没有现成解释时补一句大白话括注。
-    与新版 prompt 互补：prompt 让 LLM 自解释（其后接「（」就跳过，不重复）；此函数兜底旧文本。"""
-    if not text:
-        return text
-    for term, exp in _GLOSS:
-        i = text.find(term)
-        if i < 0:
-            continue
-        if text[i + len(term): i + len(term) + 1] in ("（", "("):
-            continue
-        text = text[:i + len(term)] + f"（{exp}）" + text[i + len(term):]
-    return text
-
-
 def _nasdaq_plain(ic):
     """纳指方向 → 大白话 + 诚实标定：prob≈0.5 就直说掷硬币，绝不把 52% 装成「看涨」。"""
     if not ic or ic.get("prob") is None:
@@ -86,51 +67,6 @@ def _nasdaq_plain(ic):
     note = ("≈掷硬币，这个信号没有验证过的优势，别太当真"
             if abs(pct - 50) <= 4 else "短期方向谁都难测，仅供参考")
     return f"纳指{horizon}：约 {pct}% {direction}（{note}）"
-
-
-def _gemini(prompt, key):
-    body = json.dumps({
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 400},
-    }).encode("utf-8")
-    req = urllib.request.Request(URL.format(model=MODEL, key=key), data=body,
-                                 headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        out = json.load(r)
-    # 防御式取值：候选/parts 结构异常时抛错由上层 try 兜住
-    return out["candidates"][0]["content"]["parts"][0]["text"].strip()
-
-
-# ── provider 无关：默认 Gemini；设 LLM_PROVIDER=openai 走 OpenAI 兼容(DeepSeek/OpenAI/Ollama 等) ──
-def _provider():
-    # ⚠️ 用 `or` 不能用 .get(默认)：CI 把未设的 secret 当【空串】传进来(LLM_PROVIDER="")，
-    # .get("LLM_PROVIDER","gemini") 会返回空串(变量存在)、击穿默认 → provider="" ≠ "gemini"
-    # → 走 else 找 LLM_API_KEY(也空)→ 判"未配置"跳过 → 日报永远不发。空串必须回落 gemini。
-    return (os.environ.get("LLM_PROVIDER") or "gemini").lower()
-
-
-def _active_model():
-    return MODEL if _provider() == "gemini" else os.environ.get("LLM_MODEL", "deepseek-chat")
-
-
-def _llm_key():
-    return os.environ.get("GEMINI_API_KEY") if _provider() == "gemini" else os.environ.get("LLM_API_KEY")
-
-
-def _llm(prompt):
-    """统一入口。Gemini 走 _gemini；其余走 OpenAI 兼容 /chat/completions（LLM_BASE_URL/API_KEY/MODEL）。"""
-    if _provider() == "gemini":
-        return _gemini(prompt, os.environ["GEMINI_API_KEY"])
-    base = os.environ.get("LLM_BASE_URL", "https://api.deepseek.com").rstrip("/")
-    body = json.dumps({"model": _active_model(),
-                       "messages": [{"role": "user", "content": prompt}],
-                       "temperature": 0.4, "max_tokens": 400}).encode("utf-8")
-    req = urllib.request.Request(base + "/chat/completions", data=body,
-                                 headers={"Content-Type": "application/json",
-                                          "Authorization": f"Bearer {os.environ['LLM_API_KEY']}"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        out = json.load(r)
-    return out["choices"][0]["message"]["content"].strip()
 
 
 def _tg_already_pushed_today(today_str: str) -> bool:
@@ -213,9 +149,7 @@ def run():
                 np_line = _nasdaq_plain(ic)
                 if np_line:
                     lines.append(f"📈 {np_line}")
-                lines += ["", _plainify(text), "",
-                          "🔗 vambrocop.github.io/valpha-lab/",
-                          "（实验性·只读真实算出的数据·会错·已公开计分认账）"]
+                lines += ["", _plainify(text), ""] + notify_telegram.footer().splitlines()
                 notify_telegram.send("\n".join(lines), tag="daily")
                 _tg_mark_pushed(today)
             except Exception:

@@ -21,7 +21,6 @@
 import csv
 import datetime
 import json
-import sys
 from pathlib import Path
 
 # ── 路径 ──────────────────────────────────────────────────────────────────────
@@ -31,9 +30,8 @@ WEB     = BASE / "web"
 DATA    = BASE / "data"
 LOG     = DATA / "llm_weekly_log.csv"
 
-# ── 复用日读的 provider 无关 LLM 路径（import 而非重写，保持 DRY）────────────
-sys.path.insert(0, str(SCRIPTS))
-from llm_daily_read import _llm, _llm_key, _active_model, _plainify  # noqa: E402
+# ── shared LLM helpers (provider-agnostic, no dependency on llm_daily_read) ──
+from llm_core import _llm, _llm_key, _active_model, _plainify  # noqa: E402
 
 # ── 周报 Prompt ───────────────────────────────────────────────────────────────
 WEEKLY_PROMPT = """你是给【完全不懂金融的新手】讲解的助手。下面是本周系统【真实算出】的市场读数摘要：
@@ -334,9 +332,7 @@ def run():
                 "",
                 _plainify(text),
                 "",
-                "🔗 vambrocop.github.io/valpha-lab/",
-                "（数据读数·会错·非预测·已公开计分认账）",
-            ]
+            ] + notify_telegram.footer(extra="（数据读数·会错·非预测·已公开计分认账）").splitlines()
             notify_telegram.send("\n".join(lines), tag="weekly")
         except Exception:
             pass
