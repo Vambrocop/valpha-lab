@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>🧠 综合读数 · Composite Read</title>
+<link rel="stylesheet" href="vp.css">
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--amber:#e3a008}
   *{box-sizing:border-box}
@@ -124,6 +125,7 @@ var I18N={
   tiltLabel:{zh:'可用倾斜',en:'Usable Tilt'},
   confLabel:{zh:'置信',en:'Confidence'},
   factorsTitle:{zh:'📐 因子拆解（透明计分）',en:'📐 Factor Breakdown (transparent scoring)'},
+  moreFactors:{zh:'📐 展开看 6 个因子怎么加权出这个倾向的（透明计分）',en:'📐 Expand: how the 6 factors weight into this tilt (transparent scoring)'},
   factorColW:{zh:'权重',en:'Weight'},
   pushAgg:{zh:'推积极',en:'→ bullish'},
   pushDef:{zh:'推防御',en:'→ defensive'},
@@ -229,12 +231,12 @@ function render(data){
       (asof?'<div class="asof">'+t('asofLabel')+' '+esc(asof)+'</div>':'')+
     '</div>'+
 
-    '<div class="section-title">'+t('factorsTitle')+'</div>'+
-    '<div class="factor-list">'+
+    '<details class="vp-more" style="margin-top:16px"><summary style="font-size:1rem;font-weight:700">'+t('moreFactors')+'</summary>'+
+    '<div class="factor-list" style="margin-top:10px">'+
       (factors.length
         ? factors.map(renderFactor).join('')
         : '<div class="mut" style="padding:10px 0">—</div>')+
-    '</div>';
+    '</div></details>';
 
   $('main').innerHTML=html;
 

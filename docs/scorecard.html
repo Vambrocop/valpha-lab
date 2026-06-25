@@ -31,10 +31,10 @@
 <div class="verdict" id="reads"></div>
 <h2 data-i18n="hCal"></h2>
 <p class="sub" data-i18n="sCal"></p>
-<div style="overflow-x:auto"><table id="cal"></table></div>
+<details class="vp-more"><summary data-i18n="more_cal"></summary><div style="overflow-x:auto"><table id="cal"></table></div></details>
 <h2 data-i18n="hLive"></h2>
 <p class="sub" data-i18n="sLive"></p>
-<div style="overflow-x:auto"><table id="live"></table></div>
+<details class="vp-more"><summary data-i18n="more_live"></summary><div style="overflow-x:auto"><table id="live"></table></div></details>
 <div id="src"></div>
 <div class="mut" id="note"></div>
 
@@ -50,6 +50,8 @@ const I18N={
   hLive:{zh:"② Live 预测追踪（刚起步·随时间填充）",en:"② Live prediction tracking (just started · fills over time)"},
   sLive:{zh:"综合读数倾向/纳指信号的实盘命中，未走完前向窗的标「待验」。tipjar 是故意的掷硬币基准。",
          en:"Live hit-rate of composite tilt / NASDAQ signal; calls whose forward window hasn't elapsed are 'pending'. tipjar is the deliberate coin-flip baseline."},
+  more_cal:{zh:"展开看校准曲线（自报把握度 vs 实际胜率·分桶）",en:"Expand: calibration curve (stated confidence vs real win-rate)"},
+  more_live:{zh:"展开看各预测源命中明细",en:"Expand: per-source hit details"},
   cBucket:{zh:"自报置信",en:"stated conf"},cReal:{zh:"实际胜率",en:"real win%"},cN:{zh:"样本",en:"n"},
   cSrc:{zh:"预测源",en:"source"},cHit:{zh:"命中率",en:"hit%"},cScored:{zh:"已记/待验",en:"scored/pending"},
   err:{zh:"拉不到 scorecard.json——确认已部署。",en:"Can't load scorecard.json — check deployment."},asof:{zh:"前向",en:"horizon"}

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>自生长 · Self-growing</title>
+<link rel="stylesheet" href="vp.css">
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--amber:#e3a008}
   *{box-sizing:border-box}
@@ -56,17 +57,19 @@
 <p class="sub" data-i18n="sReg"></p>
 <div class="grid" id="registry"></div>
 
-<h2 data-i18n="hFam"></h2>
-<div class="fam" id="families"></div>
+<details class="vp-more"><summary data-i18n="more_fam"></summary>
+  <div class="fam" id="families" style="margin-top:8px"></div>
+</details>
 
 <h2 data-i18n="hGrave"></h2>
 <p class="sub" data-i18n="sGrave"></p>
 <div class="grave" id="graveyard"></div>
 
-<h2 data-i18n="hAuto"></h2>
-<p class="sub" data-i18n="sAuto"></p>
-<div id="autoSummary" class="sub"></div>
-<div class="grave" id="autodisc"></div>
+<details class="vp-more"><summary data-i18n="more_auto"></summary>
+  <p class="sub" data-i18n="sAuto" style="margin-top:8px"></p>
+  <div id="autoSummary" class="sub"></div>
+  <div class="grave" id="autodisc"></div>
+</details>
 
 <div id="src"></div>
 <div class="mut" data-i18n="foot"></div>
@@ -98,6 +101,8 @@ const I18N={
   decayed:{zh:"⚠️ 近年已淡",en:"⚠️ faded lately"},
   decaynote:{zh:"全样本(几十年)真过，但近 25 年(2000后)测不到——很可能被套利；真过 ≠ 还能用",en:"real over decades, but not detectable in the last ~25y (post-2000) — likely arbitraged; was real ≠ still usable"},
   hFam:{zh:"🔬 按检验族",en:"🔬 By test family"},
+  more_fam:{zh:"🔬 按检验族看存活分布（展开）",en:"🔬 Survival by test family (expand)"},
+  more_auto:{zh:"🔬 自动发现引擎 · 预注册候选（进阶 · 展开）",en:"🔬 Auto-discovery engine · pre-registered candidates (advanced · expand)"},
   hGrave:{zh:"🪦 坟场 · 试过但没经得起",en:"🪦 Graveyard · tested but didn't hold up"},
   sGrave:{zh:"这些当初看着「显著」，但把试过的全算进去后没站住——大概率是噪声。失败也公开。",
           en:"These looked 'significant' alone, but didn't survive once everything tested was counted in — most likely noise. We publish the failures too."},
