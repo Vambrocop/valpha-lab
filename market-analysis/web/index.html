@@ -81,6 +81,7 @@
   </div>
 </div>
 
+<div id="freshness" style="font-size:.76rem;color:var(--mut);margin:4px 0 0"></div>
 <div class="hero" id="hero">
   <div><canvas id="gauge" width="240" height="140" aria-label="今日倾向仪表"></canvas></div>
   <div>
@@ -232,6 +233,7 @@ function tools(){
 function paint(){
   applyStatic();tools();renderHero();
   obRender(); // re-render onboarding text if overlay is open
+  renderFreshness(); // 行情数据新鲜度小标
   if(SIG){$("sig").innerHTML=`tier ${esc(String(SIG.latest_tier??"—"))} · <span class="mut" style="font-size:1rem">prob</span> ${(SIG.latest_prob??0).toFixed(2)}`;$("signote").textContent=t("signote");}
   if(REG){$("env").textContent=REG.composite||"—";$("envas").textContent=(LANG==="en"?"as of ":"数据日 ")+(REG.asof||"");}
   if(DIG){$("dig").innerHTML=(DIG.tier1_facts||[]).map(f=>`<li>${esc(f)}</li>`).join("")||`<li class="mut">—</li>`;}
@@ -298,6 +300,17 @@ $("ob-guide-btn").onclick=()=>obShow();
 })();
 
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();renderWeekly();};
+// 行情数据新鲜度小标（读 data_health · 一眼看到数据到哪天 + 是否新鲜；若真陈旧则黄字警示）
+function renderFreshness(){
+  const el=$("freshness"),h=window._H; if(!el) return;
+  if(!h||!h.sources){el.textContent="";return;}
+  const nq=h.sources["asset:NASDAQ"]||{},d=esc(nq.last_date||"—"),age=nq.age_days,en=LANG==="en";
+  const ok=h.summary&&h.summary.freshness==="ok";
+  el.innerHTML=ok
+    ?(en?`📅 Market data through <b>${d}</b> · <span style="color:var(--grn)">fresh ✓</span>`:`📅 行情数据截至 <b>${d}</b> · <span style="color:var(--grn)">新鲜 ✓</span>`)
+    :(en?`⚠️ Market data through <b>${d}</b>${age==null?"":` · <span style="color:var(--amb)">${age}d behind</span>`}`:`⚠️ 行情数据截至 <b>${d}</b>${age==null?"":` · <span style="color:var(--amb)">已 ${age} 天未更新</span>`}`);
+}
+get("data_health.json").then(h=>{window._H=h;renderFreshness();});
 async function get(f){try{const r=await fetch(B+f,{cache:"no-store"});return r.ok?await r.json():null;}catch(e){return null;}}
 // ── 本周回顾 card（llm_weekly — grounded · 诚实 · 每周 append 计分）────────
 let WEEKLY=null;
