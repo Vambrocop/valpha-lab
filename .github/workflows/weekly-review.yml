@@ -1,0 +1,56 @@
+name: Weekly review (LLM 本周回顾)
+
+# 「本周回顾」周报：交易周结束后（周六）总结本 ISO-week(Mon–Sun) 的市场环境与倾向变化。
+# 为何周六不是周一：llm_weekly_read 取【当前 ISO-week】的 composite_log 行，而 composite 只在
+# 工作日(Mon–Fri)写 → 周六跑能拿到完整一周(coverage 充分)；周一跑当前周几乎为空(不足3天)。
+# 读的都是已提交的真实算出数据(composite_log/market_regime/scorecard/valpha150)；
+# 未配 LLM key 时脚本静默跳过、不写文件 → 本工作流 commit 步会自然 no-op。
+on:
+  schedule:
+    - cron: "0 14 * * 6"    # 周六 14:00 UTC（交易周已收，含完整 Mon–Fri 读数）
+  workflow_dispatch: {}     # 手动触发按钮
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-review
+  cancel-in-progress: false
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install core deps (pandas 等)
+        run: pip install -r market-analysis/requirements-core.txt
+
+      - name: Generate weekly review (本周回顾)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}     # 未配置则脚本静默跳过、不写文件
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}          # 可选：openai 兼容(DeepSeek 等)
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+        run: python market-analysis/scripts/llm_weekly_read.py
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "weekly review unchanged (likely no LLM key) — skip commit"
+            exit 0
+          fi
+          git commit -m "data: LLM 本周回顾 [skip ci]"
+          # 远端可能有竞争提交：rebase 后再推，失败重试一次
+          git pull --rebase --autostash origin main || true
+          git push || (git pull --rebase --autostash origin main && git push)

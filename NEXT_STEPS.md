@@ -12,7 +12,7 @@
 - ✅ v1.0① **可懂性 hover 词典组件全站化**（`vp_gloss.js`·11 词·tooltip·DRY 替掉内联 plainify·18 测过）
 - ✅ v1.0② **新手首达引导**（index 首访"3 步看懂这站"·可关·重开按钮·焦点陷阱·Esc）。**审出真 bug**：zh 串里用了 ASCII 引号 → 整段 JS 解析崩，已改全角引号
 - ✅ v1.0③ **移动端实测 + 空/错状态**（index/advisor/valpha150/sectors/radar/scorecard·@media 不溢出 + fetch 失败友好兜底；dashboard 太纠缠按 spec STOP 跳过）
-- ✅ v1.5 **LLM「本周回顾」周报**（grounded·复用日读 provider/plainify·llm_weekly.json + ISO 周 append 账本·无 key 静默·17 测）。**待办**：① 加每周 CI cron（周一 ~06:00 UTC）② 同样等 Gemini key（key 在前，卡片自动隐藏）
+- ✅ v1.5 **LLM「本周回顾」周报**（grounded·复用日读 provider/plainify·llm_weekly.json + ISO 周 append 账本·无 key 静默·17 测）。✅ **CI cron 已加**（`weekly-review.yml`·**周六 14:00 UTC**——审出子代理建议的"周一"会总结空周：`_load_composite_week` 取当前 ISO-week 而 composite 仅 Mon–Fri 写，周六跑才拿到完整一周）。**仅待**：Gemini key（key 在前，卡片自动隐藏 / cron 自然 no-op）。**可选增强**：给周报也接 Telegram 推送（日读有、周报暂无）
 - ✅ v2.0 **情绪信号 spike → 诚实结论**：**Polymarket NO-GO**（pmxt 仅 10 周史 + 无个股覆盖）；**Reddit WSB CONDITIONAL**（Pushshift/Quiver 有 2012+ 史，但反向因果 + GME 后非平稳 + 原始计数信号弱）。harness 建好（IC/placebo×2/BH-FDR·合成数据跑通 NO-GO）。**审出真 bug**：`grp.name` 仅 .apply 有效 → 改传参。详见 `research/sentiment_spike.md`。要推进 = 拿真 WSB 数据灌 harness
 - **委派复盘**：6 步协议有效——「审查者≠建造者」抓出 2 个建造者自测漏掉的真 bug（onboarding 引号崩整页 / spike harness 崩）；冲突最小化设计（hover 加 script 末、mobile 改 @media、onboarding 独立块）让 4 家同改 index.html 只手工解了 2 处
 

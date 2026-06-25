@@ -18,7 +18,7 @@ global.localStorage = {
 global.window = global;
 
 /* ── load the module ──────────────────────────────────────────── */
-require("./vp_gloss.js");
+require("../market-analysis/web/vp_gloss.js");
 const vpAnnotate = global.vpAnnotate;
 
 /* ── tiny assertion helper ────────────────────────────────────── */
