@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>纳指100成分追踪 · NDX-100 Members</title>
+<link rel="stylesheet" href="vp.css">
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--amb:#d29922;--acc:#a371f7;--blu:#58a6ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:16px;max-width:960px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center}
+  .stat .big{font-size:1.7rem;font-weight:800;line-height:1.1}
+  .stat .lbl{font-size:.78rem;color:var(--mut);margin-top:3px}
+  .stat.hi .big{color:var(--grn)}
+  .stat.lo .big{color:var(--amb)}
+  .stat.nu .big{color:var(--acc)}
+  .section-head{font-size:1rem;font-weight:700;color:var(--acc);border-bottom:1px solid var(--border);padding-bottom:5px;margin:20px 0 10px}
+  .pill-wrap{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+  .pill{display:inline-block;font-size:.77rem;padding:3px 9px;border-radius:16px;font-weight:600;letter-spacing:.3px}
+  .pill-add{background:rgba(63,185,80,.18);border:1px solid rgba(63,185,80,.5);color:#7ee787}
+  .pill-del{background:rgba(248,81,73,.16);border:1px solid rgba(248,81,73,.45);color:#ff9b94}
+  .pill-gap{background:#0d1117;border:1px solid var(--border);color:var(--mut)}
+  .empty-msg{color:var(--mut);font-size:.85rem;font-style:italic;padding:6px 0}
+  .meta{color:var(--mut);font-size:.78rem;margin:6px 0 14px}
+  .mut{color:var(--mut);font-size:.82rem;margin-top:18px;border-top:1px solid var(--border);padding-top:10px}
+  @media(max-width:560px){
+    body{padding:11px}
+    h1{font-size:1.15rem}
+    .stat-row{grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+    .stat .big{font-size:1.35rem}
+    .pill{font-size:.72rem;padding:2px 7px}
+  }
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+
+<div class="vp-takeaway" data-i18n="takeaway"></div>
+<details class="vp-more">
+  <summary data-i18n="more_sum"></summary>
+  <div style="color:var(--mut);line-height:1.6;margin-top:4px" data-i18n="more_body"></div>
+</details>
+
+<div class="meta" id="meta"></div>
+
+<!-- Stats row -->
+<div class="stat-row" id="stat-row"></div>
+
+<!-- Latest quarterly changes -->
+<div class="section-head" data-i18n="s_changes"></div>
+<div id="changes-block"></div>
+
+<!-- Gap list -->
+<div class="section-head" data-i18n="s_gap"></div>
+<div class="vp-takeaway" id="gap-takeaway" style="margin-bottom:8px"></div>
+<div class="pill-wrap" id="gap-list"></div>
+
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const I18N={
+  title:{zh:"📘 纳指100成分追踪",en:"📘 NDX-100 Members Tracker"},
+  takeaway:{zh:"纳指100 季度调仓追踪 · 描述性 · <b>非荐股、非预测</b>。展示成分数、最新季度进出名单，以及哪些成分在 Valpha150 宇宙外。",
+            en:"NASDAQ-100 quarterly rebalance tracker · descriptive · <b>not advice, not a forecast</b>. Shows constituent count, latest quarterly adds/drops, and which members are outside our Valpha150 universe."},
+  more_sum:{zh:"这些数字是怎么来的？（点开）",en:"Where does this data come from? (expand)"},
+  more_body:{zh:"成分列表和调仓记录来自 Valpha Lab 流水线自动抓取（每季度 NDX 公布后更新）。「在 valpha150 外」指这些股票在纳指100成分内，但我们的 152 只深度跟踪宇宙未覆盖。它们仍是真实的指数成分，只是超出当前分析范围。",
+             en:"Constituents and change records are fetched by the Valpha Lab pipeline after each quarterly NDX rebalance. 'Not in Valpha150' means these tickers are official NDX members but fall outside our 152-stock deep-tracking universe. They are real index constituents — just beyond our current coverage."},
+  s_changes:{zh:"最新季度调仓（加入 / 移除）",en:"Latest Quarterly Rebalance (adds / drops)"},
+  adds_lbl:{zh:"本季加入",en:"Added this quarter"},
+  dels_lbl:{zh:"本季移除",en:"Removed this quarter"},
+  no_adds:{zh:"本季暂无新加入成分",en:"No additions this quarter"},
+  no_dels:{zh:"本季暂无移除成分",en:"No removals this quarter"},
+  s_gap:{zh:"在纳指100内、但不在 Valpha150 的成分",en:"In NDX-100 but not in Valpha150"},
+  no_gap:{zh:"暂无数据",en:"No data"},
+  stat_n:{zh:"纳指100成分总数",en:"NDX-100 constituents"},
+  stat_in:{zh:"已在 Valpha150",en:"In Valpha150"},
+  stat_gap:{zh:"覆盖外",en:"Not covered"},
+  stat_cov:{zh:"覆盖率",en:"Coverage rate"},
+  foot:{zh:"数据来源：Valpha Lab 流水线定期更新 · 描述性展示 · 非预测、非荐股 · 仅供学习研究。",
+        en:"Data: Valpha Lab pipeline, updated each quarterly rebalance · descriptive only · not a forecast or investment advice · for study only."}
+};
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+const $=id=>document.getElementById(id);
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>{el.innerHTML=t(el.dataset.i18n);});
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+
+function render(d){
+  if(!d){
+    $("stat-row").innerHTML=`<p style="color:var(--mut)">${esc(LANG==="zh"?"暂无数据，请稍后刷新。":"No data — please refresh later.")}</p>`;
+    $("changes-block").innerHTML="";
+    $("gap-takeaway").textContent="";
+    $("gap-list").innerHTML="";
+    $("meta").textContent="";
+    return;
+  }
+
+  // Meta line
+  const gen=esc(d.generated||"—");
+  $("meta").textContent=LANG==="zh"?`数据截至 ${gen}`:`Data as of ${gen}`;
+
+  // Stats row
+  const n=d.n!=null?d.n:"—";
+  const inV=d.in_valpha150!=null?d.in_valpha150:"—";
+  const gapCount=(d.not_in_valpha150||[]).length;
+  const cov=(d.n&&d.in_valpha150!=null)?Math.round(d.in_valpha150/d.n*100)+"%":"—";
+  $("stat-row").innerHTML=`
+    <div class="stat nu"><div class="big">${esc(String(n))}</div><div class="lbl">${esc(t("stat_n"))}</div></div>
+    <div class="stat hi"><div class="big">${esc(String(inV))}</div><div class="lbl">${esc(t("stat_in"))}</div></div>
+    <div class="stat lo"><div class="big">${esc(String(gapCount))}</div><div class="lbl">${esc(t("stat_gap"))}</div></div>
+    <div class="stat"><div class="big">${esc(cov)}</div><div class="lbl">${esc(t("stat_cov"))}</div></div>
+  `;
+
+  // Quarterly changes
+  const adds=Array.isArray(d.added)?d.added:[];
+  const dels=Array.isArray(d.removed)?d.removed:[];
+  let chHtml="";
+  chHtml+=`<div style="font-size:.85rem;font-weight:600;color:var(--grn);margin-bottom:5px">&#x2795; ${esc(t("adds_lbl"))}</div>`;
+  if(adds.length){
+    chHtml+=`<div class="pill-wrap">${adds.map(s=>`<span class="pill pill-add">${esc(s)}</span>`).join("")}</div>`;
+  } else {
+    chHtml+=`<div class="empty-msg">${esc(t("no_adds"))}</div>`;
+  }
+  chHtml+=`<div style="margin-top:12px"></div>`;
+  chHtml+=`<div style="font-size:.85rem;font-weight:600;color:var(--red);margin-bottom:5px">&#x2716; ${esc(t("dels_lbl"))}</div>`;
+  if(dels.length){
+    chHtml+=`<div class="pill-wrap">${dels.map(s=>`<span class="pill pill-del">${esc(s)}</span>`).join("")}</div>`;
+  } else {
+    chHtml+=`<div class="empty-msg">${esc(t("no_dels"))}</div>`;
+  }
+  $("changes-block").innerHTML=chHtml;
+
+  // Gap list
+  const gapList=Array.isArray(d.not_in_valpha150)?d.not_in_valpha150:[];
+  if(gapList.length){
+    const pct=d.n?Math.round(gapList.length/d.n*100):0;
+    $("gap-takeaway").innerHTML=LANG==="zh"
+      ?`共 <b>${esc(String(gapList.length))}</b> 只成分（占纳指100约 <b>${pct}%</b>）在 Valpha150 宇宙外。这些是真实的指数成员，只是超出当前深度分析范围。`
+      :`<b>${esc(String(gapList.length))}</b> constituents (~<b>${pct}%</b> of NDX-100) fall outside our Valpha150 universe. They are real index members — just beyond our current deep-coverage scope.`;
+    $("gap-list").innerHTML=gapList.map(s=>`<span class="pill pill-gap">${esc(s)}</span>`).join("");
+  } else {
+    $("gap-takeaway").textContent=LANG==="zh"?"暂无缺口——全部成分均已覆盖。":"No gap — all constituents are covered.";
+    $("gap-list").innerHTML=`<div class="empty-msg">${esc(t("no_gap"))}</div>`;
+  }
+}
+
+function paint(d){applyStatic();render(d);}
+
+$("lang").onclick=()=>{
+  LANG=LANG==="zh"?"en":"zh";
+  try{localStorage.setItem("valpha_lang",LANG);}catch(e){}
+  paint(window._NDX);
+};
+
+(async()=>{
+  paint(null);
+  try{
+    const r=await fetch("ndx.json",{cache:"no-store"});
+    window._NDX=r.ok?await r.json():null;
+  }catch(e){window._NDX=null;}
+  paint(window._NDX);
+})();
+</script>
+</body>
+</html>
