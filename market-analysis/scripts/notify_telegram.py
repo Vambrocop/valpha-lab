@@ -23,6 +23,8 @@ API = "https://api.telegram.org/bot{token}/sendMessage"
 def _log_status(ok, tag, note=""):
     """把每次推送尝试留痕到 telegram_status.json(web+docs)——让「到底推没推/为啥没推」可查不靠猜。
     只记 时间/成败/标签/简短原因,不记消息正文(避免泄露 + 没必要)。"""
+    if os.environ.get("PYTEST_CURRENT_TEST"):    # 测试中不落盘(避免污染 web/docs 工作树)
+        return
     try:
         rec = {"ts": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                "ok": bool(ok), "tag": str(tag), "note": str(note)[:120]}
