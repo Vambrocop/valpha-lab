@@ -38,6 +38,13 @@
   .tool .ico{font-size:1.5rem}.tool .nm{font-weight:700;margin-top:4px}.tool .ds{color:var(--mut);font-size:.78rem;margin-top:2px}
   .mut{color:var(--mut)}.note{color:var(--amb);font-size:.8rem}
   footer{color:var(--mut);font-size:.78rem;margin-top:20px;border-top:1px solid var(--border);padding-top:10px}
+  /* ── baseline: quiet strip, not competing with hero ── */
+  .baseline{background:transparent;border:none;border-top:1px solid rgba(88,166,255,.15);padding:6px 0;font-size:.8rem;margin:0 0 16px;color:rgba(207,227,255,.55)}
+  /* ── section headings ── */
+  .section-hd{font-size:.72rem;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--mut);margin:20px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--border);opacity:.75}
+  /* ── lighter card weight inside glance grid ── */
+  .cards .card{border-color:rgba(48,54,61,.65)}
+  .cards .card h3{font-size:.82rem;color:rgba(157,167,179,.75)}
   @media(max-width:560px){body{padding:12px}h1{font-size:1.32rem}.cards,.tools{gap:9px}.cards{grid-template-columns:1fr}.tools{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}}
 
   /* ── Onboarding overlay (ob- namespace) ── */
@@ -81,7 +88,7 @@
   </div>
 </div>
 
-<div id="freshness" style="font-size:.76rem;color:var(--mut);margin:4px 0 0"></div>
+<!-- HERO: primary content — the one thing a first-time visitor should see first -->
 <div class="hero" id="hero">
   <div><canvas id="gauge" width="240" height="140" aria-label="今日倾向仪表"></canvas></div>
   <div>
@@ -93,8 +100,13 @@
     <a class="hero-acct" href="scorecard.html" id="h-acct"></a>
   </div>
 </div>
+
+<!-- quiet supporting info: freshness + baseline — de-emphasised, below hero -->
+<div id="freshness" style="font-size:.74rem;color:var(--mut);margin:4px 0 2px;opacity:.85"></div>
 <div class="baseline" data-i18n="baseline"></div>
 
+<!-- 📊 At-a-glance cards: secondary content, grouped under a clear label -->
+<div class="section-hd" data-i18n="sec_glance"></div>
 <div class="cards">
   <div class="card"><h3 data-i18n="c_sig"></h3>
     <div class="big" id="sig">—</div>
@@ -114,6 +126,8 @@
     <div id="bottom" style="font-size:.95rem;line-height:1.65">—</div></div>
 </div>
 
+<!-- 🧰 Tools grid -->
+<div class="section-hd" data-i18n="sec_tools"></div>
 <div class="tools" id="tools"></div>
 
 <!-- 📉 极端下跌反弹信号 card（ovr- namespace · 公开战绩 · 诚实计分）-->
@@ -177,7 +191,10 @@ const I18N={
   ob_s3:{zh:"<b>我们的承诺：</b>会错、不打包票，但每条判断都公开计分、敢认账。短期方向≈掷硬币我们也照实说。",
          en:"<b>Our promise:</b> we can be wrong and make no guarantees — but every call is scored publicly and we own the result. When short-term direction is a coin-flip, we say so."},
   ob_dismiss:{zh:"知道了",en:"Got it"},
-  ob_guide:{zh:"新手指南",en:"Guide"}
+  ob_guide:{zh:"新手指南",en:"Guide"},
+  // section headings (declutter pass)
+  sec_glance:{zh:"📊 速览",en:"📊 At a glance"},
+  sec_tools:{zh:"🧰 工具",en:"🧰 Tools"}
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
