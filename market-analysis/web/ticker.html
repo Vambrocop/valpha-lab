@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>🔍 任意代码快查 · Any-ticker quick check</title>
+<link rel="stylesheet" href="vp.css">
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
   *{box-sizing:border-box}
@@ -32,6 +33,7 @@
 <a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
 <button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
+<div class="vp-takeaway" data-i18n="takeaway"></div>
 <div class="banner" data-i18n="banner"></div>
 <div class="box">
   <input id="tk" placeholder="GME / MSTR / COIN ..." autocomplete="off">
@@ -48,6 +50,8 @@ let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 const I18N={
   title:{zh:"🔍 任意代码快查 · 原型",en:"🔍 Any-ticker quick check · prototype"},
+  takeaway:{zh:"🔍 <b>输入任意美股代码，快算动量/波动/回撤</b>——浏览器即时从第三方拉日线（Stooq + Yahoo 双源交叉）。<b>出格区，尽力而为；第三方数据可能有误，非荐股，过去≠未来。</b>",
+            en:"🔍 <b>Enter any US ticker to compute momentum/vol/drawdown instantly</b> — your browser pulls daily bars from two third-party sources (Stooq + Yahoo, cross-checked). <b>Out-of-bounds, best-effort; third-party data may be wrong; not advice; past ≠ future.</b>"},
   banner:{zh:"<b>出格区 · 尽力快查,非雷达级深算、非荐股。</b>输入任意美股代码,直连第三方(Stooq + Yahoo 双源交叉)拉日线、浏览器现算动量/波动/回撤。<b>第三方数据可能有误/延迟/缺失、境外源(澳洲可直连、境内可能连不上)、过去≠未来。</b>要完整诚实体检请用观察池或「点单深算」。",
           en:"<b>Out-of-bounds · best-effort quick check, not a deep checkup, not advice.</b> Enter any US ticker; we fetch daily bars from two third parties (Stooq + Yahoo, cross-checked) and compute momentum/vol/drawdown in your browser. <b>Third-party data may be wrong/delayed/missing; overseas source (reachable from AU, maybe not from mainland China); past ≠ future.</b> For a full honest checkup use the watch pool or 'deep-compute on request'."},
   go:{zh:"快查",en:"Check"},

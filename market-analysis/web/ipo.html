@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IPO 雷达 · IPO radar</title>
+<link rel="stylesheet" href="vp.css">
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--amber:#e3a008}
   *{box-sizing:border-box}
@@ -41,7 +42,10 @@
 <a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
 <button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
-<div class="note" data-i18n="note"></div>
+<div class="vp-takeaway" data-i18n="takeaway"></div>
+<details class="vp-more"><summary data-i18n="more_note"></summary>
+  <div class="note" data-i18n="note" style="margin-top:6px"></div>
+</details>
 <div id="tiers"></div>
 <div class="mut" data-i18n="foot"></div>
 
@@ -53,6 +57,9 @@ const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 
 const I18N={
   title:{zh:"🛫 IPO 雷达 · 2026-06 快照",en:"🛫 IPO radar · 2026-06 snapshot"},
+  takeaway:{zh:"🛫 <b>三档清晰分开</b>：已上市（可买）· 已递交 S-1（递交≠确定上市）· 传闻预期（未证实·可能根本不来）。<b>非投资建议，数据为快照，IPO 计划常变。</b>",
+            en:"🛫 <b>Three tiers, clearly separated</b>: Listed (tradable) · Filed S-1 (filed ≠ guaranteed listing) · Rumor / expected (unconfirmed · may never happen). <b>Not investment advice; data is a snapshot and IPO plans change often.</b>"},
+  more_note:{zh:"展开看：三档定义 + 注意事项",en:"Expand: tier definitions + caveats"},
   note:{zh:"<b>数据为 2026-06 快照、IPO 计划常变、可能延期或取消。「已申报」= 已递交 S-1（公开或保密）；「传闻/预期」= 未证实、可能根本不上市。非投资建议。</b>",
         en:"<b>Data is a 2026-06 snapshot. IPO plans change often and may be delayed or cancelled. “Filed” = an S-1 has been submitted (public or confidential); “Rumor / expected” = unconfirmed and may never list at all. Not investment advice.</b>"},
   foot:{zh:"分三档：已上市 / 已申报 S-1 / 传闻预期。三档视觉刻意分开——「传闻」更灰、虚线、带「?」，不代表确认。描述性快照、非预测、非荐股。",

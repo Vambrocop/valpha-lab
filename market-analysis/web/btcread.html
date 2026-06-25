@@ -28,6 +28,7 @@
 <a href="index.html" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
 <button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
+<div class="vp-takeaway" data-i18n="takeaway"></div>
 <p class="sub" data-i18n="intro"></p>
 <div class="verdict" id="verdict"></div>
 
@@ -39,9 +40,11 @@
 <p class="sub" id="btRule"></p>
 <div style="overflow-x:auto"><table id="bt"></table></div>
 
-<h2 data-i18n="hReg"></h2>
+<details class="vp-more"><summary data-i18n="more_reg"></summary>
+<h2 data-i18n="hReg" style="margin-top:10px"></h2>
 <p class="sub" data-i18n="sReg"></p>
 <div style="overflow-x:auto"><table id="reg"></table></div>
+</details>
 
 <div id="src"></div>
 <div class="mut" id="caveat"></div>
@@ -50,6 +53,9 @@
 const LIVE="https://vambrocop.github.io/valpha-lab/btc_nasdaq.json";
 const I18N={
   title:{zh:"₿→📈 BTC 动量 → 纳指 · 诚实回测",en:"₿→📈 BTC momentum → NASDAQ · honest backtest"},
+  takeaway:{zh:"₿ <b>BTC 动量三态（看涨/中性/看跌）和纳指次月走势有一定关联</b>，是全站唯一通过 FDR + Holdout 测试的方向规律。但回测≠未来，交易成本侵蚀优势，此处公开检验让你自己判断。<b>非荐股、非保证</b>。",
+            en:"₿ <b>BTC momentum (bull/neutral/bear) shows a measurable link to next-month NASDAQ returns</b> — the only directional regularity on this site to survive FDR + holdout testing. But backtests ≠ future, trading costs erode edges; we surface it publicly so you can judge. <b>Not advice, not guaranteed</b>."},
+  more_reg:{zh:"③ 多体制稳健性检验（展开看专业细节）",en:"③ Multi-regime robustness check (expand for expert detail)"},
   intro:{zh:"全站唯一穿过 FDR + 现代段 + holdout 的方向规律，此前被「无向」红线剥掉了方向——这里亮出来诚实检验。",
          en:"The one directional regularity that survives FDR + modern segment + holdout, previously stripped of its sign by the 'no-direction' rule — surfaced here for an honest test."},
   hCond:{zh:"① 条件前向收益（描述性证据）",en:"① Conditional forward returns (descriptive)"},

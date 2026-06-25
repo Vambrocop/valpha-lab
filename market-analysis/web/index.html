@@ -116,6 +116,14 @@
 
 <div class="tools" id="tools"></div>
 
+<!-- 📉 极端下跌反弹信号 card（ovr- namespace · 公开战绩 · 诚实计分）-->
+<div class="card" id="ovr-card" style="margin:14px 0;display:none">
+  <h3 style="color:var(--mut);font-size:.92rem;font-weight:600;margin:0 0 8px" data-i18n="c_ovr"></h3>
+  <div id="ovr-main" style="font-size:.92rem;line-height:1.65"></div>
+  <div id="ovr-score" style="font-size:.82rem;color:var(--mut);margin-top:6px"></div>
+  <div id="ovr-caveat" style="font-size:.75rem;color:var(--amb);margin-top:6px;line-height:1.4"></div>
+</div>
+
 <!-- 本周回顾 card（llm_weekly — grounded · 诚实 · 每周 append 计分）-->
 <div class="card" id="weekly-card" style="margin:14px 0;display:none">
   <h3 id="weekly-title" style="color:var(--mut);font-size:.92rem;font-weight:600;margin:0 0 8px"></h3>
@@ -158,6 +166,7 @@ const I18N={
   t_opt:{zh:"期权教学",en:"Options 101"},t_opt_d:{zh:"搭腿看盈亏+希腊字母沙盒·纯教学非荐股",en:"payoff + Greeks sandbox · teaching, not advice"},
   t_read:{zh:"综合读数",en:"Composite Read"},t_read_d:{zh:"出格区·诚实证据加权的当下倾向",en:"out-of-bounds · evidence-weighted tilt"},
   t_cycle:{zh:"周期季节性",en:"Cycles"},t_cycle_d:{zh:"三层透明·原始计数+校正前后",en:"3-layer · raw counts + pre/post-FDR"},
+  c_ovr:{zh:"📉 极端下跌反弹信号（出格区 · 公开计分）",en:"📉 Extreme-drop rebound signal (out-of-bounds · publicly scored)"},
   // onboarding
   ob_title:{zh:"3 步看懂这站",en:"3 steps to get started"},
   ob_s1:{zh:"<b>这站是什么：</b>用诚实统计帮你看懂美股——测风险、亮战绩、公开计分。不是又一个“AI 叫你买”的吹票机。",
@@ -173,7 +182,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
-let SIG=null,REG=null,DIG=null,PAPER=null,V150=null,CR=null,OUT=null,LLM=null;
+let SIG=null,REG=null,DIG=null,PAPER=null,V150=null,CR=null,OUT=null,LLM=null,OVR=null;
 const STANCE_EN={"强防御":"Strong defense","偏防御":"Lean defensive","中性":"Neutral","偏积极":"Lean bullish","强积极":"Strong bullish","数据不足":"Insufficient data"};
 const CALL_EN={"看涨":"Bullish","看跌":"Bearish","中性":"Neutral","偏多":"Lean long"};
 function drawGauge(score){
@@ -235,7 +244,23 @@ function paint(){
   obRender(); // re-render onboarding text if overlay is open
   renderFreshness(); // 行情数据新鲜度小标
   if(SIG){$("sig").innerHTML=`tier ${esc(String(SIG.latest_tier??"—"))} · <span class="mut" style="font-size:1rem">prob</span> ${(SIG.latest_prob??0).toFixed(2)}`;$("signote").textContent=t("signote");}
-  if(REG){$("env").textContent=REG.composite||"—";$("envas").textContent=(LANG==="en"?"as of ":"数据日 ")+(REG.asof||"");}
+  if(REG){
+    // 🌡️ 市场环境：展示各分项 label + composite 一句话（描述性，无预测）
+    const comps=REG.components||[];
+    const SHORT_ZH={"波动率 VIX":"VIX","收益率曲线 10Y-2Y":"曲线","信用利差 Baa-10Y":"信用","VIX 期限结构 (VIX3M-VIX)":"期限结构","个股共动(羊群)":"共动"};
+    const SHORT_EN={"波动率 VIX":"VIX","收益率曲线 10Y-2Y":"Curve","信用利差 Baa-10Y":"Credit","VIX 期限结构 (VIX3M-VIX)":"Term","个股共动(羊群)":"Herd"};
+    if(comps.length){
+      const pills=comps.map(c=>{
+        const key=LANG==="en"?(SHORT_EN[c.name]||c.name):(SHORT_ZH[c.name]||c.name);
+        return `<b style="color:var(--fg)">${esc(key)}</b> <span style="color:var(--mut)">${esc(c.label||"")}</span>`;
+      }).join(' <span style="color:var(--border)">·</span> ');
+      $("env").innerHTML=`<div style="font-size:.85rem;line-height:1.7">${pills}</div>`
+        +`<div style="font-size:.8rem;color:var(--mut);margin-top:5px">${esc(REG.composite||"")}</div>`;
+    } else {
+      $("env").textContent=REG.composite||"—";
+    }
+    $("envas").textContent=(LANG==="en"?"as of ":"数据日 ")+(REG.asof||"");
+  }
   if(DIG){$("dig").innerHTML=(DIG.tier1_facts||[]).map(f=>`<li>${esc(f)}</li>`).join("")||`<li class="mut">—</li>`;}
   if(PAPER){const ss=Object.values(PAPER.strategies||{}).sort((a,b)=>(b.ret_pct||0)-(a.ret_pct||0));
     $("paper").innerHTML=ss.map(s=>`<div style="display:flex;justify-content:space-between;padding:3px 0"><span>${esc(s.label)}</span><span style="color:${(s.ret_pct||0)>=0?'var(--grn)':'var(--red)'};font-weight:600">${(s.ret_pct||0)>=0?'+':''}${s.ret_pct}%</span></div>`).join("");$("papernote").textContent=t("papernote");}
@@ -299,7 +324,7 @@ $("ob-guide-btn").onclick=()=>obShow();
   if(!seen) obShow();
 })();
 
-$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();renderWeekly();};
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();renderWeekly();renderOVR();};
 // 行情数据新鲜度小标（读 data_health · 一眼看到数据到哪天 + 是否新鲜；若真陈旧则黄字警示）
 function renderFreshness(){
   const el=$("freshness"),h=window._H; if(!el) return;
@@ -312,6 +337,61 @@ function renderFreshness(){
 }
 get("data_health.json").then(h=>{window._H=h;renderFreshness();});
 async function get(f){try{const r=await fetch(B+f,{cache:"no-store"});return r.ok?await r.json():null;}catch(e){return null;}}
+// ── 极端下跌反弹信号 card（ovr- namespace · 公开计分 · 诚实分帧）────────
+function renderOVR(){
+  const card=$("ovr-card"); if(!card) return;
+  // 无数据或刚上线（无已结算记录）时显示极简占位
+  if(!OVR){card.style.display="none";return;}
+  card.style.display="";
+  const en=LANG==="en";
+  const td=OVR.today||{}, ms=OVR.modern_stat||{}, tr=OVR.track_record||{};
+  const settled=tr.n_settled||0;
+  const triggered=!!td.triggered;
+  // ── 顶部 takeaway ──
+  let mainHtml="";
+  if(triggered){
+    const avg=ms.bounce_next_pct!=null?ms.bounce_next_pct:"?";
+    const neg=ms.pct_negative!=null?ms.pct_negative:"?";
+    if(en){
+      mainHtml=`📉 <b>Extreme drop today</b> · Historically next-day leans <span style="color:var(--grn)">+${esc(String(avg))}% avg</span>`
+        +` · but <b>~${esc(String(neg))}% of episodes still fell</b> · <span style="color:var(--red)">NOT guaranteed</span>`;
+    } else {
+      mainHtml=`📉 <b>今日极端下跌</b> · 历史上次日偏涨（平均 <span style="color:var(--grn)">+${esc(String(avg))}%</span>）`
+        +` · 但约 <b style="color:var(--red)">${esc(String(neg))}% 仍跌</b> · <b>非必涨</b>`;
+    }
+  } else {
+    const ret=td.ret_pct!=null?td.ret_pct:"?";
+    const thr=OVR.threshold_pct!=null?OVR.threshold_pct:"?";
+    if(en){
+      mainHtml=`📉 <b>Extreme-drop rebound signal</b> · Not triggered today`
+        +` <span style="color:var(--mut)">(S&P500 ${esc(String(ret))}% vs threshold ${esc(String(thr))}%)</span>`;
+    } else {
+      mainHtml=`📉 <b>极端下跌反弹信号</b> · 今日未触发`
+        +` <span style="color:var(--mut)">（标普 ${esc(String(ret))}% vs 阈值 ${esc(String(thr))}%）</span>`;
+    }
+  }
+  $("ovr-main").innerHTML=mainHtml;
+  // ── 公开战绩 ──
+  let scoreHtml="";
+  if(settled===0){
+    scoreHtml=en?"Signal just launched · track record accumulating":"信号刚上线 · 战绩积累中";
+  } else {
+    const hit=tr.n_hit||0, hitPct=tr.hit_pct!=null?tr.hit_pct:"?", avg2=tr.avg_next_pct!=null?tr.avg_next_pct:"?", pend=tr.n_pending||0;
+    if(en){
+      scoreHtml=`Public track record: <b>${hit}/${settled}</b> hit (${esc(String(hitPct))}%) · avg next-day <b>${esc(String(avg2))}%</b>`
+        +(pend>0?` · <span style="color:var(--mut)">${pend} pending</span>`:"");
+    } else {
+      scoreHtml=`公开战绩：<b>${hit}/${settled}</b> 次中（${esc(String(hitPct))}%）· 次日均值 <b>${esc(String(avg2))}%</b>`
+        +(pend>0?` · <span style="color:var(--mut)">${pend} 待结算</span>`:"");
+    }
+  }
+  $("ovr-score").innerHTML=scoreHtml;
+  // ── 免责 caveat ──
+  $("ovr-caveat").textContent=en
+    ?"Not a guarantee. ~46% of episodes still fell. Not investment advice. Signals scored publicly."
+    :(OVR.caveat||"非保证 · 约46%仍跌 · 非荐股 · 出格区 · 信号公开计分");
+}
+
 // ── 本周回顾 card（llm_weekly — grounded · 诚实 · 每周 append 计分）────────
 let WEEKLY=null;
 function renderWeekly(){
@@ -336,9 +416,10 @@ function renderWeekly(){
 }
 (async()=>{
   paint();
-  [SIG,REG,DIG,PAPER,V150,CR,OUT,LLM,WEEKLY]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json"),get("composite_read.json"),get("outlook.json"),get("llm_read.json"),get("llm_weekly.json")]);
+  [SIG,REG,DIG,PAPER,V150,CR,OUT,LLM,WEEKLY,OVR]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json"),get("composite_read.json"),get("outlook.json"),get("llm_read.json"),get("llm_weekly.json"),get("overreaction_signal.json")]);
   paint();
   renderWeekly();
+  renderOVR();
   // Error state: if all critical data sources failed, show a friendly inline notice
   if(!SIG&&!REG&&!DIG&&!CR&&!V150){
     const msg=LANG==="en"?"Failed to load — refresh later":"加载失败，请稍后刷新";
