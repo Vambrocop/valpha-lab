@@ -41,6 +41,7 @@
 <a href="index.html" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
 <button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
+<div class="vp-takeaway" data-i18n="takeaway"></div>
 <p class="sub" data-i18n="intro"></p>
 
 <h2 data-i18n="hPay"></h2>
@@ -69,7 +70,8 @@
   <div class="warn" id="warn" hidden></div>
 </div>
 
-<h2 data-i18n="hBsm"></h2>
+<details class="vp-more"><summary data-i18n="more_bsm"></summary>
+<h2 data-i18n="hBsm" style="margin-top:10px"></h2>
 <p class="sub" data-i18n="sBsm"></p>
 <div class="card">
   <div class="ctrls">
@@ -83,8 +85,9 @@
   <div class="gk" id="thetaNote"></div>
 </div>
 
-<h2 data-i18n="hWhy"></h2>
+<h2 data-i18n="hWhy" style="margin-top:16px"></h2>
 <ul class="why" id="whyList"></ul>
+</details>
 
 <div class="mut" id="caveat"></div>
 
@@ -97,6 +100,9 @@ const INF="∞";
 
 const I18N={
   title:{zh:"🎓 期权教学沙盒",en:"🎓 Options Learning Sandbox"},
+  takeaway:{zh:"🎓 <b>看懂「期权的数学」而非叫你买</b>：先用盈亏图看到期收益，再用 Black-Scholes 看理论价和希腊字母。核心结论：买方要同时赌对方向+幅度+时机，大多数人亏钱有数学原因。<b>纯教学，非实时行情，非荐股。</b>",
+            en:"🎓 <b>Understand the math of options, not a buy prompt</b>: build a payoff diagram first, then use Black-Scholes for theoretical price and Greeks. Core lesson: buyers must be right on direction + magnitude + timing simultaneously — most people lose for mathematical reasons. <b>Teaching only, no live quotes, not advice.</b>"},
+  more_bsm:{zh:"② Black-Scholes 沙盒 + ③ 为什么大多数人亏钱（展开看专业细节）",en:"② BSM sandbox + ③ Why most people lose (expand for expert detail)"},
   intro:{zh:"纯教学：手动搭一条腿看到期盈亏、用 Black-Scholes 看理论价与希腊字母。无实时行情、不点任何代码、不给买卖建议——只帮你看懂期权的「数学」，尤其是为什么大多数买方长期亏钱。",
          en:"Pure teaching: build one leg to see its payoff at expiry, and use Black-Scholes to see theoretical price and Greeks. No live quotes, no tickers, no buy/sell advice — just the math of options, especially why most buyers lose over time."},
   hPay:{zh:"① 到期盈亏图（手动搭一条腿）",en:"① Payoff at expiry (build one leg)"},

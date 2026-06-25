@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>周期与季节性 · Cycles & Seasonality</title>
+<link rel="stylesheet" href="vp.css">
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--amber:#e3a008}
   *{box-sizing:border-box}
@@ -41,8 +42,11 @@
 <a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
 <button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
+<div class="vp-takeaway" data-i18n="takeaway"></div>
 <div class="lead" data-i18n="lead"></div>
-<div class="note" data-i18n="note"></div>
+<details class="vp-more"><summary data-i18n="more_note"></summary>
+  <div class="note" data-i18n="note" style="margin-top:6px"></div>
+</details>
 
 <h2 data-i18n="hMonth"></h2>
 <p class="sub" data-i18n="sMonth"></p>
@@ -70,6 +74,9 @@ let SEAD=null,PLACD=null;
 
 const I18N={
   title:{zh:"🔄 周期与季节性 · 三层透明",en:"🔄 Cycles & Seasonality · 3-layer transparency"},
+  takeaway:{zh:"📅 <b>看季节性不是为了包赢</b>——九月偏弱、十二月偏稳等原始规律确实存在，但样本少、方差大时严格检验常常「测不动」。三张表给你原始计数 + p值 + 校正后裁决，让你自己判断。描述性、非预测。",
+            en:"📅 <b>Seasonality is a tilt, not a guarantee</b> — patterns like 'September weak, December steady' exist in raw counts, but rigorous tests often can't confirm them with limited samples. Three tables: raw counts + p-values + corrected verdicts, so you can judge for yourself. Descriptive, not a forecast."},
+  more_note:{zh:"展开看：为什么「看着强」≠「统计证明」（专业细节）",en:"Expand: why 'looks strong' ≠ 'statistically proven' (expert detail)"},
   lead:{zh:"原始计数 + 校正前 p + 校正后裁决 三层全给你——「看着强」不等于「统计证明」，你自己判断。",
         en:"Raw counts + pre-FDR p + post-FDR verdict, all three given to you — 'looks strong' is not 'statistically proven'. You decide."},
   note:{zh:"<b>这页专治「无定论被讲成没用」。</b>很多季节性原始计数抢眼(比如九月偏弱、任期第3年常涨)，但样本少/方差大时严格检验可能「测不动」——<b>那是「无定论」不是「被否定」</b>。三层并排，强不强、稳不稳、能不能用，一眼看清。描述性、非预测、非荐股。",
