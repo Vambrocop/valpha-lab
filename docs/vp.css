@@ -3,6 +3,19 @@
    页面特有的 --amber/--warn、body/h1/table/.card 等仍各自内联（口径不同，留各自）。
    同源自托管（随 web/→docs/ 镜像部署），不引境外 CDN——中国访客可达不受影响。 */
 :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#c678dd}
+
+/* ── 设计 token (ADDITIVE — 不改上方任何已有变量) ─────────────────────
+   间距阶梯: --sp-1 6px / --sp-2 10px / --sp-3 14px / --sp-4 20px
+   圆角:     --rad  10px（与各页面已用 8-10px 齐平）
+   阴影:     --shadow  轻量面板投影
+   用途: 新组件用 token; 旧页面可逐步迁移（不强制）。 */
+:root{--sp-1:6px;--sp-2:10px;--sp-3:14px;--sp-4:20px;--rad:10px;--shadow:0 2px 12px rgba(0,0,0,.45)}
+
+/* ── .vp-card — 通用卡片骨架 ────────────────────────────────────────
+   panel 背景 + border + radius(--rad) + padding(--sp-3 --sp-4)。
+   各页只需 class="vp-card" 即可，不必手写四条属性。
+   宽度由父容器（grid/flex/block）控制，卡片本身不定宽。 */
+.vp-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--rad);padding:var(--sp-3) var(--sp-4);box-shadow:var(--shadow)}
 *{box-sizing:border-box}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
