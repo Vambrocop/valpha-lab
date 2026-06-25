@@ -163,6 +163,13 @@ try:
         ok = (isinstance(by10, int) and isinstance(bh10, int) and by10 <= bh10
               and len(fx.get("claims", [])) >= 1)
         check(ok, f"fdr_crossfamily.json 形状正常（BY {by10} ≤ BH {bh10}，{len(fx.get('claims', []))} 项）")
+        # 3e-2. 诚实纪律：每条 claim 必须带 p 值 + 至少一个 survive_* 标志（不得只亮结论不带统计支撑）
+        claims = fx.get("claims", [])
+        missing_p = [c.get("label") for c in claims if "p" not in c]
+        missing_sv = [c.get("label") for c in claims
+                      if not any(k.startswith("survive_") for k in c)]
+        check(not missing_p, f"fdr_crossfamily claims 均带 p 值（缺失：{missing_p or '无'}）")
+        check(not missing_sv, f"fdr_crossfamily claims 均带 survive_* 标志（缺失：{missing_sv or '无'}）")
 except Exception as e:
     errors.append(f"fdr_crossfamily 形状检查失败: {e}")
     print(f"  ✗ fdr_crossfamily 形状检查失败: {e}")
@@ -258,6 +265,11 @@ try:
             ok = ("p_value" in f and "diff_pct" in f
                   and ov.get("verdict") in {"real", "faded", "real_recent_untested", "rejected", "inconclusive"})
             check(ok, f"overreaction.json 形状正常（verdict={ov.get('verdict')}）")
+            # 3l-2. 诚实纪律：方向性结论须带现代段 p 值（recent.p_value）——判断不能只看全样本
+            rec = ov.get("recent", {})
+            rp = rec.get("p_value")
+            check(isinstance(rp, (int, float)) and 0.0 <= rp <= 1.0,
+                  f"overreaction.json recent.p_value 存在且合法（值={rp}）")
 except Exception as e:
     errors.append(f"overreaction 形状检查失败: {e}")
     print(f"  ✗ overreaction 形状检查失败: {e}")
