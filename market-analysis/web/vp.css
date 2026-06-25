@@ -28,3 +28,17 @@
 .vp-term:focus-within .vp-tip{display:block}
 /* mobile tap: :focus-within handles touch after tap */
 @media(hover:none){.vp-term:active .vp-tip{display:block}}
+
+/* ── 两层呈现：顶一行大白话结论 + 折叠专业细节（v1.5「又专业又能看懂」）──────
+   .vp-takeaway  默认显示的一句话结论（新手看这层就够）
+   .vp-more      原生 <details>：默认收起，点 summary「展开看专业细节」（老手要的全套）
+   零 JS、可访问、手机友好；颜色复用调色板。各页 <link vp.css> 即可复用。 */
+.vp-takeaway{background:rgba(198,120,221,.1);border:1px solid var(--acc);border-radius:8px;padding:9px 12px;font-size:.9rem;line-height:1.55;margin:10px 0}
+.vp-takeaway b{color:var(--fg)}
+.vp-more{margin:8px 0;font-size:.85rem}
+.vp-more>summary{cursor:pointer;color:var(--mut);padding:5px 2px;list-style:none;user-select:none}
+.vp-more>summary::-webkit-details-marker{display:none}
+.vp-more>summary::before{content:"▸ ";color:var(--acc);font-weight:700}
+.vp-more[open]>summary::before{content:"▾ "}
+.vp-more>summary:hover{color:var(--fg)}
+.vp-more>summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}

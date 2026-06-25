@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Valpha Radar</title>
+<link rel="stylesheet" href="vp.css">
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--acc:#a371f7}
   *{box-sizing:border-box}
@@ -30,7 +31,10 @@
 <a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
 <button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
-<div class="note" data-i18n="note"></div>
+<div class="vp-takeaway" data-i18n="takeaway"></div>
+<details class="vp-more"><summary data-i18n="more_dims"></summary>
+  <div data-i18n="note" style="color:var(--mut);line-height:1.6;margin-top:4px"></div>
+</details>
 <div class="bar"><span data-i18n="sortby"></span>
   <button data-k="" class="on" data-i18n="d_def"></button>
   <button data-k="动量" data-i18n="d_mom"></button>
@@ -51,6 +55,9 @@ const I18N={
   title:{zh:"📡 Valpha 雷达图 · 原型",en:"📡 Valpha Radar · prototype"},
   note:{zh:"<b>描述性体检，非预测、非买卖信号。</b>6 维各 0–100：<b>动量</b>(近1年涨)、<b>趋势</b>(均线排列)、<b>稳健</b>(低波动=高分)、<b>性价比</b>(风险调整收益)、<b>独立性</b>(与纳指低相关=高分)、<b>反弹空间</b>(越靠一年低位越高)。一眼看「性格」，而非「该不该买」。",
         en:"<b>A descriptive checkup — not a forecast or a buy signal.</b> 6 axes, each 0–100: <b>Mom</b>(1Y gain), <b>Trend</b>(MA stack), <b>Stab</b>(low vol=high), <b>Value</b>(risk-adj return), <b>Indep</b>(low corr to Nasdaq=high), <b>Rebound</b>(near 1Y low=high). See the 'character', not 'should I buy'."},
+  takeaway:{zh:"📡 给每只股票画张「性格雷达」——一眼看它偏 <b>强势 / 稳健 / 低位反弹</b> 哪一型。描述性体检，<b>非预测、非买卖建议</b>。",
+            en:"📡 A 'character radar' for each stock — see at a glance whether it leans <b>strong / steady / deeply-dipped</b>. A descriptive checkup, <b>not a forecast or buy signal</b>."},
+  more_dims:{zh:"6 个维度分别是什么意思？（点开）",en:"What do the 6 axes mean? (expand)"},
   sortby:{zh:"排序：",en:"Sort: "},d_def:{zh:"默认",en:"Default"},d_mom:{zh:"动量",en:"Momentum"},d_sta:{zh:"稳健",en:"Stability"},d_val:{zh:"性价比",en:"Value"},d_reb:{zh:"反弹空间",en:"Rebound"},d_avg:{zh:"综合",en:"Overall"},
   c_avg:{zh:"综合",en:"Overall"},
   foot:{zh:"🔥追涨风险=动量≥80且稳健≤30；🏰稳健=稳健≥80。数据：实时 stocks.json，过去≠未来。",
@@ -62,6 +69,17 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 const avg=r=>Math.round(DIMS.reduce((s,d)=>s+(r[d]||0),0)/DIMS.length);
+// 两层呈现·上层：把 6 维数值翻成一句大白话「性格」(描述性·非买卖建议)。取最突出的一条。
+function persona(r){
+  const m=r["动量"]||0,s=r["稳健"]||0,v=r["性价比"]||0,reb=r["反弹空间"]||0,ind=r["独立性"]||0,tr=r["趋势"]||0,en=LANG==="en";
+  if(m>=80&&s<=30) return en?"🔥 strong but choppy":"🔥 强势但颠簸";
+  if(s>=80)        return en?"🏰 steady · low-vol":"🏰 稳健 · 波动小";
+  if(reb>=80)      return en?"📉 deeply dipped (risky)":"📉 跌得深·低位(高风险)";
+  if(m>=70&&tr>=70)return en?"📈 uptrend + momentum":"📈 上行 + 有动量";
+  if(v>=70)        return en?"⚖️ good risk-adj":"⚖️ 风险调整后划算";
+  if(ind>=70)      return en?"🧭 independent":"🧭 走自己的节奏";
+  return en?"· balanced":"· 性格均衡";
+}
 function pc(lb,v){if(v==null)return '';const c=v>=0?'#3fb950':'#f85149';return `<span style="color:${c}">${lb}${v>=0?'+':''}${v}%</span>`;}
 let STOCKS={},sortKey="";
 
@@ -82,7 +100,8 @@ function render(){
     const r=d.radar||{},hot=(r["动量"]||0)>=80&&(r["稳健"]||50)<=30,calm=(r["稳健"]||0)>=80,
       nm=LANG==="en"?s:`${esc(d.label)} <span class="sub">${s}</span>`,
       vl=LANG==="en"?"vol":"波动",yl=LANG==="en"?"1Y":"1年";
-    return `<div class="card"><h3>${nm}</h3><div style="font-size:.84rem;font-weight:700;color:#a371f7;margin:-2px 0 3px">${t("c_avg")} ${avg(r)}</div>${radarSVG(r,170)}
+    return `<div class="card"><h3>${nm}</h3><div style="font-size:.84rem;font-weight:700;color:#a371f7;margin:-2px 0 1px">${t("c_avg")} ${avg(r)}</div>
+      <div style="font-size:.72rem;color:#cbb6f0;margin:0 0 3px;min-height:1.05em">${persona(r)}</div>${radarSVG(r,170)}
       <div class="sub" style="margin-top:2px">${d.price!=null?'$'+d.price.toFixed(2):''} · ${pc(LANG==="en"?"1D":"日",d.d1)} ${pc(LANG==="en"?"1W":"周",d.w1)} ${pc(LANG==="en"?"1M":"月",d.m1)}</div>
       <div class="sub">${yl} ${d.chg1y>=0?'+':''}${(d.chg1y??0).toFixed(0)}% · ${vl} ${(d.vol??0).toFixed(0)}%</div>
       <div>${hot?'<span class="tag hot">🔥</span>':''}${calm?'<span class="tag calm">🏰</span>':''}</div></div>`;
