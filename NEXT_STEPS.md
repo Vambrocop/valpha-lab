@@ -16,20 +16,35 @@
 - ✅ v2.0 **情绪信号 spike → 诚实结论**：**Polymarket NO-GO**（pmxt 仅 10 周史 + 无个股覆盖）；**Reddit WSB CONDITIONAL**（Pushshift/Quiver 有 2012+ 史，但反向因果 + GME 后非平稳 + 原始计数信号弱）。harness 建好（IC/placebo×2/BH-FDR·合成数据跑通 NO-GO）。**审出真 bug**：`grp.name` 仅 .apply 有效 → 改传参。详见 `research/sentiment_spike.md`。要推进 = 拿真 WSB 数据灌 harness
 - **委派复盘**：6 步协议有效——「审查者≠建造者」抓出 2 个建造者自测漏掉的真 bug（onboarding 引号崩整页 / spike harness 崩）；冲突最小化设计（hover 加 script 末、mobile 改 @media、onboarding 独立块）让 4 家同改 index.html 只手工解了 2 处
 
-**记住·后续可做（本波之后）**：
-- 🧩 **「两层呈现」全站铺开**（进行中·2026-06-25）= "又专业又能看懂"的工程化落地。**模式已定**：vp.css 的 `.vp-takeaway` + `.vp-more`(原生 `<details>` 折叠·零JS·可访问)。**已铺 4 页**：雷达(试点·加大白话「性格」persona + 折6维定义)/计分卡(折校准+Live表)/综合读数(折6因子拆解)/自生长(折按检验族+自动发现引擎)。**余可续**：seasonal/heatmap/btcread/senate/regimefwd/evidence/ipo/options/ticker 等深页按需套同模式。**可选增强**：composite 因子理由接 vpAnnotate 词典 tooltip
-- 🌱 **自生长自动发现闭环**（现仅展示层 → 真跑起来）= 最大工程，**建议单独立项 + 全程重审**，别塞进并行波
-- 📈 **Live 计分卡 backfill**：预测越多护城河越有牙，随时间填充
-- 🤖 **更深 DL**：可试，但**上线前必须 walk-forward/CPCV 证它真胜简单模型**（Kronos 就是这纪律的范例：方向无 edge·波动方向仅边缘信号）
-- 🪪 **个性化深化**（持仓感知全面化·AUD/CGT 工具深化）；**多市场(A股/港/日韩) 暂不做**（CLAUDE.md）
+**🆕 2026-06-25 本会话已落地（全 push·测全绿 280）**：
+- ✅ **反弹告警「敢预测·公开计分」**(`overreaction_alert.py`)：极端下跌日(标普 ≤ 现代段第5百分位 ≈ -1.84%)→ Telegram 推"次日历史 +0.29% 但 46% 仍跌·非必涨" + append 账本 + 次日自动结算 + 进计分卡(5 测·gitignore 例外持久化跨 CI)
+- ✅ **Telegram 可观测性**(`telegram_status.json`·每次推送留痕 ok/tag/原因)→ "推没推 / 为啥没推(401吊销?未配置?)"可查不靠猜；日读/告警/周报/反弹分 tag
+- ✅ **周报→Telegram**(tag=weekly·weekly-review.yml 加 secrets) · **日读推送绑盘后**(解耦 wrote·`TG_DAILY_PUSH` 仅盘后真·state 去重防重推)
+- ✅ **首页数据新鲜度标**(读 data_health·"截至X·新鲜✓"/陈旧黄字) · **市场环境卡增强**(各维度 pill + composite·纯描述)
+- ✅ **两层呈现 +8 深页**(seasonal/heatmap/btcread/senate/regimefwd/ipo/options/ticker;evidence 简略·跳过) · **NDX 成分追踪页**(`ndx.html`·📗入口)
+- ✅ **聚合防漂移单测(9) + verify_output 方法论护栏**(fdr claims 必带 p+survive_*、overreaction 必带现代 p·已验真数据 PASS·不误红)
+- ✅ **诚实纠错**：误判"数据卡住"实为读了 gitignore 的本地旧 `combined_prices`(线上一直新到收盘)；data-health 抽屉发现往期已建(子代理诚实查实没重造)
+
+**记住·后续可做（2026-06-25 更新）**：
+- 🧩 **「两层呈现」基本铺完**(13 页) — 余小增强：composite 因子理由接 vpAnnotate tooltip
+- 📈 **Live 计分卡 backfill**：随时间填充；**已新增信号源**=极端下跌→次日反弹(append-only·次日自动结算·进计分卡)
+- 🌱 **自生长自动发现闭环**（现仅展示层 → 真跑）= 最大工程·单独立项 + 全程重审
+- 🤖 **更深 DL**：须先 walk-forward/CPCV 证胜简单模型（Kronos 范例）
+- 🪪 **个性化深化**（持仓感知全面化·AUD/CGT）；多市场暂不做
+
+**🧱 主脑亲接·不甩子代理（判断密集/联网 → 不 fire-and-forget）**：
+- 🅲 **BTC 动量→纳指 诚实回测**(最高价值方向规律·**双审**) · **体制→前向收益分布**
+- 🅳 **自生长闭环 · 内部人 SEC**(fetch_insider draft 待实地验证) · **Reddit WSB**(灌真数据) · **更深 DL**
+- **lockfile** 该在 CI pip-compile(本地手钉会和 ubuntu 不一致)
 
 ---
 
 ## 0. 零散收尾（快 / 需用户动作）
-- [ ] **轮换暴露的 Gemini key**（聊天里露过；AI Studio 删旧建新 → 告诉我，我换 Secret）— 用户动作
-- [x] ✅**Telegram 已通**（@Valphabot · 两 Secret 配好 · 修了"空串 LLM_PROVIDER 击穿 .get 默认"的 CI bug → 日推从不发的根因 · 日推已加料：数据日期 + 买/持/避结论 + 纳指方向 + 大白话 + 链接）
-- [ ] **NDX 展示页/卡**：把 `ndx.json`（季度 5进5出 + valpha150 缺口）显示出来 — ~0.5 天
-- [ ] 考虑补缺口大票进 valpha150：SHOP / PDD / APP / AXON / DASH / CDNS / SNPS 等 — 用户拍板
+- [ ] **轮换暴露的 Gemini key**（聊天露过·AI Studio 删旧建新 → 我换 Secret）；**+ Telegram bot token 也露过**：若下次 CI 后 `telegram_status.json` 显示 `HTTP 401` = 被吊销 → BotFather 重生 token 给我换 Secret — 用户动作
+- [x] ✅**Telegram 已通 + 可观测**（@Valphabot · 日读/告警/周报/反弹分 tag 留痕 telegram_status.json）
+- [x] ✅**NDX 展示页**（ndx.html · 已上线 · 📗 入口）
+- [ ] 补缺口大票进 valpha150：SHOP / PDD / APP / AXON / DASH / CDNS / SNPS 等 — 用户拍板
+- [ ] 小卫生：`test_llm_daily_push.py` 跑测会往 web/ 写 telegram_status.json → 该 monkeypatch 路径（不阻断·下次顺手修）
 
 ## 阶段 1 — 挖"被红线憋回的真规律"（红线审计 🟡；判断密集，强编排 + 独立审）
 1. ⭐ **BTC 动量 → 纳指 诚实回测**（最高价值 · 全站唯一穿过 FDR + 现代段 + holdout 的信号，三流水线一致）
