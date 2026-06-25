@@ -77,6 +77,8 @@ def _fake_notify_module(calls: list):
         calls.append({"text": text, "tag": tag})
         return True
     mod.send = send
+    # 生产推送路径现在也调用 notify_telegram.footer()，stub 必须提供（否则 footer 抛错被吞→静默不推）
+    mod.footer = lambda extra="": "🔗 vambrocop.github.io/valpha-lab/\n" + (extra or "（实验性·会错·已公开计分认账）")
     return mod
 
 
@@ -181,6 +183,7 @@ def test_telegram_exception_no_crash(fake_env, monkeypatch):
 
     bad_mod = types.ModuleType("notify_telegram")
     bad_mod.send = bad_send
+    bad_mod.footer = lambda extra="": "🔗 x\ny"   # 让推送路径走到 send() 才抛(测的是 send 失败不崩)
     monkeypatch.setitem(sys.modules, "notify_telegram", bad_mod)
     monkeypatch.setenv("TG_DAILY_PUSH", "true")
 
