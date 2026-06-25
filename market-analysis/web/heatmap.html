@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>热力图 · Heatmap</title>
+<link rel="stylesheet" href="vp.css">
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7}
   *{box-sizing:border-box}
@@ -42,7 +43,10 @@
 <a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">&#8592; Valpha Lab</a>
 <button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
-<div class="note" data-i18n="note"></div>
+<div class="vp-takeaway" data-i18n="takeaway"></div>
+<details class="vp-more"><summary data-i18n="more_note"></summary>
+  <div class="note" data-i18n="note" style="margin-top:6px"></div>
+</details>
 <div class="bar">
   <span data-i18n="colorby"></span>
   <button id="btn6" class="on" data-k="c6" data-i18n="lbl6"></button>
@@ -65,6 +69,9 @@ const SEC_EN={"半导体":"Semis","科技":"Tech","通信服务":"Comms","可选
 
 const I18N={
   title:{zh:"🔳 板块热力图",en:"🔳 Sector Heatmap"},
+  takeaway:{zh:"🔳 <b>一图看全 150 只股近 6 月/1 年涨跌分布</b>——绿格涨幅大、红格跌幅大。颜色只说明历史表现，<b>非预测、非买卖建议</b>。",
+            en:"🔳 <b>See all 150 stocks' 6-month/1-year return distribution at a glance</b> — green = bigger gain, red = bigger loss. Colors describe historical returns only, <b>not a forecast or buy signal</b>."},
+  more_note:{zh:"展开看：颜色含义 + 幸存者偏差说明（专业细节）",en:"Expand: colour scale + survivorship bias note (expert detail)"},
   note:{zh:"<b>历史涨跌幅结构快照，非预测、非买卖信号。</b>红绿只表示涨跌幅大小——绿=涨幅较大，红=跌幅较大；仅为描述性对比，与「该不该买」无关。幸存者偏差：仅含当前在册的 150 只。",
         en:"<b>A descriptive snapshot of historical returns — not a forecast, not a buy/sell signal.</b> Green = larger gain, Red = larger loss; purely descriptive comparison, not investment advice. Survivorship bias: only current 150 names included."},
   colorby:{zh:"颜色依据：",en:"Color by: "},

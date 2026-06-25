@@ -28,13 +28,16 @@
 <a href="index.html" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
 <button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
+<div class="vp-takeaway" data-i18n="takeaway"></div>
 <p class="sub" data-i18n="intro"></p>
 <div class="verdict" id="decision" style="border-color:var(--grn);background:rgba(63,185,80,.1)"></div>
 <div class="verdict" id="verdict"></div>
 <div class="stats" id="stats"></div>
-<h2 data-i18n="hSen"></h2>
+<details class="vp-more"><summary data-i18n="more_sen"></summary>
+<h2 data-i18n="hSen" style="margin-top:10px"></h2>
 <p class="sub" data-i18n="sSen"></p>
 <div style="overflow-x:auto"><table id="sen"></table></div>
+</details>
 <div id="src"></div>
 <div class="mut" id="caveat"></div>
 
@@ -42,6 +45,9 @@
 const LIVE="https://vambrocop.github.io/valpha-lab/senate_signal.json";
 const I18N={
   title:{zh:"🏛️ 参议院交易 · 诚实检验",en:"🏛️ Senate trading · honest test"},
+  takeaway:{zh:"🏛️ <b>「跟着议员买」有没有 OOS 优势？</b>测试结果：整体超额收益接近零，约一半人跑赢 SPY 本就是抛硬币期望。<b>没有发现可靠的 edge</b>，但数据公开透明，你自己判断。描述性、非荐股。",
+            en:"🏛️ <b>Does 'follow senator trades' beat the market?</b> Result: overall excess return near zero; ~half beating SPY is the coin-flip expectation. <b>No reliable edge found</b> — but the data is transparent, judge for yourself. Descriptive, not advice."},
+  more_sen:{zh:"按议员拆细（展开看专业表格·FDR 警告）",en:"By senator breakdown (expand for expert table · FDR warning)"},
   intro:{zh:"议员申报有 ~45 天滞后→不是抢跑。测「披露后再跟、持有~3月、相对 SPY 的超额收益」：跟着国会买到底有没有 OOS edge？",
          en:"Senators report with a ~45-day lag → not front-running. Tests excess return vs SPY when following disclosed BUYS (post-lag, ~3-month hold): is there any OOS edge?"},
   hSen:{zh:"按议员拆（≥30 笔可统计）",en:"By senator (≥30 testable buys)"},
