@@ -29,6 +29,24 @@ def check(cond, msg):
         print(f"  ✓ {msg}")
 
 
+# 0. web/ ↔ docs/ 镜像同步守卫（手动编辑 web/ 后忘记镜像时拦住发布）
+#    run_all 末步会自动镜像，所以全量流水线下此检查恒过；价值在抓"手改 web/ 未同步"的情况。
+#    docs/ 不存在时静默跳过（部分 CI 环境可能没 checkout docs/）。
+try:
+    import importlib.util as _ilu
+    _mirror_spec = _ilu.spec_from_file_location(
+        "check_docs_mirror",
+        Path(__file__).parent / "check_docs_mirror.py",
+    )
+    _mirror_mod = _ilu.module_from_spec(_mirror_spec)
+    _mirror_spec.loader.exec_module(_mirror_mod)
+    _mirror_problems = _mirror_mod.run()
+    check(not _mirror_problems,
+          f"web/↔docs/ 镜像同步（漂移文件：{_mirror_problems or '无'}）")
+except Exception as _e:
+    print(f"  · web/↔docs/ 镜像同步检查跳过（{_e}）")
+
+
 # 1. 前端要拉取的文件都必须存在且非空
 for f in ["index.html", "dashboard.html", "app-1.js", "app-2.js", "app-3.js", "app-4.js",
           "app-5.js", "style.css", "signals.json", "prices.json",
