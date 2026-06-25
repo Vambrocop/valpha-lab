@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>别空仓 · Stay Invested</title>
+<link rel="stylesheet" href="vp.css">
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--yel:#e3b341}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:16px;max-width:900px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .hero{background:rgba(63,185,80,.1);border:1px solid var(--grn);border-radius:10px;padding:18px 20px;margin:14px 0}
+  .hero-num{font-size:3.2rem;font-weight:700;color:var(--grn);line-height:1.1}
+  .hero-label{font-size:.9rem;color:var(--mut);margin-top:2px}
+  .hero-note{font-size:.85rem;color:var(--fg);margin-top:10px;opacity:.9}
+  .rule-box{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin:14px 0}
+  .rule{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+  .rule .icon{font-size:1.5rem;line-height:1}
+  .rule .label{font-size:.88rem;font-weight:600;margin:5px 0 3px}
+  .rule .desc{font-size:.8rem;color:var(--mut);line-height:1.45}
+  .caveat-box{background:rgba(248,81,73,.07);border:1px solid var(--red);border-radius:8px;padding:11px 14px;margin:14px 0;font-size:.83rem;color:#ffb3ad;line-height:1.55}
+  .caveat-box b{color:#ff9b94}
+  .debunk-item{margin:7px 0;padding-left:14px;border-left:2px solid var(--border);color:var(--mut);font-size:.84rem}
+  .debunk-item b{color:var(--fg)}
+  .mut{color:var(--mut);font-size:.8rem;margin-top:18px;border-top:1px solid var(--border);padding-top:10px;text-align:center}
+  @media(max-width:560px){
+    body{padding:11px}
+    h1{font-size:1.15rem}
+    .hero-num{font-size:2.4rem}
+    .rule-box{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+
+<!-- Two-layer: hero takeaway always visible -->
+<div class="vp-takeaway" id="hero-takeaway"></div>
+
+<!-- Hero stat block (data populated by JS) -->
+<div class="hero">
+  <div class="hero-num" id="base-rate-num">—</div>
+  <div class="hero-label" id="base-rate-label"></div>
+  <div class="hero-note" id="base-rate-note"></div>
+</div>
+
+<!-- Four rules -->
+<div class="rule-box" id="rule-box"></div>
+
+<!-- Details layer: why timing fails + what we tested -->
+<details class="vp-more">
+  <summary id="more-sum"></summary>
+  <div style="margin-top:8px">
+    <div data-i18n="debunk_head" style="font-size:.86rem;color:var(--fg);margin-bottom:6px;font-weight:600"></div>
+    <div id="debunk-list"></div>
+    <div data-i18n="timing_note" style="margin-top:10px;font-size:.83rem;color:var(--mut);line-height:1.5"></div>
+  </div>
+</details>
+
+<!-- Caveat -->
+<div class="caveat-box" data-i18n="caveat"></div>
+
+<!-- Footer -->
+<div class="mut" data-i18n="foot"></div>
+
+<script src="vp_i18n.js"></script>
+<script>
+// ── XSS helper ────────────────────────────────────────────────────────────
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const $ = id => document.getElementById(id);
+
+// ── I18N strings ──────────────────────────────────────────────────────────
+const I18N = {
+  title: {
+    zh: "📌 别空仓 · 最有用的结论",
+    en: "📌 Stay Invested · The Most Useful Honest Finding"
+  },
+  hero_takeaway: {
+    zh: "短期方向≈掷硬币——我们真的验过了。但历史上市场约 <b id='br-inline-zh'>—</b>% 的 20 天窗口在涨。<b>「别择时、别空仓、长期持有、分散投资」才是真能用的 edge。</b>",
+    en: "Short-term direction ≈ coin-flip — we honestly tested it. But historically about <b id='br-inline-en'>—</b>% of all 20-day windows were up. <b>\"Don't time the market, stay invested, diversify\" is the one edge that actually works.</b>"
+  },
+  stat_label_zh: "的 20 天窗口在涨",
+  stat_label_en: "of 20-day windows were up",
+  stat_note: {
+    zh: "基于 2012–2024 OOS 真历史数据，共 <b id='n-zh'>—</b> 个窗口",
+    en: "Based on 2012–2024 real OOS data, <b id='n-en'>—</b> windows total"
+  },
+  r1_icon: "🕰️",
+  r1_label: { zh: "别择时", en: "Don't time" },
+  r1_desc: {
+    zh: "没人能稳定猜中顶部和底部——哪怕机构也不行。空仓等「好时机」，往往错过最关键的几天涨幅。",
+    en: "Nobody can consistently call tops and bottoms — not even professionals. Sitting out waiting for 'the right moment' usually means missing the biggest up days."
+  },
+  r2_icon: "📆",
+  r2_label: { zh: "时间在场", en: "Time in market" },
+  r2_desc: {
+    zh: "历史数据：留在市场里等待复利，远比频繁进出的回报更高。等待「跌一点再买」往往等来踏空。",
+    en: "History shows: staying in and letting compounding work beats frequent in-and-out moves. Waiting to 'buy the dip' often just means missing the run."
+  },
+  r3_icon: "🌐",
+  r3_label: { zh: "分散持有", en: "Diversify" },
+  r3_desc: {
+    zh: "个股会死，市场整体长期向上漂移。买宽基指数基金（如全市场 ETF）而非押单票。",
+    en: "Individual stocks can go to zero; the broad market has a long-run upward drift. Own the market via a broad index fund — don't bet on single names."
+  },
+  r4_icon: "🔁",
+  r4_label: { zh: "定期定投", en: "Dollar-cost average" },
+  r4_desc: {
+    zh: "每月固定投入，高价少买、低价多买，自动平滑择时风险。比「感觉对了再买」更能纪律执行。",
+    en: "Invest a fixed amount regularly. You buy less when prices are high, more when low — automatically smoothing timing risk, and easier to stick to than 'buy when it feels right'."
+  },
+  more_sum: {
+    zh: "我们怎么知道「择时是噪声」？——看我们验过什么（点开）",
+    en: "How do we know timing is noise? — see what we actually tested (expand)"
+  },
+  debunk_head: {
+    zh: "我们真的测试、公开结果的方向信号：",
+    en: "Direction signals we actually tested and published results for:"
+  },
+  d1: {
+    zh: "<b>BTC 动量</b>——测试结论：OOS 无显著 edge，与美股方向相关性低于预期，归入坟场。",
+    en: "<b>BTC momentum</b> — tested result: no significant OOS edge; correlation with US equity direction lower than expected. Filed to graveyard."
+  },
+  d2: {
+    zh: "<b>Kronos 综合信号</b>——walk-forward 校准：高置信区间命中率≠更准（非单调），模型 OOS 无方向 edge，诚实记录。",
+    en: "<b>Kronos composite signal</b> — walk-forward calibration: higher-confidence buckets don't hit more accurately (non-monotone). No OOS directional edge. Honestly recorded."
+  },
+  d3: {
+    zh: "<b>市场情绪信号</b>——测试中；现有 live 样本极少，命中率不可验证，标 pending——不提前宣称有效。",
+    en: "<b>Sentiment signal</b> — under test; very few live samples so far, hit rate unverifiable, marked pending — we don't claim it works before it's proven."
+  },
+  timing_note: {
+    zh: "以上不是说「不能选股或做研究」——而是说<b>短期方向预测极难，历史上大多数专业择时者跑输大盘</b>。做指数型长期投资是这个诚实结论的落地建议（非个人理财建议，请结合自身情况判断）。",
+    en: "This is not saying 'don't research or pick stocks' — it's saying <b>short-term direction is very hard to predict, and most professional market-timers historically underperform the index</b>. Index-based long-term investing is the actionable takeaway from this honest finding (not personal financial advice — factor in your own situation)."
+  },
+  caveat: {
+    zh: "<b>重要说明：</b>约 1/3 的 20 天窗口仍是跌的（这不是「市场只涨不跌」的保证）。市场也会有长期下跌的年份（如 2008、2022）。过去≠未来。本页是基率观察 + 通用原则，<b>非荐股、非个人投资建议、会错</b>。请结合自身风险承受能力和财务状况决定。",
+    en: "<b>Important:</b> About 1 in 3 of all 20-day windows were still down — this is NOT a guarantee the market 'only goes up'. There are years of sustained decline (e.g. 2008, 2022). Past ≠ future. This page is a base-rate observation and general principle, <b>not a stock recommendation, not personalised financial advice, and we will be wrong</b>. Factor in your own risk tolerance and financial situation."
+  },
+  foot: {
+    zh: "数据来源：市场 OOS 校准数据 2012–2024。过去≠未来·非荐股·非个人理财建议。",
+    en: "Data: market OOS calibration 2012–2024. Past ≠ future · not a stock recommendation · not personal financial advice."
+  }
+};
+
+// ── Render helpers ────────────────────────────────────────────────────────
+function renderPage(baseRate, nTotal, horizonDays) {
+  const lang = vpLang();
+  const t = k => (I18N[k] && I18N[k][lang]) || k;
+
+  // Takeaway banner
+  $("hero-takeaway").innerHTML = t("hero_takeaway");
+  // Patch inline base-rate inside the takeaway
+  const brInlineId = lang === "zh" ? "br-inline-zh" : "br-inline-en";
+  const brInlineEl = $(brInlineId);
+  if (brInlineEl) brInlineEl.textContent = esc(String(baseRate));
+
+  // Hero stat
+  $("base-rate-num").textContent = esc(String(baseRate)) + "%";
+  $("base-rate-label").textContent = lang === "zh" ? I18N.stat_label_zh : I18N.stat_label_en;
+  $("base-rate-note").innerHTML = t("stat_note");
+  // Patch n in stat note
+  const nId = lang === "zh" ? "n-zh" : "n-en";
+  const nEl = $(nId);
+  if (nEl) nEl.textContent = esc(String(nTotal));
+
+  // Four rules
+  const rules = ["r1","r2","r3","r4"];
+  let rHtml = "";
+  rules.forEach(r => {
+    rHtml += `<div class="rule">
+      <div class="icon">${I18N[r+"_icon"]}</div>
+      <div class="label">${esc(t(r+"_label"))}</div>
+      <div class="desc">${t(r+"_desc")}</div>
+    </div>`;
+  });
+  $("rule-box").innerHTML = rHtml;
+
+  // Details summary
+  $("more-sum").textContent = t("more_sum");
+
+  // Debunk list
+  let dHtml = "";
+  ["d1","d2","d3"].forEach(k => {
+    dHtml += `<div class="debunk-item">${t(k)}</div>`;
+  });
+  $("debunk-list").innerHTML = dHtml;
+
+  // Apply all data-i18n static elements
+  vpApplyStatic(I18N);
+}
+
+// ── Load scorecard.json ───────────────────────────────────────────────────
+// Fallback values from scorecard at build time (2026-06-24):
+//   base_rate_pct = 66.6, n_total = 3018, horizon_days = 20
+const FALLBACK_RATE = 66.6;
+const FALLBACK_N    = 3018;
+const FALLBACK_DAYS = 20;
+
+function init(rate, n, days) {
+  renderPage(rate, n, days);
+  vpBindLang(I18N, () => renderPage(rate, n, days));
+}
+
+fetch("scorecard.json")
+  .then(r => r.ok ? r.json() : Promise.reject(r.status))
+  .then(d => {
+    const cal = d && d.model_calibration;
+    const rate = (cal && typeof cal.base_rate_pct === "number") ? cal.base_rate_pct : FALLBACK_RATE;
+    const n    = (cal && typeof cal.n_total === "number")       ? cal.n_total       : FALLBACK_N;
+    const days = (typeof d.horizon_days === "number")           ? d.horizon_days     : FALLBACK_DAYS;
+    init(rate, n, days);
+  })
+  .catch(() => {
+    init(FALLBACK_RATE, FALLBACK_N, FALLBACK_DAYS);
+  });
+</script>
+</body>
+</html>
