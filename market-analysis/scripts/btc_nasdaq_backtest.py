@@ -62,6 +62,21 @@ def _conditional(px):
     return out
 
 
+def _control_nq_mom(px):
+    """对照检验（最可能的证伪）：用【纳指自身 20 日动量】做同口径条件分析。
+    若纳指自身动量给出的 pos−neg 上涨率差 ≈ 或 ≥ BTC，则 BTC 没给增量领先信息——
+    只是大盘动量/风险开关的代理（相关≠独立信号）。"""
+    nq_mom = px["NASDAQ"] / px["NASDAQ"].shift(MOM_WIN) - 1.0
+    fwd = forward_returns(px["NASDAQ"], FWD)
+    st = _state(nq_mom.values)
+    cond = {"base": _dist(fwd)}
+    for s in ("pos", "neutral", "neg"):
+        cond[s] = _dist(fwd[st == s])
+    gap = (round(cond["pos"]["up_rate"] - cond["neg"]["up_rate"], 1)
+           if cond.get("pos") and cond.get("neg") else None)
+    return {"conditional": cond, "pos_minus_neg_uprate_pp": gap}
+
+
 def _backtest(px, cost_bps=COST_BPS):
     """② 预设简单 overlay：BTC 动量 neg(<-5%) → 空仓，否则满仓纳指；次日生效（无前瞻）；带单边成本。"""
     mom = px["btc_mom"]
@@ -120,6 +135,7 @@ def _append_log(today, verdict, excess):
 def run(write=True):
     px = _load()
     cond = _conditional(px)
+    ctrl = _control_nq_mom(px)                                # 对照：纳指自身动量（最可能的证伪）
     pos, strat, bh = _backtest(px)
     sp, bp = _perf(strat, px.index), _perf(bh, px.index)
     regimes = _regimes(px)
@@ -129,6 +145,17 @@ def run(write=True):
     holds = [r["edge_holds"] for r in regimes if r["edge_holds"] is not None]
     n_hold = sum(holds)
     pos_gap = round(cond["pos"]["up_rate"] - cond["neg"]["up_rate"], 1) if cond.get("pos") and cond.get("neg") else None
+    # 对照：BTC 动量条件差 vs 纳指自身动量条件差 → BTC 是否真给增量信息
+    nq_gap = ctrl["pos_minus_neg_uprate_pp"]
+    incr = (round(pos_gap - nq_gap, 1) if pos_gap is not None and nq_gap is not None else None)
+    if incr is None:
+        control_note = "纳指自身动量对照数据不足"
+    elif incr >= 3:
+        control_note = f"已对照纳指自身20日动量(同口径差 {nq_gap}pp)：BTC 多给约 {incr}pp 增量、不只是大盘动量代理"
+    elif incr <= -1:
+        control_note = f"已对照纳指自身20日动量(差 {nq_gap}pp)：纳指自身动量差更大、BTC 反没多给——信号大概率只是大盘动量代理"
+    else:
+        control_note = f"已对照纳指自身20日动量(差 {nq_gap}pp)：BTC 仅多给 {incr}pp(≈持平)——多半与大盘动量重叠、增量有限"
     edge_robust = bool(holds) and n_hold == len(holds)
     n_strong = sum(1 for r in regimes if (r.get("cond_pos_minus_neg_uprate_pp") or 0) >= 5.0)
     seg = f"方向同号 {n_hold}/{len(holds)} 段(其中 {n_strong} 段优势≥5pp；早段约3pp接近噪声、强度随期递增)"
@@ -147,20 +174,22 @@ def run(write=True):
         verdict = f"多数同号：{seg}"
     else:
         verdict = f"体制依赖：仅 {n_hold}/{len(holds)} 段同号，别当稳定信号"
+    verdict = f"{verdict}。{control_note}"
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "date_range": [str(px.index[0].date()), str(px.index[-1].date())], "n_days": int(len(px)),
         "signal": f"BTC {MOM_WIN}日动量，阈值 ±{THRESH*100:.0f}%；前向 {FWD} 日",
         "conditional": cond, "cond_pos_minus_neg_uprate_pp": (None if pos_gap is None else round(pos_gap, 1)),
+        "control_nasdaq_own_mom": {"pos_minus_neg_uprate_pp": nq_gap, "btc_incremental_pp": incr},
         "backtest": {"rule": f"BTC动量<-{THRESH*100:.0f}%→空仓，否则满仓纳指；次日生效；单边成本 {COST_BPS:.0f}bps",
                      "cost_bps": COST_BPS, "n_switches": int(pos.diff().abs().sum()),
                      "time_in_market_pct": round(float(pos.mean()) * 100, 1),
                      "strategy": sp, "buyhold": bp, "excess_cagr_pp": excess,
                      "dd_shallower_pp": dd_better, "sharpe_diff": sharpe_better},
         "regimes": regimes, "verdict": verdict,
-        "caveat": "出格区·把红线此前剥掉的方向亮出来诚实检验。非荐股、非保证、会错、过去≠未来；"
-                  "BTC 与纳指同属高风险资产，相关≠因果；未对照纳指自身20日动量——BTC 是否提供增量领先信息尚未检验"
-                  "(最可能的证伪)；Sharpe/回撤改善属单一历史路径、无置信区间；FRAGILE(符号一致性0.8)→ 看体制段。每跑 append 计分。",
+        "caveat": ("出格区·把红线此前剥掉的方向亮出来诚实检验。非荐股、非保证、会错、过去≠未来；"
+                   "BTC 与纳指同属高风险资产，相关≠因果；" + control_note +
+                   "；Sharpe/回撤改善属单一历史路径、无置信区间；FRAGILE(符号一致性0.8)→ 看体制段。每跑 append 计分。"),
     }
     if write:
         from util_io import write_json
