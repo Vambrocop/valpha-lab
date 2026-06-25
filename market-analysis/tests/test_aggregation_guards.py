@@ -1,0 +1,170 @@
+"""test_aggregation_guards.py — run_all 级聚合产物防漂移单测。
+
+覆盖三个高价值聚合点：
+1. scorecard.run(write=False)  — 公开计分卡结构稳定性
+2. overreaction_alert.run(write=False, push=False)  — 告警函数在无数据时优雅降级
+3. 已提交的 web/*.json 关键产物顶层键完整性（无网络、无 LLM）
+
+设计原则：
+- 不联网、不真实写盘、不依赖真实原始数据文件（缺失则 skip）
+- 本地 CI 数据齐备时全通，本地数据缺失时 skip 而非 FAIL
+"""
+import json
+from pathlib import Path
+
+import pytest
+
+# ── 路径常量 ─────────────────────────────────────────────────────────────────
+_REPO = Path(__file__).parent.parent.parent   # repo root
+_WEB = _REPO / "market-analysis" / "web"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 1. scorecard.run(write=False) — 公开计分卡结构稳定性
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_scorecard_run_returns_dict_with_sources():
+    """scorecard.run(write=False) 必须返回含 sources(dict) 的 dict，不抛异常。"""
+    import scorecard
+    result = scorecard.run(write=False)
+    assert isinstance(result, dict), "scorecard.run 应返回 dict"
+    assert "sources" in result, "返回值须含 'sources' 键"
+    assert isinstance(result["sources"], dict), "'sources' 须是 dict"
+
+
+def test_scorecard_model_calibration_shape():
+    """若 model_calibration 存在且非 None，须含数值型 base_rate_pct。
+
+    若 walk_forward_results.json 缺失，_model_calibration() 返回 None — 这也合法，跳过。
+    """
+    import scorecard
+    result = scorecard.run(write=False)
+    mc = result.get("model_calibration")
+    if mc is None:
+        pytest.skip("model_calibration 为 None（缺少 walk_forward_results.json），可接受")
+    assert isinstance(mc, dict), "model_calibration 须是 dict"
+    br = mc.get("base_rate_pct")
+    assert isinstance(br, (int, float)), f"base_rate_pct 须是数值，实际: {type(br)}"
+    assert 0.0 < br < 100.0, f"base_rate_pct 须在 (0,100) 范围，实际: {br}"
+
+
+def test_scorecard_sources_entries_have_required_keys():
+    """sources 里每一条预测源必须携带 n_scored 和 n_pending（不管是否有命中率）。"""
+    import scorecard
+    result = scorecard.run(write=False)
+    for name, entry in result["sources"].items():
+        assert "n_scored" in entry, f"source '{name}' 缺 n_scored"
+        assert "n_pending" in entry, f"source '{name}' 缺 n_pending"
+        assert isinstance(entry["n_scored"], int), f"source '{name}' n_scored 须是 int"
+        assert isinstance(entry["n_pending"], int), f"source '{name}' n_pending 须是 int"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 2. overreaction_alert.run — 无数据时优雅降级到 None
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_overreaction_alert_graceful_on_missing_data(monkeypatch, tmp_path):
+    """SP500_long.csv 不存在时 run() 须返回 None，不抛异常。"""
+    import overreaction_alert as oa
+    import util_io
+
+    # 把 _sp_close 替换成总是返回 None（模拟无数据）
+    monkeypatch.setattr(oa, "_sp_close", lambda: None)
+    monkeypatch.setattr(oa, "LOG", tmp_path / "sig_log.csv")
+    monkeypatch.setattr(util_io, "write_json", lambda *a, **k: None)
+
+    result = oa.run(write=False, push=False)
+    assert result is None, "无 SP500 数据时 run() 须返回 None"
+
+
+def test_overreaction_alert_result_shape_when_data_available(monkeypatch, tmp_path):
+    """当 _sp_close 有数据时，run() 须返回含 today/threshold_pct/track_record 的 dict。
+
+    本测试用合成数据驱动，不联网。
+    """
+    try:
+        import numpy as np
+        import pandas as pd
+    except ImportError:
+        pytest.skip("numpy/pandas 不可用")
+
+    import overreaction_alert as oa
+    import util_io
+
+    # 合成 600 条收益序列（无极端下跌，不触发告警）
+    rng = np.random.default_rng(42)
+    rets = list(rng.normal(0.0005, 0.01, 600)) + [0.005]   # 末日正收益
+    idx = pd.bdate_range(start="2001-01-02", periods=len(rets) + 1)
+    px = [100.0]
+    for r in rets:
+        px.append(px[-1] * (1 + r))
+    series = pd.Series(px, index=idx)
+
+    monkeypatch.setattr(oa, "_sp_close", lambda: series)
+    monkeypatch.setattr(oa, "_modern_stat",
+                        lambda: {"bounce_next_pct": 0.294, "other_next_pct": 0.018,
+                                 "p_value": 0.001, "pct_negative": 46.3})
+    monkeypatch.setattr(oa, "LOG", tmp_path / "sig_log.csv")
+    monkeypatch.setattr(util_io, "write_json", lambda *a, **k: None)
+
+    result = oa.run(write=False, push=False)
+    assert result is not None, "有数据时 run() 不应返回 None"
+    assert isinstance(result, dict), "run() 须返回 dict"
+    assert "today" in result, "返回值须含 'today' 键"
+    assert "threshold_pct" in result, "返回值须含 'threshold_pct' 键"
+    assert "track_record" in result, "返回值须含 'track_record' 键"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 3. 已提交的 web/*.json 关键产物顶层键完整性
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _load_web_json(filename):
+    """加载 web/*.json；若文件不存在则返回 None（调用方 skip）。"""
+    p = _WEB / filename
+    if not p.exists():
+        return None
+    with open(p, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def test_scorecard_json_top_level_keys():
+    """已发布的 scorecard.json 须含 sources/horizon_days/generated。"""
+    data = _load_web_json("scorecard.json")
+    if data is None:
+        pytest.skip("scorecard.json 不存在，跳过")
+    for key in ("sources", "horizon_days", "generated"):
+        assert key in data, f"scorecard.json 缺顶层键 '{key}'"
+    assert isinstance(data["sources"], dict), "scorecard.json sources 须是 dict"
+
+
+def test_overreaction_json_top_level_keys():
+    """已发布的 overreaction.json 须含 status/verdict/full/recent。"""
+    data = _load_web_json("overreaction.json")
+    if data is None:
+        pytest.skip("overreaction.json 不存在，跳过")
+    for key in ("status", "verdict", "full", "recent"):
+        assert key in data, f"overreaction.json 缺顶层键 '{key}'"
+
+
+def test_fdr_crossfamily_json_claims_have_survive_flags():
+    """已发布的 fdr_crossfamily.json：每条 claim 须含 p 值和至少一个 survive_* 标志。"""
+    data = _load_web_json("fdr_crossfamily.json")
+    if data is None:
+        pytest.skip("fdr_crossfamily.json 不存在，跳过")
+    claims = data.get("claims", [])
+    assert len(claims) >= 1, "fdr_crossfamily.json claims 不应为空"
+    for c in claims:
+        assert "p" in c, f"claim '{c.get('label')}' 缺 p 值"
+        has_survive = any(k.startswith("survive_") for k in c)
+        assert has_survive, f"claim '{c.get('label')}' 缺 survive_* 存活标志"
+
+
+def test_market_regime_json_structure():
+    """已发布的 market_regime.json 须含 status/components/composite。"""
+    data = _load_web_json("market_regime.json")
+    if data is None:
+        pytest.skip("market_regime.json 不存在，跳过")
+    for key in ("status", "components", "composite"):
+        assert key in data, f"market_regime.json 缺顶层键 '{key}'"
+    assert isinstance(data["components"], list), "market_regime.json components 须是 list"
