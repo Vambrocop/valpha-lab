@@ -317,6 +317,25 @@ except Exception as e:
     errors.append(f"autodiscovery 形状检查失败: {e}")
     print(f"  ✗ autodiscovery 形状检查失败: {e}")
 
+# 3l3b. 自生长 P-A 地基:候选注册登记簿必须覆盖全部候选(每候选都有 OOS 锚)。存在才查、缺失不致命。
+#        诚实纪律:门4 OOS 要求每候选都有不可改的 declared_date 锚;漏锚=有候选能逃 OOS 检验。
+try:
+    import csv as _csv
+    reg_path = WEB_DIR.parent / "data" / "candidate_registry.csv"
+    if reg_path.exists():
+        import candidate_space as _cs
+        with open(reg_path, encoding="utf-8") as fh:
+            reg_rows = list(_csv.DictReader(fh))
+        reg_ids = {r["candidate_id"] for r in reg_rows}
+        space_ids = {c["candidate_id"] for c in _cs.enumerate_candidates()}
+        missing = space_ids - reg_ids
+        check(not missing, f"candidate_registry 覆盖全部候选（未登记：{sorted(missing) or '无'}）")
+        check(all(r.get("declared_date") for r in reg_rows),
+              "candidate_registry 每行都有 declared_date（OOS 锚不空）")
+except Exception as e:
+    errors.append(f"candidate_registry 检查失败: {e}")
+    print(f"  ✗ candidate_registry 检查失败: {e}")
+
 # 3l4. 内部人买入前向计分形状(track_record 全/recent 是表/benchmark=SPY。存在才查、缺失不致命)
 #       诚实纪律：聪明钱前向计分页必须带"非荐股 + 前向计分"免责框（敢预测就敢认账=护城河，
 #       同 overreaction 强制 recent.p_value 的逻辑：方向性/跟单性产物不许丢掉认账口径）。
