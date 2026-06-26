@@ -250,13 +250,20 @@ function whyLine(c){
   if(c.family==="calendar")return t("pWhyCalendar");
   return t("pWhyGeneric");
 }
+// ── 活信号"怎么用"提示（仅对扛住检验的·带免责·非投资建议）──
+const USE_MAP={
+  september_sp500:{zh:"💡 怎么用：九月历史偏弱（每年约 −1.2%）→ 可参考九月减点仓。非建议·会错。",
+                   en:"💡 Use: September has been weak (~−1.2%/yr) → consider trimming in September. Not advice · can be wrong."},
+  golden_cross_sp500:{zh:"💡 怎么用：金叉（50 日线上穿 200 日线）= 趋势确认，之后偏强 → 可作顺势参考。非建议·会错。",
+                      en:"💡 Use: golden cross (50d above 200d) = trend confirmation, tends to be stronger after → a with-trend reference. Not advice · can be wrong."}};
 // ── 领头的大白话结果区（survivors / faded） ──────────────────────────────
 function pcard(c){
   const pn=plainName(c);
   const fl=pn.unsure?` <span class="flag" title="含义拿不准，保留原代号 / meaning unclear, key kept">⚠️</span>`:"";
+  const use=(c.verdict==="survive"&&USE_MAP[c.key])?`<div class="why" style="color:var(--grn);margin-top:3px">${USE_MAP[c.key][LANG]}</div>`:"";
   return `<div class="card pcard" style="cursor:pointer" onclick="showAD('${esc(c.candidate_id)}')">
     <div class="plain">${pn.name}${fl}</div>
-    <div class="why">${whyLine(c)}</div>
+    <div class="why">${whyLine(c)}</div>${use}
     <div class="raw">${esc(c.key)} · <span style="color:var(--acc)">${t("dClick")}</span></div></div>`;
 }
 function renderResults(){
