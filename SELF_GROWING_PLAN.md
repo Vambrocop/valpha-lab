@@ -92,6 +92,29 @@
 
 `candidate_registry` 建 + 旧候选锚=今日 → **P-A 门4 OOS** → **P-B 防闪烁** → **P-C 滞回单调晋升/降级 → evidence KB** → **P-D 前端** → **(推迟) P-E 自动提案**。每阶段各自独立审（判断密集者我建 + 全新 Opus 审实现；展示层 subagent + 我验）。**P-A 未审过实现不动账本/知识库。**
 
+## 10. 门4 OOS 引擎 — 实现设计（2026-06-26 算清·开建前锁定·供 Opus 审实现）
+
+**复用 autodiscovery 计算 + `floor` 开关只看锚后（各族语义不同·命门）：**
+- `_calendar`：`floor` 过滤**输入** `ret`（日历无前看依赖，对）。
+- `_rebound`：阈值 = **全样本**百分位（规则定义于全数据）→ 只把 `(sel,y)` 过滤到锚后，**不能** floor 输入（否则阈值变）。
+- `_regime`：`ma50/200` 用**全 px** 算 → 只把 `(cond,fwd)` 过滤到锚后，**不能** floor 输入（否则均线重启）。
+- 小样本边缘：任一组 `< MIN_GROUP_N` → 返回 None → **"未到可判"**（防空组崩 / 假 p）。
+
+**`oos_gate.py`**（每候选 anchor = `candidate_registry.declared_date`）：
+- 未到可判：锚后触发组 `< MIN_OOS_N`
+- confirmed：方向同 ∧ `oos_p < 0.10`
+- overturned：方向反号 **OR** `oos_p > 0.20`（滞回：confirm/overturn 不同阈值，防 chatter）
+- 持中（0.10–0.20 同向）：不动
+
+**晋升门（全满足）**：跨族 FDR 存活 ∧ 现代有检验力 ∧ confirmed ∧ 不在库 → promote。
+**降级**：在库 ∧ overturned → demote。**append-only 单调**（进库后只 overturn 才动）；**绝不对晋升再跑 FDR**（双罚）；审计痕迹 = 诚实机制。
+`kb_ledger.csv`(append-only)：`date, candidate_id, action, anchor_date, oos_n, oos_p, oos_sign, trigger`。
+
+**今日**：全锚定今日 → 锚后空 → 全"未到可判" → 0 晋升（正确·边跑边攒，约 1 月出首批）。
+**测试**：合成"锚在过去 + 锚后数据 成立/翻盘/不足" → promote/demote/未到可判/单调/滞回 各断言。
+**factor 族 OOS**：经 build_feature_df，留后（今日全未到可判不影响）；先 calendar/regime/rebound。
+**上线前**：全新 Opus 审实现（尤其 floor 各族语义 + 边缘守卫 + 单调/滞回），**审过才接 run_all 写库**。
+
 ## 9. 待用户拍（2 个口径，其余已定稿）
 - **P-E 推迟**：Opus 强烈建议 v1 不含自动提案、最后再建+硬门槛。你之前选了"含自动提案层"——这不冲突（仍会建、只是放最后+加锁）。**确认推迟？**
 - **旧 42 候选锚点 = 今天**（前向累积，丢弃它们的历史 OOS，换"不可争"）。**确认？** 或要对个别明显早于数据窥探的候选做 git 考古（更乱、收益小）。
