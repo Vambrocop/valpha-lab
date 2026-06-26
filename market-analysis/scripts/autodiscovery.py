@@ -63,7 +63,8 @@ WINS = [("完整", None), ("2000后", pd.Timestamp("2000-01-01")),
         ("2021后", pd.Timestamp("2021-01-01")), ("近1年", "y1")]
 
 # 二元方向型日历效应（label==1=先验更高组，单边置换才有意义）→ 给"触发组上涨率 vs 基率"
-_DIR_EFFECTS = ("pre_holiday", "santa", "sell_in_may", "world_cup_year", "term_year3")
+_DIR_EFFECTS = ("pre_holiday", "santa", "sell_in_may", "world_cup_year", "term_year3",
+                "september", "january")
 
 
 def _wmask(idx, w):
@@ -146,6 +147,14 @@ def _calendar(eff, index, cid):
         jja = ret[ret.index.month.isin([6, 7, 8])]
         nonwc = (~jja.index.year.isin(WORLD_CUP_YEARS)).astype(int)
         vals, lab, idx = jja.values, nonwc, jja.index; stat = pb.make_dir_diff_stat()
+    elif eff == "september":
+        # 九月效应先验：九月历史最弱月。label==1=非九月(先验更高组)→单边(非九月 > 九月)
+        nonsep = (ret.index.month != 9).astype(int)
+        vals, lab, idx = ret.values, nonsep, ret.index; stat = pb.make_dir_diff_stat()
+    elif eff == "january":
+        # 元月效应先验：一月历史偏强(尤小盘)。label==1=一月(先验更高组)→单边(一月 > 其余)
+        jan = (ret.index.month == 1).astype(int)
+        vals, lab, idx = ret.values, jan, ret.index; stat = pb.make_dir_diff_stat()
     elif eff == "term_year3":
         # Hirsch 总统周期：任期第3年(大选前一年)历史最强。年频，label==1=第3年(先验更高组)
         an = (1 + ret).resample("YE").prod(min_count=1).dropna() - 1

@@ -37,6 +37,15 @@
   .fbar{font-size:.78rem;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 9px}
   .fbar b{color:var(--grn)}
   .verdict{background:rgba(163,113,247,.08);border:1px solid var(--acc);border-radius:8px;padding:10px 12px;font-size:.86rem;margin:14px 0;color:#d2c2f5}
+  .headline{font-size:1.05rem;line-height:1.7;margin:6px 0 12px;color:var(--fg)}
+  .headline b{color:var(--grn)}
+  .headline .amb{color:var(--amber)}
+  .headline .gone{color:var(--mut)}
+  .honest{background:var(--surface-2,#1b222c);border:1px solid var(--border);border-left:3px solid var(--acc);border-radius:8px;padding:9px 12px;font-size:.84rem;color:var(--mut);margin:0 0 4px}
+  .pcard .plain{font-weight:700;font-size:.96rem;color:var(--fg)}
+  .pcard .why{font-size:.82rem;color:var(--mut);margin-top:4px;line-height:1.5}
+  .pcard .raw{font-size:.72rem;color:var(--mut);margin-top:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.7}
+  .pcard .flag{color:var(--amber)}
   .mut{color:var(--mut);font-size:.78rem;margin-top:18px;border-top:1px solid var(--border);padding-top:8px}
   #src{color:var(--mut);font-size:.78rem}
   @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}.hero .big{font-size:1.7rem}}
@@ -48,27 +57,47 @@
 <button id="lang" aria-label="切换语言 / switch language"></button>
 <h1 data-i18n="title"></h1>
 <div class="lead" data-i18n="lead"></div>
-<div class="note" data-i18n="note"></div>
 
-<div class="hero" id="hero"></div>
-<div class="verdict" id="verdict"></div>
+<!-- ① 大白话结果（领头）：先说我们测了几条、几条扛住了 -->
+<h2 data-i18n="hResults" style="margin-top:16px"></h2>
+<p class="headline" id="headline"></p>
+<div class="honest" data-i18n="honest"></div>
 
-<h2 data-i18n="hReg"></h2>
-<p class="sub" data-i18n="sReg"></p>
-<div class="grid" id="registry"></div>
+<!-- ② 扛住检验的规律（大白话名 + 一句话） -->
+<h2 data-i18n="hKept"></h2>
+<p class="sub" data-i18n="sKept"></p>
+<div class="grid" id="survivors"></div>
 
-<details class="vp-more"><summary data-i18n="more_fam"></summary>
-  <div class="fam" id="families" style="margin-top:8px"></div>
-</details>
+<!-- ③ 曾灵但现在淡了（短列表） -->
+<h2 data-i18n="hFadedList"></h2>
+<p class="sub" data-i18n="sFadedList"></p>
+<div class="grid" id="fadedList"></div>
 
-<h2 data-i18n="hGrave"></h2>
-<p class="sub" data-i18n="sGrave"></p>
-<div class="grave" id="graveyard"></div>
+<div class="note" data-i18n="note" style="margin-top:18px"></div>
 
-<details class="vp-more"><summary data-i18n="more_auto"></summary>
-  <p class="sub" data-i18n="sAuto" style="margin-top:8px"></p>
-  <div id="autoSummary" class="sub"></div>
-  <div class="grave" id="autodisc"></div>
+<!-- ④ 专业细节（折叠）：FDR / p 值 / 三态 / 分母 / 校验全在这里，没删 -->
+<details class="vp-more" style="margin-top:18px"><summary data-i18n="more_expert"></summary>
+  <div style="margin-top:10px">
+    <div class="hero" id="hero"></div>
+    <div class="verdict" id="verdict"></div>
+
+    <h3 data-i18n="hReg" style="font-size:1rem;margin:20px 0 4px"></h3>
+    <p class="sub" data-i18n="sReg"></p>
+    <div class="grid" id="registry"></div>
+
+    <details class="vp-more"><summary data-i18n="more_fam"></summary>
+      <div class="fam" id="families" style="margin-top:8px"></div>
+    </details>
+
+    <h3 data-i18n="hGrave" style="font-size:1rem;margin:20px 0 4px"></h3>
+    <p class="sub" data-i18n="sGrave"></p>
+    <div class="grave" id="graveyard"></div>
+
+    <h3 data-i18n="hAuto" style="font-size:1rem;margin:20px 0 4px"></h3>
+    <p class="sub" data-i18n="sAuto"></p>
+    <div id="autoSummary" class="sub"></div>
+    <div class="grave" id="autodisc"></div>
+  </div>
 </details>
 
 <div id="src"></div>
@@ -93,6 +122,31 @@ const I18N={
         en:"Every significance claim we've tested is pooled together and run through a cross-family multiple-testing correction. Only what survives is accepted as a 'real pattern'; the rest is honestly buried. This page is that living ledger."},
   note:{zh:"<b>这是全站的魂，不是炫技。</b>自动发现规律最容易变成「测一千个、挑最好看的」——那是 p-hacking。把试过的全算进去校正，是逼自己别自欺。存活 ≠ 未来重演，更非买卖建议。",
         en:"<b>This is the soul of the site, not a flex.</b> Auto-discovering patterns easily becomes 'test a thousand, keep the prettiest' — that's p-hacking. Counting everything you tried into the correction is how you stop fooling yourself. Surviving ≠ repeating; not advice."},
+  hResults:{zh:"📊 一句话结果",en:"📊 The result in one line"},
+  hKept:{zh:"✅ 扛住检验的规律",en:"✅ Patterns that held up"},
+  sKept:{zh:"以下规律全样本经得起严格统计校正、且现代段(2000后)仍测得到。大白话命名在前，技术代号在后。点开有逐窗口明细。",
+         en:"These held up under strict correction over the full history AND are still detectable in the modern window (post-2000). Plain name first, technical key after. Tap for per-window detail."},
+  hFadedList:{zh:"⚠️ 曾灵、但现在淡了",en:"⚠️ Once worked, faded now"},
+  sFadedList:{zh:"这些在几十年全样本里真过了检验，但近 25 年（2000后）已测不到——很可能被市场套利掉了。真过 ≠ 还能用。",
+              en:"These passed over decades of full history, but are no longer detectable in the last ~25 years (post-2000) — likely arbitraged away. Was real ≠ still usable."},
+  honest:{zh:"扛住检验 ≠ 未来一定重演 ≠ 能照着赚钱。这是一份诚实的记录，不是荐股。",
+          en:"Holding up ≠ guaranteed to repeat ≠ a way to make money. This is an honest record, not stock advice."},
+  hlNone:{zh:"目前没有规律扛住跨族校正——把试过的全算进去后，没有一条强到能与运气区分。这页坦白记录这件事。",
+          en:"Right now no pattern survives the cross-family correction — once everything tested is counted in, none is strong enough to tell apart from luck. This page records that honestly."},
+  hlEmpty:{zh:"自动发现引擎的结果还没拉到（数据缺失或为空）。下面的专业细节区也会一并留空。",
+           en:"Auto-discovery results haven't loaded yet (data missing or empty). The expert section below will be empty too."},
+  noneKept:{zh:"暂无扛住检验的规律。",en:"No patterns held up yet."},
+  noneFaded:{zh:"暂无「曾灵后淡」的记录。",en:"None in the 'once worked, faded' bucket."},
+  more_expert:{zh:"🔬 看怎么测的（专业细节：FDR · p 值 · 三态裁决 · 分母 · 校验，全套展开）",
+               en:"🔬 How we tested it (expert detail: FDR · p-values · three-state verdict · denominator · checks — full set)"},
+  pWhyRebound:{zh:"指数大跌后短线反弹：跌得越猛、随后那几天反弹的概率与基准比有可测差异。",
+               en:"Short-term bounce after a big index drop: the deeper the drop, the more the next few days' up-rate differs from baseline."},
+  pWhyFactor:{zh:"某个市场状态成立时，随后 20 个交易日的上涨率与基准比有可测差异（只问「有没有差」，不含方向判断）。",
+              en:"When a given market condition holds, the next 20 trading days' up-rate differs measurably from baseline (we only ask 'is there a gap', no directional call)."},
+  pWhyCalendar:{zh:"某个日历/季节性窗口里的涨跌，与对照期相比有可测差异。",
+                en:"Returns inside a calendar/seasonal window differ measurably from the comparison period."},
+  pWhyGeneric:{zh:"该候选的触发组表现与基准/对照相比有可测差异。",
+               en:"This candidate's triggered group differs measurably from the baseline/comparison."},
   hTested:{zh:"测过的假设",en:"hypotheses tested"},
   hLuck:{zh:"≈ 纯靠运气(p<.05)",en:"≈ by luck alone (p<.05)"},
   hSurv:{zh:"跨族校正后站得住",en:"survive correction"},
@@ -124,6 +178,111 @@ const I18N={
          en:"up% = share of up periods in that group (intuition); green &gt; base, red &lt;. Rebound/factor: base% = whole-sample up-rate and p tests the up-rate gap (same quantity shown). Calendar directional (holiday/santa/sell-in-May/World-Cup/term-year): base% = comparison group's up-rate and p tests the difference in <b>mean returns</b> (one-sided) — usually same sign as up%, but a different quantity. Day/month effects are multi-group omnibus — p only."},
   adLedger:{zh:"裁决账本追踪",en:"verdict ledger"},adDays:{zh:"天(累积中,供日后衰减追踪)",en:"d (accruing for decay tracking)"}
 };
+
+// ── 大白话命名映射 ───────────────────────────────────────────────────────
+// 仅在含义明确时映射；拿不准的不编，回退到「按代号拆解」或保留原代号并标 ⚠️。
+// 指数代号 → 大白话
+const IDX_NAME={nasdaq:{zh:"纳指",en:"Nasdaq"},sp500:{zh:"标普500",en:"S&P 500"},NASDAQ:{zh:"纳指",en:"Nasdaq"},BTC:{zh:"比特币",en:"Bitcoin"}};
+// 整键精确映射（factor/calendar 含义明确的那些）
+const PLAIN_MAP={
+  // —— 因子族 factor ——
+  BTC_mom20_pos:{zh:"比特币近一个月在涨（20日动量为正）",en:"Bitcoin rising over the past month (20-day momentum positive)"},
+  BTC_mom20_neg:{zh:"比特币近一个月在跌（20日动量为负）",en:"Bitcoin falling over the past month (20-day momentum negative)"},
+  NASDAQ_above_ma200:{zh:"纳指站上200日均线（长期处于上行）",en:"Nasdaq above its 200-day average (in a long-term uptrend)"},
+  BTC_above_ma200:{zh:"比特币站上200日均线（长期处于上行）",en:"Bitcoin above its 200-day average (long-term uptrend)"},
+  NASDAQ_mom20_pos:{zh:"纳指近一个月在涨（20日动量为正）",en:"Nasdaq rising over the past month (20-day momentum positive)"},
+  NASDAQ_mom20_neg:{zh:"纳指近一个月在跌（20日动量为负）",en:"Nasdaq falling over the past month (20-day momentum negative)"},
+  nasdaq_high_vol:{zh:"纳指处于高波动期",en:"Nasdaq in a high-volatility regime"},
+  nasdaq_low_vol:{zh:"纳指处于低波动期",en:"Nasdaq in a low-volatility regime"},
+  nasdaq_rsi_overbought:{zh:"纳指 RSI 超买（短线偏热）",en:"Nasdaq RSI overbought (short-term hot)"},
+  nasdaq_rsi_oversold:{zh:"纳指 RSI 超卖（短线偏冷）",en:"Nasdaq RSI oversold (short-term cold)"},
+  // —— 日历族 calendar ——
+  santa_sp500:{zh:"圣诞行情·标普500（年底那几天）",en:"Santa rally · S&P 500 (the year-end days)"},
+  santa_nasdaq:{zh:"圣诞行情·纳指（年底那几天）",en:"Santa rally · Nasdaq (the year-end days)"},
+  sell_in_may_sp500:{zh:"五月卖出/冬强夏弱·标普500",en:"Sell-in-May / winter-strong-summer-weak · S&P 500"},
+  sell_in_may_nasdaq:{zh:"五月卖出/冬强夏弱·纳指",en:"Sell-in-May / winter-strong-summer-weak · Nasdaq"},
+  pre_holiday_sp500:{zh:"节前效应·标普500（假期前几天）",en:"Pre-holiday effect · S&P 500"},
+  pre_holiday_nasdaq:{zh:"节前效应·纳指（假期前几天）",en:"Pre-holiday effect · Nasdaq"},
+  world_cup_year_sp500:{zh:"世界杯年·标普500（夏季分心）",en:"World-Cup year · S&P 500 (summer distraction)"},
+  world_cup_year_nasdaq:{zh:"世界杯年·纳指（夏季分心）",en:"World-Cup year · Nasdaq (summer distraction)"},
+  september_sp500:{zh:"九月效应·标普500（九月历史最弱月）",en:"September effect · S&P 500 (historically the weakest month)"},
+  september_nasdaq:{zh:"九月效应·纳指（九月历史最弱月）",en:"September effect · Nasdaq (historically the weakest month)"},
+  january_sp500:{zh:"元月效应·标普500（一月历史偏强）",en:"January effect · S&P 500 (historically strong)"},
+  january_nasdaq:{zh:"元月效应·纳指（一月历史偏强）",en:"January effect · Nasdaq (historically strong)"},
+  dow_sp500:{zh:"星期几效应·标普500",en:"Day-of-week effect · S&P 500"},
+  dow_nasdaq:{zh:"星期几效应·纳指",en:"Day-of-week effect · Nasdaq"},
+  month_sp500:{zh:"月份效应·标普500",en:"Month-of-year effect · S&P 500"},
+  month_nasdaq:{zh:"月份效应·纳指",en:"Month-of-year effect · Nasdaq"},
+  decade_digit_sp500:{zh:"年份尾数效应·标普500",en:"Decade-digit (year-ending) effect · S&P 500"},
+  term_year3_sp500:{zh:"总统任期第3年/大选前一年·标普500",en:"Presidential term year 3 (pre-election year) · S&P 500"},
+  presidential_cycle_sp500:{zh:"总统四年周期·标普500",en:"Presidential 4-year cycle · S&P 500"}
+};
+// 注：凡不在 PLAIN_MAP、又非反弹族的代号（如 overnight_mom_pos/dxy_rising/vix_backwardation 等），
+// plainName() 一律回退到保留原代号 + ⚠️，绝不替它们编含义。
+// 反弹族 pN_hM_index → 「指数大跌第N百分位后持有M天反弹」
+function rebPlain(key){
+  const m=/^p(\d+)_h(\d+)_(\w+)$/.exec(key||"");
+  if(!m)return null;
+  const idx=IDX_NAME[m[3]]?IDX_NAME[m[3]][LANG]:m[3];
+  return LANG==="zh"
+    ? `${idx}大跌（最猛 ${m[1]}% 那档）后持有 ${m[2]} 天反弹`
+    : `${idx} bounce: hold ${m[2]} day(s) after a big drop (worst ${m[1]}% bucket)`;
+}
+// 返回 {name, unsure} —— name=大白话；unsure=true 表示拿不准、已保留原代号
+function plainName(c){
+  const key=c.key||"";
+  if(PLAIN_MAP[key])return {name:PLAIN_MAP[key][LANG],unsure:false};
+  if(c.family==="rebound"){const r=rebPlain(key);if(r)return {name:r,unsure:false};}
+  return {name:esc(key),unsure:true};  // 含义拿不准：保留原代号、调用处加 ⚠️ 标注
+}
+// 一句话「为什么」——按族给通用解释（不编具体方向）
+function whyLine(c){
+  if(c.family==="rebound")return t("pWhyRebound");
+  if(c.family==="factor")return t("pWhyFactor");
+  if(c.family==="calendar")return t("pWhyCalendar");
+  return t("pWhyGeneric");
+}
+// ── 领头的大白话结果区（survivors / faded） ──────────────────────────────
+function pcard(c){
+  const pn=plainName(c);
+  const fl=pn.unsure?` <span class="flag" title="含义拿不准，保留原代号 / meaning unclear, key kept">⚠️</span>`:"";
+  return `<div class="card pcard" style="cursor:pointer" onclick="showAD('${esc(c.candidate_id)}')">
+    <div class="plain">${pn.name}${fl}</div>
+    <div class="why">${whyLine(c)}</div>
+    <div class="raw">${esc(c.key)} · <span style="color:var(--acc)">${t("dClick")}</span></div></div>`;
+}
+function renderResults(){
+  // 数据缺失/为空 → 优雅大白话兜底
+  if(!AD||!AD.candidates||!AD.candidates.length){
+    $("headline").innerHTML=t("hlEmpty");
+    $("survivors").innerHTML=`<div class="mut">—</div>`;
+    $("fadedList").innerHTML=`<div class="mut">—</div>`;
+    return;
+  }
+  const cs=AD.candidates, s=AD.summary||{};
+  const surv=cs.filter(c=>c.verdict==="survive");
+  const faded=cs.filter(c=>c.verdict==="faded");
+  const m=(s.m_total!=null?s.m_total:cs.length);
+  const nS=(s.n_survive!=null?s.n_survive:surv.length);
+  const nF=(s.n_faded!=null?s.n_faded:faded.length);
+  const nI=(s.n_inconclusive!=null?s.n_inconclusive:cs.filter(c=>c.verdict==="inconclusive").length);
+  const nD=(s.n_dead!=null?s.n_dead:cs.filter(c=>c.verdict==="dead").length);
+  // 大白话领头句（0 存活时换诚实兜底句）
+  if(nS===0){
+    $("headline").innerHTML=t("hlNone");
+  } else if(LANG==="zh"){
+    $("headline").innerHTML=`我们用严格统计测了 <b style="color:var(--fg)">${m}</b> 条民间/季节性规律：`
+      +`<b>${nS}</b> 条扛住了检验、<span class="amb">${nF}</span> 条曾灵但现在淡了、`
+      +`<span class="gone">${nI}</span> 条样本太小下不了结论、其余 <span class="gone">${nD}</span> 条没通过。`;
+  } else {
+    $("headline").innerHTML=`We ran <b style="color:var(--fg)">${m}</b> folk / seasonal patterns through strict statistics: `
+      +`<b>${nS}</b> held up, <span class="amb">${nF}</span> once worked but faded, `
+      +`<span class="gone">${nI}</span> were too small to call, and the other <span class="gone">${nD}</span> didn't pass.`;
+  }
+  const ord=(a,b)=>(a.p-b.p);
+  $("survivors").innerHTML=surv.length?[...surv].sort(ord).map(pcard).join(""):`<div class="mut">${t("noneKept")}</div>`;
+  $("fadedList").innerHTML=faded.length?[...faded].sort(ord).map(pcard).join(""):`<div class="mut">${t("noneFaded")}</div>`;
+}
 function renderAD(){
   if(!AD||!AD.candidates){$("autodisc").innerHTML=`<div class="mut">—</div>`;$("autoSummary").innerHTML="";return;}
   ADC=AD.candidates; const s=AD.summary||{};
@@ -179,6 +338,7 @@ function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.i
 
 function render(){
   applyStatic();
+  renderResults();
   renderAD();
   if(!D){$("src").textContent=t("err");return;}
   const m=D.m_total||0, surv=D.n_survive_by_10||0, luck=Math.round(m*ALPHA);
@@ -206,6 +366,8 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Enter"||e.key===" "){const a=document.activeElement;if(a&&a.getAttribute&&a.getAttribute("role")==="button"&&a.tagName!=="BUTTON"){e.preventDefault();a.click();}}
 });
 (async()=>{applyStatic();
+  $("survivors").innerHTML='<div class="skel"></div><div class="skel"></div>';
+  $("fadedList").innerHTML='<div class="skel"></div>';
   $("registry").innerHTML='<div class="skel"></div><div class="skel"></div><div class="skel"></div>';
   $("autodisc").innerHTML='<div class="skel" style="height:64px;width:100%"></div>';
   const g=u=>fetch(u,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
