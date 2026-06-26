@@ -37,6 +37,12 @@
   .tool:hover{border-color:var(--acc-line,rgba(163,113,247,.45));transform:translateY(-2px);box-shadow:0 2px 4px rgba(0,0,0,.30),0 8px 24px rgba(0,0,0,.46)}
   .tool:focus-visible{box-shadow:var(--ring,0 0 0 3px rgba(163,113,247,.40))}
   .tool .ico{font-size:1.5rem}.tool .nm{font-weight:700;margin-top:4px}.tool .ds{color:var(--mut);font-size:.78rem;margin-top:2px}
+  /* ── tool-grid group sub-headers (subtler than .section-hd) ── */
+  .grp-hd{font-size:.7rem;font-weight:700;letter-spacing:.5px;color:var(--mut);opacity:.7;margin:16px 0 7px;text-transform:uppercase}
+  .grp-hd:first-child{margin-top:4px}
+  /* ── featured card: the scorecard / 战绩墙 (the moat) — highlighted ── */
+  .tool-feat{border-color:var(--acc);background:linear-gradient(135deg,rgba(163,113,247,.14),rgba(88,166,255,.05))}
+  .tool-feat .nm{color:var(--acc-strong,#b483ff)}
   .mut{color:var(--mut)}.note{color:var(--amb);font-size:.8rem}
   footer{color:var(--mut);font-size:.78rem;margin-top:20px;border-top:1px solid var(--border);padding-top:10px}
   /* ── baseline: quiet strip, not competing with hero ── */
@@ -127,9 +133,9 @@
     <div id="bottom" style="font-size:.95rem;line-height:1.65">—</div></div>
 </div>
 
-<!-- 🧰 Tools grid -->
+<!-- 🧰 Tools grid (grouped into labeled categories) -->
 <div class="section-hd" data-i18n="sec_tools"></div>
-<div class="tools" id="tools"></div>
+<div id="tools"></div>
 
 <!-- 📉 极端下跌反弹信号 card（ovr- namespace · 公开战绩 · 诚实计分）-->
 <div class="card" id="ovr-card" style="margin:14px 0;display:none">
@@ -186,6 +192,8 @@ const I18N={
   t_opt:{zh:"期权教学",en:"Options 101"},t_opt_d:{zh:"搭腿看盈亏+希腊字母沙盒·纯教学非荐股",en:"payoff + Greeks sandbox · teaching, not advice"},
   t_read:{zh:"综合读数",en:"Composite Read"},t_read_d:{zh:"出格区·诚实证据加权的当下倾向",en:"out-of-bounds · evidence-weighted tilt"},
   t_cycle:{zh:"周期季节性",en:"Cycles"},t_cycle_d:{zh:"三层透明·原始计数+校正前后",en:"3-layer · raw counts + pre/post-FDR"},
+  t_score:{zh:"公开计分卡 · 战绩墙",en:"Public scorecard · track record"},
+  t_score_d:{zh:"每条预测的命中+校准·这就是护城河",en:"every call's hit-rate + calibration · the moat"},
   c_ovr:{zh:"📉 极端下跌反弹信号（出格区 · 公开计分）",en:"📉 Extreme-drop rebound signal (out-of-bounds · publicly scored)"},
   // onboarding
   ob_title:{zh:"3 步看懂这站",en:"3 steps to get started"},
@@ -199,7 +207,12 @@ const I18N={
   ob_guide:{zh:"新手指南",en:"Guide"},
   // section headings (declutter pass)
   sec_glance:{zh:"📊 速览",en:"📊 At a glance"},
-  sec_tools:{zh:"🧰 工具",en:"🧰 Tools"}
+  sec_tools:{zh:"🧰 工具",en:"🧰 Tools"},
+  // tool-grid group headers (bilingual)
+  grp_core:{zh:"核心 · 大盘全景",en:"Core · market overview"},
+  grp_calls:{zh:"出格 · 公开计分",en:"Out-of-bounds · scored calls"},
+  grp_tools:{zh:"工具箱",en:"Toolbox"},
+  grp_method:{zh:"方法 · 透明度",en:"Method · transparency"}
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -259,8 +272,43 @@ function renderHero(){
 
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
 function tools(){
-  const T=[["t_board","🛰️","valpha150.html"],["t_sec","📊","sectors.html"],["t_radar","📡","radar.html"],["t_heat2","🔳","heatmap.html"],["t_adv","🎲","advisor.html"],["t_risk","🛟","risk.html"],["t_stay","⏳","stayinvested.html"],["t_insider","🕵️","insider.html"],["t_picks","🎯","picks.html"],["t_wild","🔥","wildhub.html"],["t_read","🧠","composite.html"],["t_cycle","🔄","seasonal.html"],["t_ipo","🛫","ipo.html"],["t_method","🛡️","methodology.html"],["t_grow","🌱","self_growing.html"],["t_kronos","🔬","kronos.html"],["t_full","🧭","dashboard.html"],["t_index","📘","indexing.html"],["t_ndx","📗","ndx.html"],["t_opt","🎓","options.html"]];
-  $("tools").innerHTML=T.map(([k,ico,href])=>`<a class="tool" href="${href}"><div class="ico">${ico}</div><div class="nm">${t(k)}</div><div class="ds">${t(k+"_d")}</div></a>`).join("");
+  // Grouped tool grid — each group = [headerKey, [ [i18nKey, emoji, href, featured?], ... ]]
+  const GROUPS=[
+    ["grp_core",[
+      ["t_board","🛰️","valpha150.html"],
+      ["t_radar","📡","radar.html"],
+      ["t_sec","📊","sectors.html"],
+      ["t_heat2","🔳","heatmap.html"]
+    ]],
+    ["grp_calls",[
+      ["t_score","📊","scorecard.html",true],
+      ["t_picks","🎯","picks.html"],
+      ["t_insider","🕵️","insider.html"],
+      ["t_read","🧠","composite.html"],
+      ["t_wild","🔥","wildhub.html"]
+    ]],
+    ["grp_tools",[
+      ["t_risk","🛟","risk.html"],
+      ["t_stay","⏳","stayinvested.html"],
+      ["t_adv","🎲","advisor.html"],
+      ["t_ipo","🛫","ipo.html"],
+      ["t_opt","🎓","options.html"],
+      ["t_index","📘","indexing.html"],
+      ["t_ndx","📗","ndx.html"]
+    ]],
+    ["grp_method",[
+      ["t_method","🛡️","methodology.html"],
+      ["t_grow","🌱","self_growing.html"],
+      ["t_kronos","🔬","kronos.html"],
+      ["t_cycle","🔄","seasonal.html"],
+      ["t_full","🧭","dashboard.html"]
+    ]]
+  ];
+  const card=([k,ico,href,feat])=>`<a class="tool${feat?" tool-feat":""}" href="${href}"><div class="ico">${ico}</div><div class="nm">${t(k)}</div><div class="ds">${t(k+"_d")}</div></a>`;
+  const html=GROUPS.map(([hk,items])=>
+    `<div class="grp-hd">${t(hk)}</div><div class="tools">${items.map(card).join("")}</div>`
+  ).join("");
+  $("tools").innerHTML=html;
 }
 function paint(){
   applyStatic();tools();renderHero();
