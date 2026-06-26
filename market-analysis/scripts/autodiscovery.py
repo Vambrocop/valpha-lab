@@ -223,6 +223,45 @@ def _rebound(pctl, hold, index, cid):
             "effect": "触发日后持有期上涨率 vs 基率"}
 
 
+# ── 价格体制族：金叉等"价格条件成立时未来 hold 日上涨率 vs 基率"（标普不在 factor 管线，单列）──
+def _daily_price(index):
+    f = {"sp500": "SP500_long.csv", "nasdaq": "NASDAQ_COMP_long.csv"}.get(index)
+    if not f or not (RAW_DIR / f).exists():
+        return None
+    s = pd.read_csv(RAW_DIR / f, index_col=0, parse_dates=True)
+    s = pd.to_numeric(s.iloc[:, 0], errors="coerce").dropna()
+    return s[s > 0].sort_index()
+
+
+def _regime(signal, index, cid, hold=20):
+    px = _daily_price(index)
+    if px is None or len(px) < 300:
+        return None
+    if signal == "golden_cross":                       # 50 日均线 > 200 日均线（先验：趋势向上）
+        cond = px.rolling(50).mean() > px.rolling(200).mean()
+    else:
+        return None
+    fwd = px.shift(-hold) / px - 1
+    df = pd.DataFrame({"sel": cond.astype(float), "up": (fwd > 0).astype(float)}).dropna()
+    sel = df["sel"].values == 1
+    y = df["up"].values
+    if int(sel.sum()) < 100 or int((~sel).sum()) < 100:
+        return None
+    bb = block_bootstrap_diff(sel, y, block=hold)
+    if bb is None:
+        return None
+    rmask = np.asarray(df.index >= RECENT_CUT)
+    recent_p, powered = None, False
+    if int((sel & rmask).sum()) >= 100 and int((~sel & rmask).sum()) >= 100:
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
+        if rbb is not None:
+            recent_p, powered = rbb["p_boot"], True
+    return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
+            "recent_powered": bool(powered),
+            "windows": _diff_windows(df.index, sel, y, hold),
+            "effect": "信号成立时未来20日上涨率 vs 基率"}
+
+
 # ── 因子族：复用 _segment_lens 的 全段 full_p + 现代段 recent_p ──
 def _factor_map(factor_cands):
     df = build_feature_df()
@@ -255,6 +294,8 @@ def compute_results(candidates):
             r = _calendar(c["params"]["effect"], c["params"]["index"], c["candidate_id"])
         elif fam == "rebound":
             r = _rebound(c["params"]["pctl"], c["params"]["hold"], c["params"]["index"], c["candidate_id"])
+        elif fam == "regime":
+            r = _regime(c["params"]["signal"], c["params"]["index"], c["candidate_id"])
         else:
             r = fac.get(c["candidate_id"])
         if r is None:                       # 数据不足 → 进分母但永不存活(检验力不足)

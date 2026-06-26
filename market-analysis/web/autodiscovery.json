@@ -1,18 +1,18 @@
 {
-  "generated": "2026-06-26T06:11:00Z",
+  "generated": "2026-06-26T06:32:58Z",
   "method": "自动发现 Phase 1b：预注册有限候选(日历/反弹/因子)各路由到真统计算 p，经 quality_gate 双栏 BY-FDR(族内+跨族)+三态裁决。全部候选进分母、禁预筛、固定种子。",
   "caveat": "存活≠未来重演≠可交易；现代已淡=全段过FDR但现代测不到(疑被套利)；检验力不足=样本太小不下结论。因子族 FDR 为**无向双侧**(只问'有无可测边际'、不含方向判断，与 factor_pruning 的方向门控透镜口径不同)。门4样本外待接入。探索性，非预测、非荐股。",
   "q": 0.1,
-  "n_declared": 48,
+  "n_declared": 50,
   "days_tracked": 4,
   "summary": {
-    "m_total": 48,
-    "n_survive_cross": 15,
-    "n_survive_cross_bh": 22,
-    "n_survive_family": 15,
-    "n_survive": 5,
+    "m_total": 50,
+    "n_survive_cross": 16,
+    "n_survive_cross_bh": 23,
+    "n_survive_family": 17,
+    "n_survive": 6,
     "n_faded": 10,
-    "n_dead": 28,
+    "n_dead": 29,
     "n_inconclusive": 5
   },
   "candidates": [
@@ -463,6 +463,53 @@
       "modern_status": "现代已淡",
       "verdict": "faded",
       "reason": "全段过跨族FDR但现代段已淡(疑被套利)"
+    },
+    {
+      "candidate_id": "reg_74448026aa",
+      "family": "regime",
+      "key": "golden_cross_sp500",
+      "p": 0.002,
+      "recent_p": 0.026,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.002,
+          "up_pct": 62,
+          "base_pct": 60,
+          "diff_pp": 2.3,
+          "n": 16671
+        },
+        {
+          "label": "2000后",
+          "p": 0.026,
+          "up_pct": 66,
+          "base_pct": 63,
+          "diff_pp": 2.7,
+          "n": 4784
+        },
+        {
+          "label": "2021后",
+          "p": 0.242,
+          "up_pct": 68,
+          "base_pct": 65,
+          "diff_pp": 2.6,
+          "n": 1098
+        },
+        {
+          "label": "近1年",
+          "p": null,
+          "up_pct": null,
+          "n": 248
+        }
+      ],
+      "effect": "信号成立时未来20日上涨率 vs 基率",
+      "survive_cross": true,
+      "survive_cross_bh": true,
+      "survive_family": true,
+      "modern_status": "现代仍有效",
+      "verdict": "survive",
+      "reason": ""
     },
     {
       "candidate_id": "cal_11bf800cae",
@@ -1091,6 +1138,53 @@
       "survive_cross_bh": false,
       "survive_family": false,
       "modern_status": "现代已淡",
+      "verdict": "dead",
+      "reason": "未过跨族 BY-FDR"
+    },
+    {
+      "candidate_id": "reg_9c0efb465b",
+      "family": "regime",
+      "key": "golden_cross_nasdaq",
+      "p": 0.054,
+      "recent_p": 0.059,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.054,
+          "up_pct": 63,
+          "base_pct": 62,
+          "diff_pp": 1.8,
+          "n": 9688
+        },
+        {
+          "label": "2000后",
+          "p": 0.059,
+          "up_pct": 65,
+          "base_pct": 62,
+          "diff_pp": 2.3,
+          "n": 4627
+        },
+        {
+          "label": "2021后",
+          "p": 0.45,
+          "up_pct": 63,
+          "base_pct": 61,
+          "diff_pp": 1.9,
+          "n": 1053
+        },
+        {
+          "label": "近1年",
+          "p": null,
+          "up_pct": null,
+          "n": 249
+        }
+      ],
+      "effect": "信号成立时未来20日上涨率 vs 基率",
+      "survive_cross": false,
+      "survive_cross_bh": false,
+      "survive_family": true,
+      "modern_status": "现代仍有效",
       "verdict": "dead",
       "reason": "未过跨族 BY-FDR"
     },

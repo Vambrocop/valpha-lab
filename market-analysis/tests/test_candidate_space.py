@@ -49,5 +49,5 @@ def test_rebound_params_bounded():
 def test_every_candidate_has_shape():
     for c in enumerate_candidates():
         assert set(c) >= {"family", "key", "params", "candidate_id"}
-        assert c["family"] in {"calendar", "rebound", "factor"}
+        assert c["family"] in {"calendar", "rebound", "regime", "factor"}
         assert isinstance(c["params"], dict) and c["params"]
