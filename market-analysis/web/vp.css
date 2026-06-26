@@ -9,7 +9,57 @@
    圆角:     --rad  10px（与各页面已用 8-10px 齐平）
    阴影:     --shadow  轻量面板投影
    用途: 新组件用 token; 旧页面可逐步迁移（不强制）。 */
-:root{--sp-1:6px;--sp-2:10px;--sp-3:14px;--sp-4:20px;--rad:10px;--shadow:0 2px 12px rgba(0,0,0,.45)}
+:root{--sp-1:6px;--sp-2:10px;--sp-3:14px;--sp-4:20px;--rad:12px;--shadow:0 1px 2px rgba(0,0,0,.30),0 4px 16px rgba(0,0,0,.42)}
+/* ⚠️ AFFECTS ALL PAGES (subtle, AA-safe — geometry/shadow only, no text-contrast change):
+   --rad 10px→12px (Kraken "rounded-but-not-pill" container radius)
+   --shadow → two-layer micro+ambient elevation (Kraken/Sentry dark pattern).
+   See UI_POLISH_PROPOSAL.md → "⚠️ affects all pages". */
+
+/* ── Valpha polish tokens (ADDITIVE — opt-in; no existing var renamed/recolored) ──
+   Mined from awesome-design-md → Kraken (purple-accented dark, data-dense) + Sentry
+   (dark-surface elevation / focus ring). Brand purple #7132f5 fails AA on our dark bg
+   (≈3.0:1) → NOT used for text; we keep our brighter accent and add roles below.
+   All accent tokens reuse --acc's RGB (163,113,247) to stay coherent on every page. */
+:root{
+  --acc-strong:#b483ff;            /* hi-emphasis accent text · 6.8:1 vs bg ✓AA */
+  --acc-weak:rgba(163,113,247,.14);/* subtle accent fill (badge/hover wash) */
+  --acc-line:rgba(163,113,247,.45);/* accent hairline / focus border */
+  --surface-2:#1b222c;             /* nested/elevated card, one step over --panel */
+  --grn-weak:rgba(63,185,80,.15);  /* success badge fill */
+  --red-weak:rgba(248,81,73,.15);  /* down/error badge fill */
+  --ring:0 0 0 3px rgba(163,113,247,.40); /* soft focus halo (Sentry pattern) */
+  /* type ramp (system fonts only — same stack as pages) */
+  --fs-micro:.72rem;--fs-cap:.82rem;--fs-body:.94rem;
+  --fs-h3:1.05rem;--fs-h2:1.35rem;--fs-h1:1.7rem;
+  --lh-tight:1.25;--lh-body:1.6;
+  /* spacing extensions (existing --sp-1..4 untouched) */
+  --sp-0:3px;--sp-5:28px;--sp-6:40px;
+}
+
+/* ── Additive utility components (no existing page references these yet) ──────────── */
+.vp-card--hover{transition:border-color .14s,transform .14s,box-shadow .14s}
+.vp-card--hover:hover{border-color:var(--acc-line);transform:translateY(-2px);
+  box-shadow:0 2px 4px rgba(0,0,0,.30),0 8px 24px rgba(0,0,0,.46)}
+
+.vp-badge{display:inline-block;font-size:var(--fs-micro);font-weight:600;
+  padding:2px 8px;border-radius:6px;background:var(--acc-weak);color:var(--acc-strong);
+  border:1px solid var(--acc-line)}
+.vp-badge--good{background:var(--grn-weak);color:var(--grn);border-color:rgba(63,185,80,.4)}
+.vp-badge--bad{background:var(--red-weak);color:var(--red);border-color:rgba(248,81,73,.4)}
+.vp-badge--neu{background:rgba(157,167,179,.12);color:var(--mut);border-color:var(--border)}
+
+.vp-btn{display:inline-flex;align-items:center;gap:6px;font-size:.88rem;font-weight:700;
+  padding:8px 16px;border-radius:var(--rad);border:1px solid transparent;cursor:pointer;
+  text-decoration:none;transition:opacity .14s,background .14s,border-color .14s}
+.vp-btn--primary{background:var(--acc);color:#fff;border-color:var(--acc)}
+.vp-btn--primary:hover{opacity:.88}
+.vp-btn--ghost{background:transparent;color:var(--acc-strong);border-color:var(--acc-line)}
+.vp-btn--ghost:hover{background:var(--acc-weak)}
+.vp-btn:focus-visible{box-shadow:var(--ring)}
+
+.vp-link{color:var(--acc-strong);text-decoration:none}
+.vp-link:hover,.vp-link:focus{text-decoration:underline}
+.vp-focus-ring:focus-visible{box-shadow:var(--ring)}
 
 /* ── .vp-card — 通用卡片骨架 ────────────────────────────────────────
    panel 背景 + border + radius(--rad) + padding(--sp-3 --sp-4)。
