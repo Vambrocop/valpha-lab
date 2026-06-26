@@ -317,6 +317,27 @@ except Exception as e:
     errors.append(f"autodiscovery 形状检查失败: {e}")
     print(f"  ✗ autodiscovery 形状检查失败: {e}")
 
+# 3l4. 内部人买入前向计分形状(track_record 全/recent 是表/benchmark=SPY。存在才查、缺失不致命)
+#       诚实纪律：聪明钱前向计分页必须带"非荐股 + 前向计分"免责框（敢预测就敢认账=护城河，
+#       同 overreaction 强制 recent.p_value 的逻辑：方向性/跟单性产物不许丢掉认账口径）。
+try:
+    ins_path = WEB_DIR / "insider_signal.json"
+    if ins_path.exists():
+        with open(ins_path, encoding="utf-8") as fh:
+            ins = json.load(fh)
+        tr = ins.get("track_record", {})
+        ok = (isinstance(tr, dict)
+              and all(k in tr for k in ("n_settled", "n_pending", "n_dropped", "beat_spy_pct"))
+              and isinstance(ins.get("recent"), list)
+              and ins.get("benchmark") == "SPY")
+        check(ok, f"insider_signal.json 形状正常（已结算 {tr.get('n_settled')}·挂账 {tr.get('n_pending')}）")
+        cav = ins.get("caveat", "")
+        check("非荐股" in cav and "前向计分" in cav,
+              "insider_signal.json caveat 含非荐股+前向计分诚实框")
+except Exception as e:
+    errors.append(f"insider_signal 形状检查失败: {e}")
+    print(f"  ✗ insider_signal 形状检查失败: {e}")
+
 # 3j. 方法论完整性护栏(automation-first):个股"真规律"(三关全过)必须先经人工审视,
 #     不得自动发布——若 patterns_fdr_real=True 进了已发布 JSON,说明人工停下被绕过 → 拦住发布。
 try:

@@ -173,6 +173,22 @@ def _is_open_market_buy(code, ad_code):
     return code == "P" and ad_code == "A"
 
 
+# 申报人常把垃圾塞进 issuerTradingSymbol（"NONE"/"N/A"/带空格如 "N O G"）→ 这类被拒，
+# 改走 CIK→ticker 兜底；连兜底都没有就丢（跟单检验需可定位的真标的）。
+_BAD_TICKERS = {"NONE", "N/A", "NA", "N.A.", "-", "—", "NULL"}
+_TICKER_RE = re.compile(r"^[A-Z][A-Z0-9.\-]{0,6}$")
+
+
+def _clean_ticker(sym):
+    """返回规范 ticker 或 None（拒空格/占位符/非法格式）。"""
+    if not sym:
+        return None
+    t = sym.strip().upper()
+    if t in _BAD_TICKERS or " " in t or not _TICKER_RE.match(t):
+        return None
+    return t
+
+
 def parse_form4(txt, cik2tk, cik):
     """从完整提交文本中切出 <ownershipDocument> XML 并抽 P 买入。返回 buys[]。"""
     # 提交 .txt 内嵌一段或多段 <XML>…</XML>；取含 ownershipDocument 的那段
@@ -191,9 +207,9 @@ def parse_form4(txt, cik2tk, cik):
         return el.text.strip() if el is not None and el.text else None
 
     issuer = root.find("issuer")
-    ticker = (_txt(issuer, "issuerTradingSymbol") if issuer is not None else None)
+    ticker = _clean_ticker(_txt(issuer, "issuerTradingSymbol")) if issuer is not None else None
     if not ticker:
-        ticker = cik2tk.get(cik)            # 兜底：CIK→ticker
+        ticker = cik2tk.get(cik)            # 兜底：CIK→ticker（company_tickers.json 干净）
     issuer_name = _txt(issuer, "issuerName") if issuer is not None else None
 
     owner = root.find("reportingOwner")
