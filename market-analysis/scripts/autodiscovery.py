@@ -76,6 +76,24 @@ def _wmask(idx, w):
     return np.asarray(idx >= w)
 
 
+def _decade_rows(idx, trig, up):
+    """逐十年：触发组上涨率 vs 该十年基率（看规律哪些年代对、哪些年代死了）。trig=触发布尔，up=上涨布尔。"""
+    idx = pd.DatetimeIndex(idx)
+    dec = (idx.year // 10) * 10
+    trig = np.asarray(trig)
+    up = np.asarray(up, dtype=float)
+    out = []
+    for d in sorted(set(int(x) for x in dec)):
+        m = (dec == d)
+        tm = m & trig
+        if int(m.sum()) < 30 or int(tm.sum()) < 5:     # 该十年样本太少 → 不下结论(略过)
+            continue
+        ut, ub = float(up[tm].mean()), float(up[m].mean())
+        out.append({"decade": f"{d}s", "up_pct": round(ut * 100), "base_pct": round(ub * 100),
+                    "diff_pp": round((ut - ub) * 100, 1), "n": int(tm.sum())})
+    return out
+
+
 def _diff_windows(idx, sel, y, block):
     """触发条件 sel 下 y 的上涨率 vs 基率，逐时间窗（反弹/因子通用·有清晰"概率"）。"""
     out = []
@@ -187,6 +205,7 @@ def _calendar(eff, index, cid):
     return {"p": float(p), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
             "windows": _cal_windows(idx, vals, lab, stat, cid, eff),
+            "decades": (_decade_rows(idx, lab == 1, vals > 0) if dirf else []),
             "effect": ("触发组上涨率 vs 基率" if dirf else "组间差异(omnibus·无单一概率)")}
 
 
@@ -220,6 +239,7 @@ def _rebound(pctl, hold, index, cid):
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
             "windows": _diff_windows(df.index, sel, y, hold),
+            "decades": _decade_rows(df.index, sel, y > 0),
             "effect": "触发日后持有期上涨率 vs 基率"}
 
 
@@ -259,6 +279,7 @@ def _regime(signal, index, cid, hold=20):
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
             "windows": _diff_windows(df.index, sel, y, hold),
+            "decades": _decade_rows(df.index, sel, y > 0),
             "effect": "信号成立时未来20日上涨率 vs 基率"}
 
 

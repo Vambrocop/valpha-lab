@@ -174,6 +174,10 @@ const I18N={
   vSurvive:{zh:"真存活",en:"survive"},vFaded:{zh:"已淡",en:"faded"},vDead:{zh:"未过FDR",en:"dead"},vInconc:{zh:"检验力不足",en:"inconclusive"},
   wWin:{zh:"时间窗",en:"window"},wUp:{zh:"上涨率",en:"up%"},wBase:{zh:"基率",en:"base%"},
   wMulti:{zh:"多时间窗",en:"multi-window"},
+  dcTitle:{zh:"逐十年：哪些年代灵 / 哪些年代死了",en:"By decade: when it worked / died"},
+  dcDecade:{zh:"年代",en:"decade"},dcDiff:{zh:"差",en:"diff"},
+  dcNote:{zh:"每十年：触发组上涨率 vs 该十年基率（▲绿=那年代灵·▼红=不灵）。很多老规律就是这样：早年真、后来被套利磨平甚至反转。",
+          en:"Per decade: trigger up-rate vs that decade's base (▲green=worked, ▼red=didn't). Many old patterns: real early, arbitraged away (or reversed) later."},
   wNote:{zh:"上涨率=该组上涨期占比(直观)，绿>基率红<。反弹/因子：基率=全样本上涨率，p 检验上涨率差(与表同口径)。日历方向类(节前/圣诞/夏歇/世界杯/任期年)：基率=对照组上涨率，p 检验两组<b>平均收益</b>差(单边)——与上涨率通常同向但非同一指标。周几/月份为多组整体差异，无单一概率故只列 p。",
          en:"up% = share of up periods in that group (intuition); green &gt; base, red &lt;. Rebound/factor: base% = whole-sample up-rate and p tests the up-rate gap (same quantity shown). Calendar directional (holiday/santa/sell-in-May/World-Cup/term-year): base% = comparison group's up-rate and p tests the difference in <b>mean returns</b> (one-sided) — usually same sign as up%, but a different quantity. Day/month effects are multi-group omnibus — p only."},
   adLedger:{zh:"裁决账本追踪",en:"verdict ledger"},adDays:{zh:"天(累积中,供日后衰减追踪)",en:"d (accruing for decay tracking)"}
@@ -310,11 +314,20 @@ function showAD(id){const c=ADC.find(x=>x.candidate_id===id);if(!c)return;
     <table style="width:100%;font-size:.8rem;margin-top:3px;border-collapse:collapse">
       <tr style="color:var(--mut);border-bottom:1px solid var(--border)"><td>${t("wWin")}</td><td style="text-align:right">${t("wUp")}</td><td style="text-align:right">${t("wBase")}</td><td style="text-align:right">p</td><td style="text-align:right">n</td></tr>${wr}</table>
     <div style="font-size:.7rem;color:var(--mut);margin-top:5px">${t("wNote")}</div>`:"";
+  // 逐十年:哪些年代灵、哪些年代死了(faded 规律一眼看出何时失效)
+  const dr=(c.decades||[]).map(r=>{
+    const ok=r.diff_pp>=0,dp=ok?"var(--grn)":"var(--red)",ar=ok?"▲ ":"▼ ";
+    return `<tr><td style="padding:2px 0">${esc(r.decade)}</td><td style="text-align:right;color:${dp};font-weight:600">${ar}${r.up_pct}%</td><td style="text-align:right;color:var(--mut)">${r.base_pct}%</td><td style="text-align:right;color:${dp}">${ok?"+":""}${r.diff_pp}</td><td style="text-align:right;color:var(--mut)">${r.n}</td></tr>`;
+  }).join("");
+  const dt=dr?`<div style="font-size:.75rem;color:var(--acc);margin-top:12px">📅 ${t("dcTitle")}</div>
+    <table style="width:100%;font-size:.8rem;margin-top:3px;border-collapse:collapse">
+      <tr style="color:var(--mut);border-bottom:1px solid var(--border)"><td>${t("dcDecade")}</td><td style="text-align:right">${t("wUp")}</td><td style="text-align:right">${t("wBase")}</td><td style="text-align:right">${t("dcDiff")}</td><td style="text-align:right">n</td></tr>${dr}</table>
+    <div style="font-size:.7rem;color:var(--mut);margin-top:5px">${t("dcNote")}</div>`:"";
   $("mbody").innerHTML=`<div style="font-weight:700;font-size:1.05rem;margin-bottom:8px">${esc(c.key)}</div>
     <div style="color:var(--mut);font-size:.85rem;line-height:1.9">
       ${t("dFam")}：<b style="color:var(--fg)">${esc(c.family)}</b> · ${t("dVerdict")}：<b style="color:${VCLR[c.verdict]||'var(--fg)'}">${vl}</b>${c.reason?` · ${esc(c.reason)}`:""}<br>
       ${t("dP")}：<b style="color:var(--fg)">${pp(c.p)}</b>（${t("dRecent")} ${pp(c.recent_p)}）· ${t("dModern")}：${esc(c.modern_status||"—")}
-    </div>${wt}
+    </div>${wt}${dt}
     ${AD&&AD.caveat?`<div style="font-size:.68rem;color:var(--mut);margin-top:10px;border-top:1px solid var(--border);padding-top:7px;line-height:1.5">${esc(AD.caveat)}</div>`:""}
     <button onclick="closeD()" style="margin-top:14px;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:7px 18px;cursor:pointer">${t("dClose")}</button>`;
   openModal();}
