@@ -120,7 +120,7 @@ def _cal_windows(idx, vals, lab, stat, cid, eff):
         if len(v) >= 60 and len(set(l.tolist())) >= 2 and cnts.min() >= 8:
             pw = pb.perm_test(v, l, stat, np.random.default_rng(_seed_for(cid) + [3000 + wi]))["p_value"]
             row = {"label": wlab, "p": (None if np.isnan(pw) else round(float(pw), 3)), "n": int(len(v))}
-            if eff in _DIR_EFFECTS:
+            if eff in _DIR_EFFECTS or eff.startswith("monthof_"):
                 row["up_pct"] = round(float((v[l == 1] > 0).mean() * 100)) if (l == 1).any() else None
                 row["base_pct"] = round(float((v[l == 0] > 0).mean() * 100)) if (l == 0).any() else None
             out.append(row)
@@ -182,6 +182,11 @@ def _calendar(eff, index, cid):
         msize = s.groupby(per).transform("size").values        # 该月交易日数
         tom = ((dom < 3) | (dom == msize - 1)).astype(int)     # 前3日 或 最后1日
         vals, lab, idx = ret.values, tom, ret.index; stat = pb.make_dir_diff_stat()
+    elif eff.startswith("monthof_"):
+        # 机器枚举·逐月：该月 vs 其余是否异常。无方向先验 → 两侧(SS_between，方向无关)，谁异常谁自己冒出来。
+        M = int(eff.split("_")[1])
+        m1 = (ret.index.month == M).astype(int)
+        vals, lab, idx = ret.values, m1, ret.index; stat = pb.make_ssb_stat(2)
     elif eff == "term_year3":
         # Hirsch 总统周期：任期第3年(大选前一年)历史最强。年频，label==1=第3年(先验更高组)
         an = (1 + ret).resample("YE").prod(min_count=1).dropna() - 1
@@ -202,11 +207,13 @@ def _calendar(eff, index, cid):
             rmin = int(np.unique(lab[rmask], return_counts=True)[1].min())
             recent_p, powered = rp, rmin >= pb.MIN_GROUP_N
     dirf = eff in _DIR_EFFECTS
+    showup = dirf or eff.startswith("monthof_")    # 月扫虽两侧,仍亮"该月上涨率"便于看方向
     return {"p": float(p), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
             "windows": _cal_windows(idx, vals, lab, stat, cid, eff),
-            "decades": (_decade_rows(idx, lab == 1, vals > 0) if dirf else []),
-            "effect": ("触发组上涨率 vs 基率" if dirf else "组间差异(omnibus·无单一概率)")}
+            "decades": (_decade_rows(idx, lab == 1, vals > 0) if showup else []),
+            "effect": ("该月上涨率 vs 基率(两侧·机器枚举)" if eff.startswith("monthof_")
+                       else "触发组上涨率 vs 基率" if dirf else "组间差异(omnibus·无单一概率)")}
 
 
 # ── 反弹族：跌破第 pctl 百分位日后，持有 hold 日的前向收益 up 率 vs 基率（块自助） ──
