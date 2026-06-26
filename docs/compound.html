@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valpha 定投复利计算器 · DCA Compound Calculator</title>
+<link rel="stylesheet" href="vp.css">
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--amb:#d29922;--acc:#a371f7}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:16px;max-width:780px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin:12px 0}
+  label{color:var(--mut);font-size:.85rem;display:block;margin-bottom:3px}
+  input[type=number]{background:#0d1117;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:6px 8px;width:150px;font-size:1rem;margin-top:2px}
+  input[type=number]:focus{border-color:var(--acc);outline:none}
+  input[type=text]{background:#0d1117;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:6px 8px;width:90px;font-size:1rem;margin-top:2px}
+  input[type=text]:focus{border-color:var(--acc);outline:none}
+  .cur-seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:2px}
+  .cur-seg button{background:transparent;color:var(--mut);border:0;padding:6px 14px;cursor:pointer;font-size:.88rem;transition:.1s}
+  .cur-seg button.on{background:#30363d;color:var(--fg)}
+  .cur-seg button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+  .row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-bottom:8px}
+  .col{display:flex;flex-direction:column}
+  .hint{font-size:.74rem;color:var(--mut);margin-top:3px;max-width:170px;line-height:1.4}
+  .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:12px 0}
+  .rcard{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+  .rcard .rc-label{font-size:.78rem;color:var(--mut);margin-bottom:4px}
+  .rcard .rc-val{font-size:1.35rem;font-weight:700}
+  .rcard .rc-pct{font-size:.85rem;color:var(--mut);margin-top:2px}
+  .ok{color:var(--grn)}
+  .acc{color:var(--acc)}
+  /* ── stacked year bars (CSS, no chart lib) ── */
+  .chart-wrap{margin:16px 0 4px}
+  .chart-legend{font-size:.78rem;color:var(--mut);margin-bottom:8px}
+  .lg-sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin:0 4px 0 10px}
+  .lg-sw:first-child{margin-left:0}
+  .bars{display:flex;align-items:flex-end;gap:3px;height:170px;border-bottom:1px solid var(--border);padding-bottom:0;overflow-x:auto}
+  .barcol{flex:1 1 0;min-width:10px;display:flex;flex-direction:column;justify-content:flex-end;height:100%;position:relative}
+  .barcol .seg-gain{background:rgba(63,185,80,.55);border-radius:3px 3px 0 0}
+  .barcol .seg-prin{background:rgba(163,113,247,.55)}
+  .barcol .seg-prin.bottom{border-radius:0 0 3px 3px}
+  .barcol:hover .seg-gain,.barcol:hover .seg-prin{filter:brightness(1.25)}
+  .xlabels{display:flex;gap:3px;margin-top:4px}
+  .xlabels span{flex:1 1 0;min-width:10px;text-align:center;font-size:.64rem;color:var(--mut);white-space:nowrap}
+  .caveat{background:rgba(210,153,34,.1);border:1px solid var(--amb);border-radius:8px;padding:9px 12px;font-size:.82rem;color:#e8c96a;margin:10px 0;line-height:1.55}
+  .scope-note{font-size:.79rem;color:var(--mut);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-top:8px}
+  .mut{color:var(--mut);font-size:.8rem;margin-top:14px;border-top:1px solid var(--border);padding-top:10px}
+  @media(max-width:560px){
+    body{padding:12px}
+    h1{font-size:1.15rem}
+    input[type=number]{width:100%;max-width:240px}
+    .rgrid{grid-template-columns:1fr 1fr}
+    .row{gap:14px}
+    .hint{max-width:240px}
+    .bars{height:140px}
+    .xlabels span{font-size:.58rem}
+  }
+  @media(max-width:380px){
+    .rgrid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+
+<div class="vp-takeaway" data-i18n="takeaway"></div>
+
+<details class="vp-more">
+  <summary data-i18n="more_what"></summary>
+  <div data-i18n="more_body" style="color:var(--mut);line-height:1.6;margin-top:4px;font-size:.84rem"></div>
+</details>
+
+<div class="panel">
+  <div class="row">
+    <div class="col">
+      <label id="lbl-pmt" data-i18n="l_pmt"></label>
+      <input id="pmt" type="number" value="1000" min="0" step="100" aria-labelledby="lbl-pmt">
+    </div>
+    <div class="col">
+      <label id="lbl-yrs" data-i18n="l_yrs"></label>
+      <input id="yrs" type="number" value="20" min="1" max="80" step="1" aria-labelledby="lbl-yrs">
+    </div>
+    <div class="col">
+      <label id="lbl-rate" data-i18n="l_rate"></label>
+      <input id="rate" type="number" value="7" min="0" max="50" step="0.5" aria-labelledby="lbl-rate">
+      <div class="hint" data-i18n="rate_hint"></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <label id="lbl-init" data-i18n="l_init"></label>
+      <input id="init" type="number" value="0" min="0" step="100" aria-labelledby="lbl-init">
+    </div>
+    <div class="col">
+      <label data-i18n="l_cur"></label>
+      <div class="cur-seg" id="cur-seg" role="group" aria-label="currency">
+        <button data-c="AUD" class="on" aria-pressed="true">A$ AUD</button>
+        <button data-c="USD" aria-pressed="false">$ USD</button>
+        <button data-c="CUSTOM" aria-pressed="false" data-i18n="cur_custom"></button>
+      </div>
+      <div class="hint" data-i18n="cur_hint"></div>
+    </div>
+  </div>
+</div>
+
+<div id="out" role="region" aria-live="polite"></div>
+
+<div class="mut" data-i18n="foot" style="margin-top:18px"></div>
+
+<script>
+// ── i18n ──────────────────────────────────────────────────────────────────
+const I18N={
+  title:{
+    zh:"🧮 定投复利计算器",
+    en:"🧮 DCA Compound Calculator"},
+  takeaway:{
+    zh:"这是一个<b>复利小算盘</b>：填上你打算每月投多少、投多少年、假设一个年化收益率，它帮你算出最终大概能滚到多少钱、其中多少是“利滚利”长出来的。<b>它只做数学，不是预测，更不是买卖建议——真实市场年年上下波动，没人能保证收益。</b>",
+    en:"This is a <b>compound-interest calculator</b>: enter how much you'd invest each month, for how many years, and an assumed annual return — it shows roughly how much you might end up with, and how much of that is compounding growth. <b>It only does the math. It is not a forecast and not investment advice — real markets swing every year and no return is guaranteed.</b>"},
+  more_what:{
+    zh:"它是怎么算的？（点开）",
+    en:"How is this calculated? (expand)"},
+  more_body:{
+    zh:"按<b>月复利</b>计算：每月把你投入的钱加进去，并按 (年化收益率 ÷ 12) 的月利率滚动。最终总值 = 一次性起始本金按月复利滚到期末 + 每月定投的“年金终值”。公式：最终值 = P₀·(1+i)<sup>N</sup> + PMT·[(1+i)<sup>N</sup>−1]÷i，其中 i = 年化÷12，N = 年数×12，PMT 假定在每月月底投入。<b>关键假设</b>：收益率被当成每月都一样的固定值——真实世界绝不是这样，这里只是给你一个“如果一直按这个平均速度滚”的粗略量级感。",
+    en:"It uses <b>monthly compounding</b>: each month your contribution is added and the balance grows at a monthly rate of (annual return ÷ 12). Final value = lump-sum start compounded to the end + the future value of the monthly contributions (an annuity). Formula: FV = P₀·(1+i)<sup>N</sup> + PMT·[(1+i)<sup>N</sup>−1]÷i, where i = annual ÷ 12, N = years × 12, and PMT is assumed paid at each month-end. <b>Key assumption</b>: the return is treated as the same fixed value every single month — the real world is never like that. This only gives a rough sense of scale 'if it grew at this average pace the whole time.'"},
+  l_pmt:{zh:"每月投入金额",en:"Monthly contribution"},
+  l_yrs:{zh:"投入年数",en:"Years investing"},
+  l_rate:{zh:"假设年化收益率 %",en:"Assumed annual return %"},
+  rate_hint:{
+    zh:"这是你“假设”的固定数字，不是承诺。历史上美股长期年化约 7–10%，但任何一年都可能大涨或大跌。",
+    en:"This is an assumed fixed number, not a promise. US stocks have historically averaged ~7–10%/yr long-term, but any single year can soar or crash."},
+  l_init:{zh:"一次性起始本金（可填 0）",en:"One-off starting amount (can be 0)"},
+  l_cur:{zh:"金额单位",en:"Currency / unit"},
+  cur_custom:{zh:"自定义",en:"Custom"},
+  cur_hint:{
+    zh:"单位随你（澳元 / 美元 / 其它都行）——本工具只算复利，不换汇。",
+    en:"Unit is up to you (AUD / USD / anything) — this tool only computes compounding, it does not convert currencies."},
+  cur_label_ph:{zh:"单位",en:"unit"},
+  r_total_in:{zh:"总投入本金",en:"Total contributed"},
+  r_final:   {zh:"预计最终总值",en:"Projected final value"},
+  r_gain:    {zh:"其中收益（利滚利）",en:"Of which growth"},
+  r_mult:    {zh:"最终值 / 本金",en:"Final / contributed"},
+  chart_title:{zh:"逐年增长示意（本金 + 收益堆叠）",en:"Year-by-year growth (principal + growth stacked)"},
+  lg_prin:{zh:"已投本金",en:"Contributed"},
+  lg_gain:{zh:"复利收益",en:"Growth"},
+  yr_short:{zh:"第{Y}年",en:"Yr {Y}"},
+  res_head:{
+    zh:"【复利测算】每月投 {CUR}{PMT} · 共 {Y} 年 · 假设年化 {R}%",
+    en:"[Compound estimate] {CUR}{PMT}/mo · {Y} yrs · assumed {R}%/yr"},
+  framing:{
+    zh:"如果每月投 {CUR}{PMT}{INIT}，连投 {Y} 年，并<b>假设</b>一直保持年化 {R}%：你总共投入约 <b>{CUR}{TOTAL}</b>，期末大约滚到 <b>{CUR}{FINAL}</b>，其中约 <b class=\"ok\">{CUR}{GAIN}</b> 是复利长出来的。",
+    en:"If you invest {CUR}{PMT}/month{INIT} for {Y} years and <b>assume</b> a steady {R}%/yr: you'd contribute about <b>{CUR}{TOTAL}</b> in total, ending around <b>{CUR}{FINAL}</b>, of which roughly <b class=\"ok\">{CUR}{GAIN}</b> is compounding growth."},
+  framing_init:{
+    zh:"（加上一次性起始 {CUR}{INITV}）",
+    en:" (plus a {CUR}{INITV} one-off start)"},
+  caveat:{
+    zh:"⚠️ <b>这是假设，不是预测。</b> 真实市场每年上下波动，绝不会“稳稳年化 7%”——有的年份大涨，有的年份大跌甚至连跌几年。<b>收益不保证，过去不代表未来，本工具不是投资建议。</b>把这个数字当成“量级感”，别当成你一定能拿到的钱。",
+    en:"⚠️ <b>This is an assumption, not a forecast.</b> Real markets swing every year — never a steady '7%/yr'. Some years soar, some crash, sometimes for years in a row. <b>Returns are not guaranteed, past ≠ future, and this is not investment advice.</b> Treat the number as a sense of scale, not money you're sure to get."},
+  scope:{
+    zh:"按月复利的纯数学测算。不含通胀、税费、手续费、汇率波动——这些都会拉低真实结果。改任意输入框，下面会立即重算。",
+    en:"Pure monthly-compounding math. Excludes inflation, tax, fees and FX moves — all of which lower real-world results. Change any input and it recomputes instantly."},
+  err_input:{
+    zh:"请把“每月投入 ≥ 0”、“年数 1–80”、“收益率 0–50%”都填成合理数字。",
+    en:"Please enter valid numbers: monthly ≥ 0, years 1–80, return 0–50%."},
+  foot:{
+    zh:"纯复利数学工具 · 假设固定年化、非预测、非荐股、非投资建议 · 不含通胀/税费/手续费。Valpha Lab。",
+    en:"Pure compound-math tool · assumes a fixed annual rate · not a forecast, not stock advice, not investment advice · excludes inflation/tax/fees. Valpha Lab."}
+};
+
+// ── utils ─────────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let LANG="zh";
+try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+
+// ── state ─────────────────────────────────────────────────────────────────
+let curCur="AUD";
+let customLabel="";
+
+// currency symbol/prefix for the chosen unit
+function curSym(){
+  if(curCur==="AUD") return "A$";
+  if(curCur==="USD") return "$";
+  // CUSTOM: use the typed label (kept short); empty → no prefix
+  return customLabel ? customLabel+" " : "";
+}
+
+// ── currency toggle ───────────────────────────────────────────────────────
+$("cur-seg").querySelectorAll("button").forEach(btn=>{
+  btn.onclick=()=>{
+    curCur=btn.dataset.c;
+    $("cur-seg").querySelectorAll("button").forEach(b=>{
+      b.classList.toggle("on",b===btn);
+      b.setAttribute("aria-pressed",b===btn?"true":"false");
+    });
+    syncCustomBox();
+    calc();
+  };
+});
+
+// inject a small custom-label text box (only visible when CUSTOM is chosen)
+function syncCustomBox(){
+  let box=$("cur-custom-box");
+  if(curCur==="CUSTOM"){
+    if(!box){
+      box=document.createElement("input");
+      box.type="text";
+      box.id="cur-custom-box";
+      box.maxLength=4;
+      box.style.marginLeft="8px";
+      box.setAttribute("aria-label","custom unit label");
+      box.placeholder=t("cur_label_ph");
+      box.value=customLabel;
+      box.addEventListener("input",()=>{
+        customLabel=box.value.replace(/[<>&"]/g,"").slice(0,4);
+        calc();
+      });
+      $("cur-seg").parentNode.insertBefore(box,$("cur-seg").nextSibling);
+    }
+    box.style.display="";
+    box.placeholder=t("cur_label_ph");
+  } else if(box){
+    box.style.display="none";
+  }
+}
+
+// ── number formatting (null-safe) ─────────────────────────────────────────
+function fmt(n){
+  if(!isFinite(n)) return "—";
+  return Math.round(n).toLocaleString("en-AU",{maximumFractionDigits:0});
+}
+
+// ── core math: monthly compounding ────────────────────────────────────────
+// Returns {totalIn, finalVal, gain, years:[{principal, value}...]} or null on bad input.
+// Closed forms (validated):
+//   lump-sum FV  = P0 * (1+i)^N
+//   annuity  FV  = PMT * ((1+i)^N - 1) / i      (contributions at month-end)
+//   i==0 special: lump = P0, annuity = PMT*N    (avoid /0)
+// Year snapshots are built month-by-month to stay robust and exactly consistent.
+function compute(){
+  const pmt = parseFloat($("pmt").value);
+  const yrs = parseFloat($("yrs").value);
+  const rate= parseFloat($("rate").value);
+  const p0  = parseFloat($("init").value);
+
+  // validation / clamping → graceful, never NaN/Infinity shown
+  const PMT = (isFinite(pmt)&&pmt>=0) ? pmt : NaN;
+  const P0  = (isFinite(p0) &&p0 >=0) ? p0  : 0;     // blank/bad start → 0
+  let   Y   = (isFinite(yrs)&&yrs>=1) ? Math.floor(yrs) : NaN;
+  const R   = (isFinite(rate)&&rate>=0) ? rate : NaN;
+
+  if(!isFinite(PMT)||!isFinite(Y)||!isFinite(R)) return null;
+  if(Y>80) Y=80;            // hard clamp so loop/bars stay sane
+  if(R>50) return null;     // absurd rate → treat as bad input
+
+  const i = (R/100)/12;     // monthly rate
+  const N = Y*12;           // total months
+
+  // month-by-month accumulation (exact, handles i==0 naturally)
+  let bal = P0;             // running balance (starts with lump sum)
+  let contributed = P0;     // running principal put in
+  const years=[];
+  for(let m=1;m<=N;m++){
+    bal = bal*(1+i) + PMT;  // grow then add this month's contribution (month-end)
+    contributed += PMT;
+    if(m%12===0){
+      years.push({year:m/12, principal:contributed, value:bal});
+    }
+  }
+  // guard against any numeric blow-up
+  if(!isFinite(bal)) return null;
+
+  const totalIn = P0 + PMT*N;
+  const finalVal= bal;
+  const gain    = finalVal - totalIn;
+  return {totalIn, finalVal, gain, P0, PMT, Y, R, years};
+}
+
+// ── render ────────────────────────────────────────────────────────────────
+function calc(){
+  const r=compute();
+  if(!r){
+    $("out").innerHTML=`<div class="panel" style="color:var(--mut);padding:14px">`+esc(t("err_input"))+`</div>`;
+    return;
+  }
+  const sym=curSym();
+  const {totalIn,finalVal,gain,P0,PMT,Y,R,years}=r;
+
+  // framing paragraph
+  const initFrag = P0>0
+    ? t("framing_init").replace(/{CUR}/g,esc(sym)).replace("{INITV}",esc(fmt(P0)))
+    : "";
+  const framing=t("framing")
+    .replace(/{CUR}/g, esc(sym))
+    .replace("{PMT}",  esc(fmt(PMT)))
+    .replace("{INIT}", initFrag)
+    .replace("{Y}",    esc(String(Y)))
+    .replace("{R}",    esc(String(R)))
+    .replace("{TOTAL}",esc(fmt(totalIn)))
+    .replace("{FINAL}",esc(fmt(finalVal)))
+    .replace("{GAIN}", esc(fmt(gain)));
+
+  const resHead=t("res_head")
+    .replace("{CUR}",esc(sym))
+    .replace("{PMT}",esc(fmt(PMT)))
+    .replace("{Y}",  esc(String(Y)))
+    .replace("{R}",  esc(String(R)));
+
+  const mult = totalIn>0 ? (finalVal/totalIn) : 1;
+
+  // result cards
+  const cards=[
+    {key:"r_total_in", val:esc(sym)+fmt(totalIn),  cls:""},
+    {key:"r_final",    val:esc(sym)+fmt(finalVal), cls:"acc"},
+    {key:"r_gain",     val:"+"+esc(sym)+fmt(gain), cls:"ok"},
+    {key:"r_mult",     val:(isFinite(mult)?mult.toFixed(2):"—")+"×", cls:""},
+  ];
+  const cardsHTML=cards.map(c=>`
+    <div class="rcard">
+      <div class="rc-label">${t(c.key)}</div>
+      <div class="rc-val ${esc(c.cls)}">${c.val}</div>
+    </div>`).join("");
+
+  // stacked year bars (CSS heights normalised to final value)
+  const maxVal=years.length?years[years.length-1].value:1;
+  // thin out x-axis labels if many years (keep readable)
+  const labelEvery = Y<=12 ? 1 : (Y<=24 ? 2 : 5);
+  const barsHTML=years.map(y=>{
+    const total=y.value>0?y.value:0;
+    const prin=Math.min(y.principal,total);
+    const gn=Math.max(0,total-prin);
+    const totalH = maxVal>0 ? (total/maxVal)*100 : 0;
+    const prinH  = total>0 ? (prin/total)*totalH : 0;
+    const gainH  = total>0 ? (gn/total)*totalH : 0;
+    return `<div class="barcol" title="${esc(t("yr_short").replace("{Y}",String(y.year)))}: ${esc(sym)}${fmt(total)}">
+      <div class="seg-gain" style="height:${gainH.toFixed(2)}%"></div>
+      <div class="seg-prin bottom" style="height:${prinH.toFixed(2)}%"></div>
+    </div>`;
+  }).join("");
+  const xlabelsHTML=years.map(y=>{
+    const show = (y.year%labelEvery===0)||(y.year===Y)||(y.year===1);
+    return `<span>${show?esc(t("yr_short").replace("{Y}",String(y.year))):""}</span>`;
+  }).join("");
+
+  const chartHTML=`
+    <div class="chart-wrap">
+      <div style="font-size:.85rem;color:var(--fg);margin-bottom:4px">${t("chart_title")}</div>
+      <div class="chart-legend">
+        <span class="lg-sw" style="background:rgba(163,113,247,.55)"></span>${t("lg_prin")}
+        <span class="lg-sw" style="background:rgba(63,185,80,.55)"></span>${t("lg_gain")}
+      </div>
+      <div class="bars">${barsHTML}</div>
+      <div class="xlabels">${xlabelsHTML}</div>
+    </div>`;
+
+  $("out").innerHTML=`
+    <div class="panel">
+      <h3 style="margin:.2em 0 6px;font-size:.98rem;color:var(--fg)">${esc(resHead)}</h3>
+      <p style="font-size:.88rem;color:var(--mut);margin:0 0 10px;line-height:1.6">${framing}</p>
+      <div class="rgrid">${cardsHTML}</div>
+      ${chartHTML}
+      <div class="caveat">${t("caveat")}</div>
+      <div class="scope-note">${t("scope")}</div>
+    </div>`;
+}
+
+// ── lang toggle ───────────────────────────────────────────────────────────
+$("lang").onclick=()=>{
+  LANG=LANG==="zh"?"en":"zh";
+  try{localStorage.setItem("valpha_lang",LANG);}catch(e){}
+  applyStatic();
+  syncCustomBox();
+  calc();
+};
+
+// ── init: live recompute on any input change ──────────────────────────────
+["pmt","yrs","rate","init"].forEach(id=>{
+  $(id).addEventListener("input",calc);
+});
+
+applyStatic();
+syncCustomBox();
+calc();
+</script>
+<script src="vp_gloss.js"></script>
+</body>
+</html>
