@@ -23,23 +23,36 @@ _WEB = _REPO / "market-analysis" / "web"
 # 1. scorecard.run(write=False) — 公开计分卡结构稳定性
 # ══════════════════════════════════════════════════════════════════════════════
 
-def test_scorecard_run_returns_dict_with_sources():
-    """scorecard.run(write=False) 必须返回含 sources(dict) 的 dict，不抛异常。"""
+@pytest.fixture
+def scorecard_result():
+    """跑 scorecard.run(write=False)；依赖的原始数据(data/raw/combined_prices.csv 等)缺失时
+    skip 而非 FAIL——遵循本文件设计原则(缺失则 skip)。
+
+    为什么必须 skip：CI 的 pytest 门禁在流水线之前跑(挡坏代码发布)，此时 data/raw/ 还没生成
+    (且 gitignore 不入库)，scorecard.run 直接读 combined_prices.csv 会 FileNotFoundError。
+    已提交的 scorecard.json 形状另有 test_scorecard_json_top_level_keys 在 CI 里守。"""
     import scorecard
-    result = scorecard.run(write=False)
+    try:
+        return scorecard.run(write=False)
+    except FileNotFoundError as e:
+        pytest.skip(f"scorecard 依赖的原始数据缺失（{getattr(e, 'filename', e)}）"
+                    f"——CI 门禁在流水线前、无生成数据，跳过")
+
+
+def test_scorecard_run_returns_dict_with_sources(scorecard_result):
+    """scorecard.run(write=False) 必须返回含 sources(dict) 的 dict，不抛异常。"""
+    result = scorecard_result
     assert isinstance(result, dict), "scorecard.run 应返回 dict"
     assert "sources" in result, "返回值须含 'sources' 键"
     assert isinstance(result["sources"], dict), "'sources' 须是 dict"
 
 
-def test_scorecard_model_calibration_shape():
+def test_scorecard_model_calibration_shape(scorecard_result):
     """若 model_calibration 存在且非 None，须含数值型 base_rate_pct。
 
     若 walk_forward_results.json 缺失，_model_calibration() 返回 None — 这也合法，跳过。
     """
-    import scorecard
-    result = scorecard.run(write=False)
-    mc = result.get("model_calibration")
+    mc = scorecard_result.get("model_calibration")
     if mc is None:
         pytest.skip("model_calibration 为 None（缺少 walk_forward_results.json），可接受")
     assert isinstance(mc, dict), "model_calibration 须是 dict"
@@ -48,11 +61,9 @@ def test_scorecard_model_calibration_shape():
     assert 0.0 < br < 100.0, f"base_rate_pct 须在 (0,100) 范围，实际: {br}"
 
 
-def test_scorecard_sources_entries_have_required_keys():
+def test_scorecard_sources_entries_have_required_keys(scorecard_result):
     """sources 里每一条预测源必须携带 n_scored 和 n_pending（不管是否有命中率）。"""
-    import scorecard
-    result = scorecard.run(write=False)
-    for name, entry in result["sources"].items():
+    for name, entry in scorecard_result["sources"].items():
         assert "n_scored" in entry, f"source '{name}' 缺 n_scored"
         assert "n_pending" in entry, f"source '{name}' 缺 n_pending"
         assert isinstance(entry["n_scored"], int), f"source '{name}' n_scored 须是 int"

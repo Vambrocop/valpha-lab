@@ -56,6 +56,7 @@ jobs:
       - name: Run pipeline (intraday 30-min = light, pre-open/post-close = full)
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}   # 取 FRED 全史(BAA10Y 信用利差等日频);未配置则脚本自动回退 graph CSV(~2年)
+          SEC_UA_CONTACT: ${{ secrets.SEC_UA_CONTACT }}   # SEC Form4 取数(fetch_insider)必带真实联系UA;未配置则 SEC 403→该步静默跳过(不阻断)
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}     # LLM 大白话日读(llm_daily_read);未配置则该步静默跳过
           LLM_PROVIDER: ${{ secrets.LLM_PROVIDER }}         # 可选:设 openai 走 DeepSeek 等 OpenAI 兼容(需配 LLM_API_KEY)
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
