@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>规律发现 · Discoveries</title>
+<link rel="stylesheet" href="vp.css">
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#a371f7;--amber:#e3a008}
+  *{box-sizing:border-box}
+  :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  [role=button]{cursor:pointer}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  .skel{height:42px;border-radius:10px;margin:0;background:linear-gradient(90deg,var(--panel) 25%,var(--border) 37%,var(--panel) 63%);background-size:400% 100%;animation:sk 1.4s ease infinite}
+  @keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1080px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
+  .lead{color:var(--mut);font-size:.9rem;margin:8px 0 4px}
+  .headline{font-size:1.05rem;line-height:1.7;margin:12px 0 6px;color:var(--fg)}
+  .headline b{color:var(--grn)}
+  .headline .amb{color:var(--amber)}
+  .headline .gone{color:var(--mut)}
+  .self{background:var(--surface-2,#1b222c);border:1px solid var(--border);border-left:3px solid var(--acc);border-radius:8px;padding:9px 12px;font-size:.86rem;color:#d2c2f5;margin:6px 0 4px}
+  .honest{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
+  h2{font-size:1.05rem;margin:24px 0 4px}
+  .sub{color:var(--mut);font-size:.78rem;margin:0 0 8px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 13px;border-left:3px solid var(--grn)}
+  .card.faded{border-left-color:var(--amber)}
+  .card.inconc{border-left-color:#8b949e}
+  .pcard{cursor:pointer}
+  .pcard .plain{font-weight:700;font-size:.96rem;color:var(--fg)}
+  .pcard .why{font-size:.82rem;color:var(--mut);margin-top:4px;line-height:1.5}
+  .pcard .raw{font-size:.72rem;color:var(--mut);margin-top:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.7}
+  .pcard .flag{color:var(--amber)}
+  .grave{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .gchip{font-size:.76rem;color:var(--mut);background:#0d1117;border:1px dashed var(--border);border-radius:6px;padding:3px 8px;opacity:.85}
+  details.deadwrap{margin-top:10px}
+  details.deadwrap summary{cursor:pointer;color:var(--mut);font-size:.86rem;padding:6px 0}
+  .mut{color:var(--mut);font-size:.78rem;margin-top:18px;border-top:1px solid var(--border);padding-top:8px}
+  #src{color:var(--mut);font-size:.78rem;margin-top:8px}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<div class="lead" data-i18n="lead"></div>
+
+<!-- ① 大白话领头结果（从 summary 实时算） -->
+<p class="headline" id="headline"></p>
+<div class="self" data-i18n="selfline"></div>
+
+<!-- ② 诚实一句话 -->
+<div class="honest" data-i18n="honest"></div>
+
+<!-- ③ ✅ 活着的规律 -->
+<h2 data-i18n="hSurv"></h2>
+<p class="sub" data-i18n="sSurv"></p>
+<div class="grid" id="survivors"></div>
+
+<!-- ④ ⚠️ 曾真、现已死 -->
+<h2 data-i18n="hFaded"></h2>
+<p class="sub" data-i18n="sFaded"></p>
+<div class="grid" id="faded"></div>
+
+<!-- ⑤ ❔ 样本太小·没定论 -->
+<h2 data-i18n="hInconc"></h2>
+<p class="sub" data-i18n="sInconc"></p>
+<div class="grid" id="inconc"></div>
+
+<!-- ⑥ ❌ 没通过（折叠） -->
+<h2 data-i18n="hDead"></h2>
+<details class="deadwrap"><summary id="deadSummary"></summary>
+  <p class="sub" data-i18n="sDead" style="margin-top:6px"></p>
+  <div class="grave" id="dead"></div>
+</details>
+
+<div id="src"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<div id="modal" role="dialog" aria-modal="true" aria-label="详情 / detail" onclick="if(event.target===this)closeD()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:50;align-items:center;justify-content:center;padding:16px"><div id="mbody" style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;max-width:460px;width:100%;max-height:88vh;overflow:auto"></div></div>
+
+<script>
+// 相对优先、github.io 兜底（与 self_growing.html 同口径）
+const AUTODISC_LOCAL="autodiscovery.json";
+const AUTODISC_FALLBACK="https://vambrocop.github.io/valpha-lab/autodiscovery.json";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+let AD=null,ADC=[];
+const VCLR={survive:"var(--grn)",faded:"var(--amber)",dead:"var(--mut)",inconclusive:"#8b949e"};
+
+const I18N={
+  title:{zh:"🔭 规律发现 · Discoveries",en:"🔭 Discoveries · pattern verdicts"},
+  lead:{zh:"这页只放一件事：机器自动测过的民间/季节/技术规律，<b>哪些扛住了、哪些曾灵后死了、哪些样本太小没定论</b>。新规律测出来会自动累积进这页。",
+        en:"This page does one thing: the folk / seasonal / technical patterns the machine has auto-tested — <b>which held up, which once worked then died, which were too small to call</b>. New discoveries accrue here automatically."},
+  selfline:{zh:"这些是机器<b>自己跑</b>出来的——比如它自己测了全部 12 个月，只挑出九月异常；不是人先挑好答案再去凑。",
+            en:"These came out of the machine <b>running itself</b> — e.g. it tested all 12 months and only flagged September; nobody hand-picked the answer first."},
+  honest:{zh:"扛住检验 ≠ 未来一定重演 ≠ 能照着赚钱。这是诚实记录，不是荐股。",
+          en:"Holding up ≠ guaranteed to repeat ≠ a way to make money. This is an honest record, not stock advice."},
+  hSurv:{zh:"✅ 活着的规律",en:"✅ Patterns still alive"},
+  sSurv:{zh:"全样本扛住严格统计校正、且现代段(2000后)仍测得到。大白话命名在前，技术代号在后。点开有逐窗口/逐十年明细。",
+         en:"Held up under strict correction over the full history AND still detectable post-2000. Plain name first, technical key after. Tap for per-window / per-decade detail."},
+  hFaded:{zh:"⚠️ 曾真、现已死",en:"⚠️ Once real, now dead"},
+  sFaded:{zh:"这些在几十年全样本里真过了检验，但近 25 年（2000后）已测不到——很可能被市场套利掉了。点开看<b>逐十年</b>明细：哪个年代灵、从哪个年代开始死。",
+          en:"These passed over decades of full history, but are no longer detectable post-2000 — likely arbitraged away. Tap for the <b>per-decade</b> breakdown: which decade worked, when it died."},
+  hInconc:{zh:"❔ 样本太小·没定论",en:"❔ Too small to call"},
+  sInconc:{zh:"现代段样本太少、检验力不足，不下结论——既不算扛住、也不算证伪。诚实保留，不藏起来。",
+           en:"Too few modern observations, underpowered — no verdict either way. Honestly kept, not hidden."},
+  hDead:{zh:"❌ 没通过",en:"❌ Didn't pass"},
+  sDead:{zh:"这些当初单看像「显著」，但把试过的全算进去校正后没站住——大概率是噪声。失败也公开。",
+         en:"These looked 'significant' alone, but didn't survive once everything tested was counted in — most likely noise. We publish the failures too."},
+  noneSurv:{zh:"目前没有规律扛住——把试过的全算进去后，没有一条强到能与运气区分。这页坦白记录这件事。",
+            en:"No pattern is holding up right now — once everything tested is counted in, none is strong enough to tell apart from luck. Recorded honestly."},
+  noneFaded:{zh:"暂无「曾灵后淡」的记录。",en:"None in the 'once worked, faded' bucket."},
+  noneInconc:{zh:"暂无「样本太小没定论」的记录。",en:"None in the 'too small to call' bucket."},
+  empty:{zh:"结果还没拉到（数据缺失或为空）。请稍后刷新这页。",
+         en:"Results haven't loaded yet (data missing or empty). Refresh this page later."},
+  deadCount:{zh:"条没通过（展开看代号）",en:"didn't pass (expand to see keys)"},
+  // why-lines（按族通用解释，不编具体方向）
+  pWhyRebound:{zh:"指数大跌后短线反弹：跌得越猛、随后那几天反弹的概率与基准比有可测差异。",
+               en:"Short-term bounce after a big index drop: the deeper the drop, the more the next few days' up-rate differs from baseline."},
+  pWhyFactor:{zh:"某个市场状态成立时，随后 20 个交易日的上涨率与基准比有可测差异（只问「有没有差」，不含方向判断）。",
+              en:"When a given market condition holds, the next 20 trading days' up-rate differs measurably from baseline (we only ask 'is there a gap', no directional call)."},
+  pWhyRegime:{zh:"某个长期趋势/体制信号成立时，随后 20 日上涨率与基准比有可测差异。",
+              en:"When a trend / regime signal holds, the next 20 days' up-rate differs measurably from baseline."},
+  pWhyCalendar:{zh:"某个日历/季节性窗口里的涨跌，与对照期相比有可测差异。",
+                en:"Returns inside a calendar/seasonal window differ measurably from the comparison period."},
+  pWhyGeneric:{zh:"该候选的触发组表现与基准/对照相比有可测差异。",
+               en:"This candidate's triggered group differs measurably from the baseline/comparison."},
+  dClick:{zh:"点开看详情",en:"tap for detail"},
+  dFam:{zh:"检验族",en:"family"},dVerdict:{zh:"裁决",en:"verdict"},
+  dP:{zh:"校正前 p 值",en:"pre-FDR p"},dRecent:{zh:"现代 p",en:"modern p"},dModern:{zh:"现代段(2000后)",en:"modern (post-2000)"},
+  dClose:{zh:"关闭",en:"Close"},
+  vSurvive:{zh:"真存活",en:"survive"},vFaded:{zh:"已淡",en:"faded"},vDead:{zh:"未过FDR",en:"dead"},vInconc:{zh:"检验力不足",en:"inconclusive"},
+  wWin:{zh:"时间窗",en:"window"},wUp:{zh:"上涨率",en:"up%"},wBase:{zh:"基率",en:"base%"},wMulti:{zh:"多时间窗",en:"multi-window"},
+  dcTitle:{zh:"逐十年：哪些年代灵 / 哪些年代死了",en:"By decade: when it worked / died"},
+  dcDecade:{zh:"年代",en:"decade"},dcDiff:{zh:"差",en:"diff"},
+  dcNote:{zh:"每十年：触发组上涨率 vs 该十年基率（▲绿=那年代灵·▼红=不灵）。很多老规律就是这样：早年真、后来被套利磨平甚至反转。",
+          en:"Per decade: trigger up-rate vs that decade's base (▲green=worked, ▼red=didn't). Many old patterns: real early, arbitraged away (or reversed) later."},
+  wNote:{zh:"上涨率=该组上涨期占比(直观)，绿>基率红<。omnibus(周几/月份整体差异)无单一概率，故只列 p。",
+         en:"up% = share of up periods in that group; green &gt; base, red &lt;. Omnibus tests (day/month overall difference) have no single probability — p only."},
+  foot:{zh:"数据：实时 autodiscovery.json（机器预注册候选·各路由到真统计·跨族 FDR 双栏裁决·全部进分母）。探索性，存活≠真发现；非荐股、会错、过去≠未来。详见方法论页。",
+        en:"Data: live autodiscovery.json (machine pre-registered candidates · each routed to a real test · dual-column cross-family FDR · all counted). Exploratory; surviving ≠ a true discovery — not advice, can be wrong, past ≠ future. See the methodology page."},
+  err:{zh:"拉不到 autodiscovery.json——确认已部署。",en:"Can't load autodiscovery.json — check deployment."},
+  asof:{zh:"数据日",en:"as of"},
+  ledger:{zh:"裁决账本追踪",en:"verdict ledger"},days:{zh:"天(累积中,供日后衰减追踪)",en:"d (accruing for decay tracking)"}
+};
+
+// ── 大白话命名映射（复用 self_growing.html 同一套，含义明确才映射；拿不准不编）──
+const IDX_NAME={nasdaq:{zh:"纳指",en:"Nasdaq"},sp500:{zh:"标普500",en:"S&P 500"},NASDAQ:{zh:"纳指",en:"Nasdaq"},BTC:{zh:"比特币",en:"Bitcoin"}};
+const MONTH_NAME={1:{zh:"一月",en:"January"},2:{zh:"二月",en:"February"},3:{zh:"三月",en:"March"},4:{zh:"四月",en:"April"},5:{zh:"五月",en:"May"},6:{zh:"六月",en:"June"},7:{zh:"七月",en:"July"},8:{zh:"八月",en:"August"},9:{zh:"九月",en:"September"},10:{zh:"十月",en:"October"},11:{zh:"十一月",en:"November"},12:{zh:"十二月",en:"December"}};
+const PLAIN_MAP={
+  // —— 因子族 factor ——
+  BTC_mom20_pos:{zh:"比特币近一个月在涨（20日动量为正）",en:"Bitcoin rising over the past month (20-day momentum positive)"},
+  BTC_mom20_neg:{zh:"比特币近一个月在跌（20日动量为负）",en:"Bitcoin falling over the past month (20-day momentum negative)"},
+  NASDAQ_above_ma200:{zh:"纳指站上200日均线（长期处于上行）",en:"Nasdaq above its 200-day average (in a long-term uptrend)"},
+  BTC_above_ma200:{zh:"比特币站上200日均线（长期处于上行）",en:"Bitcoin above its 200-day average (long-term uptrend)"},
+  NASDAQ_mom20_pos:{zh:"纳指近一个月在涨（20日动量为正）",en:"Nasdaq rising over the past month (20-day momentum positive)"},
+  NASDAQ_mom20_neg:{zh:"纳指近一个月在跌（20日动量为负）",en:"Nasdaq falling over the past month (20-day momentum negative)"},
+  nasdaq_high_vol:{zh:"纳指处于高波动期",en:"Nasdaq in a high-volatility regime"},
+  nasdaq_low_vol:{zh:"纳指处于低波动期",en:"Nasdaq in a low-volatility regime"},
+  nasdaq_rsi_overbought:{zh:"纳指 RSI 超买（短线偏热）",en:"Nasdaq RSI overbought (short-term hot)"},
+  nasdaq_rsi_oversold:{zh:"纳指 RSI 超卖（短线偏冷）",en:"Nasdaq RSI oversold (short-term cold)"},
+  // —— 日历族 calendar ——
+  santa_sp500:{zh:"圣诞行情·标普500（年底那几天）",en:"Santa rally · S&P 500 (the year-end days)"},
+  santa_nasdaq:{zh:"圣诞行情·纳指（年底那几天）",en:"Santa rally · Nasdaq (the year-end days)"},
+  sell_in_may_sp500:{zh:"五月卖出/冬强夏弱·标普500",en:"Sell-in-May / winter-strong-summer-weak · S&P 500"},
+  sell_in_may_nasdaq:{zh:"五月卖出/冬强夏弱·纳指",en:"Sell-in-May / winter-strong-summer-weak · Nasdaq"},
+  pre_holiday_sp500:{zh:"节前效应·标普500（假期前几天）",en:"Pre-holiday effect · S&P 500"},
+  pre_holiday_nasdaq:{zh:"节前效应·纳指（假期前几天）",en:"Pre-holiday effect · Nasdaq"},
+  world_cup_year_sp500:{zh:"世界杯年·标普500（夏季分心）",en:"World-Cup year · S&P 500 (summer distraction)"},
+  world_cup_year_nasdaq:{zh:"世界杯年·纳指（夏季分心）",en:"World-Cup year · Nasdaq (summer distraction)"},
+  september_sp500:{zh:"九月效应·标普500（九月历史最弱月）",en:"September effect · S&P 500 (historically the weakest month)"},
+  september_nasdaq:{zh:"九月效应·纳指（九月历史最弱月）",en:"September effect · Nasdaq (historically the weakest month)"},
+  january_sp500:{zh:"元月效应·标普500（一月历史偏强）",en:"January effect · S&P 500 (historically strong)"},
+  january_nasdaq:{zh:"元月效应·纳指（一月历史偏强）",en:"January effect · Nasdaq (historically strong)"},
+  turn_of_month_sp500:{zh:"月末月初效应·标普500（收益集中月界）",en:"Turn-of-month · S&P 500 (returns cluster at month boundaries)"},
+  turn_of_month_nasdaq:{zh:"月末月初效应·纳指（收益集中月界）",en:"Turn-of-month · Nasdaq (returns cluster at month boundaries)"},
+  golden_cross_sp500:{zh:"金叉·标普500（50日均线上穿200日线）",en:"Golden cross · S&P 500 (50-day above 200-day MA)"},
+  golden_cross_nasdaq:{zh:"金叉·纳指（50日均线上穿200日线）",en:"Golden cross · Nasdaq (50-day above 200-day MA)"},
+  dow_sp500:{zh:"星期几效应·标普500",en:"Day-of-week effect · S&P 500"},
+  dow_nasdaq:{zh:"星期几效应·纳指",en:"Day-of-week effect · Nasdaq"},
+  month_sp500:{zh:"月份效应·标普500",en:"Month-of-year effect · S&P 500"},
+  month_nasdaq:{zh:"月份效应·纳指",en:"Month-of-year effect · Nasdaq"},
+  decade_digit_sp500:{zh:"年份尾数效应·标普500",en:"Decade-digit (year-ending) effect · S&P 500"},
+  term_year3_sp500:{zh:"总统任期第3年/大选前一年·标普500",en:"Presidential term year 3 (pre-election year) · S&P 500"},
+  presidential_cycle_sp500:{zh:"总统四年周期·标普500",en:"Presidential 4-year cycle · S&P 500"}
+};
+// 注：凡不在 PLAIN_MAP、又非反弹/单月族的代号（如 overnight_mom_pos/dxy_rising/vix_backwardation 等），
+// plainName() 一律回退到保留原代号 + ⚠️，绝不替它们编含义。
+// 反弹族 pN_hM_index → 「指数大跌第N百分位后持有M天反弹」
+function rebPlain(key){
+  const m=/^p(\d+)_h(\d+)_(\w+)$/.exec(key||"");
+  if(!m)return null;
+  const idx=IDX_NAME[m[3]]?IDX_NAME[m[3]][LANG]:m[3];
+  return LANG==="zh"
+    ? `${idx}大跌（最猛 ${m[1]}% 那档）后持有 ${m[2]} 天反弹`
+    : `${idx} bounce: hold ${m[2]} day(s) after a big drop (worst ${m[1]}% bucket)`;
+}
+// 单月族 monthof_N_index → 「N月效应·指数（机器逐月枚举）」——月份名含义明确，非杜撰
+function monthPlain(key){
+  const m=/^monthof_(\d+)_(\w+)$/.exec(key||"");
+  if(!m)return null;
+  const mn=MONTH_NAME[+m[1]]; if(!mn)return null;
+  const idx=IDX_NAME[m[2]]?IDX_NAME[m[2]][LANG]:m[2];
+  return LANG==="zh"
+    ? `${mn[LANG]}效应·${idx}（机器逐月枚举）`
+    : `${mn[LANG]} effect · ${idx} (machine month-by-month scan)`;
+}
+// 返回 {name, unsure} —— name=大白话；unsure=true 表示拿不准、已保留原代号
+function plainName(c){
+  const key=c.key||"";
+  if(PLAIN_MAP[key])return {name:PLAIN_MAP[key][LANG],unsure:false};
+  if(c.family==="rebound"){const r=rebPlain(key);if(r)return {name:r,unsure:false};}
+  const mp=monthPlain(key);if(mp)return {name:mp,unsure:false};
+  return {name:esc(key),unsure:true};  // 含义拿不准：保留原代号、调用处加 ⚠️ 标注
+}
+// 一句话「为什么」——按族给通用解释（不编具体方向）
+function whyLine(c){
+  if(c.family==="rebound")return t("pWhyRebound");
+  if(c.family==="factor")return t("pWhyFactor");
+  if(c.family==="regime")return t("pWhyRegime");
+  if(c.family==="calendar")return t("pWhyCalendar");
+  return t("pWhyGeneric");
+}
+// ── 活信号"怎么用"提示（仅对扛住检验的·带免责·非投资建议）──
+const USE_MAP={
+  september_sp500:{zh:"💡 怎么用：九月历史偏弱（每年约 −1.2%）→ 可参考九月减点仓。非建议·会错。",
+                   en:"💡 Use: September has been weak (~−1.2%/yr) → consider trimming in September. Not advice · can be wrong."},
+  golden_cross_sp500:{zh:"💡 怎么用：金叉（50 日线上穿 200 日线）= 趋势确认，之后偏强 → 可作顺势参考。非建议·会错。",
+                      en:"💡 Use: golden cross (50d above 200d) = trend confirmation, tends to be stronger after → a with-trend reference. Not advice · can be wrong."}};
+
+// ── 卡片渲染 ───────────────────────────────────────────────────────────
+function pcard(c,cls){
+  const pn=plainName(c);
+  const fl=pn.unsure?` <span class="flag" title="含义拿不准，保留原代号 / meaning unclear, key kept">⚠️</span>`:"";
+  const use=(c.verdict==="survive"&&USE_MAP[c.key])?`<div class="why" style="color:var(--grn);margin-top:3px">${USE_MAP[c.key][LANG]}</div>`:"";
+  return `<div class="card pcard ${cls||""}" onclick="showAD('${esc(c.candidate_id)}')">
+    <div class="plain">${pn.name}${fl}</div>
+    <div class="why">${whyLine(c)}</div>${use}
+    <div class="raw">${esc(c.key)} · <span style="color:var(--acc)">${t("dClick")}</span></div></div>`;
+}
+
+// ── 详情弹窗（逐窗口表 + 逐十年表，复用 self_growing.html 同款）────────────
+function showAD(id){const c=ADC.find(x=>x.candidate_id===id);if(!c)return;
+  const vl={survive:t("vSurvive"),faded:t("vFaded"),dead:t("vDead"),inconclusive:t("vInconc")}[c.verdict]||c.verdict;
+  const pp=v=>v==null?"—":(+v).toPrecision(3);
+  const wr=(c.windows||[]).map(w=>{
+    const up=w.up_pct==null?"—":w.up_pct+"%",bs=w.base_pct==null?"—":w.base_pct+"%";
+    const hi=(w.up_pct!=null&&w.base_pct!=null);
+    const dp=hi?(w.up_pct>=w.base_pct?"var(--grn)":"var(--red)"):"var(--mut)";
+    const ar=hi?(w.up_pct>=w.base_pct?"▲ ":"▼ "):"";  // 色盲安全:不只靠红绿，加箭头
+    return `<tr><td style="padding:2px 0">${esc(w.label)}</td><td style="text-align:right;color:${dp};font-weight:600">${ar}${up}</td><td style="text-align:right;color:var(--mut)">${bs}</td><td style="text-align:right">${w.p==null?"—":w.p}</td><td style="text-align:right;color:var(--mut)">${w.n==null?"—":w.n}</td></tr>`;
+  }).join("");
+  const wt=wr?`<div style="font-size:.75rem;color:var(--acc);margin-top:12px">📊 ${esc(c.effect||"")}（${t("wMulti")}）</div>
+    <table style="width:100%;font-size:.8rem;margin-top:3px;border-collapse:collapse">
+      <tr style="color:var(--mut);border-bottom:1px solid var(--border)"><td>${t("wWin")}</td><td style="text-align:right">${t("wUp")}</td><td style="text-align:right">${t("wBase")}</td><td style="text-align:right">p</td><td style="text-align:right">n</td></tr>${wr}</table>
+    <div style="font-size:.7rem;color:var(--mut);margin-top:5px">${t("wNote")}</div>`:"";
+  // 逐十年:哪些年代灵、哪些年代死了(faded 规律一眼看出何时失效)
+  const dr=(c.decades||[]).map(r=>{
+    const ok=r.diff_pp>=0,dp=ok?"var(--grn)":"var(--red)",ar=ok?"▲ ":"▼ ";
+    return `<tr><td style="padding:2px 0">${esc(r.decade)}</td><td style="text-align:right;color:${dp};font-weight:600">${ar}${r.up_pct}%</td><td style="text-align:right;color:var(--mut)">${r.base_pct}%</td><td style="text-align:right;color:${dp}">${ok?"+":""}${r.diff_pp}</td><td style="text-align:right;color:var(--mut)">${r.n}</td></tr>`;
+  }).join("");
+  const dt=dr?`<div style="font-size:.75rem;color:var(--acc);margin-top:12px">📅 ${t("dcTitle")}</div>
+    <table style="width:100%;font-size:.8rem;margin-top:3px;border-collapse:collapse">
+      <tr style="color:var(--mut);border-bottom:1px solid var(--border)"><td>${t("dcDecade")}</td><td style="text-align:right">${t("wUp")}</td><td style="text-align:right">${t("wBase")}</td><td style="text-align:right">${t("dcDiff")}</td><td style="text-align:right">n</td></tr>${dr}</table>
+    <div style="font-size:.7rem;color:var(--mut);margin-top:5px">${t("dcNote")}</div>`:"";
+  $("mbody").innerHTML=`<div style="font-weight:700;font-size:1.05rem;margin-bottom:8px">${esc(c.key)}</div>
+    <div style="color:var(--mut);font-size:.85rem;line-height:1.9">
+      ${t("dFam")}：<b style="color:var(--fg)">${esc(c.family)}</b> · ${t("dVerdict")}：<b style="color:${VCLR[c.verdict]||'var(--fg)'}">${vl}</b>${c.reason?` · ${esc(c.reason)}`:""}<br>
+      ${t("dP")}：<b style="color:var(--fg)">${pp(c.p)}</b>（${t("dRecent")} ${pp(c.recent_p)}）· ${t("dModern")}：${esc(c.modern_status||"—")}
+    </div>${wt}${dt}
+    ${AD&&AD.caveat?`<div style="font-size:.68rem;color:var(--mut);margin-top:10px;border-top:1px solid var(--border);padding-top:7px;line-height:1.5">${esc(AD.caveat)}</div>`:""}
+    <button onclick="closeD()" style="margin-top:14px;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:7px 18px;cursor:pointer">${t("dClose")}</button>`;
+  openModal();}
+function closeD(){$("modal").style.display="none";if(window._mTrig&&window._mTrig.focus){try{window._mTrig.focus()}catch(e){}}}
+function enhanceA11y(root){(root||document).querySelectorAll("[onclick]").forEach(el=>{if(el.tagName!=="BUTTON"&&!el.hasAttribute("tabindex")&&!el.hasAttribute("role")){el.tabIndex=0;el.setAttribute("role","button");}});}
+function openModal(){window._mTrig=document.activeElement;const b=$("mbody");enhanceA11y(b);b.setAttribute("tabindex","-1");$("modal").style.display="flex";try{b.focus()}catch(e){}}
+
+function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
+
+function render(){
+  applyStatic();
+  // 数据缺失/为空 → 优雅大白话兜底
+  if(!AD||!AD.candidates||!AD.candidates.length){
+    $("headline").innerHTML=t("empty");
+    $("survivors").innerHTML=`<div class="mut">—</div>`;
+    $("faded").innerHTML=`<div class="mut">—</div>`;
+    $("inconc").innerHTML=`<div class="mut">—</div>`;
+    $("dead").innerHTML=`<div class="mut">—</div>`;
+    $("deadSummary").textContent="—";
+    $("src").textContent=AD?"":t("err");
+    return;
+  }
+  ADC=AD.candidates;
+  const cs=ADC, s=AD.summary||{};
+  const surv=cs.filter(c=>c.verdict==="survive");
+  const faded=cs.filter(c=>c.verdict==="faded");
+  const inconc=cs.filter(c=>c.verdict==="inconclusive");
+  const dead=cs.filter(c=>c.verdict==="dead");
+  const m=(s.m_total!=null?s.m_total:cs.length);
+  const nS=(s.n_survive!=null?s.n_survive:surv.length);
+  const nF=(s.n_faded!=null?s.n_faded:faded.length);
+  const nI=(s.n_inconclusive!=null?s.n_inconclusive:inconc.length);
+  const nD=(s.n_dead!=null?s.n_dead:dead.length);
+  // ① 大白话领头句（0 存活时换诚实兜底句）
+  if(nS===0){
+    $("headline").innerHTML=t("noneSurv");
+  } else if(LANG==="zh"){
+    $("headline").innerHTML=`机器用严格统计测了 <b style="color:var(--fg)">${m}</b> 条规律：`
+      +`<b>${nS}</b> 条扛住了、<span class="amb">${nF}</span> 条曾灵但现在淡了、`
+      +`<span class="gone">${nI}</span> 条样本太小没定论，其余 <span class="gone">${nD}</span> 条没通过。`;
+  } else {
+    $("headline").innerHTML=`The machine ran <b style="color:var(--fg)">${m}</b> patterns through strict statistics: `
+      +`<b>${nS}</b> held up, <span class="amb">${nF}</span> once worked but faded, `
+      +`<span class="gone">${nI}</span> were too small to call, and the other <span class="gone">${nD}</span> didn't pass.`;
+  }
+  const ord=(a,b)=>((a.p==null?1:a.p)-(b.p==null?1:b.p));
+  // ③ 活着的
+  $("survivors").innerHTML=surv.length?[...surv].sort(ord).map(c=>pcard(c,"")).join(""):`<div class="mut">${t("noneSurv")}</div>`;
+  // ④ 曾真现死
+  $("faded").innerHTML=faded.length?[...faded].sort(ord).map(c=>pcard(c,"faded")).join(""):`<div class="mut">${t("noneFaded")}</div>`;
+  // ⑤ 没定论
+  $("inconc").innerHTML=inconc.length?[...inconc].sort(ord).map(c=>pcard(c,"inconc")).join(""):`<div class="mut">${t("noneInconc")}</div>`;
+  // ⑥ 没通过（折叠·只放大白话名 chip + 计数）
+  $("deadSummary").textContent=`${dead.length} ${t("deadCount")}`;
+  $("dead").innerHTML=dead.length?[...dead].sort(ord).map(c=>{
+    const pn=plainName(c);
+    const fl=pn.unsure?" ⚠️":"";
+    return `<span class="gchip" style="cursor:pointer" onclick="showAD('${esc(c.candidate_id)}')" title="${esc(c.key)} · p=${c.p==null?"—":(+c.p).toPrecision(2)}">${pn.name}${fl}</span>`;
+  }).join(""):`<div class="mut">—</div>`;
+  // 数据日 + 账本追踪天数
+  const asof=AD.generated?`${t("asof")} ${esc(AD.generated.slice(0,10))}`:"";
+  const led=(AD.days_tracked!=null)?` · 🌱 ${t("ledger")} ${AD.days_tracked}${t("days")}`:"";
+  $("src").innerHTML=asof+led;
+  enhanceA11y();
+}
+
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};render();};
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){if($("modal").style.display!=="none")closeD();return;}
+  if(e.key==="Enter"||e.key===" "){const a=document.activeElement;if(a&&a.getAttribute&&a.getAttribute("role")==="button"&&a.tagName!=="BUTTON"){e.preventDefault();a.click();}}
+});
+(async()=>{applyStatic();
+  $("survivors").innerHTML='<div class="skel"></div><div class="skel"></div>';
+  $("faded").innerHTML='<div class="skel"></div>';
+  $("inconc").innerHTML='<div class="skel"></div>';
+  // 相对优先 → 失败再 github.io 兜底
+  const g=u=>fetch(u,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
+  AD=await g(AUTODISC_LOCAL);
+  if(!AD)AD=await g(AUTODISC_FALLBACK);
+  render();})();
+</script>
+</body>
+</html>
