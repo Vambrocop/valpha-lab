@@ -25,8 +25,9 @@ _CAL_DUAL = ("dow", "month", "pre_holiday", "santa")        # × 2 指数 = 8
 #   sell_in_may=万圣节/夏歇先验(冬强夏弱)；world_cup_year=世界杯分心先验(Edmans 等·限夏季 非杯年 vs 杯年)
 _CAL_DUAL2 = ("sell_in_may", "world_cup_year")              # × 2 指数 = 4
 # 2026-06-26 扩声明（append-only·prior 先于数据，非事后挑）：九月效应（九月历史最弱月·经典 Sept effect）、
-#   元月效应（一月历史偏强，尤小盘·January effect）。方向先验固定：以"先验更强组"为 label==1，配单边置换。
-_CAL_DUAL3 = ("september", "january")                      # × 2 指数 = 4
+#   元月效应（一月历史偏强，尤小盘·January effect）、月末月初效应（收益集中月界·Ariel 1987 turn-of-month）。
+#   方向先验固定：以"先验更强组"为 label==1，配单边置换。
+_CAL_DUAL3 = ("september", "january", "turn_of_month")     # × 2 指数 = 6
 _CAL_ANNUAL = ("decade_digit", "presidential_cycle", "term_year3")  # 年频，标普 only = 3（+任期第3年先验·Hirsch 大选前一年最强）
 
 # ── 超跌反弹族（预声明）：阈值 × 持有 × 指数 ──

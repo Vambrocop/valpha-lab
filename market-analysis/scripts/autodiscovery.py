@@ -64,7 +64,7 @@ WINS = [("完整", None), ("2000后", pd.Timestamp("2000-01-01")),
 
 # 二元方向型日历效应（label==1=先验更高组，单边置换才有意义）→ 给"触发组上涨率 vs 基率"
 _DIR_EFFECTS = ("pre_holiday", "santa", "sell_in_may", "world_cup_year", "term_year3",
-                "september", "january")
+                "september", "january", "turn_of_month")
 
 
 def _wmask(idx, w):
@@ -155,6 +155,15 @@ def _calendar(eff, index, cid):
         # 元月效应先验：一月历史偏强(尤小盘)。label==1=一月(先验更高组)→单边(一月 > 其余)
         jan = (ret.index.month == 1).astype(int)
         vals, lab, idx = ret.values, jan, ret.index; stat = pb.make_dir_diff_stat()
+    elif eff == "turn_of_month":
+        # 月末月初效应先验(Ariel 1987)：收益集中在每月最后1个交易日 + 月初前3个交易日。
+        # label==1=turn 窗(先验更高组)→单边(月界 > 月中)
+        per = ret.index.to_period("M")
+        s = pd.Series(ret.values, index=ret.index)
+        dom = s.groupby(per).cumcount().values                 # 0-based 月内交易日序
+        msize = s.groupby(per).transform("size").values        # 该月交易日数
+        tom = ((dom < 3) | (dom == msize - 1)).astype(int)     # 前3日 或 最后1日
+        vals, lab, idx = ret.values, tom, ret.index; stat = pb.make_dir_diff_stat()
     elif eff == "term_year3":
         # Hirsch 总统周期：任期第3年(大选前一年)历史最强。年频，label==1=第3年(先验更高组)
         an = (1 + ret).resample("YE").prod(min_count=1).dropna() - 1

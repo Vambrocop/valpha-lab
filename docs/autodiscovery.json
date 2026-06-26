@@ -1,17 +1,17 @@
 {
-  "generated": "2026-06-26T05:40:47Z",
+  "generated": "2026-06-26T06:11:00Z",
   "method": "自动发现 Phase 1b：预注册有限候选(日历/反弹/因子)各路由到真统计算 p，经 quality_gate 双栏 BY-FDR(族内+跨族)+三态裁决。全部候选进分母、禁预筛、固定种子。",
   "caveat": "存活≠未来重演≠可交易；现代已淡=全段过FDR但现代测不到(疑被套利)；检验力不足=样本太小不下结论。因子族 FDR 为**无向双侧**(只问'有无可测边际'、不含方向判断，与 factor_pruning 的方向门控透镜口径不同)。门4样本外待接入。探索性，非预测、非荐股。",
   "q": 0.1,
-  "n_declared": 46,
+  "n_declared": 48,
   "days_tracked": 4,
   "summary": {
-    "m_total": 46,
-    "n_survive_cross": 13,
-    "n_survive_cross_bh": 20,
-    "n_survive_family": 13,
+    "m_total": 48,
+    "n_survive_cross": 15,
+    "n_survive_cross_bh": 22,
+    "n_survive_family": 15,
     "n_survive": 5,
-    "n_faded": 8,
+    "n_faded": 10,
     "n_dead": 28,
     "n_inconclusive": 5
   },
@@ -373,6 +373,96 @@
       "modern_status": "现代仍有效",
       "verdict": "survive",
       "reason": ""
+    },
+    {
+      "candidate_id": "cal_5a22160179",
+      "family": "calendar",
+      "key": "turn_of_month_sp500",
+      "p": 0.000999,
+      "recent_p": 0.254745,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.001,
+          "n": 24736,
+          "up_pct": 57,
+          "base_pct": 51
+        },
+        {
+          "label": "2000后",
+          "p": 0.245,
+          "n": 6659,
+          "up_pct": 54,
+          "base_pct": 54
+        },
+        {
+          "label": "2021后",
+          "p": 0.648,
+          "n": 1375,
+          "up_pct": 53,
+          "base_pct": 54
+        },
+        {
+          "label": "近1年",
+          "p": 0.299,
+          "n": 252,
+          "up_pct": 65,
+          "base_pct": 55
+        }
+      ],
+      "effect": "触发组上涨率 vs 基率",
+      "survive_cross": true,
+      "survive_cross_bh": true,
+      "survive_family": true,
+      "modern_status": "现代已淡",
+      "verdict": "faded",
+      "reason": "全段过跨族FDR但现代段已淡(疑被套利)"
+    },
+    {
+      "candidate_id": "cal_7738ecb1bc",
+      "family": "calendar",
+      "key": "turn_of_month_nasdaq",
+      "p": 0.001998,
+      "recent_p": 0.200799,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.001,
+          "n": 13962,
+          "up_pct": 59,
+          "base_pct": 55
+        },
+        {
+          "label": "2000后",
+          "p": 0.19,
+          "n": 6659,
+          "up_pct": 54,
+          "base_pct": 55
+        },
+        {
+          "label": "2021后",
+          "p": 0.63,
+          "n": 1375,
+          "up_pct": 52,
+          "base_pct": 55
+        },
+        {
+          "label": "近1年",
+          "p": 0.408,
+          "n": 252,
+          "up_pct": 61,
+          "base_pct": 59
+        }
+      ],
+      "effect": "触发组上涨率 vs 基率",
+      "survive_cross": true,
+      "survive_cross_bh": true,
+      "survive_family": true,
+      "modern_status": "现代已淡",
+      "verdict": "faded",
+      "reason": "全段过跨族FDR但现代段已淡(疑被套利)"
     },
     {
       "candidate_id": "cal_11bf800cae",
