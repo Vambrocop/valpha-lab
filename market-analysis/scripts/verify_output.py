@@ -338,6 +338,26 @@ except Exception as e:
     errors.append(f"insider_signal 形状检查失败: {e}")
     print(f"  ✗ insider_signal 形状检查失败: {e}")
 
+# 3l5. 荐股前向计分形状(track_record 全/recent 是表/benchmark=QQQ。存在才查、缺失不致命)
+#       诚实纪律:直接荐股的产物必须带"非投资建议 + 前向计分"认账框(敢荐就敢认账=护城河)。
+try:
+    pk_path = WEB_DIR / "picks.json"
+    if pk_path.exists():
+        with open(pk_path, encoding="utf-8") as fh:
+            pk = json.load(fh)
+        tr = pk.get("track_record", {})
+        ok = (isinstance(tr, dict)
+              and all(k in tr for k in ("n_settled", "n_pending", "call_hit_pct", "bullish", "bearish"))
+              and isinstance(pk.get("recent"), list)
+              and pk.get("benchmark") == "QQQ")
+        check(ok, f"picks.json 形状正常（已结算 {tr.get('n_settled')}·挂账 {tr.get('n_pending')}）")
+        cav = pk.get("caveat", "")
+        check("非投资建议" in cav and "前向计分" in cav,
+              "picks.json caveat 含非投资建议+前向计分认账框")
+except Exception as e:
+    errors.append(f"picks 形状检查失败: {e}")
+    print(f"  ✗ picks 形状检查失败: {e}")
+
 # 3j. 方法论完整性护栏(automation-first):个股"真规律"(三关全过)必须先经人工审视,
 #     不得自动发布——若 patterns_fdr_real=True 进了已发布 JSON,说明人工停下被绕过 → 拦住发布。
 try:

@@ -173,6 +173,7 @@ const I18N={
   t_risk:{zh:"风险计算器",en:"Risk calculator"},t_risk_d:{zh:"持仓N天历史最坏跌多少·AUD·算风险不测方向",en:"worst N-day historical loss · AUD · risk not direction"},
   t_stay:{zh:"别空仓",en:"Stay invested"},t_stay_d:{zh:"最有用的预测:别择时·基率约66%·诚实",en:"the most useful call: don't time · ~66% base rate"},
   t_insider:{zh:"内部人买入",en:"Insider buys"},t_insider_d:{zh:"跟高管/董事开市买入·前向公开计分·非荐股",en:"follow officer/director open-market buys · forward-scored · not advice"},
+  t_picks:{zh:"荐股+计分",en:"Picks + scored"},t_picks_d:{zh:"直接看好/看淡·每条公开认账vs QQQ·非投资建议",en:"direct bull/bear calls · each publicly scored vs QQQ · not advice"},
   t_wild:{zh:"野蛮专区",en:"Wild Zone"},t_wild_d:{zh:"出格娱乐·非建议",en:"out-of-bounds fun · not advice"},
   t_ipo:{zh:"IPO 雷达",en:"IPO radar"},t_ipo_d:{zh:"将上市·已申报/传闻分级",en:"upcoming · filed/rumor tiers"},
   t_method:{zh:"诚实门方法",en:"Honesty gates"},t_method_d:{zh:"大白话讲诚实统计门",en:"the honest-stats gates, plainly"},
@@ -258,7 +259,7 @@ function renderHero(){
 
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
 function tools(){
-  const T=[["t_board","🛰️","valpha150.html"],["t_sec","📊","sectors.html"],["t_radar","📡","radar.html"],["t_heat2","🔳","heatmap.html"],["t_adv","🎲","advisor.html"],["t_risk","🛟","risk.html"],["t_stay","⏳","stayinvested.html"],["t_insider","🕵️","insider.html"],["t_wild","🔥","wildhub.html"],["t_read","🧠","composite.html"],["t_cycle","🔄","seasonal.html"],["t_ipo","🛫","ipo.html"],["t_method","🛡️","methodology.html"],["t_grow","🌱","self_growing.html"],["t_kronos","🔬","kronos.html"],["t_full","🧭","dashboard.html"],["t_index","📘","indexing.html"],["t_ndx","📗","ndx.html"],["t_opt","🎓","options.html"]];
+  const T=[["t_board","🛰️","valpha150.html"],["t_sec","📊","sectors.html"],["t_radar","📡","radar.html"],["t_heat2","🔳","heatmap.html"],["t_adv","🎲","advisor.html"],["t_risk","🛟","risk.html"],["t_stay","⏳","stayinvested.html"],["t_insider","🕵️","insider.html"],["t_picks","🎯","picks.html"],["t_wild","🔥","wildhub.html"],["t_read","🧠","composite.html"],["t_cycle","🔄","seasonal.html"],["t_ipo","🛫","ipo.html"],["t_method","🛡️","methodology.html"],["t_grow","🌱","self_growing.html"],["t_kronos","🔬","kronos.html"],["t_full","🧭","dashboard.html"],["t_index","📘","indexing.html"],["t_ndx","📗","ndx.html"],["t_opt","🎓","options.html"]];
   $("tools").innerHTML=T.map(([k,ico,href])=>`<a class="tool" href="${href}"><div class="ico">${ico}</div><div class="nm">${t(k)}</div><div class="ds">${t(k+"_d")}</div></a>`).join("");
 }
 function paint(){

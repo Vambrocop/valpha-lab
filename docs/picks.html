@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🎯 荐股 · 公开计分</title>
+<link rel="stylesheet" href="vp.css">
+<style>
+  :root{--amb:#d29922}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:900px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  .sub{color:var(--mut);font-size:.82rem;margin:0 0 8px;line-height:1.55}
+  .verdict{background:rgba(198,120,221,.12);border:2px solid var(--acc);border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.92rem;line-height:1.7}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+  .stat{flex:1 1 130px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center}
+  .stat .v{font-size:1.5rem;font-weight:800;line-height:1.15}.stat .l{color:var(--mut);font-size:.74rem;margin-top:3px}
+  .launchbox{background:rgba(210,153,34,.1);border:1px solid var(--amb);border-radius:8px;padding:10px 13px;margin:10px 0;font-size:.85rem;color:#e8c96a;line-height:1.55}
+  h2{font-size:1rem;margin:18px 0 6px}
+  table{width:100%;border-collapse:collapse;font-size:.86rem}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+  th{color:var(--mut);font-weight:600}
+  .pos{color:var(--grn)}.neg{color:var(--red)}
+  .badge{display:inline-block;font-size:.72rem;padding:1px 7px;border-radius:20px;border:1px solid var(--border);color:var(--mut)}
+  .vbull{display:inline-block;font-size:.74rem;padding:1px 8px;border-radius:20px;border:1px solid rgba(63,185,80,.5);background:rgba(63,185,80,.12);color:var(--grn)}
+  .vbear{display:inline-block;font-size:.74rem;padding:1px 8px;border-radius:20px;border:1px solid rgba(248,81,73,.5);background:rgba(248,81,73,.12);color:var(--red)}
+  .meth{color:var(--mut);font-size:.82rem;line-height:1.65;margin:6px 0}
+  .meth b{color:var(--fg)}
+  .mut{color:var(--mut);font-size:.76rem;margin-top:16px;border-top:1px solid var(--border);padding-top:8px;line-height:1.6}
+  #src{color:var(--mut);font-size:.78rem;margin-top:6px}
+  @media(max-width:560px){
+    body{padding:11px}h1{font-size:1.12rem}
+    table{font-size:.78rem}th,td{padding:5px 5px}
+    .stat{flex:1 1 45%}
+  }
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:var(--mut);text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<div class="vp-takeaway" data-i18n="takeaway"></div>
+<p class="sub" data-i18n="intro"></p>
+<div class="verdict" id="verdict"></div>
+<div class="stats" id="stats"></div>
+<div class="launchbox" id="launch" style="display:none"></div>
+<h2 data-i18n="hRecent" style="margin-top:18px"></h2>
+<p class="sub" data-i18n="sRecent"></p>
+<div style="overflow-x:auto"><table id="recent"></table></div>
+<details class="vp-more"><summary data-i18n="more_exp"></summary>
+  <div class="meth" id="meth"></div>
+  <div class="meth" data-i18n="disc" style="margin-top:8px"></div>
+  <div class="mut" id="caveat" style="border:0;margin-top:8px;padding-top:0"></div>
+</details>
+<div id="src"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+// fetch order: relative same-origin (China-accessible) first, then live GitHub Pages fallback
+const REL="picks.json";
+const LIVE="https://vambrocop.github.io/valpha-lab/picks.json";
+const I18N={
+  title:{zh:"🎯 荐股 · 公开计分",en:"🎯 Stock picks · publicly scored"},
+  takeaway:{
+    zh:"🎯 <b>我们直接给「看好 / 看淡」——但每一条都公开计分、敢认账。</b>当前选股规则就一条、完全透明：<b>6 个月动量</b>（最强劲的看好、最弱的看淡）。出榜后我们追踪每只票持有 20 个交易日、对比 QQQ 的表现，<b>append-only 写进公开账本</b>——对了认对、错了认错。<b>非投资建议</b>：这不是「买这个你会发财」，而是「我们敢喊，也敢被记账」。",
+    en:"🎯 <b>We make direct bull/bear calls — and publicly score every one.</b> The current pick rule is a single, fully transparent one: <b>6-month momentum</b> (strongest → 看好/bullish, weakest → 看淡/bearish). After each pick we track it for 20 trading days vs QQQ and write the result into an <b>append-only public ledger</b> — right or wrong, we own it. <b>This is NOT investment advice</b>: not 'buy this and get rich', but 'we make the call AND let it be scored'."},
+  intro:{
+    zh:"看好 = 我们认为它会跑赢 QQQ；看淡 = 我们认为它会跑输 QQQ。出榜「次日」入场（不抢跑），持有 20 个交易日记相对 QQQ 的超额。结算只填空、不改历史——前向公开账本，早期样本极小，别当结论。",
+    en:"看好 (bullish) = we expect it to beat QQQ; 看淡 (bearish) = we expect it to lag QQQ. Entry is the day after the pick (no front-running), held 20 trading days, scored vs QQQ. Settlement only fills blanks, never rewrites history — a forward public ledger; the early sample is tiny, not a conclusion."},
+  more_exp:{zh:"方法 & 全部诚实免责（展开看专业细节）",en:"Method & full honest disclaimers (expand for expert detail)"},
+  hRecent:{zh:"近期荐股（看好 / 看淡）",en:"Recent picks (bullish / bearish)"},
+  sRecent:{zh:"按出榜日排序的近期荐股——大多还在「挂账」（20 个交易日没走完，无超额可言）。这是透明展示我们喊了哪些、立了哪些 flag，不是「该买这些」。",
+           en:"Recent picks sorted by pick date — most are still 'pending' (the 20-trading-day window hasn't elapsed, so no excess yet). Shown for transparency of what we called, NOT 'you should buy these'."},
+  disc:{zh:"<b>诚实边界：</b>非投资建议 · 会错 · 过去 ≠ 未来 · 不可交易（真做有手续费 / 滑点 / 税，本页不计）。前向计分样本早期极小，别当结论；规则仅为「6 月动量」这一条简单透明的口径，未经长期验证；幸存者偏差（退市 / 无价的代码会被丢弃）、重叠窗口、相关 ≠ 因果都未被排除。",
+        en:"<b>Honest limits:</b> not investment advice · we can be wrong · past ≠ future · not tradable (real trades incur fees / slippage / tax, none modeled here). Forward-scored sample is tiny early on — not a conclusion; the rule is just one simple, transparent metric ('6-month momentum'), not long-validated; survivorship bias (delisted / unpriced tickers get dropped), overlapping windows, and correlation ≠ causation are all unaddressed."},
+  foot:{zh:"数据：6 月动量选股 → 前向公开计分（持有 20 交易日 vs QQQ）。我们给方向，但每条都认账。非投资建议。Valpha Lab。",
+        en:"Data: 6-month-momentum picks → forward public scoring (20-trading-day hold vs QQQ). We give a direction, and we own every call. Not investment advice. Valpha Lab."},
+  // stat labels
+  sCall:{zh:"叫对率%",en:"call-right%"},
+  sBull:{zh:"看好命中%",en:"bullish hit%"},
+  sBear:{zh:"看淡命中%",en:"bearish hit%"},
+  sBullEx:{zh:"看好平均叫对超额%",en:"bull mean call-excess%"},
+  sBearEx:{zh:"看淡平均叫对超额%",en:"bear mean call-excess%"},
+  sPend:{zh:"挂账(待结算)",en:"pending"},
+  sDrop:{zh:"丢弃(退市/无价)",en:"dropped"},
+  // launch (0 settled) state
+  launch:{zh:"⏳ <b>还没有已结算战绩，正在累积。</b>每条荐股的 20 个交易日窗口要约 1 个月后才走完——首批叫对率 / 超额数字届时才会出现在上面的卡片里。现在能看的只有「我们喊了哪些」（下表），数字暂时都是「攒战绩中」。",
+          en:"⏳ <b>No settled track record yet — accumulating.</b> Each pick's 20-trading-day window won't elapse until ~1 month from launch — the first batch of call-right / excess numbers will appear in the cards above only then. For now you can only see WHICH picks we called (table below); the figures read 'accumulating'."},
+  // table headers
+  cTk:{zh:"代码",en:"Ticker"},cView:{zh:"观点",en:"Call"},
+  cDate:{zh:"出榜日",en:"Pick date"},cMom:{zh:"6月动量",en:"6-mo mom"},
+  cStat:{zh:"状态",en:"Status"},cEx:{zh:"叫对超额 vs QQQ",en:"Call-excess vs QQQ"},
+  stSettled:{zh:"已结算",en:"settled"},stPending:{zh:"挂账",en:"pending"},stDropped:{zh:"已丢弃",en:"dropped"},
+  accum:{zh:"攒战绩中(约1个月后出首批)",en:"accumulating (~1 mo to first batch)"},
+  vBull:{zh:"看好",en:"Bull"},vBear:{zh:"看淡",en:"Bear"},
+  err:{zh:"拉不到 picks.json——确认已部署 / 稍后再试。",en:"Can't load picks.json — check deployment / try later."}
+};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh";try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+const num=v=>(typeof v==="number"&&isFinite(v));
+
+// signed percent string with sign + "%"; null → "—"
+function sgn(v){return num(v)?((v>=0?"+":"")+v+"%"):"—";}
+// strip simple **bold** markdown → plain (we render as text, so just drop the markers)
+function stripMd(s){return String(s==null?"":s).replace(/\*\*/g,"");}
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+}
+
+function render(d){
+  applyStatic();
+  const tr=(d&&d.track_record)||{};
+  const bull=tr.bullish||{},bear=tr.bearish||{};
+  const n=tr.n_settled||0;
+  // verdict headline — use JSON verdict verbatim (honest, ready-made)
+  $("verdict").innerHTML="🧭 "+esc(d.verdict||"");
+
+  // scorecard — every numeric field can be null at launch → render "—" / accumulating, never null/NaN
+  const callHit=num(tr.call_hit_pct)?tr.call_hit_pct+"%":"—";
+  const bullHit=num(bull.hit_pct)?bull.hit_pct+"%":"—";
+  const bearHit=num(bear.hit_pct)?bear.hit_pct+"%":"—";
+  const bullEx=sgn(bull.mean_call_excess_pct),bearEx=sgn(bear.mean_call_excess_pct);
+  const bullExCls=num(bull.mean_call_excess_pct)?(bull.mean_call_excess_pct>=0?"pos":"neg"):"";
+  const bearExCls=num(bear.mean_call_excess_pct)?(bear.mean_call_excess_pct>=0?"pos":"neg"):"";
+  const pend=num(tr.n_pending)?tr.n_pending:"—";
+  const dropPct=num(tr.dropped_pct)?tr.dropped_pct:0;
+  const drop=(num(tr.n_dropped)?tr.n_dropped:0)+" ("+dropPct+"%)";
+
+  $("stats").innerHTML=
+     `<div class="stat"><div class="v">${esc(callHit)}</div><div class="l">${t("sCall")}</div></div>`
+    +`<div class="stat"><div class="v" style="color:var(--grn)">${esc(bullHit)}</div><div class="l">${t("sBull")}</div></div>`
+    +`<div class="stat"><div class="v" style="color:var(--red)">${esc(bearHit)}</div><div class="l">${t("sBear")}</div></div>`
+    +`<div class="stat"><div class="v ${bullExCls}">${esc(bullEx)}</div><div class="l">${t("sBullEx")}</div></div>`
+    +`<div class="stat"><div class="v ${bearExCls}">${esc(bearEx)}</div><div class="l">${t("sBearEx")}</div></div>`
+    +`<div class="stat"><div class="v">${esc(String(pend))}</div><div class="l">${t("sPend")}</div></div>`
+    +`<div class="stat"><div class="v" style="color:var(--mut)">${esc(drop)}</div><div class="l">${t("sDrop")}</div></div>`;
+
+  // friendly 0-settled launch state
+  const lb=$("launch");
+  if(n===0){lb.style.display="";lb.innerHTML=t("launch");}
+  else{lb.style.display="none";}
+
+  // recent picks table
+  let h=`<tr><th>${t("cTk")}</th><th>${t("cView")}</th>`
+       +`<th>${t("cDate")}</th><th>${t("cMom")}</th><th>${t("cStat")}</th><th>${t("cEx")}</th></tr>`;
+  (d.recent||[]).forEach(r=>{
+    // view badge: 看好 green-ish, 看淡 red-ish
+    const isBull=r.view==="看好";
+    const isBear=r.view==="看淡";
+    let vCell;
+    if(isBull) vCell=`<span class="vbull">${esc(LANG==="en"?t("vBull"):r.view)}</span>`;
+    else if(isBear) vCell=`<span class="vbear">${esc(LANG==="en"?t("vBear"):r.view)}</span>`;
+    else vCell=`<span class="badge">${esc(r.view||"—")}</span>`;
+    // momentum that drove the pick
+    const mom=sgn(r.mom_pct);
+    // status + call-excess vs QQQ
+    let status,exCell;
+    if(r.dropped){status=`<span class="badge">${t("stDropped")}</span>`;exCell="—";}
+    else if(r.settled){
+      status=`<span class="badge">${t("stSettled")}</span>`;
+      if(num(r.call_excess_pct)){
+        const cls=r.hit?"pos":"neg";
+        exCell=`<span class="${cls}">${(r.call_excess_pct>=0?"+":"")+r.call_excess_pct}%</span>`;
+      } else exCell="—";
+    } else {status=`<span class="badge">${t("stPending")}</span>`;exCell="—";}
+    h+=`<tr><td>${esc(r.symbol||"—")}</td><td>${vCell}</td>`
+      +`<td>${esc(r.pick_date||"—")}</td><td>${esc(mom)}</td>`
+      +`<td>${status}</td><td>${exCell}</td></tr>`;
+  });
+  $("recent").innerHTML=h;
+
+  // expert methodology line
+  const hold=num(d.hold_td)?d.hold_td:"?",bm=esc(d.benchmark||"QQQ");
+  $("meth").innerHTML=LANG==="en"
+    ?`<b>Method:</b> hold ${hold} trading days · entry the day after the pick · benchmark ${bm} · bullish hit = beat ${bm}, bearish hit = lagged ${bm} · pick rule is currently 6-month momentum (transparent, swappable). Append-only ledger; settlement fills blanks only.`
+    :`<b>方法：</b>持有 ${hold} 个交易日 · 出榜次日入场 · 基准 ${bm} · 看好命中 = 跑赢 ${bm}，看淡命中 = 跑输 ${bm} · 选股规则现为 6 月动量（透明、可换）。append-only 公开账本，结算只填空。`;
+
+  // full caveat from JSON (strip **markdown** bold markers; render as text)
+  $("caveat").textContent="⚠️ "+stripMd(d.caveat||"");
+
+  // source line
+  const gen=esc((d.generated||"").slice(0,10));
+  $("src").textContent=LANG==="en"
+    ?`Source: ${esc(d.source||"6-month momentum → forward public scoring")} · generated ${gen} · hold ${hold} trading days vs ${bm}`
+    :`数据：${esc(d.source||"6 月动量 → 前向公开计分")} · 生成 ${gen} · 持有 ${hold} 交易日 vs ${bm}`;
+}
+
+$("lang").onclick=()=>{
+  LANG=LANG==="zh"?"en":"zh";
+  try{localStorage.setItem("valpha_lang",LANG);}catch(e){}
+  if(window._d) render(window._d); else applyStatic();
+};
+
+(async()=>{
+  applyStatic();
+  let d=null;
+  for(const u of [REL,LIVE]){
+    try{const r=await fetch(u,{cache:"no-store"});if(r.ok){d=await r.json();break;}}catch(e){}
+  }
+  if(d){window._d=d;render(d);}
+  else{$("verdict").textContent=t("err");}
+})();
+</script>
+<script src="vp_gloss.js"></script>
+</body>
+</html>
