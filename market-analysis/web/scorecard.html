@@ -18,7 +18,15 @@
   .bar{display:inline-block;height:9px;border-radius:4px;background:var(--acc);vertical-align:middle;margin-left:6px}
   .mut{color:var(--mut);font-size:.76rem;margin-top:16px;border-top:1px solid var(--border);padding-top:8px;line-height:1.6}
   #src{color:var(--mut);font-size:.78rem;margin-top:6px}
-  @media(max-width:560px){body{padding:11px}h1{font-size:1.12rem}table{font-size:.8rem}}
+  #out{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin:8px 0 4px}
+  .ocard{background:var(--card,rgba(255,255,255,.03));border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+  .ocard .oh{display:flex;align-items:baseline;gap:6px;margin-bottom:6px}
+  .ocard .oh b{font-size:.92rem}
+  .ocard a.olink{color:var(--acc);text-decoration:none;font-size:.76rem;margin-left:auto}
+  .ocard .obody{font-size:.85rem;line-height:1.5}
+  .ocard .otag{display:inline-block;font-size:.7rem;color:var(--amber);border:1px solid var(--amber);border-radius:6px;padding:1px 5px;margin:5px 0 2px}
+  .ocard .ocav{color:var(--mut);font-size:.72rem;margin-top:7px;line-height:1.45}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.12rem}table{font-size:.8rem}#out{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -35,6 +43,9 @@
 <h2 data-i18n="hLive"></h2>
 <p class="sub" data-i18n="sLive"></p>
 <details class="vp-more"><summary data-i18n="more_live"></summary><div style="overflow-x:auto"><table id="live"></table></div></details>
+<h2 data-i18n="hOut"></h2>
+<p class="sub" data-i18n="sOut"></p>
+<div id="out"></div>
 <div id="src"></div>
 <div class="mut" id="note"></div>
 
@@ -54,7 +65,28 @@ const I18N={
   more_live:{zh:"展开看各预测源命中明细",en:"Expand: per-source hit details"},
   cBucket:{zh:"自报置信",en:"stated conf"},cReal:{zh:"实际胜率",en:"real win%"},cN:{zh:"样本",en:"n"},
   cSrc:{zh:"预测源",en:"source"},cHit:{zh:"命中率",en:"hit%"},cScored:{zh:"已记/待验",en:"scored/pending"},
-  err:{zh:"拉不到 scorecard.json——确认已部署。",en:"Can't load scorecard.json — check deployment."},asof:{zh:"前向",en:"horizon"}
+  err:{zh:"拉不到 scorecard.json——确认已部署。",en:"Can't load scorecard.json — check deployment."},asof:{zh:"前向",en:"horizon"},
+  hOut:{zh:"③ 出格区·各方向公开战绩（敢预测敢认账）",en:"③ Out-of-bounds · public record per direction (we own our calls)"},
+  sOut:{zh:"每条用它自己的口径，别跨着加总——不同的赌注，各自认账。",
+        en:"Each scored on its own terms — different bets, no misleading grand total."},
+  cInsider:{zh:"内部人买入",en:"Insider buys"},
+  cSenate:{zh:"参议院跟单",en:"Senate copy-trade"},
+  cOver:{zh:"极端下跌→次日反弹",en:"Crash → next-day bounce"},
+  cBtc:{zh:"BTC 动量→纳指",en:"BTC momentum → NASDAQ"},
+  btcTag:{zh:"历史回测结论·非前向计分",en:"Backtest conclusion · not a forward record"},
+  defCav:{zh:"非荐股 · 会错 · 过去≠未来",en:"Not advice · can be wrong · past ≠ future"},
+  // honest body strings (filled with numbers in JS)
+  insSettled:{zh:"跟买跑赢 SPY {beat}% · 平均超额 {exc}%（已结算 {ns} · 挂账 {np}）",
+              en:"Following the buys beat SPY {beat}% · avg excess {exc}% (settled {ns} · pending {np})"},
+  insPending:{zh:"攒战绩中（挂账 {np} · 约 1 个月后首批结算）",
+              en:"Building the record (pending {np} · first settlements ~1 month out)"},
+  senOK:{zh:"披露后跟买 ~3 月：超额 {exc}% · 跑赢 SPY {beat}%（n={n}）",
+         en:"Copy the buys after disclosure, ~3 mo: excess {exc}% · beat SPY {beat}% (n={n})"},
+  senLow:{zh:"样本不足",en:"Sample too small"},
+  ovrSettled:{zh:"次日上涨命中 {hit}% · 平均次日 {avg}%（已结算 {ns} · 挂账 {np}）",
+              en:"Next-day-up hit {hit}% · avg next day {avg}% (settled {ns} · pending {np})"},
+  ovrPending:{zh:"等极端下跌日触发（挂账 {np}）",
+              en:"Waiting for an extreme down day to trigger (pending {np})"}
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -80,7 +112,70 @@ function render(d){
   $("note").textContent="⚠️ "+(d.honest_note||"");
   $("src").textContent=`${t("asof")} ${d.horizon_days}d · ${esc((d.generated||"").slice(0,10))}`;
 }
-$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};if(window._d)render(window._d);};
+// ③ 出格区 —— each card scored on its OWN metric; never aggregated.
+const GH="https://vambrocop.github.io/valpha-lab/";
+const fmt=(k,m)=>{let s=t(k);for(const p in m)s=s.split("{"+p+"}").join(esc(m[p]));return s;};
+async function loadJSON(file){
+  for(const url of [file,GH+file]){
+    try{const r=await fetch(url,{cache:"no-store"});if(r.ok)return await r.json();}catch(e){}
+  }
+  return null;
+}
+function caveatLine(d){
+  const c=d&&typeof d.caveat==="string"?d.caveat.trim():"";
+  if(c)return c.length>90?c.slice(0,90)+"…":c;
+  return t("defCav");
+}
+// returns body-html string or null (skip card if null)
+function buildBody(spec,d){
+  if(spec==="insider"){
+    const tr=(d&&d.track_record)||{};const ns=tr.n_settled;
+    if(typeof ns==="number"&&ns>0&&tr.beat_spy_pct!=null&&tr.mean_excess_pct!=null)
+      return esc(fmt("insSettled",{beat:tr.beat_spy_pct,exc:tr.mean_excess_pct,ns:ns,np:tr.n_pending}));
+    return esc(fmt("insPending",{np:tr.n_pending==null?0:tr.n_pending}));
+  }
+  if(spec==="senate"){
+    const o=d&&d.overall;
+    if(o&&o.mean_excess_pct!=null&&o.beat_mkt_pct!=null&&o.n!=null)
+      return esc(fmt("senOK",{exc:o.mean_excess_pct,beat:o.beat_mkt_pct,n:o.n}));
+    return esc(t("senLow"));
+  }
+  if(spec==="over"){
+    const tr=(d&&d.track_record)||{};const ns=tr.n_settled;
+    if(typeof ns==="number"&&ns>0&&tr.hit_pct!=null&&tr.avg_next_pct!=null)
+      return esc(fmt("ovrSettled",{hit:tr.hit_pct,avg:tr.avg_next_pct,ns:ns,np:tr.n_pending}));
+    return esc(fmt("ovrPending",{np:tr.n_pending==null?0:tr.n_pending}));
+  }
+  if(spec==="btc"){
+    const v=d&&typeof d.verdict==="string"?d.verdict.trim():"";
+    if(!v)return null;
+    const body=v.length>140?v.slice(0,140)+"…":v;
+    return `<span class="otag">${esc(t("btcTag"))}</span><br>${esc(body)}`;
+  }
+  return null;
+}
+function cardHTML(c,d){
+  const body=buildBody(c.spec,d);
+  if(body==null)return "";
+  const link=c.link?`<a class="olink" href="${esc(c.link)}">›</a>`:"";
+  return `<div class="ocard"><div class="oh"><span aria-hidden="true">${c.icon}</span>`
+    +`<b>${esc(t(c.key))}</b>${link}</div>`
+    +`<div class="obody">${body}</div>`
+    +`<div class="ocav">${esc(caveatLine(d))}</div></div>`;
+}
+const OUT_CARDS=[
+  {spec:"insider",file:"insider_signal.json",icon:"🕵️",key:"cInsider",link:"insider.html"},
+  {spec:"senate", file:"senate_signal.json", icon:"🏛️",key:"cSenate", link:"senate.html"},
+  {spec:"over",   file:"overreaction_signal.json",icon:"📉",key:"cOver",link:null},
+  {spec:"btc",    file:"btc_nasdaq.json",   icon:"₿", key:"cBtc",    link:"btcread.html"}
+];
+async function renderOut(){
+  const data=await Promise.all(OUT_CARDS.map(c=>loadJSON(c.file)));
+  let html="";
+  OUT_CARDS.forEach((c,i)=>{if(data[i])html+=cardHTML(c,data[i]);});
+  if($("out"))$("out").innerHTML=html;
+}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};if(window._d)render(window._d);renderOut();};
 (async()=>{applyStatic();
   try{const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;window._d=await r.json();render(window._d);}
   catch(e){
@@ -90,6 +185,7 @@ $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valp
     $("cal").innerHTML=`<tr><td style="padding:14px;color:var(--mut)">${msg}</td></tr>`;
     $("live").innerHTML=`<tr><td style="padding:14px;color:var(--mut)">${msg}</td></tr>`;
   }
+  renderOut(); // ③ out-of-bounds cards — independent of scorecard.json
 })();
 </script>
 </body>
