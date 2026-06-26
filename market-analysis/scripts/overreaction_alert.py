@@ -10,13 +10,14 @@
 🔴 红线：带免责、不说「买」、把「约 46% 次日仍跌」亮在明面、事后认账、不可交易(成本/滑点)、过去≠未来。
 这是「敢预测敢认账·守公开计分」范式的一条信号，不是抄底建议。
 """
-import csv
 import datetime
 import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+import forward_ledger as fl
 
 SCRIPTS = Path(__file__).parent
 BASE = SCRIPTS.parent
@@ -59,22 +60,6 @@ def _modern_stat():
     return {}
 
 
-def _read_log():
-    if not LOG.exists():
-        return []
-    with open(LOG, encoding="utf-8") as f:
-        return list(csv.DictReader(f))
-
-
-def _write_log(rows):
-    LOG.parent.mkdir(parents=True, exist_ok=True)
-    with open(LOG, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=HEADER)
-        w.writeheader()
-        for r in rows:
-            w.writerow({k: r.get(k, "") for k in HEADER})
-
-
 def _settle(rows, ret_by_date, dates_sorted):
     """给已触发未结算的行补 next_date（触发日之后第一个交易日）→ 有收益就结算 命中。返回新结算数。"""
     n = 0
@@ -115,7 +100,7 @@ def run(write=True, push=True):
     ret_by_date = {d.date().isoformat(): float(v) for d, v in ret.items()}
     dates_sorted = [d.date().isoformat() for d in ret.index]
 
-    rows = _read_log()
+    rows = fl.read_log(LOG)
     seen = {r["date"] for r in rows}
 
     # ① 检测：今天极端下跌 + 还没记过 → 触发（append-only，一天最多一条）
@@ -152,7 +137,7 @@ def run(write=True, push=True):
     if write:
         from util_io import write_json
         write_json("overreaction_signal.json", out)
-        _write_log(rows)
+        fl.write_log(LOG, HEADER, rows)
         print(f"[OK] overreaction_signal.json — 今日{'⚡触发' if triggered else '未触发'}"
               f"（标普 {out['today']['ret_pct']}% vs 阈值 {out['threshold_pct']}%）· "
               f"战绩 {n_hit}/{n_settled}" + (f"={hit_pct}%" if hit_pct is not None else "")
