@@ -28,6 +28,11 @@ LOG = BASE / "data" / "pick_ledger.csv"
 
 HOLD_TD = 20            # 持有的交易日数(≈1 个月,对齐计分卡 horizon_days=20)
 BENCH = "QQQ"           # 基准:纳指 ETF(贴合我们的科技股观察池)
+RAW = BASE / "data" / "raw"
+UNIVERSE = RAW / "stocks_prices.csv"   # 观察池价格面板(date×ticker),同 outlook 源
+MOM_WIN, VOL_WIN, N_PICKS = 126, 63, 3
+# 当前挑票规则(透明·可换;换规则只改这里 + _select_picks,账本/结算/前端都不动)
+PICK_RULE = "动量+低波动 等权排名（126日动量 + 63日低波动，观察池取头/尾各3）"
 _TRUE = ("true", "1", "yes")
 
 HEADER = ["pick_date", "symbol", "view", "mom_pct", "entry_date", "entry_px",
@@ -39,25 +44,38 @@ def _is_true(v):
     return str(v).strip().lower() in _TRUE
 
 
-# ── 取 outlook 的看好/看淡(读 outlook.json 快照,解耦)─────────────────
+# ── 挑票规则:动量 + 低波动 等权排名(透明·可换)──────────────────────
+def _select_picks(prices):
+    """价格面板 → 按(126日动量百分位 + 63日低波动百分位)等权打分,取头 N 看好/尾 N 看淡。
+    返回 [{symbol, view, mom_pct}]（mom_pct=动量分量,供展示;score 仅用于选,不入账)。
+    低波动异象 + 动量都是文献支持的因子——比裸动量更稳健,但仍未经我们回测,由前向公开计分裁决。"""
+    px = prices.apply(pd.to_numeric, errors="coerce")
+    if len(px) < MOM_WIN + 1:
+        return []
+    mom = px.iloc[-1] / px.iloc[-1 - MOM_WIN] - 1                 # 6 个月动量
+    vol = px.pct_change().iloc[-VOL_WIN:].std()                   # 近 63 日波动
+    df = pd.DataFrame({"mom": mom, "vol": vol}).dropna()
+    n = N_PICKS if len(df) >= 2 * N_PICKS else max(1, len(df) // 2)
+    if n < 1 or df.empty:
+        return []
+    df["score"] = 0.5 * df["mom"].rank(pct=True) + 0.5 * (-df["vol"]).rank(pct=True)
+    df = df.sort_values("score", ascending=False)
+    out = []
+    for sym, r in df.head(n).iterrows():
+        out.append({"symbol": str(sym), "view": "看好", "mom_pct": round(float(r["mom"]) * 100, 1)})
+    for sym, r in df.tail(n).iloc[::-1].iterrows():
+        out.append({"symbol": str(sym), "view": "看淡", "mom_pct": round(float(r["mom"]) * 100, 1)})
+    return out
+
+
 def _load_picks():
-    for p in (WEB / "outlook.json", PROC / "outlook.json"):
-        if p.exists():
-            try:
-                o = json.loads(p.read_text(encoding="utf-8"))
-            except Exception:
-                continue
-            pd = (o.get("generated", "") or "")[:10]
-            out = []
-            for side, view in (("bullish", "看好"), ("bearish", "看淡")):
-                for r in o.get(side, []):
-                    sym = r.get("symbol")
-                    if not sym:
-                        continue
-                    out.append({"pick_date": pd, "symbol": sym, "view": view,
-                                "mom_pct": r.get("mom_pct")})
-            return out
-    return []
+    """读观察池价格面板 → _select_picks → 标今日为出榜日。读不到价格则空(不阻断)。"""
+    try:
+        prices = pd.read_csv(UNIVERSE, index_col=0, parse_dates=True)
+    except Exception:
+        return []
+    today = datetime.date.today().isoformat()
+    return [{**p, "pick_date": today} for p in _select_picks(prices)]
 
 
 # ── append-only 账本(结算只填空,不改身份)──────────────────────────
@@ -224,7 +242,8 @@ def run(write=True, prices=None):
     sc = _scorecard(rows)
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "source": "outlook 看好/看淡(6月动量) → 前向公开计分",
+        "source": "动量+低波动 选股 → 前向公开计分",
+        "pick_rule": PICK_RULE,
         "hold_td": HOLD_TD, "benchmark": BENCH,
         "track_record": sc,
         "recent": sorted(
@@ -235,12 +254,13 @@ def run(write=True, prices=None):
              for r in rows],
             key=lambda x: (x["pick_date"] or ""), reverse=True)[:40],
         "verdict": _verdict(sc),
-        "caveat": ("出格区·荐股前向公开计分。把 outlook 的看好/看淡(现为6月动量领先/垫底·规则可换)"
+        "caveat": ("出格区·荐股前向公开计分。挑票规则=%s(透明·可换;2026-06-26 起,此前为裸6月动量),"
                    "进 append-only 账本:出榜次日入场、持有 %d 交易日、相对 %s 结算。"
                    "看好命中=跑赢QQQ、看淡命中=跑输QQQ。**前向计分**:刚上线样本极小(约1月后首批),别当结论。"
-                   "诚实预期:追动量多半跑不赢 QQQ。幸存者偏差%s%%因退市/无价被丢;重叠窗口只看描述;"
+                   "规则更稳健(低波动异象+动量有文献支持)但未经我们回测,由公开计分裁决。"
+                   "幸存者偏差%s%%因退市/无价被丢;重叠窗口只看描述;"
                    "相关≠因果;非投资建议、不可交易(成本/滑点/税)、会错、过去≠未来。每跑 append 认账。"
-                   % (HOLD_TD, BENCH, sc["dropped_pct"])),
+                   % (PICK_RULE, HOLD_TD, BENCH, sc["dropped_pct"])),
     }
 
     if write:

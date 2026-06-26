@@ -31,19 +31,26 @@ def patched(tmp_path, monkeypatch):
     return tmp_path
 
 
-# ── 取数:outlook 的 bullish→看好 / bearish→看淡 ───────────────────────
-def test_load_picks_bull_bear(tmp_path, monkeypatch):
-    import json
-    web = tmp_path / "web"
-    web.mkdir()
-    (web / "outlook.json").write_text(json.dumps({
-        "generated": "2026-05-01T00:00:00Z",
-        "bullish": [{"symbol": "AAA", "mom_pct": 200.0}],
-        "bearish": [{"symbol": "BBB", "mom_pct": -20.0}],
-    }), encoding="utf-8")
-    monkeypatch.setattr(pk, "WEB", web)
-    got = {(p["symbol"], p["view"]) for p in pk._load_picks()}
-    assert got == {("AAA", "看好"), ("BBB", "看淡")}
+# ── 挑票规则:强动量+低波动→看好,弱动量+高波动→看淡 ───────────────────
+def test_select_picks_momentum_lowvol():
+    idx = pd.bdate_range("2025-01-01", periods=200)
+    n = len(idx)
+    rng = np.random.default_rng(0)
+    good = np.linspace(100, 300, n)                       # 强动量 + 平滑(低波)
+    bad = np.linspace(200, 100, n) * (1 + rng.normal(0, 0.05, n))  # 弱动量 + 抖(高波)
+    mid = np.full(n, 150.0)
+    prices = pd.DataFrame({"GOOD": good, "MID": mid, "BAD": bad}, index=idx)
+    picks = pk._select_picks(prices)
+    bull = [p["symbol"] for p in picks if p["view"] == "看好"]
+    bear = [p["symbol"] for p in picks if p["view"] == "看淡"]
+    assert "GOOD" in bull and "BAD" in bear                # 强动量低波→看好;弱动量高波→看淡
+    assert all("mom_pct" in p for p in picks)
+
+
+def test_select_picks_too_short_returns_empty():
+    idx = pd.bdate_range("2025-01-01", periods=50)         # < MOM_WIN+1
+    prices = pd.DataFrame({"AAA": np.linspace(100, 110, 50)}, index=idx)
+    assert pk._select_picks(prices) == []
 
 
 # ── 看好:跑赢 QQQ → 命中、call_excess 为正 ──────────────────────────

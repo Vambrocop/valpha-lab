@@ -1,6 +1,7 @@
 {
-  "generated": "2026-06-26T03:21:43Z",
-  "source": "outlook 看好/看淡(6月动量) → 前向公开计分",
+  "generated": "2026-06-26T03:41:03Z",
+  "source": "动量+低波动 选股 → 前向公开计分",
+  "pick_rule": "动量+低波动 等权排名（126日动量 + 63日低波动，观察池取头/尾各3）",
   "hold_td": 20,
   "benchmark": "QQQ",
   "track_record": {
@@ -17,7 +18,7 @@
       "hit_pct": null,
       "mean_call_excess_pct": null
     },
-    "n_pending": 6,
+    "n_pending": 11,
     "n_dropped": 0,
     "dropped_pct": 0.0
   },
@@ -87,8 +88,63 @@
       "excess_pct": null,
       "call_excess_pct": null,
       "hit": false
+    },
+    {
+      "symbol": "KO",
+      "view": "看好",
+      "pick_date": "2026-06-26",
+      "mom_pct": 16.1,
+      "settled": false,
+      "dropped": false,
+      "excess_pct": null,
+      "call_excess_pct": null,
+      "hit": false
+    },
+    {
+      "symbol": "COST",
+      "view": "看好",
+      "pick_date": "2026-06-26",
+      "mom_pct": 11.2,
+      "settled": false,
+      "dropped": false,
+      "excess_pct": null,
+      "call_excess_pct": null,
+      "hit": false
+    },
+    {
+      "symbol": "BRK-B",
+      "view": "看好",
+      "pick_date": "2026-06-26",
+      "mom_pct": -2.4,
+      "settled": false,
+      "dropped": false,
+      "excess_pct": null,
+      "call_excess_pct": null,
+      "hit": false
+    },
+    {
+      "symbol": "TSLA",
+      "view": "看淡",
+      "pick_date": "2026-06-26",
+      "mom_pct": -23.2,
+      "settled": false,
+      "dropped": false,
+      "excess_pct": null,
+      "call_excess_pct": null,
+      "hit": false
+    },
+    {
+      "symbol": "META",
+      "view": "看淡",
+      "pick_date": "2026-06-26",
+      "mom_pct": -17.8,
+      "settled": false,
+      "dropped": false,
+      "excess_pct": null,
+      "call_excess_pct": null,
+      "hit": false
     }
   ],
   "verdict": "刚上线·0 结算——约 1 个月后才有第一批荐股战绩，攒数据中。",
-  "caveat": "出格区·荐股前向公开计分。把 outlook 的看好/看淡(现为6月动量领先/垫底·规则可换)进 append-only 账本:出榜次日入场、持有 20 交易日、相对 QQQ 结算。看好命中=跑赢QQQ、看淡命中=跑输QQQ。**前向计分**:刚上线样本极小(约1月后首批),别当结论。诚实预期:追动量多半跑不赢 QQQ。幸存者偏差0.0%因退市/无价被丢;重叠窗口只看描述;相关≠因果;非投资建议、不可交易(成本/滑点/税)、会错、过去≠未来。每跑 append 认账。"
+  "caveat": "出格区·荐股前向公开计分。挑票规则=动量+低波动 等权排名（126日动量 + 63日低波动，观察池取头/尾各3）(透明·可换;2026-06-26 起,此前为裸6月动量),进 append-only 账本:出榜次日入场、持有 20 交易日、相对 QQQ 结算。看好命中=跑赢QQQ、看淡命中=跑输QQQ。**前向计分**:刚上线样本极小(约1月后首批),别当结论。规则更稳健(低波动异象+动量有文献支持)但未经我们回测,由公开计分裁决。幸存者偏差0.0%因退市/无价被丢;重叠窗口只看描述;相关≠因果;非投资建议、不可交易(成本/滑点/税)、会错、过去≠未来。每跑 append 认账。"
 }

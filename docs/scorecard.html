@@ -86,7 +86,12 @@ const I18N={
   ovrSettled:{zh:"次日上涨命中 {hit}% · 平均次日 {avg}%（已结算 {ns} · 挂账 {np}）",
               en:"Next-day-up hit {hit}% · avg next day {avg}% (settled {ns} · pending {np})"},
   ovrPending:{zh:"等极端下跌日触发（挂账 {np}）",
-              en:"Waiting for an extreme down day to trigger (pending {np})"}
+              en:"Waiting for an extreme down day to trigger (pending {np})"},
+  cPicks:{zh:"荐股（看好/看淡）",en:"Stock picks (bull/bear)"},
+  pkSettled:{zh:"叫对率 {ch}%（看好 {bh}% / 看淡 {rh}% · 已结算 {ns}）vs QQQ",
+             en:"Call-right {ch}% (bull {bh}% / bear {rh}% · settled {ns}) vs QQQ"},
+  pkPending:{zh:"攒战绩中（挂账 {np} · 约 1 个月后首批）",
+             en:"Building record (pending {np} · first batch ~1mo)"}
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -152,6 +157,15 @@ function buildBody(spec,d){
     const body=v.length>140?v.slice(0,140)+"…":v;
     return `<span class="otag">${esc(t("btcTag"))}</span><br>${esc(body)}`;
   }
+  if(spec==="picks"){
+    const tr=(d&&d.track_record)||{};const ns=tr.n_settled;
+    if(typeof ns==="number"&&ns>0&&tr.call_hit_pct!=null){
+      const b=tr.bullish||{},r=tr.bearish||{};
+      return esc(fmt("pkSettled",{ch:tr.call_hit_pct,bh:b.hit_pct==null?"—":b.hit_pct,
+                                  rh:r.hit_pct==null?"—":r.hit_pct,ns:ns}));
+    }
+    return esc(fmt("pkPending",{np:tr.n_pending==null?0:tr.n_pending}));
+  }
   return null;
 }
 function cardHTML(c,d){
@@ -164,6 +178,7 @@ function cardHTML(c,d){
     +`<div class="ocav">${esc(caveatLine(d))}</div></div>`;
 }
 const OUT_CARDS=[
+  {spec:"picks",  file:"picks.json",       icon:"🎯",key:"cPicks",  link:"picks.html"},
   {spec:"insider",file:"insider_signal.json",icon:"🕵️",key:"cInsider",link:"insider.html"},
   {spec:"senate", file:"senate_signal.json", icon:"🏛️",key:"cSenate", link:"senate.html"},
   {spec:"over",   file:"overreaction_signal.json",icon:"📉",key:"cOver",link:null},

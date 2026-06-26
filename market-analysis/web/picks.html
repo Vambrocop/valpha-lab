@@ -63,8 +63,8 @@ const LIVE="https://vambrocop.github.io/valpha-lab/picks.json";
 const I18N={
   title:{zh:"🎯 荐股 · 公开计分",en:"🎯 Stock picks · publicly scored"},
   takeaway:{
-    zh:"🎯 <b>我们直接给「看好 / 看淡」——但每一条都公开计分、敢认账。</b>当前选股规则就一条、完全透明：<b>6 个月动量</b>（最强劲的看好、最弱的看淡）。出榜后我们追踪每只票持有 20 个交易日、对比 QQQ 的表现，<b>append-only 写进公开账本</b>——对了认对、错了认错。<b>非投资建议</b>：这不是「买这个你会发财」，而是「我们敢喊，也敢被记账」。",
-    en:"🎯 <b>We make direct bull/bear calls — and publicly score every one.</b> The current pick rule is a single, fully transparent one: <b>6-month momentum</b> (strongest → 看好/bullish, weakest → 看淡/bearish). After each pick we track it for 20 trading days vs QQQ and write the result into an <b>append-only public ledger</b> — right or wrong, we own it. <b>This is NOT investment advice</b>: not 'buy this and get rich', but 'we make the call AND let it be scored'."},
+    zh:"🎯 <b>我们直接给「看好 / 看淡」——但每一条都公开计分、敢认账。</b>选股规则<b>完全透明、可换</b>（当前规则见下方「方法」）。出榜后我们追踪每只票持有 20 个交易日、对比 QQQ 的表现，<b>append-only 写进公开账本</b>——对了认对、错了认错。<b>非投资建议</b>：这不是「买这个你会发财」，而是「我们敢喊，也敢被记账」。",
+    en:"🎯 <b>We make direct bull/bear calls — and publicly score every one.</b> The pick rule is <b>fully transparent and swappable</b> (current rule under 'Method' below). After each pick we track it for 20 trading days vs QQQ and write the result into an <b>append-only public ledger</b> — right or wrong, we own it. <b>This is NOT investment advice</b>: not 'buy this and get rich', but 'we make the call AND let it be scored'."},
   intro:{
     zh:"看好 = 我们认为它会跑赢 QQQ；看淡 = 我们认为它会跑输 QQQ。出榜「次日」入场（不抢跑），持有 20 个交易日记相对 QQQ 的超额。结算只填空、不改历史——前向公开账本，早期样本极小，别当结论。",
     en:"看好 (bullish) = we expect it to beat QQQ; 看淡 (bearish) = we expect it to lag QQQ. Entry is the day after the pick (no front-running), held 20 trading days, scored vs QQQ. Settlement only fills blanks, never rewrites history — a forward public ledger; the early sample is tiny, not a conclusion."},
@@ -72,10 +72,10 @@ const I18N={
   hRecent:{zh:"近期荐股（看好 / 看淡）",en:"Recent picks (bullish / bearish)"},
   sRecent:{zh:"按出榜日排序的近期荐股——大多还在「挂账」（20 个交易日没走完，无超额可言）。这是透明展示我们喊了哪些、立了哪些 flag，不是「该买这些」。",
            en:"Recent picks sorted by pick date — most are still 'pending' (the 20-trading-day window hasn't elapsed, so no excess yet). Shown for transparency of what we called, NOT 'you should buy these'."},
-  disc:{zh:"<b>诚实边界：</b>非投资建议 · 会错 · 过去 ≠ 未来 · 不可交易（真做有手续费 / 滑点 / 税，本页不计）。前向计分样本早期极小，别当结论；规则仅为「6 月动量」这一条简单透明的口径，未经长期验证；幸存者偏差（退市 / 无价的代码会被丢弃）、重叠窗口、相关 ≠ 因果都未被排除。",
-        en:"<b>Honest limits:</b> not investment advice · we can be wrong · past ≠ future · not tradable (real trades incur fees / slippage / tax, none modeled here). Forward-scored sample is tiny early on — not a conclusion; the rule is just one simple, transparent metric ('6-month momentum'), not long-validated; survivorship bias (delisted / unpriced tickers get dropped), overlapping windows, and correlation ≠ causation are all unaddressed."},
-  foot:{zh:"数据：6 月动量选股 → 前向公开计分（持有 20 交易日 vs QQQ）。我们给方向，但每条都认账。非投资建议。Valpha Lab。",
-        en:"Data: 6-month-momentum picks → forward public scoring (20-trading-day hold vs QQQ). We give a direction, and we own every call. Not investment advice. Valpha Lab."},
+  disc:{zh:"<b>诚实边界：</b>非投资建议 · 会错 · 过去 ≠ 未来 · 不可交易（真做有手续费 / 滑点 / 税，本页不计）。前向计分样本早期极小，别当结论；选股规则透明、可换（当前见「方法」），未经我们长期回测；幸存者偏差（退市 / 无价的代码会被丢弃）、重叠窗口、相关 ≠ 因果都未被排除。",
+        en:"<b>Honest limits:</b> not investment advice · we can be wrong · past ≠ future · not tradable (real trades incur fees / slippage / tax, none modeled here). Forward-scored sample is tiny early on — not a conclusion; the pick rule is transparent and swappable (see 'Method'), not validated by us; survivorship bias (delisted / unpriced tickers get dropped), overlapping windows, and correlation ≠ causation are all unaddressed."},
+  foot:{zh:"数据：透明规则选股 → 前向公开计分（持有 20 交易日 vs QQQ）。我们给方向，但每条都认账。非投资建议。Valpha Lab。",
+        en:"Data: transparent-rule picks → forward public scoring (20-trading-day hold vs QQQ). We give a direction, and we own every call. Not investment advice. Valpha Lab."},
   // stat labels
   sCall:{zh:"叫对率%",en:"call-right%"},
   sBull:{zh:"看好命中%",en:"bullish hit%"},
@@ -175,11 +175,12 @@ function render(d){
   });
   $("recent").innerHTML=h;
 
-  // expert methodology line
+  // expert methodology line — pick rule read from JSON (rule-agnostic; future swaps need no HTML edit)
   const hold=num(d.hold_td)?d.hold_td:"?",bm=esc(d.benchmark||"QQQ");
+  const rule=esc(d.pick_rule|| (LANG==="en"?"a transparent rule":"透明规则"));
   $("meth").innerHTML=LANG==="en"
-    ?`<b>Method:</b> hold ${hold} trading days · entry the day after the pick · benchmark ${bm} · bullish hit = beat ${bm}, bearish hit = lagged ${bm} · pick rule is currently 6-month momentum (transparent, swappable). Append-only ledger; settlement fills blanks only.`
-    :`<b>方法：</b>持有 ${hold} 个交易日 · 出榜次日入场 · 基准 ${bm} · 看好命中 = 跑赢 ${bm}，看淡命中 = 跑输 ${bm} · 选股规则现为 6 月动量（透明、可换）。append-only 公开账本，结算只填空。`;
+    ?`<b>Method:</b> hold ${hold} trading days · entry the day after the pick · benchmark ${bm} · bullish hit = beat ${bm}, bearish hit = lagged ${bm} · pick rule: <b>${rule}</b> (transparent, swappable). Append-only ledger; settlement fills blanks only.`
+    :`<b>方法：</b>持有 ${hold} 个交易日 · 出榜次日入场 · 基准 ${bm} · 看好命中 = 跑赢 ${bm}，看淡命中 = 跑输 ${bm} · 选股规则：<b>${rule}</b>（透明、可换）。append-only 公开账本，结算只填空。`;
 
   // full caveat from JSON (strip **markdown** bold markers; render as text)
   $("caveat").textContent="⚠️ "+stripMd(d.caveat||"");
