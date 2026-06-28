@@ -15,7 +15,7 @@ def _rows(path):
 def test_seed_registers_all_candidates_at_today(tmp_path):
     p = tmp_path / "reg.csv"
     n = reg.sync(today="2026-06-26", path=p)
-    assert n == cs.N_DECLARED                       # 首次 sync 登记全部 42
+    assert n == cs.N_DECLARED                       # 首次 sync 登记全部候选(N_DECLARED)
     rows = _rows(p)
     assert len(rows) == cs.N_DECLARED
     assert all(r["declared_date"] == "2026-06-26" for r in rows)   # 旧候选锚=采纳日

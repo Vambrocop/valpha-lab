@@ -336,6 +336,26 @@ except Exception as e:
     errors.append(f"candidate_registry 检查失败: {e}")
     print(f"  ✗ candidate_registry 检查失败: {e}")
 
+# 3l3c. 自生长 P-C:知识库账本 kb_ledger 完整性(append-only·动作合法·每行候选都已注册)。存在才查、缺失不致命。
+#        诚实纪律:晋升/降级是公开知识库的"进出库"账本,只能 promote/demote、只认注册过的候选(锚=declared_date)。
+try:
+    import csv as _csv
+    kb_path = WEB_DIR.parent / "data" / "kb_ledger.csv"
+    if kb_path.exists():
+        import candidate_space as _cs
+        with open(kb_path, encoding="utf-8") as fh:
+            kb_rows = list(_csv.DictReader(fh))
+        space_ids = {c["candidate_id"] for c in _cs.enumerate_candidates()}
+        bad_action = [r for r in kb_rows if r.get("action") not in ("promote", "demote")]
+        unreg = {r["candidate_id"] for r in kb_rows} - space_ids
+        check(not bad_action, f"kb_ledger 动作仅 promote/demote（异常 {len(bad_action)} 行）")
+        check(not unreg, f"kb_ledger 每行候选都在候选空间（未知：{sorted(unreg) or '无'}）")
+        check(all(r.get("anchor_date") and r.get("date") for r in kb_rows),
+              "kb_ledger 每行都有 date + anchor_date（可审计 OOS 锚）")
+except Exception as e:
+    errors.append(f"kb_ledger 检查失败: {e}")
+    print(f"  ✗ kb_ledger 检查失败: {e}")
+
 # 3l4. 内部人买入前向计分形状(track_record 全/recent 是表/benchmark=SPY。存在才查、缺失不致命)
 #       诚实纪律：聪明钱前向计分页必须带"非荐股 + 前向计分"免责框（敢预测就敢认账=护城河，
 #       同 overreaction 强制 recent.p_value 的逻辑：方向性/跟单性产物不许丢掉认账口径）。

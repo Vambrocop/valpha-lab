@@ -118,3 +118,13 @@
 ## 9. 待用户拍（2 个口径，其余已定稿）
 - **P-E 推迟**：Opus 强烈建议 v1 不含自动提案、最后再建+硬门槛。你之前选了"含自动提案层"——这不冲突（仍会建、只是放最后+加锁）。**确认推迟？**
 - **旧 42 候选锚点 = 今天**（前向累积，丢弃它们的历史 OOS，换"不可争"）。**确认？** 或要对个别明显早于数据窥探的候选做 git 考古（更乱、收益小）。
+
+## 11. 建造结果（2026-06-28 · P-A 门4 + P-C 知识库 已建+审+接管线）
+**状态：建成、Opus 双审 GO、已接 run_all 写 `kb_ledger.csv`。** 六步协议走完(建→审→修→验→提交)。
+- **重构**：`autodiscovery.py` 抽出 `_calendar_arrays/_rebound_arrays/_regime_arrays` 共享 helper(命门:OOS 与裁决共用同一定义,永不漂移)；run_all 指纹**字节不变**(每候选 p/recent_p/recent_powered 全等)。
+- **`oos_gate.py`**(P-A 门4)：各族 floor 语义按 §10(日历 floor 输入·反弹阈值用全样本·体制均线用全样本)；三态+滞回(confirm<0.10 / overturn 反号 OR >0.20 / 持中 / **未到可判一等公民**)。
+- **`knowledge_base.py`**(P-C)：晋升=survive∧confirmed∧不在库；降级=在库∧翻盘；append-only 单调、回放定成员、绝不对晋升再跑 FDR。
+- **测试**：`test_oos_gate.py` 21 例(三态/滞回/floor 不泄漏/单调/再晋升/append-only)；全库 **323 green**。
+- **Opus 审**：首轮抓出 **BLOCKER B1**(monthof_ 两侧打分却被当方向型 → 从数据读方向再"确认"=循环不诚实)——已修(monthof_ 在 OOS 视作 omnibus 只看 p)+守卫测试；S1(舍入假翻号)、N1/N2/N3 一并修；二轮 re-review **GO**。
+- **今日产出**：全 74 候选锚=2026-06-26 → 锚后空 → **全 pending、0 晋升**(正确,边跑边攒,约 1 月出首批)。
+- **下一块**：P-B 防闪烁(读 autodiscovery_log 前向史标"裁决稳定但样本只长 X%")· P-D 前端展示知识库生长史 · (推迟)P-E 自动提案。

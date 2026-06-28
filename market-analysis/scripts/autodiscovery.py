@@ -2,9 +2,9 @@
 
 状态(2026-06-22)：种子稳定(hashlib)、_daily 缓存、每候选带多时间窗(完整/2000后/2021后/近1年)
    实际上涨率 vs 基率。**内建校验通过**：SP500 日历 p 值与 placebo_tests.json 一致。
-   42 候选(2026-06-22 扩声明：+Sell-in-May/世界杯年/任期第3年 民俗/学术先验日历，append-only)：
-   9 跨族存活、8 已淡、其余死/检验力不足——诚实。任期第3年=79%上涨 vs 64%(p≈.05·样本疏判 inconclusive)。
-   待独立审(判断密集)后接 run_all（现 JSON 仍手动重生成，见审计 B2/D1）。
+   N_DECLARED=74 候选(日历45 含九月/元月/月末月初/机器逐月扫24 + 反弹12 + 价格体制2金叉 + 因子15；
+   2026-06-26 扩声明 append-only)：约 12 跨族存活、7 已淡、其余死/检验力不足——诚实。
+   门4 OOS(oos_gate.py) 与晋升/降级(knowledge_base.py) 已建+审，待接 run_all 写 kb_ledger。
 
 
 复用现有原语（不重写统计）：
@@ -130,10 +130,19 @@ def _cal_windows(idx, vals, lab, stat, cid, eff):
 
 
 # ── 日历族：复用 placebo 的统计量与口径，逐候选算 全段 p + 现代段 recent_p ──
-def _calendar(eff, index, cid):
+def _calendar_arrays(eff, index, floor=None):
+    """提取日历效应的 (vals, lab, idx, stat, directional)；全样本、不算 p。
+    命门：门4 OOS(oos_gate.py) 与 _calendar 共用这一份定义 → OOS 与裁决永不漂移。
+    directional=True 仅限有方向先验的效应(见返回处说明)；机器逐月扫 monthof_ 为两侧 omnibus → False。
+    floor(§10·日历族 OOS)：先把**输入** ret 滤到 `> floor` 再抽取/重采样 → 月/年频效应不会有
+       '锚点当期 bar 含锚前数据'的边界泄漏（日历无前看依赖，floor 输入是对的）。floor=None=全样本。"""
     ret = _daily(index)
     if ret is None or len(ret) < 1000:
         return None
+    if floor is not None:
+        ret = ret[ret.index > pd.Timestamp(floor)]
+        if len(ret) < 1000:          # 锚后数据不足 → None → 上游 oos_gate 记"未到可判"
+            return None
     if eff == "dow":
         d = ret[ret.index >= pb.DOW_START]; lab = d.index.weekday.values; m = lab <= 4
         vals, lab, idx = d.values[m], lab[m], d.index[m]; stat = pb.make_ssb_stat(5)
@@ -195,7 +204,18 @@ def _calendar(eff, index, cid):
         vals, lab, idx = an.values, y3, an.index; stat = pb.make_dir_diff_stat()
     else:
         return None
+    # directional：仅**有方向先验**(label==1=先验更高组,单边 make_dir_diff_stat)才置 True → 门4 才比'方向'。
+    # monthof_ 是机器逐月扫、两侧 make_ssb_stat(2)、**无方向先验**(不能从数据里读出方向再'确认'它,那是循环) →
+    # OOS 视作 omnibus(只看 p)。注:_calendar 显示层的 showup/decades 另算(eff.startswith monthof_),不受此影响。
+    directional = eff in _DIR_EFFECTS
+    return vals, lab, idx, stat, directional
 
+
+def _calendar(eff, index, cid):
+    arr = _calendar_arrays(eff, index)
+    if arr is None:
+        return None
+    vals, lab, idx, stat, _directional = arr
     p = pb.perm_test(vals, lab, stat, np.random.default_rng(_seed_for(cid)))["p_value"]
     # 现代段(post-2000)：够样本才测；年频(decade/presidential)样本太疏 → 不测 → inconclusive
     rmask = np.asarray(idx >= RECENT_CUT)
@@ -217,7 +237,9 @@ def _calendar(eff, index, cid):
 
 
 # ── 反弹族：跌破第 pctl 百分位日后，持有 hold 日的前向收益 up 率 vs 基率（块自助） ──
-def _rebound(pctl, hold, index, cid):
+def _rebound_arrays(pctl, hold, index):
+    """提取反弹族 (idx, sel, y)；全样本、阈值=全样本百分位、不算 p。
+    命门(§10)：阈值定义于全数据 → 门4 OOS 只把 (sel,y) 滤到锚后，**绝不**在锚后重算阈值。"""
     ret = _daily(index)
     if ret is None or len(ret) < 1000:
         return None
@@ -233,10 +255,18 @@ def _rebound(pctl, hold, index, cid):
     y = (df["fwd"].values > 0).astype(float)
     if sel.sum() < 30:
         return None
+    return df.index, sel, y
+
+
+def _rebound(pctl, hold, index, cid):
+    arr = _rebound_arrays(pctl, hold, index)
+    if arr is None:
+        return None
+    idx, sel, y = arr
     bb = block_bootstrap_diff(sel, y, block=hold)
     if bb is None:
         return None
-    rmask = np.asarray(df.index >= RECENT_CUT)
+    rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered = None, False
     rsel = sel & rmask
     if int(rsel.sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
@@ -245,8 +275,8 @@ def _rebound(pctl, hold, index, cid):
             recent_p, powered = rbb["p_boot"], True
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
-            "windows": _diff_windows(df.index, sel, y, hold),
-            "decades": _decade_rows(df.index, sel, y > 0),
+            "windows": _diff_windows(idx, sel, y, hold),
+            "decades": _decade_rows(idx, sel, y > 0),
             "effect": "触发日后持有期上涨率 vs 基率"}
 
 
@@ -260,7 +290,9 @@ def _daily_price(index):
     return s[s > 0].sort_index()
 
 
-def _regime(signal, index, cid, hold=20):
+def _regime_arrays(signal, index, hold=20):
+    """提取价格体制族 (idx, sel, y)；全样本、均线用全 px、不算 p。
+    命门(§10)：均线(50/200)定义于全数据 → 门4 OOS 只把 (cond,fwd) 滤到锚后，**绝不**在锚后重启均线。"""
     px = _daily_price(index)
     if px is None or len(px) < 300:
         return None
@@ -274,10 +306,18 @@ def _regime(signal, index, cid, hold=20):
     y = df["up"].values
     if int(sel.sum()) < 100 or int((~sel).sum()) < 100:
         return None
+    return df.index, sel, y
+
+
+def _regime(signal, index, cid, hold=20):
+    arr = _regime_arrays(signal, index, hold)
+    if arr is None:
+        return None
+    idx, sel, y = arr
     bb = block_bootstrap_diff(sel, y, block=hold)
     if bb is None:
         return None
-    rmask = np.asarray(df.index >= RECENT_CUT)
+    rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered = None, False
     if int((sel & rmask).sum()) >= 100 and int((~sel & rmask).sum()) >= 100:
         rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
@@ -285,8 +325,8 @@ def _regime(signal, index, cid, hold=20):
             recent_p, powered = rbb["p_boot"], True
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
-            "windows": _diff_windows(df.index, sel, y, hold),
-            "decades": _decade_rows(df.index, sel, y > 0),
+            "windows": _diff_windows(idx, sel, y, hold),
+            "decades": _decade_rows(idx, sel, y > 0),
             "effect": "信号成立时未来20日上涨率 vs 基率"}
 
 
