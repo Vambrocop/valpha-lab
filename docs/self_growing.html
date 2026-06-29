@@ -110,6 +110,12 @@
     <p class="sub" data-i18n="sAuto"></p>
     <div id="autoSummary" class="sub"></div>
     <div class="grave" id="autodisc"></div>
+
+    <h3 data-i18n="hFlicker" style="font-size:1rem;margin:22px 0 4px"></h3>
+    <p class="sub" data-i18n="sFlicker"></p>
+    <div id="flkStrip" class="kbstrip"></div>
+    <div id="flkList"></div>
+    <div class="honest" data-i18n="flkCaveat" style="margin-top:8px"></div>
   </div>
 </details>
 
@@ -128,7 +134,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
-let D=null,PLAC=null,AD=null,KB=null,ADC=[],CLAIMS=[],DECAY={};
+let D=null,PLAC=null,AD=null,KB=null,FLK=null,ADC=[],CLAIMS=[],DECAY={};
 const VCLR={survive:"var(--grn)",faded:"var(--amber)",dead:"var(--mut)",inconclusive:"#8b949e"};
 
 const I18N={
@@ -212,7 +218,18 @@ const I18N={
   kbEmpty:{zh:"暂无排队中的规律。",en:"No patterns in the queue yet."},
   kbErr:{zh:"知识库数据还没拉到（引擎已就位，正在攒样本外数据）。",en:"Knowledge-base data not loaded yet (engine ready, accruing out-of-sample data)."},
   hKbHist:{zh:"📜 进出库历史（晋升 / 降级账本）",en:"📜 In/out history (promote / demote ledger)"},
-  kbPromote:{zh:"晋升",en:"promote"},kbDemote:{zh:"降级",en:"demote"}
+  kbPromote:{zh:"晋升",en:"promote"},kbDemote:{zh:"降级",en:"demote"},
+  // ── 防闪烁稳定度（P-B） ──
+  hFlicker:{zh:"🩺 防闪烁 · 裁决稳定度",en:"🩺 Anti-flicker · verdict stability"},
+  sFlicker:{zh:"读每日裁决前向史，专抓<b>在 FDR 边界来回横跳</b>的脆弱候选——这种忽真忽假的多半是噪声。",
+            en:"Reads the daily verdict history to flag <b>fragile candidates that oscillate across the FDR boundary</b> — flip-flopping is usually noise."},
+  flkSnap:{zh:"快照(天)",en:"snapshots"},flkFlicker:{zh:"边界闪烁",en:"boundary flicker"},
+  flkStable:{zh:"稳定",en:"stable"},flkSpan:{zh:"跨度(天)",en:"span(d)"},
+  flkBoundary:{zh:"⚠️ 边界闪烁(脆弱)",en:"⚠️ boundary flicker (fragile)"},
+  flkNone:{zh:"暂无边界闪烁候选——前向史还短，边跑边看。",en:"No boundary-flicker candidates yet — history is short, accruing."},
+  flkFlips:{zh:"次翻转",en:"flips"},flkStableDays:{zh:"稳定",en:"stable"},
+  flkCaveat:{zh:"<b>诚实焊死：裁决稳定 N 天 ≠ N 次独立确认。</b>这是同一份累积数据反复重读（自相关），不是新证据。真正独立的样本外证据看上面的「门4 OOS / 知识库」，不是这里的稳定度。本块只用来抓脆弱候选。非荐股。",
+              en:"<b>Hard rule: verdict stable for N days ≠ N independent confirmations.</b> It's the same cumulative data re-read (autocorrelated), not new evidence. Real independent out-of-sample evidence is the Gate-4 OOS / knowledge base above, not this stability. This block only flags fragile candidates. Not advice."}
 };
 // 三态徽章（非 i18n 的小对象）
 const OOS_LABEL={pending:{zh:"未到可判",en:"awaiting"},confirmed:{zh:"已确认",en:"confirmed"},overturned:{zh:"已翻盘",en:"overturned"},neutral:{zh:"持中",en:"neutral"}};
@@ -451,10 +468,30 @@ function renderKB(){
   if(h.length){$("kbHistWrap").style.display="";$("kbHist").innerHTML=h.map(kbHistRow).join("");}
   else{$("kbHistWrap").style.display="none";}
 }
+// ── 防闪烁稳定度（P-B）渲染 ──
+function renderFlicker(){
+  const strip=$("flkStrip");if(!strip)return;
+  if(!FLK){strip.innerHTML=`<div class="mut">—</div>`;$("flkList").innerHTML="";return;}
+  const s=FLK.summary||{};
+  strip.innerHTML=[
+    kbStat(t("flkSnap"),FLK.n_snapshots==null?"—":FLK.n_snapshots,"var(--fg)"),
+    kbStat(t("flkFlicker"),s.n_boundary_flicker||0,"var(--amber)"),
+    kbStat(t("flkStable"),s.n_stable||0,"var(--grn)"),
+    kbStat(t("flkSpan"),FLK.span_days==null?"—":FLK.span_days,"var(--fg)")
+  ].join("");
+  const bad=(FLK.candidates||[]).filter(c=>c.boundary_flicker);
+  $("flkList").innerHTML = bad.length
+    ? `<div style="margin-top:8px"><div class="sub" style="color:var(--amber)">${t("flkBoundary")}</div>`
+      + bad.map(c=>{const pn=plainName(c);const fl=pn.unsure?' ⚠️':'';
+          return `<div class="raw" style="padding:3px 0;border-bottom:1px solid var(--border)">${pn.name}${fl} · ${esc(c.flips)} ${t("flkFlips")} · ${t("flkStableDays")} ${esc(c.stable_days)} · <span style="color:${VCLR[c.latest_verdict]||'var(--mut)'}">${esc(c.latest_verdict)}</span></div>`;}).join("")
+      + `</div>`
+    : `<div class="mut" style="margin-top:6px">${t("flkNone")}</div>`;
+}
 function render(){
   applyStatic();
   renderResults();
   renderKB();
+  renderFlicker();
   renderAD();
   if(!D){$("src").textContent=t("err");return;}
   const m=D.m_total||0, surv=D.n_survive_by_10||0, luck=Math.round(m*ALPHA);
@@ -490,6 +527,7 @@ document.addEventListener("keydown",e=>{
   const g=u=>fetch(u,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
   [D,PLAC,AD]=await Promise.all([g(LIVE),g(PLACEBO),g(AUTODISC)]);
   KB=await g(KB_LOCAL)||await g(KB_FALLBACK);
+  FLK=await g("flicker.json")||await g("https://vambrocop.github.io/valpha-lab/flicker.json");
   render();})();
 </script>
 </body>

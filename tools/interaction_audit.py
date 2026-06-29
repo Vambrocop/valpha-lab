@@ -19,7 +19,8 @@ VP = {"width": 390, "height": 844} if MOBILE else {"width": 1440, "height": 1000
 HARD_KW = ("溢出", "按钮", "加载失败", "pageerror")
 
 PAGES = ["dashboard.html", "index.html", "valpha150.html", "sectors.html", "radar.html",
-         "advisor.html", "wild.html", "ipo.html", "methodology.html", "self_growing.html", "heatmap.html"]
+         "advisor.html", "wild.html", "ipo.html", "methodology.html", "self_growing.html",
+         "discoveries.html", "heatmap.html"]
 DASH_VIEWS = ["today", "outlook", "plan", "longterm", "research", "lab", "registry", "quant", "mine"]
 
 
