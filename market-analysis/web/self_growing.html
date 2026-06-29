@@ -48,7 +48,12 @@
   .pcard .flag{color:var(--amber)}
   .mut{color:var(--mut);font-size:.78rem;margin-top:18px;border-top:1px solid var(--border);padding-top:8px}
   #src{color:var(--mut);font-size:.78rem}
-  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}.hero .big{font-size:1.7rem}}
+  .kbstrip{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
+  .kbcell{flex:1 1 88px;background:var(--surface-2,#1b222c);border:1px solid var(--border);border-radius:8px;padding:8px 10px;text-align:center}
+  .kbv{font-size:1.5rem;font-weight:800;line-height:1.1}
+  .kbl{font-size:.72rem;color:var(--mut);margin-top:2px}
+  .pcard .dbadge{font-size:.68rem;font-weight:700;border-radius:6px;padding:1px 6px;margin-left:4px;vertical-align:middle}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}.hero .big{font-size:1.7rem}.kbv{font-size:1.25rem}}
 </style>
 </head>
 <body>
@@ -67,6 +72,14 @@
 <h2 data-i18n="hKept"></h2>
 <p class="sub" data-i18n="sKept"></p>
 <div class="grid" id="survivors"></div>
+
+<!-- ②.5 样本外确认 · 知识库生长（门4 OOS：扛住检验的规律进入第二关，只认注册日之后的新数据） -->
+<h2 data-i18n="hOOS" style="margin-top:22px"></h2>
+<p class="sub" data-i18n="sOOS"></p>
+<div class="honest" data-i18n="oosHonest"></div>
+<div id="kbStrip" class="kbstrip"></div>
+<div class="grid" id="kbQueue"></div>
+<details class="vp-more" id="kbHistWrap" style="margin-top:10px;display:none"><summary data-i18n="hKbHist"></summary><div id="kbHist" style="margin-top:8px"></div></details>
 
 <!-- ③ 曾灵但现在淡了（短列表） -->
 <h2 data-i18n="hFadedList"></h2>
@@ -108,12 +121,14 @@
 const LIVE="https://vambrocop.github.io/valpha-lab/fdr_crossfamily.json";
 const PLACEBO="https://vambrocop.github.io/valpha-lab/placebo_tests.json";
 const AUTODISC="https://vambrocop.github.io/valpha-lab/autodiscovery.json";
+const KB_LOCAL="knowledge_base.json";   // 同源优先(本地/中国访客)，拉不到再退 github
+const KB_FALLBACK="https://vambrocop.github.io/valpha-lab/knowledge_base.json";
 const ALPHA=0.05;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
-let D=null,PLAC=null,AD=null,ADC=[],CLAIMS=[],DECAY={};
+let D=null,PLAC=null,AD=null,KB=null,ADC=[],CLAIMS=[],DECAY={};
 const VCLR={survive:"var(--grn)",faded:"var(--amber)",dead:"var(--mut)",inconclusive:"#8b949e"};
 
 const I18N={
@@ -180,8 +195,28 @@ const I18N={
           en:"Per decade: trigger up-rate vs that decade's base (▲green=worked, ▼red=didn't). Many old patterns: real early, arbitraged away (or reversed) later."},
   wNote:{zh:"上涨率=该组上涨期占比(直观)，绿>基率红<。反弹/因子：基率=全样本上涨率，p 检验上涨率差(与表同口径)。日历方向类(节前/圣诞/夏歇/世界杯/任期年)：基率=对照组上涨率，p 检验两组<b>平均收益</b>差(单边)——与上涨率通常同向但非同一指标。周几/月份为多组整体差异，无单一概率故只列 p。",
          en:"up% = share of up periods in that group (intuition); green &gt; base, red &lt;. Rebound/factor: base% = whole-sample up-rate and p tests the up-rate gap (same quantity shown). Calendar directional (holiday/santa/sell-in-May/World-Cup/term-year): base% = comparison group's up-rate and p tests the difference in <b>mean returns</b> (one-sided) — usually same sign as up%, but a different quantity. Day/month effects are multi-group omnibus — p only."},
-  adLedger:{zh:"裁决账本追踪",en:"verdict ledger"},adDays:{zh:"天(累积中,供日后衰减追踪)",en:"d (accruing for decay tracking)"}
+  adLedger:{zh:"裁决账本追踪",en:"verdict ledger"},adDays:{zh:"天(累积中,供日后衰减追踪)",en:"d (accruing for decay tracking)"},
+  // ── 样本外确认 · 知识库（门4 OOS） ──
+  hOOS:{zh:"🔬 样本外确认 · 知识库生长",en:"🔬 Out-of-sample confirmation · knowledge base"},
+  sOOS:{zh:"扛住全样本检验只是第一关。第二关是<b>样本外确认</b>：每条规律注册当天盖一个不可改的日期戳（锚点），引擎只拿锚点<b>之后</b>的新数据复算——锚点写死，谁也没法事后挪靶。锚后仍成立 → 自动进知识库；翻盘 → 自动降级。<b>这才是真·自生长：知识随证据前向累积而长/缩。</b>",
+        en:"Holding up over the full history is only gate 1. Gate 2 is <b>out-of-sample confirmation</b>: each pattern is stamped with an immutable anchor date on registration, and the engine recomputes using only data <b>after</b> the anchor — the anchor is locked, so no one can move the goalpost. Still holds out-of-sample → auto-enters the knowledge base; overturns → auto-demoted. <b>This is real self-growth: knowledge grows/shrinks as evidence accrues forward.</b>"},
+  oosHonest:{zh:"今天大多还是「未到可判」——锚点刚定（前向才攒了几天），样本不够就<b>绝不</b>凑结论。约 1 个月出首批确认。这种「先承认不知道」正是诚实。",
+             en:"Most are still 'awaiting' today — the anchor was just set (only a few days of forward data), and we <b>refuse</b> to force a verdict on thin samples. First confirmations in ~1 month. Admitting 'not yet known' is the honest part."},
+  kbInKb:{zh:"在知识库",en:"in KB"},kbQueueN:{zh:"排队等确认",en:"awaiting"},
+  kbConfirmed:{zh:"已确认",en:"confirmed"},kbOverturned:{zh:"已翻盘",en:"overturned"},
+  kbDays:{zh:"已盯(天)",en:"days watched"},
+  kbWaiting:{zh:"已过全样本检验，正等锚点后的新数据攒够再判。",en:"Passed the full-sample test; waiting for enough post-anchor data to judge."},
+  kbAnchor:{zh:"锚点",en:"anchor"},kbOosN:{zh:"锚后样本",en:"post-anchor n"},
+  kbMember:{zh:"样本外确认通过、已进知识库。",en:"Confirmed out-of-sample — admitted to the knowledge base."},
+  kbSince:{zh:"晋升于",en:"since"},
+  kbEmpty:{zh:"暂无排队中的规律。",en:"No patterns in the queue yet."},
+  kbErr:{zh:"知识库数据还没拉到（引擎已就位，正在攒样本外数据）。",en:"Knowledge-base data not loaded yet (engine ready, accruing out-of-sample data)."},
+  hKbHist:{zh:"📜 进出库历史（晋升 / 降级账本）",en:"📜 In/out history (promote / demote ledger)"},
+  kbPromote:{zh:"晋升",en:"promote"},kbDemote:{zh:"降级",en:"demote"}
 };
+// 三态徽章（非 i18n 的小对象）
+const OOS_LABEL={pending:{zh:"未到可判",en:"awaiting"},confirmed:{zh:"已确认",en:"confirmed"},overturned:{zh:"已翻盘",en:"overturned"},neutral:{zh:"持中",en:"neutral"}};
+const OOS_CLR={pending:"#8b949e",confirmed:"#3fb950",overturned:"#d29922",neutral:"#58a6ff"};
 
 // ── 大白话命名映射 ───────────────────────────────────────────────────────
 // 仅在含义明确时映射；拿不准的不编，回退到「按代号拆解」或保留原代号并标 ⚠️。
@@ -236,11 +271,21 @@ function rebPlain(key){
     ? `${idx}大跌（最猛 ${m[1]}% 那档）后持有 ${m[2]} 天反弹`
     : `${idx} bounce: hold ${m[2]} day(s) after a big drop (worst ${m[1]}% bucket)`;
 }
+// 机器逐月扫 monthof_N_index → 「机器逐月扫·N月·指数」（含义明确：该月 vs 其余是否异常）
+const MONTHS_ZH=["一","二","三","四","五","六","七","八","九","十","十一","十二"];
+function monthofPlain(key){
+  const m=/^monthof_(\d+)_(\w+)$/.exec(key||"");
+  if(!m)return null;
+  const idx=IDX_NAME[m[2]]?IDX_NAME[m[2]][LANG]:m[2];const mo=+m[1];
+  return LANG==="zh"?`机器逐月扫·${MONTHS_ZH[mo-1]||mo}月·${idx}（该月是否异常）`
+                    :`Machine month-sweep · month ${mo} · ${idx} (is this month anomalous)`;
+}
 // 返回 {name, unsure} —— name=大白话；unsure=true 表示拿不准、已保留原代号
 function plainName(c){
   const key=c.key||"";
   if(PLAIN_MAP[key])return {name:PLAIN_MAP[key][LANG],unsure:false};
   if(c.family==="rebound"){const r=rebPlain(key);if(r)return {name:r,unsure:false};}
+  const mp=monthofPlain(key);if(mp)return {name:mp,unsure:false};
   return {name:esc(key),unsure:true};  // 含义拿不准：保留原代号、调用处加 ⚠️ 标注
 }
 // 一句话「为什么」——按族给通用解释（不编具体方向）
@@ -360,9 +405,56 @@ function showFam(fam){const cs=CLAIMS.filter(c=>c.family===fam);if(!cs.length)re
 
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
 
+// ── 样本外确认 · 知识库（门4 OOS）渲染 ──
+function oosBadge(s){const c=OOS_CLR[s]||"#8b949e";const lbl=(OOS_LABEL[s]||{})[LANG]||s;
+  return `<span class="dbadge" style="background:${c}22;color:${c};border:1px solid ${c}66">${lbl}</span>`;}
+function kbStat(label,val,clr){return `<div class="kbcell"><div class="kbv" style="color:${clr}">${esc(val)}</div><div class="kbl">${esc(label)}</div></div>`;}
+function kbQueueCard(c,mn){
+  const pn=plainName(c);
+  const fl=pn.unsure?` <span class="flag" title="含义拿不准 / meaning unclear">⚠️</span>`:"";
+  const use=USE_MAP[c.key]?`<div class="why" style="color:var(--grn);margin-top:3px">${USE_MAP[c.key][LANG]}</div>`:"";
+  const prog=(c.oos_n!=null)?` · ${t("kbOosN")}: ${esc(c.oos_n)}/${esc(mn)}`:"";
+  return `<div class="card pcard" style="cursor:pointer" onclick="showAD('${esc(c.candidate_id)}')">
+    <div class="plain">${pn.name}${fl} ${oosBadge(c.oos_status)}</div>
+    <div class="why">${t("kbWaiting")}</div>${use}
+    <div class="raw">${esc(c.key)} · ${t("kbAnchor")} ${esc(c.anchor_date||"—")}${prog}</div></div>`;
+}
+function kbMemberCard(m){
+  const pn=plainName(m);
+  return `<div class="card pcard" style="border-left:3px solid var(--grn);cursor:pointer" onclick="showAD('${esc(m.candidate_id)}')">
+    <div class="plain">🏅 ${pn.name}</div>
+    <div class="why">${t("kbMember")}</div>
+    <div class="raw">${esc(m.key)} · ${t("kbSince")} ${esc(m.since||"—")} · oos_p=${m.oos_p==null?"—":esc(m.oos_p)}</div></div>`;
+}
+function kbHistRow(r){
+  const promote=r.action==="promote";const act=promote?t("kbPromote"):t("kbDemote");
+  const clr=promote?"var(--grn)":"var(--amber)";
+  return `<div style="font-size:.8rem;color:var(--mut);padding:4px 0;border-bottom:1px solid var(--border)">
+    <span style="color:${clr};font-weight:700">${promote?"▲":"▼"} ${act}</span> · ${esc(r.date||"")} · ${esc(r.key||"")}
+    <span style="opacity:.75"> · ${esc(r.trigger||"")}</span></div>`;
+}
+function renderKB(){
+  const strip=$("kbStrip");if(!strip)return;
+  if(!KB){strip.innerHTML=`<div class="mut">${t("kbErr")}</div>`;$("kbQueue").innerHTML="";return;}
+  const s=KB.summary||{},mn=KB.min_oos_n||30;
+  strip.innerHTML=[
+    kbStat(t("kbInKb"),s.in_kb||0,"var(--grn)"),
+    kbStat(t("kbQueueN"),s.queue||0,"var(--acc)"),
+    kbStat(t("kbConfirmed"),s.confirmed||0,"var(--grn)"),
+    kbStat(t("kbOverturned"),s.overturned||0,"var(--amber)"),
+    kbStat(t("kbDays"),KB.days_since_anchor==null?"—":KB.days_since_anchor,"var(--fg)")
+  ].join("");
+  const members=KB.members||[],queue=KB.queue||[];
+  const cards=members.map(kbMemberCard).join("")+queue.map(c=>kbQueueCard(c,mn)).join("");
+  $("kbQueue").innerHTML=cards||`<div class="mut">${t("kbEmpty")}</div>`;
+  const h=KB.history||[];
+  if(h.length){$("kbHistWrap").style.display="";$("kbHist").innerHTML=h.map(kbHistRow).join("");}
+  else{$("kbHistWrap").style.display="none";}
+}
 function render(){
   applyStatic();
   renderResults();
+  renderKB();
   renderAD();
   if(!D){$("src").textContent=t("err");return;}
   const m=D.m_total||0, surv=D.n_survive_by_10||0, luck=Math.round(m*ALPHA);
@@ -394,8 +486,11 @@ document.addEventListener("keydown",e=>{
   $("fadedList").innerHTML='<div class="skel"></div>';
   $("registry").innerHTML='<div class="skel"></div><div class="skel"></div><div class="skel"></div>';
   $("autodisc").innerHTML='<div class="skel" style="height:64px;width:100%"></div>';
+  $("kbQueue").innerHTML='<div class="skel"></div><div class="skel"></div>';
   const g=u=>fetch(u,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
-  [D,PLAC,AD]=await Promise.all([g(LIVE),g(PLACEBO),g(AUTODISC)]);render();})();
+  [D,PLAC,AD]=await Promise.all([g(LIVE),g(PLACEBO),g(AUTODISC)]);
+  KB=await g(KB_LOCAL)||await g(KB_FALLBACK);
+  render();})();
 </script>
 </body>
 </html>

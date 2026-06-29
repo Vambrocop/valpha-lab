@@ -260,3 +260,35 @@ def test_step_dry_does_not_write(tmp_path):
     rows = kb.step(verdicts=verdicts, results=results, today="2026-07-01", path=p, write=False)
     assert len(rows) == 1 and rows[0]["action"] == kb.PROMOTE
     assert not p.exists()                       # write=False 绝不落盘
+
+
+# ── P-D 前端导出 knowledge_base.json 形状 ──
+def test_export_json_shape_queue_and_summary(tmp_path):
+    p = tmp_path / "kb.csv"                      # 空账本(无在库/无史)
+    verdicts = [_v("A", og.PENDING, key="september_sp500"),   # survive 但 pending → 进 queue
+                _v("B", og.PENDING, key="x"), _v("C", og.CONFIRMED, key="y")]
+    verdicts[0]["family"] = "calendar"
+    results = [{"candidate_id": "A", "verdict": "survive", "family": "calendar", "key": "september_sp500"},
+               {"candidate_id": "B", "verdict": "dead", "family": "rebound", "key": "x"},
+               {"candidate_id": "C", "verdict": "survive", "family": "calendar", "key": "y"}]
+    out = kb.export_json(verdicts, results, members=set(), today="2026-06-29", write=False, path=p)
+    assert set(out) >= {"summary", "members", "queue", "movements", "history", "anchor_common", "days_since_anchor", "caveat"}
+    # queue = verdict=='survive' ∧ 未在库（与 oos_status 无关）→ A 和 C；B 是 dead 不进
+    assert {q["key"] for q in out["queue"]} == {"september_sp500", "y"}
+    assert out["summary"]["queue"] == 2 and out["summary"]["in_kb"] == 0
+    assert out["summary"]["confirmed"] == 1      # C 的 oos_status=confirmed → movements/summary 计 1
+    assert {m["key"] for m in out["movements"]} == {"y"}   # 只有非 pending 的进 movements
+    assert "未到可判" in out["caveat"] and "非荐股" in out["caveat"]
+    assert out["anchor_common"] == "2020-01-01" and out["days_since_anchor"] > 0
+
+
+def test_export_json_members_and_history(tmp_path):
+    p = tmp_path / "kb.csv"
+    kb._append([kb._row("2026-07-01", _v("A", og.CONFIRMED, key="golden_cross_sp500"), kb.PROMOTE, "t")], p)
+    verdicts = [_v("A", og.NEUTRAL, key="golden_cross_sp500")]
+    results = [{"candidate_id": "A", "verdict": "survive", "family": "regime", "key": "golden_cross_sp500"}]
+    out = kb.export_json(verdicts, results, members={"A"}, today="2026-08-01", write=False, path=p)
+    assert out["summary"]["in_kb"] == 1
+    assert [m["key"] for m in out["members"]] == ["golden_cross_sp500"]
+    assert out["members"][0]["since"] == "2026-07-01"     # 取最后一次 promote 日
+    assert len(out["history"]) == 1 and out["history"][0]["action"] == kb.PROMOTE

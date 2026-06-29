@@ -356,6 +356,26 @@ except Exception as e:
     errors.append(f"kb_ledger 检查失败: {e}")
     print(f"  ✗ kb_ledger 检查失败: {e}")
 
+# 3l3d. 自生长 P-D:知识库前端数据 knowledge_base.json 形状(顶层键全·summary 全·caveat 诚实框)。存在才查、缺失不致命。
+#        诚实纪律:展示"样本外确认/晋升"的页面必须带"未到可判=数据不够、非荐股"的认账口径(同 insider/picks)。
+try:
+    kbj_path = WEB_DIR / "knowledge_base.json"
+    if kbj_path.exists():
+        with open(kbj_path, encoding="utf-8") as fh:
+            kbj = json.load(fh)
+        s = kbj.get("summary", {})
+        ok = (isinstance(s, dict)
+              and all(k in s for k in ("in_kb", "queue", "confirmed", "overturned", "pending"))
+              and all(k in kbj for k in ("members", "queue", "history", "anchor_common"))
+              and isinstance(kbj.get("queue"), list))
+        check(ok, f"knowledge_base.json 形状正常（在库 {s.get('in_kb')}·排队 {s.get('queue')}·已盯 {kbj.get('days_since_anchor')} 天）")
+        cav = kbj.get("caveat", "")
+        check("未到可判" in cav and "非荐股" in cav,
+              "knowledge_base.json caveat 含未到可判+非荐股诚实框")
+except Exception as e:
+    errors.append(f"knowledge_base.json 形状检查失败: {e}")
+    print(f"  ✗ knowledge_base.json 形状检查失败: {e}")
+
 # 3l4. 内部人买入前向计分形状(track_record 全/recent 是表/benchmark=SPY。存在才查、缺失不致命)
 #       诚实纪律：聪明钱前向计分页必须带"非荐股 + 前向计分"免责框（敢预测就敢认账=护城河，
 #       同 overreaction 强制 recent.p_value 的逻辑：方向性/跟单性产物不许丢掉认账口径）。
