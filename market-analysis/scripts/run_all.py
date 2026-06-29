@@ -72,12 +72,14 @@ steps = [
     ("LLM大白话日读(出格)", "llm_daily_read.py"),   # 把 composite_read 真因子喂 Gemini→一段人话解读;须在 composite_read 后;无 GEMINI_API_KEY 则静默跳过;喂真数据防瞎编、带计分
     ("BTC动量→纳指回测(出格)", "btc_nasdaq_backtest.py"),  # 红线审计🟡#1:唯一穿过FDR的方向规律,诚实回测(条件分布/带成本overlay/多体制/计分);读 combined_prices,独立审 GO-WITH-FIXES已修
     ("体制→前向分布(出格)", "regime_forward.py"),   # 红线审计🟡#2:倒挂/VIX/信用利差→SP500前向收益分布(重标独立事件段);读 combined_prices,描述性
+    ("预FOMC漂移事件研究(出格)", "fomc_study.py"),   # Lucca-Moench 先验:FOMC公告前1交易日SP500偏强?块自助 p+逐十年(2010s真→2020s反转);读SP500_long+硬编码FOMC日期;探索性未入FDR池;不入light
     ("内部人买入取数(SEC Form4)", "fetch_insider.py"),  # 抓近期开市买入P写insider.json;SEC daily-index,需 SEC_UA_CONTACT(secret);SEC失败静默退0不阻断;不入light(日更一次即可)
     ("内部人买入→前向计分(出格)", "insider_signal.py"),  # 跟内部人买的诚实前向公开计分:append notable买入+到期vs SPY自动结算;须在 fetch_insider 后;读yfinance(结算出错不阻断);不入light
     ("荐股→前向计分vsQQQ(出格)", "pick_ledger.py"),  # outlook看好/看淡进append-only账本+满20交易日vs QQQ自动结算(看好命中=跑赢/看淡命中=跑输);须在outlook后;读yfinance(结算出错不阻断);不入light
     ("公开计分/校准卡(吸收)", "scorecard.py"),   # 4站调研吸收:汇 prediction_log/composite/tipjar + walk_forward OOS校准成公开战绩卡(按置信分桶看实际命中=护城河);须在 track_predictions/composite_read/walk_forward 后
     ("证据库总览(吸收)", "evidence_ledger.py"),   # 把已测规律族汇成单一诚实总览(每族 scope+证据+裁决+详情链接·没证据不进库);须在 autodiscovery/placebo/btc/regime 后
     ("门4样本外→知识库晋升降级(自生长P-C)", "knowledge_base.py"),  # OOS门4(oos_gate)只认注册锚后数据:survive∧confirmed→晋升/在库∧翻盘→降级;append-only单调写kb_ledger;须在autodiscovery+candidate_registry后;不入light;Opus双审GO(B1/S1已修);今日全pending=0晋升(边跑边攒约1月出首批)
+    ("防闪烁稳定度(自生长P-B)", "flicker.py"),   # 读autodiscovery_log前向史:抓在FDR边界来回横跳的脆弱候选+诚实标注"裁决稳定≠独立确认(自相关)";纯描述不引新统计;须在autodiscovery后;不入light
     ("发布前自检",         "verify_output.py"),   # 失败则终止，不发布坏数据
 ]
 

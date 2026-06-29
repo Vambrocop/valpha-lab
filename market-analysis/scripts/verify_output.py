@@ -376,6 +376,41 @@ except Exception as e:
     errors.append(f"knowledge_base.json 形状检查失败: {e}")
     print(f"  ✗ knowledge_base.json 形状检查失败: {e}")
 
+# 3l3e. 自生长 P-B:防闪烁 flicker.json(顶层键全·诚实框=自相关≠独立确认)。存在才查、缺失不致命。
+#        诚实纪律:稳定度页绝不能让"裁决稳定 N 天"被当成 N 次独立确认——必须明写自相关、指向门4 OOS。
+try:
+    fk_path = WEB_DIR / "flicker.json"
+    if fk_path.exists():
+        with open(fk_path, encoding="utf-8") as fh:
+            fk = json.load(fh)
+        ok = (all(k in fk for k in ("n_snapshots", "summary", "candidates", "caveat"))
+              and isinstance(fk.get("candidates"), list))
+        check(ok, f"flicker.json 形状正常（快照 {fk.get('n_snapshots')}·边界闪烁 {fk.get('summary', {}).get('n_boundary_flicker')}）")
+        cav = fk.get("caveat", "")
+        check(("自相关" in cav or "独立确认" in cav) and "非荐股" in cav,
+              "flicker.json caveat 含'自相关≠独立确认'+非荐股诚实框")
+except Exception as e:
+    errors.append(f"flicker.json 形状检查失败: {e}")
+    print(f"  ✗ flicker.json 形状检查失败: {e}")
+
+# 3l3f. 预FOMC漂移研究 fomc_study.json(顶层键全·诚实框=探索性+未经FDR+非荐股)。存在才查、缺失不致命。
+#        诚实纪律:出格事件研究必须标"探索性·未入FDR池·非荐股"，且 verdict 不许把不显著说成显著。
+try:
+    fm_path = WEB_DIR / "fomc_study.json"
+    if fm_path.exists():
+        with open(fm_path, encoding="utf-8") as fh:
+            fm = json.load(fh)
+        ok = (all(k in fm for k in ("overall", "decades", "verdict", "caveat"))
+              and isinstance(fm.get("decades"), list)
+              and isinstance(fm.get("overall"), dict))
+        check(ok, f"fomc_study.json 形状正常（n={fm.get('n_fomc_days')}·{len(fm.get('decades', []))} 个十年）")
+        cav = fm.get("caveat", "")
+        check("非荐股" in cav and "FDR" in cav,
+              "fomc_study.json caveat 含探索性+未经FDR+非荐股诚实框")
+except Exception as e:
+    errors.append(f"fomc_study.json 形状检查失败: {e}")
+    print(f"  ✗ fomc_study.json 形状检查失败: {e}")
+
 # 3l4. 内部人买入前向计分形状(track_record 全/recent 是表/benchmark=SPY。存在才查、缺失不致命)
 #       诚实纪律：聪明钱前向计分页必须带"非荐股 + 前向计分"免责框（敢预测就敢认账=护城河，
 #       同 overreaction 强制 recent.p_value 的逻辑：方向性/跟单性产物不许丢掉认账口径）。
