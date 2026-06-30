@@ -1,5 +1,5 @@
 {
-  "generated": "2026-06-30T01:22:19Z",
+  "generated": "2026-06-30T01:47:08Z",
   "method": "自动发现 Phase 1b：预注册有限候选(日历/反弹/因子)各路由到真统计算 p，经 quality_gate 双栏 BY-FDR(族内+跨族)+三态裁决。全部候选进分母、禁预筛、固定种子。",
   "caveat": "存活≠未来重演≠可交易；现代已淡=全段过FDR但现代测不到(疑被套利)；检验力不足=样本太小不下结论。因子族 FDR 为**无向双侧**(只问'有无可测边际'、不含方向判断，与 factor_pruning 的方向门控透镜口径不同)。门4样本外待接入。探索性，非预测、非荐股。",
   "q": 0.1,
@@ -3099,72 +3099,6 @@
       "reason": "未过跨族 BY-FDR"
     },
     {
-      "candidate_id": "cal_ba8471031e",
-      "family": "calendar",
-      "key": "pre_fomc_sp500",
-      "p": 0.160839,
-      "recent_p": 0.165834,
-      "recent_powered": true,
-      "windows": [
-        {
-          "label": "完整",
-          "p": 0.148,
-          "n": 24736,
-          "up_pct": 54,
-          "base_pct": 52
-        },
-        {
-          "label": "2000后",
-          "p": 0.144,
-          "n": 6659,
-          "up_pct": 54,
-          "base_pct": 54
-        },
-        {
-          "label": "2021后",
-          "p": 0.629,
-          "n": 1375,
-          "up_pct": 40,
-          "base_pct": 54
-        },
-        {
-          "label": "近1年",
-          "p": null,
-          "n": 252
-        }
-      ],
-      "decades": [
-        {
-          "decade": "2000s",
-          "up_pct": 52,
-          "base_pct": 52,
-          "diff_pp": 0.3,
-          "n": 80
-        },
-        {
-          "decade": "2010s",
-          "up_pct": 62,
-          "base_pct": 55,
-          "diff_pp": 7.7,
-          "n": 80
-        },
-        {
-          "decade": "2020s",
-          "up_pct": 44,
-          "base_pct": 54,
-          "diff_pp": -10.7,
-          "n": 48
-        }
-      ],
-      "effect": "触发组上涨率 vs 基率",
-      "survive_cross": false,
-      "survive_cross_bh": false,
-      "survive_family": false,
-      "modern_status": "现代无边际",
-      "verdict": "dead",
-      "reason": "未过跨族 BY-FDR"
-    },
-    {
       "candidate_id": "cal_bbcc723bdf",
       "family": "calendar",
       "key": "decade_digit_sp500",
@@ -3244,6 +3178,74 @@
         }
       ],
       "effect": "因子为真时20日上涨率 vs 基率",
+      "survive_cross": false,
+      "survive_cross_bh": false,
+      "survive_family": false,
+      "modern_status": "现代无边际",
+      "verdict": "dead",
+      "reason": "未过跨族 BY-FDR"
+    },
+    {
+      "candidate_id": "cal_ba8471031e",
+      "family": "calendar",
+      "key": "pre_fomc_sp500",
+      "p": 0.171828,
+      "recent_p": 0.184815,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.158,
+          "n": 24736,
+          "up_pct": 54,
+          "base_pct": 52
+        },
+        {
+          "label": "2000后",
+          "p": 0.157,
+          "n": 6659,
+          "up_pct": 54,
+          "base_pct": 54
+        },
+        {
+          "label": "2021后",
+          "p": 0.646,
+          "n": 1375,
+          "up_pct": 41,
+          "base_pct": 54
+        },
+        {
+          "label": "近1年",
+          "p": 0.748,
+          "n": 252,
+          "up_pct": 38,
+          "base_pct": 57
+        }
+      ],
+      "decades": [
+        {
+          "decade": "2000s",
+          "up_pct": 52,
+          "base_pct": 52,
+          "diff_pp": 0.3,
+          "n": 80
+        },
+        {
+          "decade": "2010s",
+          "up_pct": 62,
+          "base_pct": 55,
+          "diff_pp": 7.7,
+          "n": 80
+        },
+        {
+          "decade": "2020s",
+          "up_pct": 44,
+          "base_pct": 54,
+          "diff_pp": -10.2,
+          "n": 52
+        }
+      ],
+      "effect": "触发组上涨率 vs 基率",
       "survive_cross": false,
       "survive_cross_bh": false,
       "survive_family": false,
@@ -4451,72 +4453,6 @@
       "reason": "未过跨族 BY-FDR"
     },
     {
-      "candidate_id": "cal_6f4b839635",
-      "family": "calendar",
-      "key": "pre_fomc_nasdaq",
-      "p": 0.285714,
-      "recent_p": 0.266733,
-      "recent_powered": true,
-      "windows": [
-        {
-          "label": "完整",
-          "p": 0.284,
-          "n": 13962,
-          "up_pct": 55,
-          "base_pct": 56
-        },
-        {
-          "label": "2000后",
-          "p": 0.279,
-          "n": 6659,
-          "up_pct": 55,
-          "base_pct": 54
-        },
-        {
-          "label": "2021后",
-          "p": 0.643,
-          "n": 1375,
-          "up_pct": 50,
-          "base_pct": 55
-        },
-        {
-          "label": "近1年",
-          "p": null,
-          "n": 252
-        }
-      ],
-      "decades": [
-        {
-          "decade": "2000s",
-          "up_pct": 54,
-          "base_pct": 52,
-          "diff_pp": 1.7,
-          "n": 80
-        },
-        {
-          "decade": "2010s",
-          "up_pct": 57,
-          "base_pct": 56,
-          "diff_pp": 1.5,
-          "n": 80
-        },
-        {
-          "decade": "2020s",
-          "up_pct": 54,
-          "base_pct": 56,
-          "diff_pp": -1.7,
-          "n": 48
-        }
-      ],
-      "effect": "触发组上涨率 vs 基率",
-      "survive_cross": false,
-      "survive_cross_bh": false,
-      "survive_family": false,
-      "modern_status": "现代无边际",
-      "verdict": "dead",
-      "reason": "未过跨族 BY-FDR"
-    },
-    {
       "candidate_id": "cal_ec09c00a99",
       "family": "calendar",
       "key": "presidential_cycle_sp500",
@@ -4553,6 +4489,74 @@
       "modern_status": "现代检验力不足",
       "verdict": "inconclusive",
       "reason": "现代段检验力不足"
+    },
+    {
+      "candidate_id": "cal_6f4b839635",
+      "family": "calendar",
+      "key": "pre_fomc_nasdaq",
+      "p": 0.302697,
+      "recent_p": 0.277722,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.31,
+          "n": 13962,
+          "up_pct": 55,
+          "base_pct": 56
+        },
+        {
+          "label": "2000后",
+          "p": 0.287,
+          "n": 6659,
+          "up_pct": 55,
+          "base_pct": 54
+        },
+        {
+          "label": "2021后",
+          "p": 0.659,
+          "n": 1375,
+          "up_pct": 50,
+          "base_pct": 55
+        },
+        {
+          "label": "近1年",
+          "p": 0.616,
+          "n": 252,
+          "up_pct": 50,
+          "base_pct": 59
+        }
+      ],
+      "decades": [
+        {
+          "decade": "2000s",
+          "up_pct": 54,
+          "base_pct": 52,
+          "diff_pp": 1.7,
+          "n": 80
+        },
+        {
+          "decade": "2010s",
+          "up_pct": 57,
+          "base_pct": 56,
+          "diff_pp": 1.5,
+          "n": 80
+        },
+        {
+          "decade": "2020s",
+          "up_pct": 54,
+          "base_pct": 56,
+          "diff_pp": -2.1,
+          "n": 52
+        }
+      ],
+      "effect": "触发组上涨率 vs 基率",
+      "survive_cross": false,
+      "survive_cross_bh": false,
+      "survive_family": false,
+      "modern_status": "现代无边际",
+      "verdict": "dead",
+      "reason": "未过跨族 BY-FDR"
     },
     {
       "candidate_id": "cal_2e5f17d421",
