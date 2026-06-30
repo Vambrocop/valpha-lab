@@ -5,9 +5,12 @@ Source: Federal Reserve Board FOMC meeting calendars, publicly available at
   and archived meeting schedules at
   https://www.federalreserve.gov/monetarypolicy/fomc_historical.htm
 
-Coverage: 2000–2025 (approximately 8 scheduled meetings per year).
+Coverage: 2000–2026 (approximately 8 scheduled meetings per year).
   The dates listed are ANNOUNCEMENT days — the second day of each 2-day meeting
   (or the single day for older single-day meetings).
+  2026 dates were transcribed from the live Fed FOMC calendar on 2026-06-30 (all fall on
+  Wednesday — the FOMC announcement-day signature — cross-checking transcription). Per Fed
+  convention, future meetings are "tentative until confirmed at the preceding meeting".
 
 IMPORTANT — HONESTY POLICY:
   These dates are transcribed from public Federal Reserve records.
@@ -263,15 +266,26 @@ FOMC_DATES = [
     "2025-09-17",
     "2025-10-29",
     "2025-12-10",
+    # 2026 (8 meetings — 抓自 Fed 官方 fomccalendars.htm·2026-06-30 核对·全为周三=公告日特征;
+    #        Fed 惯例:未来会议"在前一次会议确认前为暂定",故 2026 视作已公布·暂定。门4 OOS 的真正前向
+    #        样本就靠 H2 这几场(锚 2026-06-30 之后)累积。)
+    "2026-01-28",
+    "2026-03-18",
+    "2026-04-29",
+    "2026-06-17",
+    "2026-07-29",
+    "2026-09-16",
+    "2026-10-28",
+    "2026-12-09",
 ]
 
 
 def load_fomc_dates():
     """Return sorted list of pandas.Timestamp for scheduled FOMC announcement days.
 
-    Coverage: 2000-01-01 through 2025-12-31 (approximately 8 meetings/year = ~208 dates).
+    Coverage: 2000-01-01 through 2026-12-31 (approximately 8 meetings/year = ~216 dates).
     Emergency/inter-meeting rate changes are excluded — only scheduled meeting dates.
-    Source: Federal Reserve FOMC historical calendars (see module docstring).
+    Source: Federal Reserve FOMC historical + current calendars (see module docstring).
     """
     return sorted(pd.Timestamp(d) for d in FOMC_DATES)
 
