@@ -75,6 +75,14 @@ def _calendar_oos(cand, anchor):
         return _result(cand, anchor, PENDING, note="全样本不足")
     vf, lf, _idx, _stat, directional = full
     full_sign = _sign(vf[lf == 1].mean() - vf[lf == 0].mean()) if directional else None
+    # S3:基于硬编码日期表的效应(pre_fomc)——若表里最后一个会议日 <= 锚点，锚后区间**永远**不会有触发，
+    #     是"结构性饥饿"(需扩表)，而非"引擎刚起步样本少"。**提前**明说，否则永久 pending 会被误读为引擎卡住。
+    if eff == "pre_fomc":
+        from fomc_dates import load_fomc_dates
+        last = max(load_fomc_dates())
+        if last <= pd.Timestamp(anchor):
+            return _result(cand, anchor, PENDING, full_sign=full_sign,
+                           note=f"锚后无已登记 FOMC 会议(fomc_dates 止于 {last.date()}·需补未来日程,OOS 才会累积)")
     oos = ad._calendar_arrays(eff, index, floor=anchor)         # 命门:floor 输入,月/年频无边界泄漏
     if oos is None:
         return _result(cand, anchor, PENDING, full_sign=full_sign, note="锚后样本不足(<1000日)")

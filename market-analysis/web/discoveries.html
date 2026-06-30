@@ -156,16 +156,16 @@ const I18N={
   asof:{zh:"数据日",en:"as of"},
   ledger:{zh:"裁决账本追踪",en:"verdict ledger"},days:{zh:"天(累积中,供日后衰减追踪)",en:"d (accruing for decay tracking)"},
   // ── ⑦ 单独事件研究（未入FDR池·方向性线索保留） ──
-  hStudy:{zh:"🔬 单独事件研究 · 未入 FDR 池",en:"🔬 Standalone event studies · not in the FDR pool"},
-  sStudy:{zh:"这些是单独测的学术先验，还没并进上面的 FDR 大池。<b>不显著 ≠ 没价值</b>：只要<b>概率方向偏好</b>，也作为「方向性线索」保留在这（标清未达统计显著），不当死的埋掉。",
-          en:"Standalone academic priors, not yet pooled into the FDR engine above. <b>Not significant ≠ worthless</b>: as long as the <b>probability leans the right way</b>, we keep it here as a 'directional hint' (clearly marked not statistically significant), rather than burying it."},
+  hStudy:{zh:"🔬 事件研究 · 详细逐十年视角",en:"🔬 Event study · detailed per-decade view"},
+  sStudy:{zh:"这条学术先验<b>既已并入上面的 FDR 大池</b>（严格裁决·当前未过校正），这里再给一张详细卡：逐十年看它哪年代灵。<b>不显著 ≠ 没价值</b>：概率方向偏好也作「方向性线索」保留，不当死的埋掉。注意口径不同——这张卡看<b>上涨率</b>，FDR 池测<b>平均收益</b>(单边)，同一标签、不同统计量，刻意如此。",
+          en:"This academic prior is <b>now also pooled into the FDR engine above</b> (rigorous verdict · currently doesn't survive correction); here is a detailed card showing which decades it worked. <b>Not significant ≠ worthless</b>: a probability lean is kept as a 'directional hint', not buried. Note the two views use different statistics — this card shows <b>up-rate</b>, the FDR pool tests one-sided <b>mean return</b>; same label, different statistic, by design."},
   studyFomc:{zh:"预 FOMC 漂移（会前一天偏强？）",en:"Pre-FOMC drift (stronger the day before?)"},
   studyHintSig:{zh:"方向性线索·概率偏好",en:"directional hint · leans positive"},
   studyHintFlat:{zh:"无方向·样本不足",en:"no lean · underpowered"},
   studyVsBase:{zh:"会前一天上涨率",en:"pre-FOMC up-rate"},studyBase:{zh:"平时",en:"baseline"},
   studyDecBy:{zh:"逐十年（▲那年代偏好·▼反转）",en:"by decade (▲leaned up · ▼reversed)"},
   studyNotSig:{zh:"统计上未达显著（分不清是否运气），仅作方向性线索保留",en:"not statistically significant (can't rule out luck); kept only as a directional hint"},
-  studySrc:{zh:"来源：Lucca-Moench 2015 先验 · 计划会议日 · 未入FDR池 · 非荐股",en:"Source: Lucca-Moench 2015 prior · scheduled meetings · not in FDR pool · not advice"},
+  studySrc:{zh:"来源：Lucca-Moench 2015 先验 · 计划会议日 · 已并入FDR池(当前未过校正) · 非荐股",en:"Source: Lucca-Moench 2015 prior · scheduled meetings · now in the FDR pool (doesn't survive yet) · not advice"},
   studyEmpty:{zh:"暂无单独研究数据。",en:"No standalone study data yet."}
 };
 
@@ -201,6 +201,8 @@ const PLAIN_MAP={
   turn_of_month_nasdaq:{zh:"月末月初效应·纳指（收益集中月界）",en:"Turn-of-month · Nasdaq (returns cluster at month boundaries)"},
   golden_cross_sp500:{zh:"金叉·标普500（50日均线上穿200日线）",en:"Golden cross · S&P 500 (50-day above 200-day MA)"},
   golden_cross_nasdaq:{zh:"金叉·纳指（50日均线上穿200日线）",en:"Golden cross · Nasdaq (50-day above 200-day MA)"},
+  pre_fomc_sp500:{zh:"预FOMC漂移·标普500（会前一天偏强？）",en:"Pre-FOMC drift · S&P 500 (stronger the day before?)"},
+  pre_fomc_nasdaq:{zh:"预FOMC漂移·纳指（会前一天偏强？）",en:"Pre-FOMC drift · Nasdaq (stronger the day before?)"},
   dow_sp500:{zh:"星期几效应·标普500",en:"Day-of-week effect · S&P 500"},
   dow_nasdaq:{zh:"星期几效应·纳指",en:"Day-of-week effect · Nasdaq"},
   month_sp500:{zh:"月份效应·标普500",en:"Month-of-year effect · S&P 500"},

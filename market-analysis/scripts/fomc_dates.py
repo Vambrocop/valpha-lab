@@ -23,6 +23,7 @@ IMPORTANT — HONESTY POLICY:
   scheduled 24h window, not surprise cut windows).
 """
 
+import numpy as np
 import pandas as pd
 
 # Scheduled FOMC announcement dates: the decision/announcement day.
@@ -273,3 +274,46 @@ def load_fomc_dates():
     Source: Federal Reserve FOMC historical calendars (see module docstring).
     """
     return sorted(pd.Timestamp(d) for d in FOMC_DATES)
+
+
+def pre_fomc_mask(index, pre_window=1, dates=None):
+    """Boolean np.array aligned to `index` (a sorted DatetimeIndex of trading days),
+    True on the `pre_window` trading day(s) immediately BEFORE each scheduled FOMC
+    announcement. SINGLE SOURCE OF TRUTH for "is this a pre-FOMC day" — used by both
+    the standalone study (fomc_study) and the FDR candidate (autodiscovery), so the two
+    can never drift on the label definition.
+
+    命门-safe mapping (defends an append-only ledger + OOS anchor against silent mislabel):
+      - `pos = searchsorted(arr, fd, "left")` → first index date >= fd. The pre-FOMC days
+        are positions [pos-pre_window, pos-1], i.e. strictly BEFORE the announcement.
+      - GUARD: the announcement day itself must never be marked. We require the rightmost
+        marked position `pos-1` to satisfy `arr[pos-1] < fd`. (Always true for "left", but
+        asserted explicitly so a future switch to "right" or a degenerate index can't
+        silently contaminate the candidate with announcement-day returns.)
+      - A FOMC date at/before the index start (`pos-pre_window < 0`) is skipped (no prior
+        trading day to mark).
+      - A FOMC date absent from `index` (holiday/data gap) maps to the last trading day(s)
+        before it — still strictly before the announcement, so it cannot mislabel.
+    Returns (mask, n_matched). Changing `pre_window` changes the label → in the candidate
+    it is FIXED at 1 (any other value would be a new candidate_id / new OOS anchor).
+    """
+    idx = pd.DatetimeIndex(index)
+    assert idx.is_monotonic_increasing, "pre_fomc_mask 需升序索引(searchsorted 前提)"   # 守命门:单一标签源不被乱序调用者破坏
+    arr = idx.values                                  # datetime64[ns], ascending (asserted)
+    mask = np.zeros(len(idx), dtype=bool)
+    n_matched = 0
+    n = len(arr)
+    for fd in (dates if dates is not None else load_fomc_dates()):
+        fd64 = np.datetime64(fd, "ns")
+        pos = int(np.searchsorted(arr, fd64, side="left"))   # first arr >= fd
+        if pos >= n:
+            continue                                  # FOMC date is after the series end → no valid
+            #                                           pre-FOMC day here (don't mark the last bar).
+        lo = pos - pre_window
+        if lo < 0:
+            continue                                  # not enough prior trading days (index start)
+        if not (arr[pos - 1] < fd64):                 # GUARD: never mark the announcement day itself
+            continue
+        mask[lo:pos] = True
+        n_matched += 1
+    return mask, n_matched

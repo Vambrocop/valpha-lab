@@ -38,33 +38,8 @@ if str(_SCRIPTS) not in sys.path:
 
 from placebo_test import load_sp500_daily
 from walk_forward import block_bootstrap_diff
-from fomc_dates import load_fomc_dates
+from fomc_dates import load_fomc_dates, pre_fomc_mask   # pre_fomc_mask = single source of truth for the label
 from util_io import write_json
-
-
-def _map_pre_fomc_days(sp_index, fomc_timestamps, pre_window=1):
-    """For each FOMC date, find the prior `pre_window` trading day(s) in sp_index.
-
-    Returns a set of Timestamps that are pre-FOMC trading days.
-    FOMC dates that fall before the SP500 series starts are silently skipped.
-    """
-    sp_dates = pd.DatetimeIndex(sp_index)
-    sp_sorted = sp_dates.sort_values()
-    # Build a sorted array for searchsorted
-    sp_arr = sp_sorted.values  # numpy datetime64
-
-    pre_fomc_set = set()
-    matched = 0
-    for fd in fomc_timestamps:
-        fd_ts = np.datetime64(fd, "ns")
-        # Find position just before fd in the trading calendar
-        pos = int(np.searchsorted(sp_arr, fd_ts, side="left"))
-        # pos == 0 means no prior trading day available
-        target_pos = pos - pre_window
-        if target_pos >= 0:
-            pre_fomc_set.add(pd.Timestamp(sp_arr[target_pos]))
-            matched += 1
-    return pre_fomc_set, matched
 
 
 def _decade_rows_fomc(idx, sel, up):
@@ -118,12 +93,11 @@ def run(write=True, _load_returns=None, _load_fomc=None):
 
     PRE_WINDOW = 1
 
-    # --- Map FOMC dates to prior trading days ---
-    pre_fomc_set, n_matched = _map_pre_fomc_days(sp.index, fomc_ts, pre_window=PRE_WINDOW)
-
-    # Boolean selector aligned to sp index
-    sel = np.array([d in pre_fomc_set for d in sp.index], dtype=bool)
-    y = (sp.values > 0).astype(float)  # up-indicator
+    # --- Map FOMC dates to prior trading days (shared label, no drift vs the FDR candidate) ---
+    sel, n_matched = pre_fomc_mask(sp.index, pre_window=PRE_WINDOW, dates=fomc_ts)
+    y = (sp.values > 0).astype(float)  # up-indicator (this standalone study reports UP-RATE;
+    #   note: the FDR candidate in autodiscovery tests the one-sided MEAN-RETURN prior — same
+    #   label via pre_fomc_mask, different statistic by design. See discoveries.html note.
 
     n_fomc_days = int(sel.sum())
     n_total = len(sp)

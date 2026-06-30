@@ -4,8 +4,9 @@
 candidate_id 稳定唯一；反弹参数只在预声明离散集内（防"扫到显著"）；因子族跟随 BINARY_FEATURES。
 """
 from candidate_space import (
-    enumerate_candidates, calendar_candidates, rebound_candidates, factor_candidates,
-    N_DECLARED, N_CALENDAR, N_REBOUND, N_FACTOR, INDICES, _REB_PCTL, _REB_HOLD,
+    enumerate_candidates, calendar_candidates, rebound_candidates, regime_candidates,
+    factor_candidates, N_DECLARED, N_CALENDAR, N_REBOUND, N_REGIME, N_FACTOR,
+    INDICES, _REB_PCTL, _REB_HOLD, _CAL_FOMC,
 )
 
 
@@ -17,7 +18,15 @@ def test_total_equals_declared():
 def test_family_counts():
     assert len(calendar_candidates()) == N_CALENDAR
     assert len(rebound_candidates()) == N_REBOUND
+    assert len(regime_candidates()) == N_REGIME
     assert len(factor_candidates()) == N_FACTOR
+
+
+def test_pre_fomc_declared_both_indices():
+    # 预 FOMC 漂移候选(2026-06-29 扩声明)：× 2 指数(标普+纳指)，进 calendar 族
+    assert _CAL_FOMC == ("pre_fomc",)
+    keys = {c["key"] for c in calendar_candidates()}
+    assert {"pre_fomc_sp500", "pre_fomc_nasdaq"} <= keys
 
 
 def test_ids_unique():

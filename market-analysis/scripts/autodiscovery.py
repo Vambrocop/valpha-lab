@@ -2,8 +2,8 @@
 
 状态(2026-06-22)：种子稳定(hashlib)、_daily 缓存、每候选带多时间窗(完整/2000后/2021后/近1年)
    实际上涨率 vs 基率。**内建校验通过**：SP500 日历 p 值与 placebo_tests.json 一致。
-   N_DECLARED=74 候选(日历45 含九月/元月/月末月初/机器逐月扫24 + 反弹12 + 价格体制2金叉 + 因子15；
-   2026-06-26 扩声明 append-only)：约 12 跨族存活、7 已淡、其余死/检验力不足——诚实。
+   N_DECLARED=76 候选(日历47 含九月/元月/月末月初/机器逐月扫24/预FOMC漂移2 + 反弹12 + 价格体制2金叉 + 因子15；
+   2026-06-29 预FOMC append-only 扩声明)：约 12 跨族存活、7 已淡、其余死/检验力不足——诚实。
    门4 OOS(oos_gate.py) 与晋升/降级(knowledge_base.py) 已建+审，待接 run_all 写 kb_ledger。
 
 
@@ -64,7 +64,7 @@ WINS = [("完整", None), ("2000后", pd.Timestamp("2000-01-01")),
 
 # 二元方向型日历效应（label==1=先验更高组，单边置换才有意义）→ 给"触发组上涨率 vs 基率"
 _DIR_EFFECTS = ("pre_holiday", "santa", "sell_in_may", "world_cup_year", "term_year3",
-                "september", "january", "turn_of_month")
+                "september", "january", "turn_of_month", "pre_fomc")
 
 
 def _wmask(idx, w):
@@ -191,6 +191,12 @@ def _calendar_arrays(eff, index, floor=None):
         msize = s.groupby(per).transform("size").values        # 该月交易日数
         tom = ((dom < 3) | (dom == msize - 1)).astype(int)     # 前3日 或 最后1日
         vals, lab, idx = ret.values, tom, ret.index; stat = pb.make_dir_diff_stat()
+    elif eff == "pre_fomc":
+        # 预 FOMC 漂移先验(Lucca-Moench 2015)：计划 FOMC 公告前 1 个交易日偏强。
+        # label==1=会前日(先验更高组)→单边(会前 > 其余)，测**平均收益**差。会议日表/标签定义见 fomc_dates.py。
+        from fomc_dates import pre_fomc_mask                # 单一定义,与 fomc_study 同标签不漂移
+        pre, _ = pre_fomc_mask(ret.index, 1)               # pre_window 固定 1（改了=新候选/新锚,见 registry 纪律）
+        vals, lab, idx = ret.values, pre.astype(int), ret.index; stat = pb.make_dir_diff_stat()
     elif eff.startswith("monthof_"):
         # 机器枚举·逐月：该月 vs 其余是否异常。无方向先验 → 两侧(SS_between，方向无关)，谁异常谁自己冒出来。
         M = int(eff.split("_")[1])

@@ -184,6 +184,19 @@ def test_calendar_oos_pending_when_anchor_recent(monkeypatch):
     assert v["oos_status"] == og.PENDING
 
 
+def test_calendar_oos_pre_fomc_structural_pending(monkeypatch):
+    # S3:pre_fomc 锚点晚于 fomc_dates 表末(2025-12-10) → 锚后永远无会议 → 结构性 pending(需扩表),
+    #     note 必须能与"引擎刚起步样本少"区分（明说 fomc_dates 止于…），否则永久 pending 被误读为卡住。
+    import autodiscovery as ad
+    s = _september_series()                                 # 任一 >=1000 日序列,保证全样本可抽取
+    monkeypatch.setattr(ad, "_daily", lambda index: s)
+    cand = {"candidate_id": "cal_prefomc_test", "key": "pre_fomc_sp500", "family": "calendar",
+            "params": {"effect": "pre_fomc", "index": "sp500"}}
+    v = og._calendar_oos(cand, "2026-06-29")                # 真 fomc_dates 末日 2025-12-10 < 锚 → 结构性
+    assert v["oos_status"] == og.PENDING
+    assert "fomc_dates 止于" in v["note"]                    # 结构性饥饿提示(区别于"锚后样本不足")
+
+
 def test_oos_verdict_unregistered_is_pending():
     v = og.oos_verdict(_cand(fam="factor"), anchor=None)
     assert v["oos_status"] == og.PENDING

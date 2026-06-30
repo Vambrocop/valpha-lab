@@ -124,6 +124,41 @@ def _make_sp_series_with_fomc_drift(fomc_dates_list, n_days=500, drift=0.02, see
     return s
 
 
+class TestPreFomcMask:
+    """B2 守卫:pre_fomc_mask 永不标到公告日本身/公告后；缺失会议日/首端优雅处理。命门-safe 标签。"""
+
+    def _idx(self, *dates):
+        return pd.DatetimeIndex([pd.Timestamp(d) for d in dates])
+
+    def test_marks_day_before_when_fomc_present(self):
+        idx = self._idx("2020-01-06", "2020-01-07", "2020-01-08", "2020-01-09")
+        mask, n = fd.pre_fomc_mask(idx, dates=[pd.Timestamp("2020-01-08")])
+        assert n == 1
+        assert list(mask) == [False, True, False, False]   # 标 01-07(会前),不标 01-08(公告日)
+
+    def test_never_marks_announcement_when_fomc_date_absent(self):
+        # 公告日 01-08 不在指数里(假日/缺口) → 标"之前最后一个交易日",绝不标公告日或之后
+        idx = self._idx("2020-01-06", "2020-01-07", "2020-01-09", "2020-01-10")
+        mask, n = fd.pre_fomc_mask(idx, dates=[pd.Timestamp("2020-01-08")])
+        assert n == 1
+        assert list(mask) == [False, True, False, False]   # 标 01-07;01-09(公告后)绝不标
+
+    def test_skips_fomc_before_index_start(self):
+        idx = self._idx("2020-01-06", "2020-01-07", "2020-01-08")
+        mask, n = fd.pre_fomc_mask(idx, dates=[pd.Timestamp("2019-12-01"), pd.Timestamp("2020-01-06")])
+        assert n == 0 and not mask.any()                   # 早于起点 / 首日无前一交易日 → 跳过
+
+    def test_pre_window_2(self):
+        idx = self._idx("2020-01-06", "2020-01-07", "2020-01-08", "2020-01-09", "2020-01-10")
+        mask, n = fd.pre_fomc_mask(idx, pre_window=2, dates=[pd.Timestamp("2020-01-09")])
+        assert list(mask) == [False, True, True, False, False]   # 会前 2 日 = 01-07,01-08
+
+    def test_real_dates_subset_sane(self):
+        idx = pd.bdate_range("2015-01-02", "2016-12-30")   # covers 2015 FOMC dates
+        mask, n = fd.pre_fomc_mask(idx)                     # default = real FOMC dates
+        assert n >= 8 and mask.sum() == n                  # ~8 meetings/yr, each marks 1 prior day
+
+
 class TestFomcStudyShape:
     """Test that run(write=False) returns a dict with expected keys."""
 
