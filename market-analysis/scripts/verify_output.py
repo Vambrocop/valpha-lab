@@ -452,6 +452,25 @@ except Exception as e:
     errors.append(f"picks 形状检查失败: {e}")
     print(f"  ✗ picks 形状检查失败: {e}")
 
+# 3l6. AI 前瞻预测前向计分形状(track_record 全含 by_confidence/latest/recent。存在才查、缺失不致命)
+#       诚实纪律:LLM 预测产物必须带"非投资建议 + 会错 + append 认账"框,且 track_record 含分信心命中(高信心是否真更准)。
+try:
+    pr_path = WEB_DIR / "prediction.json"
+    if pr_path.exists():
+        with open(pr_path, encoding="utf-8") as fh:
+            pr = json.load(fh)
+        tr = pr.get("track_record", {})
+        ok = (isinstance(tr, dict)
+              and all(k in tr for k in ("n_settled", "n_pending", "hit_pct", "by_confidence"))
+              and isinstance(pr.get("recent"), list) and pr.get("symbol") == "SPY")
+        check(ok, f"prediction.json 形状正常（已结算 {tr.get('n_settled')}·挂账 {tr.get('n_pending')}·命中 {tr.get('hit_pct')}%）")
+        cav = pr.get("caveat", "")
+        check("非投资建议" in cav and "会错" in cav and "认账" in cav,
+              "prediction.json caveat 含非投资建议+会错+认账框")
+except Exception as e:
+    errors.append(f"prediction 形状检查失败: {e}")
+    print(f"  ✗ prediction 形状检查失败: {e}")
+
 # 3j. 方法论完整性护栏(automation-first):个股"真规律"(三关全过)必须先经人工审视,
 #     不得自动发布——若 patterns_fdr_real=True 进了已发布 JSON,说明人工停下被绕过 → 拦住发布。
 try:

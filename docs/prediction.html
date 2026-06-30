@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 前瞻 · 公开战绩 · Valpha Lab</title>
+<link rel="stylesheet" href="vp.css">
+<style>
+  body{max-width:760px;margin:0 auto;padding:16px;background:var(--bg,#0d1117);color:var(--fg,#e6edf3);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;line-height:1.6}
+  a.nav{color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px}
+  h1{font-size:1.35rem;margin:10px 0 4px}
+  .lead{color:var(--mut,#8b949e);font-size:.9rem;margin-bottom:14px}
+  .honest{background:var(--surface-2,#1b222c);border:1px solid var(--border,#30363d);border-left:3px solid var(--acc,#58a6ff);
+          border-radius:8px;padding:10px 13px;font-size:.84rem;color:var(--mut,#8b949e);margin:10px 0}
+  .latest{border:1px solid var(--border,#30363d);border-radius:12px;padding:16px;margin:12px 0;background:var(--panel,#161b22)}
+  .dir{font-size:2rem;font-weight:800;line-height:1.1}
+  .badge{display:inline-block;font-size:.72rem;font-weight:700;border-radius:6px;padding:2px 8px;margin-left:8px;vertical-align:middle}
+  .why{font-size:.9rem;color:var(--fg,#e6edf3);margin-top:8px}
+  .meta{font-size:.76rem;color:var(--mut,#8b949e);margin-top:6px}
+  .strip{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  .cell{flex:1 1 92px;background:var(--surface-2,#1b222c);border:1px solid var(--border,#30363d);border-radius:8px;padding:9px 10px;text-align:center}
+  .cv{font-size:1.5rem;font-weight:800;line-height:1.1}
+  .cl{font-size:.72rem;color:var(--mut,#8b949e);margin-top:2px}
+  h2{font-size:1.05rem;margin:20px 0 6px}
+  table{width:100%;border-collapse:collapse;font-size:.82rem}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border,#30363d)}
+  th{color:var(--mut,#8b949e);font-weight:600}
+  .hit{color:#3fb950;font-weight:700}.miss{color:#d29922;font-weight:700}.pend{color:#8b949e}
+  .mut{color:var(--mut,#8b949e);font-size:.78rem;margin-top:16px;border-top:1px solid var(--border,#30363d);padding-top:8px}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}.dir{font-size:1.6rem}.cv{font-size:1.2rem}}
+</style>
+</head>
+<body>
+<a class="nav" href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false">↩ 返回</a>
+<a class="nav" href="index.html">← Valpha Lab</a>
+
+<h1>🔮 AI 前瞻 · 公开战绩</h1>
+<div class="lead">每天让 AI 读我们<b>真算出的市场因子</b>，对标普500（SPY）未来 5 个交易日猜一个方向（偏多/偏空/中性）+ 信心。<b>然后公开记它到底准不准。</b></div>
+<div class="honest" id="honest">加载中…</div>
+
+<div class="latest" id="latest"></div>
+
+<h2>📊 战绩计分牌</h2>
+<div class="strip" id="strip"></div>
+<div class="lead" style="font-size:.82rem" id="confnote"></div>
+
+<h2>🗒️ 近期预测</h2>
+<div id="recent"></div>
+
+<div class="mut" id="src"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const DCLR={"偏多":"#3fb950","偏空":"#d29922","中性":"#8b949e"};
+const CCLR={"高":"#3fb950","中":"#58a6ff","低":"#8b949e"};
+const g=u=>fetch(u,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
+
+function pct(v){return v==null?"—":v+"%";}
+
+function render(d){
+  if(!d){$("honest").textContent="预测数据还没拉到（引擎已就位，正在攒）。";$("latest").innerHTML="";return;}
+  $("honest").textContent=d.caveat||"";
+  // 最新前瞻
+  const L=d.latest;
+  if(L&&L.direction){
+    const dc=DCLR[L.direction]||"#8b949e", cc=CCLR[L.confidence]||"#8b949e";
+    const status=L.settled?(L.hit?`<span class="hit">已结算 · 命中 ✓（${L.ret_pct}%）</span>`:`<span class="miss">已结算 · 未中 ✗（${L.ret_pct}%）</span>`):`<span class="pend">未到期 · 计分中</span>`;
+    $("latest").innerHTML=`<div><span class="dir" style="color:${dc}">${esc(L.direction)}</span>`
+      +`<span class="badge" style="background:${cc}22;color:${cc};border:1px solid ${cc}66">信心 ${esc(L.confidence)}</span></div>`
+      +`<div class="why">${esc(L.reason||"")}</div>`
+      +`<div class="meta">预测日 ${esc(L.pred_date||"—")} · ${status} · 对标 SPY 未来 ${esc(d.hold_td)} 个交易日（±${esc(d.band_pct)}% 内算中性）</div>`;
+  } else { $("latest").innerHTML=`<div class="meta">暂无预测（引擎刚上线，攒数据中）。</div>`; }
+  // 计分牌
+  const tr=d.track_record||{}, bc=tr.by_confidence||{};
+  $("strip").innerHTML=[
+    cell(pct(tr.hit_pct),"总命中率","#3fb950"),
+    cell(tr.n_settled||0,"已结算","var(--fg)"),
+    cell(tr.n_pending||0,"计分中","#58a6ff"),
+    cell(pct((bc["高"]||{}).hit_pct),"高信心命中","#3fb950"),
+    cell(pct((bc["中"]||{}).hit_pct),"中信心命中","#58a6ff"),
+    cell(pct((bc["低"]||{}).hit_pct),"低信心命中","#8b949e")
+  ].join("");
+  $("confnote").innerHTML=`<b>看点：</b>「高信心」是不是真比「低信心」准？三桶随机基线约 33%——${esc(d.verdict||"")}`;
+  // 近期表
+  const rs=(d.recent||[]).filter(r=>r.direction);
+  $("recent").innerHTML = rs.length ? `<table><thead><tr><th>预测日</th><th>方向</th><th>信心</th><th>结果</th></tr></thead><tbody>`
+    + rs.map(r=>{
+        const dc=DCLR[r.direction]||"#8b949e";
+        const res=r.dropped?'<span class="pend">—</span>':r.settled?(r.hit?`<span class="hit">中 ✓ ${r.ret_pct}%</span>`:`<span class="miss">未中 ✗ ${r.ret_pct}%</span>`):'<span class="pend">计分中</span>';
+        return `<tr><td>${esc(r.pred_date)}</td><td style="color:${dc};font-weight:700">${esc(r.direction)}</td><td>${esc(r.confidence)}</td><td>${res}</td></tr>`;
+      }).join("") + `</tbody></table>`
+    : `<div class="meta">还没有预测记录。</div>`;
+  $("src").textContent=d.generated?("数据 "+esc(d.generated.slice(0,10))+" · 模型 "+esc(d.model||"")):"";
+}
+function cell(v,l,clr){return `<div class="cell"><div class="cv" style="color:${clr}">${esc(v)}</div><div class="cl">${esc(l)}</div></div>`;}
+
+(async()=>{
+  const d=await g("prediction.json")||await g("https://vambrocop.github.io/valpha-lab/prediction.json");
+  render(d);
+})();
+</script>
+</body>
+</html>
