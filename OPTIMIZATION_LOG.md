@@ -95,6 +95,15 @@
 
 ## §2 未做 / 待续(什么没做都记)
 
+**🗓️ 2026-06-30 本会话落地(已 push,免得"先查后动"重做)：** 自生长门4 OOS 引擎 + 知识库晋升降级(P-A/P-C·Opus双审GO) · P-D 前端"自生长看得见" · P-B 防闪烁 · 预FOMC漂移研究 → **升进 candidate_space 命门**(双审GO·N_DECLARED 74→76·补2026会议日程) · **opex_week/季末两侧先验**(双审GO·N→80·均 dead) · FX→AUD 真实收益工具(子代理) · **LLM 全活**:日读激活+月报新建(节流)+ **AI 预测**(append-only 公开计分账本+prediction.html+按信心分桶·Opus审GO)·走 `GEMINI_API_KEY` · senate 定性完结历史研究(源停更·见 §4c)。
+
+**🎯 下一步(2026-06-30 排序)：**
+- [ ] **用户 1 步**：GitHub 设 `GEMINI_API_KEY` secret → 日读/周报/月报/AI预测 CI 自动跑(现仅本地跑时更新)。
+- [ ] **"用上"活信号**：把存活规律(九月·标普、金叉·标普)喂进 LLM 日读 / composite / outlook —— 用户反复要的"survivors 得用上",别只躺在发现页。
+- [ ] **P-E 自动提案层**：自生长最后一块(最高风险后门)——在预声明元空间枚举未注册格点→proposals 待审(不算p/不进分母/不上战绩),按 SELF_GROWING_PLAN §4/§7④ 硬门槛 + 双审。
+- [ ] **LLM 展示更显眼**：周报/月报/AI预测在 dashboard/导航露出;确认 weekly 有没有前端面。
+- [ ] **数据卫生体检**：`git ls-files` 查大体积可再生产物是否误提交(§5 待查)。
+
 **个股体检 loop(STOCK_CHECKUP_SPEC.md)——已完成块0–3,余:**
 - [ ] 块4 保形区间(每票 N 日收益区间,给范围不给方向)
 - [ ] 块5 裁决卡 + 进诚实登记簿(每票综合三态卡)
@@ -162,6 +171,7 @@
 - **精简审查一轮(2026-06-16,受 ponytail 极简理念启发)**:扫本程新增代码。**仅 1 处真冗余**——登记簿/坟场/探索区各内联一份相同 fetch-json 助手 → 合为模块级 `_fetchJson`(3→1,7c332c1)。其余候选(market_regime/stock_checkup/overreaction 的分位 `(x<v).mean()*100`、各方法 SP500 加载)**跨模块、各有差异,强行 DRY 增耦合 → 按纪律不动**。**结论:代码本就精简**(既有"不加框架/复用已审 primitive/先测量后优化"的纪律,已达 ponytail 想要的极简效果,无需装该插件)。
 - **event_study 升置换检验 → 否决/缓做(诚实红线,2026-06-19,子代理A 撞线停手)**：`event_study.py:153` 现用参数 t 检验算 `p_value`/`significant`，已嵌进**已发布的 signals.json**。换置换检验会**翻转已发布的 `significant`**(n=2~7 极小样本、厚尾)，属"擅改公开统计结论"，越线。**两个降险事实**：①前端本就**不渲染** event_study 的 significant/裸 p(app-1.js:424 / app-5.js:740 注释"去掉绿红方向色与裸 p")；②跨族 FDR 收的"事件因果"族走的是 **event_causal.json(方法B,已是 block-bootstrap 非参)**，不是这条 t 检验。故 event_study t 检验=遗留**展示型**链路、显著性已被前端隐藏。**结论：保留不动(方案A)**；若将来要透明对照，可加 `p_value_perm` 附加列、不改原字段(方案B,待用户拍)。
 - **CSP meta → no-go(调研结论,2026-06-19,子代理A)**：清点全 10 页——0 外部 CDN(Plotly 同源)、0 内联 `onclick=` 属性，但**每页都有内联 `<script>` + 海量内联 `style=`，且 Plotly 用 `new Function`(刚需 `unsafe-eval`)**。任何能跑的 CSP 必须 `script-src 'unsafe-eval' + 内联`、`style-src 'unsafe-inline'` → **等于没加**(XSS 防护被抵消，而本站本就 0 外部源、收益≈0)。**将来想加的前置**：Plotly 换 strict-CSP bundle(去 unsafe-eval)、内联 script 抽外部 .js、内联 style 迁 style.css/class，**然后浏览器逐条实测**(盲加必白屏)。未写任何 CSP。
+- **参议院「政治钱」实时源 → 搁置(调研结论,2026-06-30)**：原源(timothycarambat senate-stock-watcher)**已停更**(最新交易 2019-12)；house/senate-stock-watcher S3 桶已下线；anderseline 等免费爬虫无干净结构化数据文件。**2026 年免费、无密钥、还更新的国会交易源基本没了。** 现实活源全要钱/key：**Finnhub `congressional-trading`=付费高级档**(免费 key 只覆盖财报日历·congress 返 403·且按代码查非整包)、Quiver/Unusual Whales/FinBrain/AInvest 全付费。**决策**：senate 信号历史结论已是 null(跟议员买≈打平·无 edge)，为没 edge 的信号付费/造脆弱爬虫 ROI 差 → **当"完结历史研究"保留**(fetch_senate/senate_signal docstring 已焊"源停更·完结·故意不进流水线")。**将来若愿付费想复活**：候选 = Finnhub premium / Quiver API / FMP senate 端点 / 自爬 House Clerk XML+PDF(脆弱大工程)。
 - (后续否决决策续记于此)
 
 ## §5 工作流原则(资源 & 数据卫生)
