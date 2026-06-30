@@ -2,8 +2,8 @@
 
 状态(2026-06-22)：种子稳定(hashlib)、_daily 缓存、每候选带多时间窗(完整/2000后/2021后/近1年)
    实际上涨率 vs 基率。**内建校验通过**：SP500 日历 p 值与 placebo_tests.json 一致。
-   N_DECLARED=76 候选(日历47 含九月/元月/月末月初/机器逐月扫24/预FOMC漂移2 + 反弹12 + 价格体制2金叉 + 因子15；
-   2026-06-29 预FOMC append-only 扩声明)：约 12 跨族存活、7 已淡、其余死/检验力不足——诚实。
+   N_DECLARED=80 候选(日历51 含九月/元月/月末月初/机器逐月扫24/预FOMC漂移2/期权到期周·季末两侧4 + 反弹12 + 价格体制2金叉 + 因子15；
+   2026-06-30 期权到期周/季末 append-only 扩声明)：约 12 跨族存活、7 已淡、其余死/检验力不足——诚实。
    门4 OOS(oos_gate.py) 与晋升/降级(knowledge_base.py) 已建+审，待接 run_all 写 kb_ledger。
 
 
@@ -197,6 +197,38 @@ def _calendar_arrays(eff, index, floor=None):
         from fomc_dates import pre_fomc_mask                # 单一定义,与 fomc_study 同标签不漂移
         pre, _ = pre_fomc_mask(ret.index, 1)               # pre_window 固定 1（改了=新候选/新锚,见 registry 纪律）
         vals, lab, idx = ret.values, pre.astype(int), ret.index; stat = pb.make_dir_diff_stat()
+    elif eff == "opex_week":
+        # 期权到期周先验(Stoll-Whaley 等)：每月第3个周五(day in [15,21])那个日历周(周一到周五)活跃度异常。
+        # 无方向共识 → 两侧 make_ssb_stat(2)，不进 _DIR_EFFECTS。
+        import datetime as _dt
+        lab = np.zeros(len(ret), dtype=int)
+        for i, d in enumerate(ret.index):
+            yr, mo = d.year, d.month
+            # 找第3个周五：day_of_month 在 [15,21] 且 weekday==4(周五)
+            third_fri = None
+            for day in range(15, 22):
+                if _dt.date(yr, mo, day).weekday() == 4:
+                    third_fri = _dt.date(yr, mo, day)
+                    break
+            if third_fri is not None:
+                # 整个日历周(周一..周五)：third_fri - 4天(周一) .. third_fri
+                week_mon = third_fri - _dt.timedelta(days=4)
+                d_date = d.date() if hasattr(d, 'date') else _dt.date(d.year, d.month, d.day)
+                if week_mon <= d_date <= third_fri:
+                    lab[i] = 1
+        vals, lab, idx = ret.values, lab, ret.index; stat = pb.make_ssb_stat(2)
+    elif eff == "quarter_end":
+        # 季末窗口先验(窗口粉饰/再平衡)：3/6/9/12月最后3个交易日异常。
+        # 无方向共识 → 两侧 make_ssb_stat(2)，不进 _DIR_EFFECTS。
+        # 注：与 turn_of_month 有意重叠(均预声明·均进 FDR 分母，相关但非 p-hacking)。
+        per = ret.index.to_period("M")
+        s = pd.Series(ret.values, index=ret.index)
+        msize = s.groupby(per).transform("size").values        # 该月交易日数
+        dom = s.groupby(per).cumcount().values                 # 0-based 月内交易日序
+        quarter_months = ret.index.month.isin([3, 6, 9, 12])
+        last3 = (dom >= msize - 3)                             # 最后3个交易日(0-based末尾3)
+        lab = (quarter_months & last3).astype(int)
+        vals, lab, idx = ret.values, lab, ret.index; stat = pb.make_ssb_stat(2)
     elif eff.startswith("monthof_"):
         # 机器枚举·逐月：该月 vs 其余是否异常。无方向先验 → 两侧(SS_between，方向无关)，谁异常谁自己冒出来。
         M = int(eff.split("_")[1])

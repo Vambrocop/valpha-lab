@@ -32,6 +32,10 @@ _CAL_DUAL3 = ("september", "january", "turn_of_month")     # × 2 指数 = 6
 #   美股在计划 FOMC 公告前的交易日历史偏强）。方向先验固定：label==1=会前日(先验更高组)，单边 make_dir_diff_stat
 #   测**平均收益**差（与 fomc_study.py 那张"上涨率"卡同一标签、不同统计量，刻意如此）。会议日表见 fomc_dates.py。
 _CAL_FOMC = ("pre_fomc",)                                   # × 2 指数 = 2
+# 2026-06-30 扩声明（append-only·prior 先于数据）：期权到期周(每月第3个周五那周·Stoll-Whaley 等·活跃度异常)、
+#   季末(3/6/9/12月最后3个交易日·窗口粉饰/再平衡)。二者**无方向共识**→两侧 make_ssb_stat(2)、不进 _DIR_EFFECTS。
+#   quarter_end 与 turn_of_month 有意重叠(均预声明·均进 FDR 分母,相关但非 p-hacking)。
+_CAL_TWOSIDE = ("opex_week", "quarter_end")          # × 2 指数 = 4
 _CAL_ANNUAL = ("decade_digit", "presidential_cycle", "term_year3")  # 年频，标普 only = 3（+任期第3年先验·Hirsch 大选前一年最强）
 # ── 机器枚举：逐月扫（2026-06-26）。无方向先验 → 两侧检验(make_ssb_stat(2))"该月 vs 其余是否异常"，
 #    全 12 月 × 2 指数 = 24 全进 FDR、谁异常谁自己冒出来（这才是"机器主动发现"，非我手挑某月）。
@@ -61,7 +65,7 @@ def _cand(family, key, **params):
 
 def calendar_candidates():
     out = [_cand("calendar", f"{eff}_{idx}", effect=eff, index=idx)
-           for eff in _CAL_DUAL + _CAL_DUAL2 + _CAL_DUAL3 + _CAL_FOMC + _CAL_MONTHSWEEP for idx in INDICES]
+           for eff in _CAL_DUAL + _CAL_DUAL2 + _CAL_DUAL3 + _CAL_FOMC + _CAL_TWOSIDE + _CAL_MONTHSWEEP for idx in INDICES]
     out += [_cand("calendar", f"{eff}_sp500", effect=eff, index="sp500") for eff in _CAL_ANNUAL]
     return out
 
@@ -87,17 +91,17 @@ def enumerate_candidates():
 
 
 # 预声明总数（写死；test 对账，漂移即失败 → 强制有意识更新分母）
-N_CALENDAR = ((len(_CAL_DUAL) + len(_CAL_DUAL2) + len(_CAL_DUAL3) + len(_CAL_FOMC) + len(_CAL_MONTHSWEEP))
-              * len(INDICES) + len(_CAL_ANNUAL))                     # (4+2+3+1+12)*2 + 3 = 44+3 = 47
+N_CALENDAR = ((len(_CAL_DUAL) + len(_CAL_DUAL2) + len(_CAL_DUAL3) + len(_CAL_FOMC) + len(_CAL_TWOSIDE) + len(_CAL_MONTHSWEEP))
+              * len(INDICES) + len(_CAL_ANNUAL))                     # (4+2+3+1+2+12)*2 + 3 = 48+3 = 51
 N_REBOUND = len(_REB_PCTL) * len(_REB_HOLD) * len(INDICES)           # 3*2*2 = 12
 N_REGIME = len(_REGIME) * len(INDICES)                               # 1*2 = 2（金叉 × 2 指数）
 N_FACTOR = 15                                                        # = len(BINARY_FEATURES)，test 核对(每因子1候选)
-N_DECLARED = N_CALENDAR + N_REBOUND + N_REGIME + N_FACTOR            # 47+12+2+15 = 76
+N_DECLARED = N_CALENDAR + N_REBOUND + N_REGIME + N_FACTOR            # 51+12+2+15 = 80
 
 
 if __name__ == "__main__":
     cs = enumerate_candidates()
-    print(f"候选空间 N_DECLARED={N_DECLARED}：日历{N_CALENDAR} + 反弹{N_REBOUND} + 体制{N_REGIME} + 因子{N_FACTOR}")
+    print(f"N_DECLARED={N_DECLARED} 候选空间：日历{N_CALENDAR} + 反弹{N_REBOUND} + 体制{N_REGIME} + 因子{N_FACTOR}")
     print(f"实枚举 {len(cs)}；唯一 candidate_id {len({c['candidate_id'] for c in cs})}")
     for fam in ("calendar", "rebound", "regime", "factor"):
         print(f"  {fam}: {sum(c['family'] == fam for c in cs)}")

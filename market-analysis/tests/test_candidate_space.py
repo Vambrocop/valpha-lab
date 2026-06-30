@@ -6,7 +6,7 @@ candidate_id 稳定唯一；反弹参数只在预声明离散集内（防"扫到
 from candidate_space import (
     enumerate_candidates, calendar_candidates, rebound_candidates, regime_candidates,
     factor_candidates, N_DECLARED, N_CALENDAR, N_REBOUND, N_REGIME, N_FACTOR,
-    INDICES, _REB_PCTL, _REB_HOLD, _CAL_FOMC,
+    INDICES, _REB_PCTL, _REB_HOLD, _CAL_FOMC, _CAL_TWOSIDE,
 )
 
 
@@ -53,6 +53,14 @@ def test_rebound_params_bounded():
     assert {c["params"]["pctl"] for c in reb} == set(_REB_PCTL)
     assert {c["params"]["hold"] for c in reb} == set(_REB_HOLD)
     assert {c["params"]["index"] for c in reb} == set(INDICES)
+
+
+def test_twoside_priors_declared_both_indices():
+    # 期权到期周 + 季末效应(2026-06-30 扩声明)：× 2 指数(标普+纳指)，进 calendar 族，两侧无方向先验
+    from candidate_space import _CAL_TWOSIDE
+    assert _CAL_TWOSIDE == ("opex_week", "quarter_end")
+    keys = {c["key"] for c in calendar_candidates()}
+    assert {"opex_week_sp500", "opex_week_nasdaq", "quarter_end_sp500", "quarter_end_nasdaq"} <= keys
 
 
 def test_every_candidate_has_shape():
