@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valpha USD→AUD 真实收益计算器 · FX-Adjusted Return</title>
+<link rel="stylesheet" href="vp.css">
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--amb:#d29922;--acc:#a371f7}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:16px;max-width:780px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin:12px 0}
+  label{color:var(--mut);font-size:.85rem;display:block;margin-bottom:3px}
+  input[type=number]{background:#0d1117;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:6px 8px;width:150px;font-size:1rem;margin-top:2px}
+  input[type=number]:focus{border-color:var(--acc);outline:none}
+  .row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px}
+  .col{display:flex;flex-direction:column}
+  .hint{font-size:.74rem;color:var(--mut);margin-top:3px;max-width:170px;line-height:1.4}
+  .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin:12px 0}
+  .rcard{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+  .rcard .rc-label{font-size:.78rem;color:var(--mut);margin-bottom:4px}
+  .rcard .rc-val{font-size:1.35rem;font-weight:700}
+  .rcard .rc-pct{font-size:.85rem;color:var(--mut);margin-top:2px}
+  .ok{color:var(--grn)}
+  .bad{color:var(--red)}
+  .neu{color:var(--fg)}
+  .caveat{background:rgba(210,153,34,.1);border:1px solid var(--amb);border-radius:8px;padding:9px 12px;font-size:.82rem;color:#e8c96a;margin:10px 0;line-height:1.55}
+  .scope-note{font-size:.79rem;color:var(--mut);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-top:8px}
+  .explain{font-size:.88rem;color:var(--mut);margin:10px 0 4px;line-height:1.6;padding:10px 12px;background:rgba(163,113,247,.06);border-left:3px solid var(--acc);border-radius:0 6px 6px 0}
+  .mut{color:var(--mut);font-size:.8rem;margin-top:14px;border-top:1px solid var(--border);padding-top:10px}
+  .divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+  .sec-label{font-size:.7rem;font-weight:700;letter-spacing:.5px;color:var(--mut);opacity:.7;text-transform:uppercase;margin:14px 0 6px}
+  .vp-takeaway{font-size:.88rem;color:var(--mut);background:rgba(163,113,247,.06);border:1px solid rgba(163,113,247,.2);border-radius:8px;padding:10px 13px;margin:8px 0 12px;line-height:1.6}
+  details.vp-more summary{font-size:.82rem;color:var(--mut);cursor:pointer;margin-bottom:4px}
+  details.vp-more summary:hover{color:var(--fg)}
+  .bar-wrap{margin:14px 0 8px}
+  .bar-track{height:18px;background:#0d1117;border:1px solid var(--border);border-radius:4px;overflow:hidden;display:flex;margin-top:4px}
+  .bar-seg{height:100%;transition:width .25s}
+  .bar-legend{display:flex;gap:14px;font-size:.76rem;color:var(--mut);margin-top:6px;flex-wrap:wrap}
+  .bar-dot{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
+  @media(max-width:560px){
+    body{padding:12px}
+    h1{font-size:1.15rem}
+    input[type=number]{width:100%;max-width:240px}
+    .rgrid{grid-template-columns:1fr 1fr}
+    .row{gap:14px}
+    .hint{max-width:240px}
+  }
+  @media(max-width:380px){
+    .rgrid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem">← Valpha Lab</a>
+
+<h1>💱 USD→AUD 真实收益计算器</h1>
+
+<div class="vp-takeaway">
+  持有美股的澳洲投资者，<b>真实收益不只看股票涨没涨</b>——汇率同样影响你实际到手的澳元金额。
+  填入买卖价格和当时的 AUD/USD 汇率，这个工具帮你把收益拆成：<b>股票贡献</b> + <b>汇率贡献</b>，告诉你两者各赚了（或亏了）多少。
+</div>
+
+<details class="vp-more">
+  <summary>这是怎么算的？（点开）</summary>
+  <div style="color:var(--mut);line-height:1.6;margin-top:4px;font-size:.84rem">
+    惯例：<b>AUDUSD = 1 澳元能换多少美元</b>（如 0.66 表示 1 AUD = 0.66 USD）。
+    1 美元资产换算成澳元 = USD价值 ÷ AUDUSD汇率。<br><br>
+    <b>三项拆分：</b><br>
+    · 股票收益 = 卖出价 ÷ 买入价 − 1（纯美元）<br>
+    · 汇率贡献 = 买入汇率 ÷ 卖出汇率 − 1（澳元相对美元走弱 → 正数；走强 → 负数）<br>
+    · 真实澳元总收益 = (卖出价÷买入价) × (买入汇率÷卖出汇率) − 1<br><br>
+    总收益 ≈ 股票收益 + 汇率贡献（近似，精确值见上式）。
+  </div>
+</details>
+
+<div class="panel">
+  <div class="sec-label">股票价格（美元）</div>
+  <div class="row">
+    <div class="col">
+      <label id="lbl-entry">买入价 (USD)</label>
+      <input id="usd_entry" type="number" value="100" min="0.0001" step="1" aria-labelledby="lbl-entry">
+    </div>
+    <div class="col">
+      <label id="lbl-exit">卖出价 / 现价 (USD)</label>
+      <input id="usd_exit" type="number" value="120" min="0.0001" step="1" aria-labelledby="lbl-exit">
+    </div>
+  </div>
+
+  <hr class="divider">
+  <div class="sec-label">AUD/USD 汇率（1 澳元 = ? 美元）</div>
+  <div class="row">
+    <div class="col">
+      <label id="lbl-fxe">买入时汇率 (AUDUSD)</label>
+      <input id="fx_entry" type="number" value="0.70" min="0.0001" max="10" step="0.001" aria-labelledby="lbl-fxe">
+      <div class="hint">买入时 1 AUD 值多少 USD，如 0.70</div>
+    </div>
+    <div class="col">
+      <label id="lbl-fxx">卖出时汇率 (AUDUSD)</label>
+      <input id="fx_exit" type="number" value="0.65" min="0.0001" max="10" step="0.001" aria-labelledby="lbl-fxx">
+      <div class="hint">卖出时 1 AUD 值多少 USD，如 0.65</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+  <div class="sec-label">投入澳元（可选）——用于显示绝对盈亏</div>
+  <div class="row">
+    <div class="col">
+      <label id="lbl-audin">投入澳元 A$（填 0 则不显示）</label>
+      <input id="aud_in" type="number" value="10000" min="0" step="1000" aria-labelledby="lbl-audin">
+    </div>
+  </div>
+</div>
+
+<div id="out" role="region" aria-live="polite"></div>
+
+<div class="mut">
+  纯算术工具 · 非投资建议 · 汇率/价格请用你实际成交数据 · 不含佣金/税费/股息。Valpha Lab。
+</div>
+
+<script>
+// ── utils ─────────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// Format a percentage value with sign, 2 decimals
+function fmtPct(n){
+  if(!isFinite(n)) return "—";
+  const sign=n>=0?"+":"";
+  return sign+n.toFixed(2)+"%";
+}
+
+// Format currency (AUD)
+function fmtAUD(n){
+  if(!isFinite(n)) return "—";
+  const sign=n>=0?"+A$":"-A$";
+  return sign+Math.abs(n).toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// Color class for a return value
+function cls(n){
+  if(!isFinite(n)) return "neu";
+  return n>0.0005?"ok":n<-0.0005?"bad":"neu";
+}
+
+// ── core math ─────────────────────────────────────────────────────────────
+// Returns computed object or null on bad input.
+// Convention: AUDUSD = USD per 1 AUD (e.g. 0.66)
+// stock_ret  = usd_exit / usd_entry - 1
+// fx_ret     = fx_entry / fx_exit - 1   (AUD weakens → positive; AUD strengthens → negative)
+// aud_ret    = (usd_exit/usd_entry) * (fx_entry/fx_exit) - 1
+function compute(){
+  const usdE = parseFloat($("usd_entry").value);
+  const usdX = parseFloat($("usd_exit").value);
+  const fxE  = parseFloat($("fx_entry").value);
+  const fxX  = parseFloat($("fx_exit").value);
+  const audIn= parseFloat($("aud_in").value);
+
+  // validate
+  if(!isFinite(usdE)||usdE<=0) return null;
+  if(!isFinite(usdX)||usdX<=0) return null;
+  if(!isFinite(fxE)||fxE<=0)   return null;
+  if(!isFinite(fxX)||fxX<=0)   return null;
+
+  const stockRet = usdX / usdE - 1;         // USD stock return
+  const fxRet    = fxE  / fxX  - 1;         // FX contribution
+  const audRet   = (usdX/usdE)*(fxE/fxX)-1; // true AUD return
+
+  const audIn_clean = (isFinite(audIn)&&audIn>0) ? audIn : null;
+  const audPL = audIn_clean!=null ? audIn_clean * audRet : null;
+
+  return {stockRet, fxRet, audRet, audIn: audIn_clean, audPL, usdE, usdX, fxE, fxX};
+}
+
+// ── explain paragraph ──────────────────────────────────────────────────────
+function buildExplain(r){
+  const stockPct = (r.stockRet*100).toFixed(2);
+  const fxPct    = (r.fxRet*100).toFixed(2);
+  const audPct   = (r.audRet*100).toFixed(2);
+  const fxAbs    = Math.abs(r.fxRet*100).toFixed(2);
+
+  // Direction of AUD vs USD
+  let fxDir, fxEffect;
+  if(Math.abs(r.fxRet)<0.0001){
+    fxDir="汇率没变"; fxEffect="对澳元收益没有影响";
+  } else if(r.fxRet>0){
+    fxDir=`澳元相对美元<b>走弱了</b>`;
+    fxEffect=`帮你多赚了 <b>${fxAbs} 个百分点</b>`;
+  } else {
+    fxDir=`澳元相对美元<b>走强了</b>`;
+    fxEffect=`拖累你损失了 <b>${fxAbs} 个百分点</b>`;
+  }
+
+  // Overall framing
+  const audDir = r.audRet>=0?"盈利":"亏损";
+  const stockSign = r.stockRet>=0?"上涨":"下跌";
+
+  let txt = `你的股票在美元口径<b>${stockSign} ${Math.abs(parseFloat(stockPct)).toFixed(2)}%</b>，`;
+  txt += `${fxDir}，${fxEffect}，`;
+  txt += `所以你的<b>真实澳元收益是 ${audPct}%</b>（${audDir}）。`;
+
+  if(r.audPL!=null){
+    const plStr = r.audPL>=0
+      ? `盈利约 <b class="ok">A$${Math.abs(r.audPL).toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2})}</b>`
+      : `亏损约 <b class="bad">A$${Math.abs(r.audPL).toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2})}</b>`;
+    txt += ` 投入 A$${r.audIn.toLocaleString("en-AU",{minimumFractionDigits:0,maximumFractionDigits:0})} 的话，${plStr}。`;
+  }
+
+  return txt;
+}
+
+// ── bar chart breakdown ────────────────────────────────────────────────────
+// Shows stock vs FX contribution as a stacked/signed bar
+function buildBarHTML(r){
+  const total = Math.abs(r.stockRet)+Math.abs(r.fxRet);
+  if(total<0.00001) return "";
+
+  const stockW = (Math.abs(r.stockRet)/total*100).toFixed(1);
+  const fxW    = (Math.abs(r.fxRet)/total*100).toFixed(1);
+
+  const stockColor = r.stockRet>=0?"rgba(63,185,80,.65)":"rgba(248,81,73,.65)";
+  const fxColor    = r.fxRet>=0?"rgba(163,113,247,.65)":"rgba(210,153,34,.65)";
+
+  return `<div class="bar-wrap">
+    <div style="font-size:.8rem;color:var(--mut);margin-bottom:4px">收益来源拆分（面积比例）</div>
+    <div class="bar-track">
+      <div class="bar-seg" style="width:${stockW}%;background:${stockColor}"></div>
+      <div class="bar-seg" style="width:${fxW}%;background:${fxColor}"></div>
+    </div>
+    <div class="bar-legend">
+      <span><span class="bar-dot" style="background:${stockColor}"></span>股票 ${fmtPct(r.stockRet*100)}</span>
+      <span><span class="bar-dot" style="background:${fxColor}"></span>汇率 ${fmtPct(r.fxRet*100)}</span>
+    </div>
+  </div>`;
+}
+
+// ── render ────────────────────────────────────────────────────────────────
+function calc(){
+  const r=compute();
+  if(!r){
+    $("out").innerHTML=`<div class="panel" style="color:var(--mut);padding:14px">请检查输入：买入价/卖出价/汇率均须为正数（大于 0）。</div>`;
+    return;
+  }
+
+  const stockPctFmt = fmtPct(r.stockRet*100);
+  const fxPctFmt    = fmtPct(r.fxRet*100);
+  const audPctFmt   = fmtPct(r.audRet*100);
+
+  // Cards
+  const cards=[
+    {label:"股票贡献（USD 口径）", val:stockPctFmt, cls:cls(r.stockRet), sub:"纯美元股价变动"},
+    {label:"汇率贡献",             val:fxPctFmt,    cls:cls(r.fxRet),    sub:"AUD走弱→正；走强→负"},
+    {label:"真实澳元总收益",       val:audPctFmt,   cls:cls(r.audRet),   sub:"你实际到手的澳元回报"},
+  ];
+
+  const cardsHTML=cards.map(c=>`
+    <div class="rcard">
+      <div class="rc-label">${esc(c.label)}</div>
+      <div class="rc-val ${esc(c.cls)}">${esc(c.val)}</div>
+      <div class="rc-pct">${esc(c.sub)}</div>
+    </div>`).join("");
+
+  // Optional AUD P&L card
+  let plCard="";
+  if(r.audPL!=null){
+    const plFmt=fmtAUD(r.audPL);
+    plCard=`<div class="rcard">
+      <div class="rc-label">澳元绝对盈亏</div>
+      <div class="rc-val ${cls(r.audPL)}">${esc(plFmt)}</div>
+      <div class="rc-pct">基于投入 A$${r.audIn.toLocaleString("en-AU",{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+    </div>`;
+  }
+
+  const barHTML = buildBarHTML(r);
+  const explainHTML = buildExplain(r);
+
+  $("out").innerHTML=`
+    <div class="panel">
+      <h3 style="margin:.2em 0 6px;font-size:.98rem;color:var(--fg)">【收益拆分】买入 $${esc(String(r.usdE))} → 卖出 $${esc(String(r.usdX))} &nbsp;·&nbsp; 汇率 ${esc(String(r.fxE))} → ${esc(String(r.fxX))}</h3>
+      <div class="rgrid">${cardsHTML}${plCard}</div>
+      ${barHTML}
+      <div class="explain">${explainHTML}</div>
+      <div class="caveat">⚠️ <b>这是算术工具，不是投资建议。</b> 汇率和价格请用你实际成交数据。结果不含佣金、税费（澳洲 CGT）、股息或通胀影响——这些都会改变你最终到手的金额。</div>
+      <div class="scope-note">纯算术：三项公式不含任何模型或预测。随时改动任意输入框，下方立即重算。</div>
+    </div>`;
+}
+
+// ── init: live recompute on any input change ──────────────────────────────
+["usd_entry","usd_exit","fx_entry","fx_exit","aud_in"].forEach(id=>{
+  $(id).addEventListener("input",calc);
+});
+
+// initial render
+calc();
+</script>
+<script src="vp_gloss.js"></script>
+</body>
+</html>
