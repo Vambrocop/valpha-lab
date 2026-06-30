@@ -70,6 +70,7 @@ steps = [
     ("观点/预测(授权出格区)", "outlook.py"),      # 用户授权:直接给纳指方向+个股看好看淡,带免责;读 signals+动量,须在 build_signals 后
     ("综合读数(出格·加权倾向)", "composite_read.py"),  # 把体制/信用/羊群/季节性/信号按写死透明权重合成当下倾向,每日 append composite_log 计分(自升级地基);须在 market_regime+seasonality+build_signals 后
     ("LLM大白话日读(出格)", "llm_daily_read.py"),   # 把 composite_read 真因子喂 Gemini→一段人话解读;须在 composite_read 后;无 GEMINI_API_KEY 则静默跳过;喂真数据防瞎编、带计分
+    ("LLM大白话月报(出格)", "llm_monthly_read.py"),  # 本月综合倾向走势+月末体制→Gemini 翻大白话回顾;月末最后4天才生成、本月只调一次(节流);无 key 静默跳;喂真数据防瞎编、append 月级公开计分
     ("BTC动量→纳指回测(出格)", "btc_nasdaq_backtest.py"),  # 红线审计🟡#1:唯一穿过FDR的方向规律,诚实回测(条件分布/带成本overlay/多体制/计分);读 combined_prices,独立审 GO-WITH-FIXES已修
     ("体制→前向分布(出格)", "regime_forward.py"),   # 红线审计🟡#2:倒挂/VIX/信用利差→SP500前向收益分布(重标独立事件段);读 combined_prices,描述性
     ("预FOMC漂移事件研究(出格)", "fomc_study.py"),   # Lucca-Moench 先验:FOMC公告前1交易日SP500偏强?块自助 p+逐十年(2010s真→2020s反转);读SP500_long+硬编码FOMC日期;探索性未入FDR池;不入light
