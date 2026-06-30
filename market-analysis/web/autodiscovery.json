@@ -1,18 +1,18 @@
 {
-  "generated": "2026-06-30T01:47:08Z",
+  "generated": "2026-06-30T04:19:07Z",
   "method": "自动发现 Phase 1b：预注册有限候选(日历/反弹/因子)各路由到真统计算 p，经 quality_gate 双栏 BY-FDR(族内+跨族)+三态裁决。全部候选进分母、禁预筛、固定种子。",
   "caveat": "存活≠未来重演≠可交易；现代已淡=全段过FDR但现代测不到(疑被套利)；检验力不足=样本太小不下结论。因子族 FDR 为**无向双侧**(只问'有无可测边际'、不含方向判断，与 factor_pruning 的方向门控透镜口径不同)。门4样本外待接入。探索性，非预测、非荐股。",
   "q": 0.1,
-  "n_declared": 76,
+  "n_declared": 80,
   "days_tracked": 6,
   "summary": {
-    "m_total": 76,
+    "m_total": 80,
     "n_survive_cross": 12,
     "n_survive_cross_bh": 21,
     "n_survive_family": 16,
     "n_survive": 5,
     "n_faded": 7,
-    "n_dead": 59,
+    "n_dead": 63,
     "n_inconclusive": 5
   },
   "candidates": [
@@ -3797,6 +3797,44 @@
       "reason": "未过跨族 BY-FDR"
     },
     {
+      "candidate_id": "cal_433ee46bbe",
+      "family": "calendar",
+      "key": "opex_week_sp500",
+      "p": 0.250749,
+      "recent_p": 0.726274,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.246,
+          "n": 24736
+        },
+        {
+          "label": "2000后",
+          "p": 0.737,
+          "n": 6659
+        },
+        {
+          "label": "2021后",
+          "p": 0.172,
+          "n": 1375
+        },
+        {
+          "label": "近1年",
+          "p": 0.641,
+          "n": 252
+        }
+      ],
+      "decades": [],
+      "effect": "组间差异(omnibus·无单一概率)",
+      "survive_cross": false,
+      "survive_cross_bh": false,
+      "survive_family": false,
+      "modern_status": "现代无边际",
+      "verdict": "dead",
+      "reason": "未过跨族 BY-FDR"
+    },
+    {
       "candidate_id": "reb_8055fe6f4a",
       "family": "rebound",
       "key": "p1_h1_nasdaq",
@@ -5825,6 +5863,44 @@
       "reason": "未过跨族 BY-FDR"
     },
     {
+      "candidate_id": "cal_398f5c0e31",
+      "family": "calendar",
+      "key": "opex_week_nasdaq",
+      "p": 0.661339,
+      "recent_p": 0.733267,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.64,
+          "n": 13962
+        },
+        {
+          "label": "2000后",
+          "p": 0.727,
+          "n": 6659
+        },
+        {
+          "label": "2021后",
+          "p": 0.317,
+          "n": 1375
+        },
+        {
+          "label": "近1年",
+          "p": 0.387,
+          "n": 252
+        }
+      ],
+      "decades": [],
+      "effect": "组间差异(omnibus·无单一概率)",
+      "survive_cross": false,
+      "survive_cross_bh": false,
+      "survive_family": false,
+      "modern_status": "现代无边际",
+      "verdict": "dead",
+      "reason": "未过跨族 BY-FDR"
+    },
+    {
       "candidate_id": "fac_cc60102eac",
       "family": "factor",
       "key": "dxy_falling",
@@ -6039,6 +6115,44 @@
         }
       ],
       "effect": "该月上涨率 vs 基率(两侧·机器枚举)",
+      "survive_cross": false,
+      "survive_cross_bh": false,
+      "survive_family": false,
+      "modern_status": "现代无边际",
+      "verdict": "dead",
+      "reason": "未过跨族 BY-FDR"
+    },
+    {
+      "candidate_id": "cal_05facdcc22",
+      "family": "calendar",
+      "key": "quarter_end_sp500",
+      "p": 0.852148,
+      "recent_p": 0.609391,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.857,
+          "n": 24736
+        },
+        {
+          "label": "2000后",
+          "p": 0.601,
+          "n": 6659
+        },
+        {
+          "label": "2021后",
+          "p": 0.279,
+          "n": 1375
+        },
+        {
+          "label": "近1年",
+          "p": 0.997,
+          "n": 252
+        }
+      ],
+      "decades": [],
+      "effect": "组间差异(omnibus·无单一概率)",
       "survive_cross": false,
       "survive_cross_bh": false,
       "survive_family": false,
@@ -6591,6 +6705,44 @@
         }
       ],
       "effect": "该月上涨率 vs 基率(两侧·机器枚举)",
+      "survive_cross": false,
+      "survive_cross_bh": false,
+      "survive_family": false,
+      "modern_status": "现代无边际",
+      "verdict": "dead",
+      "reason": "未过跨族 BY-FDR"
+    },
+    {
+      "candidate_id": "cal_116d0565a8",
+      "family": "calendar",
+      "key": "quarter_end_nasdaq",
+      "p": 0.954046,
+      "recent_p": 0.312687,
+      "recent_powered": true,
+      "windows": [
+        {
+          "label": "完整",
+          "p": 0.961,
+          "n": 13962
+        },
+        {
+          "label": "2000后",
+          "p": 0.346,
+          "n": 6659
+        },
+        {
+          "label": "2021后",
+          "p": 0.262,
+          "n": 1375
+        },
+        {
+          "label": "近1年",
+          "p": 0.623,
+          "n": 252
+        }
+      ],
+      "decades": [],
+      "effect": "组间差异(omnibus·无单一概率)",
       "survive_cross": false,
       "survive_cross_bh": false,
       "survive_family": false,
