@@ -276,7 +276,8 @@ function loadSurvivors(){
       var rows=j.survivors.map(function(s){
         var on=s.active===true;
         var dot=on?'<span style="color:var(--grn)">●</span>':'<span style="color:var(--mut)">○</span>';
-        var tag=on?(LANG==='en'?'ACTIVE':'应期'):(s.active===false?(LANG==='en'?'dormant':'休眠'):'—');
+        var tag=on?(LANG==='en'?'ACTIVE':'应期')
+          :(s.active===false?(LANG==='en'?'dormant':'休眠'):(LANG==='en'?'pending':'未接入'));
         return '<div style="padding:6px 0;border-top:1px solid var(--border)">'
           +'<div style="font-size:.9rem">'+dot+' <b>'+esc(s.name)+'</b> '
           +'<span style="font-size:.7rem;color:'+(on?'var(--grn)':'var(--mut)')+'">['+tag+']</span></div>'

@@ -62,20 +62,55 @@ def test_golden_cross_missing_data_returns_none(tmp_path, monkeypatch):
     assert active is None and "不足" in state
 
 
-def test_btc_mom_active_and_threshold(tmp_path, monkeypatch):
+def test_btc_mom_pos_active_and_threshold(tmp_path, monkeypatch):
     monkeypatch.setattr(sl, "RAW", tmp_path)
     vals = [100.0] * 40
     vals[-1] = 110.0                                  # last/[-21] = 110/100 = +10% > 5%
     _price(tmp_path / "BTC.csv", vals)
-    active, state = sl._btc_mom_state()
+    active, state = sl._btc_mom_pos_state()
     assert active is True and "高于" in state
 
 
-def test_btc_mom_inactive_below_threshold(tmp_path, monkeypatch):
+def test_btc_mom_pos_inactive_below_threshold(tmp_path, monkeypatch):
     monkeypatch.setattr(sl, "RAW", tmp_path)
-    _price(tmp_path / "BTC.csv", [100.0] * 40)        # 0% 动量 < 5%
-    active, state = sl._btc_mom_state()
+    _price(tmp_path / "BTC.csv", [100.0] * 40)        # 0% 动量 < +5%
+    active, state = sl._btc_mom_pos_state()
     assert active is False and "未高于" in state
+
+
+def test_btc_mom_neg_active_on_drop(tmp_path, monkeypatch):
+    monkeypatch.setattr(sl, "RAW", tmp_path)
+    vals = [100.0] * 40
+    vals[-1] = 90.0                                   # last/[-21] = 90/100 = -10% < -5%
+    _price(tmp_path / "BTC.csv", vals)
+    active, state = sl._btc_mom_neg_state()
+    assert active is True and "低于" in state
+
+
+def test_nasdaq_ma200_active_when_above(tmp_path, monkeypatch):
+    monkeypatch.setattr(sl, "RAW", tmp_path)
+    _price(tmp_path / "NASDAQ_COMP_long.csv", list(np.linspace(100, 300, 400)))  # 上升→收盘>200MA
+    active, state = sl._nasdaq_ma200_state()
+    assert active is True and "高于" in state
+
+
+def test_nasdaq_ma200_inactive_when_below(tmp_path, monkeypatch):
+    monkeypatch.setattr(sl, "RAW", tmp_path)
+    _price(tmp_path / "NASDAQ_COMP_long.csv", list(np.linspace(300, 100, 400)))  # 下降→收盘<200MA
+    active, state = sl._nasdaq_ma200_state()
+    assert active is False and "不高于" in state
+
+
+def test_world_cup_active_in_summer(monkeypatch):
+    _freeze_month(monkeypatch, 2026, 7, 1)            # 7 月=夏季→应期
+    active, state = sl._world_cup_state()
+    assert active is True and "夏季" in state
+
+
+def test_world_cup_dormant_in_winter(monkeypatch):
+    _freeze_month(monkeypatch, 2026, 1, 15)           # 1 月=非夏季→休眠
+    active, state = sl._world_cup_state()
+    assert active is False and "非夏季" in state
 
 
 def test_rebound_active_on_crash_day(tmp_path, monkeypatch):
@@ -160,7 +195,33 @@ def test_build_extracts_survivors_flags_sorts(tmp_path, monkeypatch):
     # 九月休眠但仍在清单(常驻)
     sep = next(s for s in out["survivors"] if s["key"] == "september_sp500")
     assert sep["active"] is False
-    assert "54% vs 基率 51%" in sep["edge_plain"] and "微弱偏正" in sep["edge_plain"]
+    # 未接入(brand_new)用中性口径,不猜组名
+    bn = out["survivors"][-1]
+    assert "触发组 70% vs 基率 60%" in bn["edge_plain"] and "组别待接入" in bn["edge_plain"]
+
+
+def test_september_direction_not_backwards(tmp_path, monkeypatch):
+    """诚实守门(审#1修复)：september label==1=非九月 → up(54)必挂到'非九月'、base(51)挂到'九月'，
+    绝不能写成'九月 54%'(那是把非九月的数字安到九月头上·九月实为最弱月)。"""
+    web = tmp_path / "web"; web.mkdir()
+    monkeypatch.setattr(sl, "WEB", web)
+    monkeypatch.setattr(sl, "RAW", tmp_path)
+    _freeze_month(monkeypatch, 2024, 7, 1)
+    _autodisc(web, [
+        {"family": "calendar", "key": "september_sp500", "verdict": "survive",
+         "windows": [{"label": "2000后", "up_pct": 54, "base_pct": 51}]},          # up=非九月, base=九月
+        {"family": "calendar", "key": "monthof_9_sp500", "verdict": "survive",
+         "windows": [{"label": "2000后", "up_pct": 51, "base_pct": 54}]},          # up=九月, base=其余
+    ])
+    out = sl.build()
+    sep = next(s for s in out["survivors"] if s["key"] == "september_sp500")
+    m9 = next(s for s in out["survivors"] if s["key"] == "monthof_9_sp500")
+    # september: 触发组=非九月(54)、对照=九月(51)——54 挂"非九月"、51 挂"九月"(正向断言即锁死方向)
+    assert "非九月 54%" in sep["edge_plain"] and "九月 51%" in sep["edge_plain"]
+    assert "九月 54% vs 非九月 51%" not in sep["edge_plain"]  # 反向 bug 的整段红旗
+    # monthof_9: 触发组=九月(51)、对照=其余月份(54)——两口径都指向"九月≈51% 偏弱"
+    assert "九月 51%" in m9["edge_plain"] and "其余月份 54%" in m9["edge_plain"]
+    assert m9["dnote"] == "微弱偏负"                         # 九月组 vs 其余 → 偏负
 
 
 def test_build_caveat_has_honest_frame(tmp_path, monkeypatch):
