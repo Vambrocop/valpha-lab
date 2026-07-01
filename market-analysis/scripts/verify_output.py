@@ -411,6 +411,26 @@ except Exception as e:
     errors.append(f"fomc_study.json 形状检查失败: {e}")
     print(f"  ✗ fomc_study.json 形状检查失败: {e}")
 
+# 3l3g. 存活规律观察台 survivors_live.json(顶层键全·每条 active 三态·诚实框=描述性+前向OOS未确认+非预测)。存在才查、缺失不致命。
+#        诚实纪律:「休眠」的存活规律绝不能被当成当前信号；面板/日读只有「应期」才算今天成立；扛过检验≠下次必灵。
+try:
+    sl_path = WEB_DIR / "survivors_live.json"
+    if sl_path.exists():
+        with open(sl_path, encoding="utf-8") as fh:
+            sl = json.load(fh)
+        rows = sl.get("survivors")
+        ok = (all(k in sl for k in ("n_survivors", "n_active", "survivors", "caveat"))
+              and isinstance(rows, list)
+              and all(("active" in r and "name" in r and "edge_plain" in r) for r in rows)
+              and all(r.get("active") in (True, False, None) for r in rows))
+        check(ok, f"survivors_live.json 形状正常（存活 {sl.get('n_survivors')}·今日应期 {sl.get('n_active')}）")
+        cav = sl.get("caveat", "")
+        check("非预测" in cav and ("OOS" in cav or "未确认" in cav) and "过去≠未来" in cav,
+              "survivors_live.json caveat 含描述性+前向OOS未确认+过去≠未来诚实框")
+except Exception as e:
+    errors.append(f"survivors_live.json 形状检查失败: {e}")
+    print(f"  ✗ survivors_live.json 形状检查失败: {e}")
+
 # 3l4. 内部人买入前向计分形状(track_record 全/recent 是表/benchmark=SPY。存在才查、缺失不致命)
 #       诚实纪律：聪明钱前向计分页必须带"非荐股 + 前向计分"免责框（敢预测就敢认账=护城河，
 #       同 overreaction 强制 recent.p_value 的逻辑：方向性/跟单性产物不许丢掉认账口径）。

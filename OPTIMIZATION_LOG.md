@@ -98,8 +98,8 @@
 **🗓️ 2026-06-30 本会话落地(已 push,免得"先查后动"重做)：** 自生长门4 OOS 引擎 + 知识库晋升降级(P-A/P-C·Opus双审GO) · P-D 前端"自生长看得见" · P-B 防闪烁 · 预FOMC漂移研究 → **升进 candidate_space 命门**(双审GO·N_DECLARED 74→76·补2026会议日程) · **opex_week/季末两侧先验**(双审GO·N→80·均 dead) · FX→AUD 真实收益工具(子代理) · **LLM 全活**:日读激活+月报新建(节流)+ **AI 预测**(append-only 公开计分账本+prediction.html+按信心分桶·Opus审GO)·走 `GEMINI_API_KEY` · senate 定性完结历史研究(源停更·见 §4c)。
 
 **🎯 下一步(2026-06-30 排序)：**
-- [ ] **用户 1 步**：GitHub 设 `GEMINI_API_KEY` secret → 日读/周报/月报/AI预测 CI 自动跑(现仅本地跑时更新)。
-- [ ] **"用上"活信号**：把存活规律(九月·标普、金叉·标普)喂进 LLM 日读 / composite / outlook —— 用户反复要的"survivors 得用上",别只躺在发现页。
+- [x] **用户 1 步（2026-07-01 已验证生效）**：`GEMINI_API_KEY` secret 已设进 GitHub 且 CI 在用——bot 提交 `cd34778`(6-29 22:43 UTC) 刷出真 Gemini 日读文本(model=gemini-2.5-flash-lite)、`llm_read_log` 6-22~30 连续记录。秘钥不可读回,靠"bot 提交真 LLM 输出"这一可观测痕迹证明。日读每盘后全量跑(按天去重);周报周六;月报月末;预测每全量。
+- [x] **"用上"活信号（2026-07-01 完成·常驻观察清单）**：新建 `survivors_live.py`——读 autodiscovery `verdict==survive`(5条:金叉·BTC动量·纳指回撤·九月×2)+本地算"今天是否应期"(金叉50>200/BTC动量>+5%/纳指跌进最低5%/是否9月)→`survivors_live.json`(历史edge复用autodiscovery·不重算·单一真相源)。喂 `llm_daily_read`(铁律7:休眠的绝不当当前信号·真Gemini干跑证实它主动说"其他规律今天不成立")+ composite.html 常驻观察台面板(应期绿/休眠灰)。诚实:方向由up-base算(回撤=偏负不按族名想当然)·前向OOS(门4)仍pending·描述性非预测。14单测+verify_output守门+顺修月报月初定时炸弹。KB晋升仍0(前向攒中)。
 - [ ] **P-E 自动提案层**：自生长最后一块(最高风险后门)——在预声明元空间枚举未注册格点→proposals 待审(不算p/不进分母/不上战绩),按 SELF_GROWING_PLAN §4/§7④ 硬门槛 + 双审。
 - [ ] **LLM 展示更显眼**：周报/月报/AI预测在 dashboard/导航露出;确认 weekly 有没有前端面。
 - [ ] **数据卫生体检**：`git ls-files` 查大体积可再生产物是否误提交(§5 待查)。

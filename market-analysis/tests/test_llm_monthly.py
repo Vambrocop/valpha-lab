@@ -62,7 +62,10 @@ def test_monthly_dedup_yyyymm(fake_repo):
 
 
 def test_run_grounded_with_mock_llm(fake_repo, monkeypatch):
-    _write_composite(fake_repo["data"], [["2026-06-02", "偏积极", "0.2"], ["2026-06-29", "偏积极", "0.5"]])
+    # 用【当前月】动态日期，别硬编码某月——run() 内部按真实 today 的月过滤，硬编码会在月初 CI 定时红
+    today = datetime.date.today()
+    d1, d2 = today.replace(day=2), today.replace(day=15)
+    _write_composite(fake_repo["data"], [[d1.isoformat(), "偏积极", "0.2"], [d2.isoformat(), "偏积极", "0.5"]])
     monkeypatch.setattr(lmr, "_llm_key", lambda: "fakekey")
     monkeypatch.setattr(lmr, "_llm", lambda prompt: "测试月度回顾文本。（这是数据回顾不是预测）")
     out = lmr.run(write=False, force=True)                 # force 跳过月末日期守卫;write=False 不落盘

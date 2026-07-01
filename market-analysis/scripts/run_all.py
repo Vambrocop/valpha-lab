@@ -69,6 +69,7 @@ steps = [
     ("试胆区(玩具预测+计分)", "tipjar.py"),       # 故意下方向判断但公开残酷计分(≈掷硬币),娱乐非建议;须在 fetch_data 后
     ("观点/预测(授权出格区)", "outlook.py"),      # 用户授权:直接给纳指方向+个股看好看淡,带免责;读 signals+动量,须在 build_signals 后
     ("综合读数(出格·加权倾向)", "composite_read.py"),  # 把体制/信用/羊群/季节性/信号按写死透明权重合成当下倾向,每日 append composite_log 计分(自升级地基);须在 market_regime+seasonality+build_signals 后
+    ("存活规律观察台(自生长·喂日读)", "survivors_live.py"),  # 读autodiscovery存活候选(verdict==survive)+本地算"今天是否应期"(金叉/BTC动量/回撤/9月)→survivors_live.json;历史edge复用不重算(单一真相源);喂 llm_daily_read + 前端观察台;须在autodiscovery后、日读前;不入light(autodiscovery全量才刷);缺数据静默退0
     ("LLM大白话日读(出格)", "llm_daily_read.py"),   # 把 composite_read 真因子喂 Gemini→一段人话解读;须在 composite_read 后;无 GEMINI_API_KEY 则静默跳过;喂真数据防瞎编、带计分
     ("LLM大白话月报(出格)", "llm_monthly_read.py"),  # 本月综合倾向走势+月末体制→Gemini 翻大白话回顾;月末最后4天才生成、本月只调一次(节流);无 key 静默跳;喂真数据防瞎编、append 月级公开计分
     ("LLM前瞻预测→公开计分(出格)", "llm_prediction.py"),  # LLM 据真因子对 SPY 未来5交易日出方向(偏多/偏空/中性)+信心→append-only账本→满5日按SPY真实涨跌分桶结算记命中;按信心分桶看高信心是否真更准;须在composite_read后;无key静默跳;Opus审GO;前向计分·敢预测敢认账·非投资建议
