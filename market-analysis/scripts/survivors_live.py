@@ -112,42 +112,54 @@ def _september_state():
 
 
 def _world_cup_state():
+    """触发组=非杯年夏季(label==1)。应期 = 夏季(6-8月) 且 今年非世界杯年——杯年夏季触发组不成立。"""
     today = datetime.date.today()
     summer = today.month in (6, 7, 8)                      # 效应只作用于夏季(6-8月)
     try:
         from seasonality import WORLD_CUP_YEARS            # 单一来源,与 autodiscovery 同表不漂移
         wc = today.year in WORLD_CUP_YEARS
-        yr = "世界杯年" if wc else "非世界杯年"
     except Exception:
-        yr = "年份未知"
-    return summer, f"当前 {today.month} 月（{'夏季·应期' if summer else '非夏季'}）·{today.year} 按年份表为{yr}"
+        wc = None
+    active = bool(summer and wc is False)                 # 非杯年夏季才是触发组成立
+    if not summer:
+        state = f"当前 {today.month} 月（非夏季·休眠）"
+    elif wc:
+        state = f"当前 {today.month} 月夏季，但 {today.year} 是世界杯年 → 触发组「非杯年夏季」不成立·休眠"
+    elif wc is False:
+        state = f"当前 {today.month} 月夏季且 {today.year} 非世界杯年 → 触发组成立·应期"
+    else:
+        state = f"当前 {today.month} 月夏季（{today.year} 杯年状态未知）"
+    return active, state
 
 
-# (family, key) → dict(name 大白话名, trigger label==1 触发组, rest label==0 对照组, horizon 视野, state 当前态函数)
-#   edge 恒为 "{trigger} up% vs {rest} base%"——up 永远是 label==1 触发组(见 autodiscovery `_cal_windows` l==1)，方向不反。
+# (family, key) → dict(name 大白话名, trigger label==1 触发组, rest 对照组基准, horizon 视野, state 当前态函数)
+#   ⚠️ 两种窗口口径(命门·Opus 审 2026-07-01)：
+#     · 日历族(_cal_windows): up=label==1 组、base=label==0 **补集** → rest 写真实补集名(如"九月")。
+#     · 反弹/因子/体制族(_diff_windows): up=触发组、base=`yy.mean()` **全样本基率**(含触发日,非补集!)
+#        → rest 必须写"全样本基率",**绝不能**写补集名(如"200线下方"),否则把全样本数字安到补集头上。
 _DESCRIPTORS = {
-    ("regime", "golden_cross_sp500"): dict(
-        name="标普金叉（50 日线上穿 200 日线）", trigger="标普金叉成立时", rest="未成立",
+    ("regime", "golden_cross_sp500"): dict(     # _diff_windows → base=全样本基率
+        name="标普金叉（50 日线上穿 200 日线）", trigger="标普金叉成立时", rest="全样本基率",
         horizon="标普未来 20 日", state=_golden_cross_state),
-    ("factor", "BTC_mom20_pos"): dict(
-        name="BTC 20 日动量为正（风险偏好代理）", trigger="BTC 动量 >+5% 时", rest="其余日",
+    ("factor", "BTC_mom20_pos"): dict(          # _diff_windows → base=全样本基率
+        name="BTC 20 日动量为正（风险偏好代理）", trigger="BTC 动量 >+5% 时", rest="全样本基率",
         horizon="纳指未来 20 日", state=_btc_mom_pos_state),
-    ("factor", "BTC_mom20_neg"): dict(
-        name="BTC 20 日动量为负（风险偏好走弱）", trigger="BTC 动量 <-5% 时", rest="其余日",
+    ("factor", "BTC_mom20_neg"): dict(          # _diff_windows → base=全样本基率
+        name="BTC 20 日动量为负（风险偏好走弱）", trigger="BTC 动量 <-5% 时", rest="全样本基率",
         horizon="纳指未来 20 日", state=_btc_mom_neg_state),
-    ("factor", "NASDAQ_above_ma200"): dict(
-        name="纳指在 200 日线上方（趋势）", trigger="纳指收盘 >200 日线时", rest="200 日线下方",
+    ("factor", "NASDAQ_above_ma200"): dict(     # _diff_windows → base=全样本基率
+        name="纳指在 200 日线上方（趋势）", trigger="纳指收盘 >200 日线时", rest="全样本基率",
         horizon="纳指未来 20 日", state=_nasdaq_ma200_state),
-    ("rebound", "p5_h1_nasdaq"): dict(
-        name="纳指大跌后的次日走向", trigger="纳指跌进历史最低 5% 的大跌日", rest="其余日",
+    ("rebound", "p5_h1_nasdaq"): dict(          # _diff_windows → base=全样本基率
+        name="纳指大跌后的次日走向", trigger="纳指跌进历史最低 5% 的大跌日", rest="全样本基率",
         horizon="次日", state=_rebound_state),
-    ("calendar", "september_sp500"): dict(    # 先验:九月最弱 → label==1=非九月(强组);别把 up 当成九月!
+    ("calendar", "september_sp500"): dict(      # _cal_windows·先验:九月最弱 → label==1=非九月(强组);base=补集九月
         name="标普九月效应（九月历史最弱月）", trigger="非九月", rest="九月",
         horizon="当日", state=_september_state),
-    ("calendar", "monthof_9_sp500"): dict(    # 机器枚举:label==1=九月本身
+    ("calendar", "monthof_9_sp500"): dict(      # _cal_windows·机器枚举:label==1=九月;base=补集其余月份
         name="标普 9 月（机器枚举·另一口径）", trigger="九月", rest="其余月份",
         horizon="当日", state=_september_state),
-    ("calendar", "world_cup_year_nasdaq"): dict(  # 先验:杯年夏季分心偏弱 → label==1=非杯年夏季(强组)
+    ("calendar", "world_cup_year_nasdaq"): dict(  # _cal_windows·先验:杯年夏季偏弱 → label==1=非杯年夏季;base=补集杯年夏季
         name="纳指世界杯年夏季效应（分心先验）", trigger="非世界杯年的夏季", rest="世界杯年夏季",
         horizon="当日", state=_world_cup_state),
 }
@@ -206,12 +218,18 @@ def build():
             name = desc["name"]
         else:                                        # 未来新存活规律：不落下、不谎报应期、不猜方向组名
             active, state, name = None, "当前态未接入监测（仅历史·今日不判应期）", f"{fam}/{key}"
+        rp = c.get("recent_p")
+        # 边界易闪标注(Opus 审 2026-07-01)：recent_p 贴近 q=0.10 存活线 → 现代显著性临界、下次刷新可能退出，别过度当真
+        unstable = isinstance(rp, (int, float)) and 0.08 < rp <= 0.10
         rows.append({
             "family": fam, "key": key, "name": name,
             "active": active, "state": state,
             "up_pct": up, "base_pct": base, "window": wlabel, "dnote": dnote,
             "edge_plain": _edge_plain(desc, up, base, wlabel, dnote),
-            "recent_p": c.get("recent_p"), "modern": c.get("modern_status"),
+            "recent_p": rp, "modern": c.get("modern_status"),
+            "unstable": bool(unstable),
+            "stability_note": (f"⚠ 现代显著性临界（recent_p≈{rp:.2f}·近 q=0.10 存活线，下次刷新可能退出，别过度当真）"
+                               if unstable else ""),
         })
 
     def _sortkey(x):                                 # 应期在前→休眠→未接入；同类按历史 |edge| 大的在前

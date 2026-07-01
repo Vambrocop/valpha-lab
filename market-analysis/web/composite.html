@@ -283,6 +283,7 @@ function loadSurvivors(){
           +'<span style="font-size:.7rem;color:'+(on?'var(--grn)':'var(--mut)')+'">['+tag+']</span></div>'
           +'<div style="font-size:.78rem;margin-top:2px">'+esc(s.state)+'</div>'
           +'<div style="font-size:.74rem;color:var(--mut);margin-top:2px">'+esc(s.edge_plain||'')+'</div>'
+          +(s.stability_note?'<div style="font-size:.7rem;color:var(--amber);margin-top:2px">'+esc(s.stability_note)+'</div>':'')
           +'</div>';
       }).join('');
       el.innerHTML=head+rows

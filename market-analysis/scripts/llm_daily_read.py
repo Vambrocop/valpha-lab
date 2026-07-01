@@ -82,7 +82,8 @@ def _survivors_block():
     lines = []
     for s in rows:
         flag = "应期" if s.get("active") is True else ("休眠" if s.get("active") is False else "未接入")
-        lines.append(f"- [{flag}] {s.get('name')}：{s.get('state')}。历史：{s.get('edge_plain')}")
+        note = f" {s.get('stability_note')}" if s.get("stability_note") else ""
+        lines.append(f"- [{flag}] {s.get('name')}：{s.get('state')}。历史：{s.get('edge_plain')}{note}")
     return ("存活规律观察台（扛过多重检验的历史规律，仅描述性；应期=今天成立、休眠=今天不成立勿当信号、"
             "未接入=当前态未监测只有历史）：\n" + "\n".join(lines) + "\n")
 

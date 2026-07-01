@@ -101,16 +101,43 @@ def test_nasdaq_ma200_inactive_when_below(tmp_path, monkeypatch):
     assert active is False and "不高于" in state
 
 
-def test_world_cup_active_in_summer(monkeypatch):
-    _freeze_month(monkeypatch, 2026, 7, 1)            # 7 月=夏季→应期
+def test_world_cup_active_in_noncup_summer(monkeypatch):
+    _freeze_month(monkeypatch, 2025, 7, 1)            # 夏季且 2025 非杯年→触发组成立·应期
     active, state = sl._world_cup_state()
-    assert active is True and "夏季" in state
+    assert active is True and "应期" in state
+
+
+def test_world_cup_dormant_in_cup_year_summer(monkeypatch):
+    _freeze_month(monkeypatch, 2026, 7, 1)            # 夏季但 2026 是杯年→触发组不成立·休眠(修复审#Important)
+    active, state = sl._world_cup_state()
+    assert active is False and "世界杯年" in state
 
 
 def test_world_cup_dormant_in_winter(monkeypatch):
-    _freeze_month(monkeypatch, 2026, 1, 15)           # 1 月=非夏季→休眠
+    _freeze_month(monkeypatch, 2025, 1, 15)           # 非夏季→休眠
     active, state = sl._world_cup_state()
     assert active is False and "非夏季" in state
+
+
+def test_diff_family_rest_is_base_rate_not_complement(tmp_path, monkeypatch):
+    """诚实守门(Opus 审#Critical)：factor/regime/rebound 走 _diff_windows，base=全样本基率(非补集)。
+    rest 必须写「全样本基率」，绝不能写补集名(如"200线下方"/"未成立")——否则把全样本数字安到补集头上。"""
+    web = tmp_path / "web"; web.mkdir()
+    monkeypatch.setattr(sl, "WEB", web)
+    monkeypatch.setattr(sl, "RAW", tmp_path)
+    _price(tmp_path / "SP500_long.csv", list(np.linspace(100, 300, 400)))
+    _price(tmp_path / "NASDAQ_COMP_long.csv", list(np.linspace(100, 300, 400)))
+    _autodisc(web, [
+        {"family": "regime", "key": "golden_cross_sp500", "verdict": "survive",
+         "windows": [{"label": "2000后", "up_pct": 66, "base_pct": 63}]},
+        {"family": "factor", "key": "NASDAQ_above_ma200", "verdict": "survive",
+         "windows": [{"label": "2000后", "up_pct": 66, "base_pct": 62}]},
+    ])
+    out = sl.build()
+    for s in out["survivors"]:
+        assert "全样本基率" in s["edge_plain"]          # base 挂到"全样本基率"
+        assert "200 日线下方" not in s["edge_plain"]     # 绝不把全样本数字标成补集
+        assert "未成立 63%" not in s["edge_plain"]
 
 
 def test_rebound_active_on_crash_day(tmp_path, monkeypatch):
