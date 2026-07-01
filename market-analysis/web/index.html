@@ -153,6 +153,14 @@
   <div style="font-size:.75rem;color:var(--amb);margin-top:6px;line-height:1.4" id="weekly-caveat"></div>
 </div>
 
+<!-- 本月回顾 card（llm_monthly — grounded · 诚实 · 月末生成 · 月级 append 计分）-->
+<div class="card" id="monthly-card" style="margin:14px 0;display:none">
+  <h3 id="monthly-title" style="color:var(--mut);font-size:.92rem;font-weight:600;margin:0 0 8px"></h3>
+  <div id="monthly-text" style="font-size:.88rem;line-height:1.65;color:var(--fg)"></div>
+  <div id="monthly-meta" style="font-size:.76rem;color:var(--mut);margin-top:8px"></div>
+  <div style="font-size:.75rem;color:var(--amb);margin-top:6px;line-height:1.4" id="monthly-caveat"></div>
+</div>
+
 <footer data-i18n="foot"></footer>
 
 <script>
@@ -403,7 +411,7 @@ $("ob-guide-btn").onclick=()=>obShow();
   if(!seen) obShow();
 })();
 
-$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();renderWeekly();renderOVR();};
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG);}catch(e){}paint();renderWeekly();renderMonthly();renderOVR();};
 // 行情数据新鲜度小标（读 data_health · 一眼看到数据到哪天 + 是否新鲜；若真陈旧则黄字警示）
 function renderFreshness(){
   const el=$("freshness"),h=window._H; if(!el) return;
@@ -493,11 +501,32 @@ function renderWeekly(){
     ?"LLM plain-language summary grounded in real computed data. Not a prediction. We can be wrong. Past ≠ future. Appended to public weekly log."
     :(WEEKLY.caveat||"LLM 据本周真实算出因子生成；非预测、非荐股、会错，过去≠未来。已追加到公开周报计分。");
 }
+
+// ── 本月回顾 card（llm_monthly — grounded · 诚实 · 月末生成 · 月级 append 计分）────────
+let MONTHLY=null;
+function renderMonthly(){
+  const card=$("monthly-card");
+  if(!card) return;
+  if(!MONTHLY||!MONTHLY.text){card.style.display="none";return;}
+  card.style.display="";
+  const title=$("monthly-title"),txt=$("monthly-text"),meta=$("monthly-meta"),cav=$("monthly-caveat");
+  const mlabel=esc(MONTHLY.month_label||MONTHLY.month||"");
+  if(title) title.textContent=LANG==="en"?`🗓️ Monthly review · ${mlabel||"this month"}`:`🗓️ 本月回顾 · ${mlabel}`;
+  if(txt) txt.textContent=MONTHLY.text;  // LLM text — 已 esc 在服务端；不二次转义避免破坏中文
+  const nd=MONTHLY.n_days!=null?`${MONTHLY.n_days}天数据`:"";
+  if(meta) meta.textContent=LANG==="en"
+    ?`Generated ${esc(MONTHLY.generated||"")} · ${nd}`
+    :`生成时间 ${esc(MONTHLY.generated||"")} · ${nd}`;
+  if(cav) cav.textContent=LANG==="en"
+    ?"LLM plain-language monthly summary grounded in real computed data. Not a prediction. We can be wrong. Past ≠ future. Appended to public monthly log."
+    :(MONTHLY.caveat||"LLM 据本月真实算出因子生成；非预测、非荐股、会错，过去≠未来。已追加到公开月报计分。");
+}
 (async()=>{
   paint();
-  [SIG,REG,DIG,PAPER,V150,CR,OUT,LLM,WEEKLY,OVR]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json"),get("composite_read.json"),get("outlook.json"),get("llm_read.json"),get("llm_weekly.json"),get("overreaction_signal.json")]);
+  [SIG,REG,DIG,PAPER,V150,CR,OUT,LLM,WEEKLY,OVR,MONTHLY]=await Promise.all([get("signals.json"),get("market_regime.json"),get("digest.json"),get("paper.json"),get("valpha150.json"),get("composite_read.json"),get("outlook.json"),get("llm_read.json"),get("llm_weekly.json"),get("overreaction_signal.json"),get("llm_monthly.json")]);
   paint();
   renderWeekly();
+  renderMonthly();
   renderOVR();
   // Error state: if all critical data sources failed, show a friendly inline notice
   if(!SIG&&!REG&&!DIG&&!CR&&!V150){
