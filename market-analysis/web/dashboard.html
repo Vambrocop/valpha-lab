@@ -26,9 +26,9 @@
 
 <header>
   <div>
-    <h1>⬡ <span>Valpha Lab</span> — 美股诚实统计</h1>
+    <h1>⬡ <span>Valpha Lab</span> — <span data-i18n="h1-sub">美股诚实统计</span></h1>
     <div class="header-sub" data-i18n="hdr-sub"><b>诚实统计打底 · 敢给当下倾向与方向 · 每条公开计分认账</b>　|　🎯 默认诚实读数，预测/LLM 前沿逐步扩张（带战绩 · 会错 · 过去≠未来）</div>
-    <div class="header-sub" id="data-freshness" style="margin-top:.25rem;font-size:0.74rem;">📡 数据新鲜度加载中…</div>
+    <div class="header-sub" id="data-freshness" style="margin-top:.25rem;font-size:0.74rem;" data-i18n="data-freshness-loading">📡 数据新鲜度加载中…</div>
     <div id="data-health-drawer" hidden style="margin:.4rem auto .2rem;max-width:720px;padding:.5rem .7rem;background:rgba(127,127,127,0.08);border:1px solid var(--border-faint,rgba(127,127,127,0.25));border-radius:8px;overflow-x:auto;text-align:left;"></div>
   </div>
   <div style="display:flex;align-items:center;gap:.55rem;">
@@ -38,7 +38,7 @@
       padding:.3rem .7rem;border-radius:6px;font-size:0.76rem;cursor:pointer;">EN</button>
     <button id="refresh-data-btn" title="重新拉取全部数据并刷新页面内容（不丢失当前位置）"
       style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
-      padding:.3rem .7rem;border-radius:6px;font-size:0.76rem;cursor:pointer;white-space:nowrap;">🔄 刷新</button>
+      padding:.3rem .7rem;border-radius:6px;font-size:0.76rem;cursor:pointer;white-space:nowrap;" data-i18n="btn-refresh">🔄 刷新</button>
   </div>
 </header>
 
@@ -84,13 +84,13 @@
   </ul>
   ⚠ <b>出格区(首页结论/观点/野蛮)敢给方向、但都公开计分;其余面板多为描述性</b>。都不打包票,投资有风险、亏损自负。
   </div>
-  <div><button class="ob-dismiss">知道了,开始看</button></div>
+  <div><button class="ob-dismiss" data-i18n="btn-ob-dismiss">知道了,开始看</button></div>
 </div>
 
 <!-- ════════ 观点/预测：用户授权的"出格"区（直说方向 + 看好看淡） ════════ -->
 <section id="view-outlook" style="display:none">
   <div class="view-intro" data-i18n="vi-outlook">📈 <b>观点 / 预测：直说方向 + 看好看淡。</b>和首页结论一样<b>敢给方向、并公开计分认账</b>——直接给纳指方向和个股观点。⚠ 仅供参考、<b>非保证</b>；方向预测的真实准确率摆在 🎲 试胆区（诚实提示：目前 ≈掷硬币）。</div>
-  <div class="panel" id="outlook-panel"><div id="outlook">加载中…</div></div>
+  <div class="panel" id="outlook-panel"><div id="outlook" data-i18n="loading-dots2">加载中…</div></div>
 </section>
 
 <!-- ════════ 今日：现在该不该动手 ════════ -->
@@ -99,11 +99,11 @@
   <div class="vp-hero" id="vp-hero">
     <div><canvas id="vp-gauge" width="240" height="140" aria-label="今日倾向仪表"></canvas></div>
     <div>
-      <div class="vp-hero-lbl">🎯 今日结论 · 敢给方向 · 公开计分</div>
+      <div class="vp-hero-lbl" data-i18n="vp-hero-lbl">🎯 今日结论 · 敢给方向 · 公开计分</div>
       <div class="vp-hero-act" id="vp-act">—</div>
       <div class="vp-hero-sub" id="vp-sub"></div>
       <div class="vp-hero-read" id="vp-read"></div>
-      <a class="vp-hero-acct" href="scorecard.html">敢说也敢认账 · 公开战绩卡 →</a>
+      <a class="vp-hero-acct" href="scorecard.html" data-i18n="vp-hero-acct">敢说也敢认账 · 公开战绩卡 →</a>
     </div>
   </div>
 
@@ -119,7 +119,7 @@
         <div style="font-size:.76rem;color:var(--muted);margin-top:3px;line-height:1.45" id="vp-monthly-x"></div>
       </a>
       <a id="vp-pred" href="prediction.html" style="display:none;flex:1 1 210px;text-decoration:none;color:inherit;border:1px solid #30363d;border-radius:10px;padding:9px 12px;background:rgba(63,185,80,.05)">
-        <div style="font-size:.74rem;color:#3fb950;font-weight:600">🔮 AI 前瞻预测 · 公开计分</div>
+        <div style="font-size:.74rem;color:#3fb950;font-weight:600" data-i18n="vp-pred-t">🔮 AI 前瞻预测 · 公开计分</div>
         <div style="font-size:.76rem;color:var(--muted);margin-top:3px;line-height:1.45" id="vp-pred-x"></div>
       </a>
     </div>
@@ -127,24 +127,24 @@
 
   <div class="view-intro" data-i18n="vi-today">📊 <b>今日：现在该不该动手。</b>上面是当下结论（倾向 / 方向），下面是支撑它的信号、简报、风险红绿灯、卖出评估——一屏看完。⚠ 实验性、会错，每条都公开计分。</div>
   <div class="panel" id="daily-digest-panel" style="display:none">
-    <div class="panel-title">📋 今日摘要 <span style="font-weight:400;color:var(--muted);font-size:.7rem;">描述 + 诚实留意点</span></div>
+    <div class="panel-title" data-i18n="pt-digest">📋 今日摘要 <span style="font-weight:400;color:var(--muted);font-size:.7rem;">描述 + 诚实留意点</span></div>
     <div id="daily-digest"></div>
   </div>
   <div class="view-grid">
 
-    <div class="group-hdr">🎯 信号与计划</div>
+    <div class="group-hdr" data-i18n="gh-signal-plan">🎯 信号与计划</div>
     <!-- 日期选择 + 信号表盘 -->
     <div class="panel">
-      <div class="panel-title">选择日期 · 查看入场信号</div>
+      <div class="panel-title" data-i18n="pt-datepick">选择日期 · 查看入场信号</div>
       <div class="input-group">
-        <label>分析日期</label>
+        <label data-i18n="lbl-analysis-date">分析日期</label>
         <input type="date" id="date-picker" />
       </div>
 
       <div class="signal-meter">
         <div class="signal-ring" id="signal-ring">
           <div class="signal-pct" id="signal-pct">—</div>
-          <div class="signal-label" id="signal-label">加载中</div>
+          <div class="signal-label" id="signal-label" data-i18n="loading">加载中</div>
         </div>
         <div class="signal-stars" id="signal-stars">☆☆☆☆☆</div>
         <div class="signal-desc" id="signal-desc"></div>
@@ -154,7 +154,7 @@
       <div id="today-rec" style="margin-top:.75rem;"></div>
       <div id="trade-plan" style="margin-top:.6rem;"></div>
 
-      <div class="panel-title" style="margin-top:1rem;">信号因子分解</div>
+      <div class="panel-title" style="margin-top:1rem;" data-i18n="pt-factor-breakdown">信号因子分解</div>
       <div class="factor-list" id="factor-list"></div>
 
       <div class="insight" id="insight-box"></div>
@@ -162,31 +162,31 @@
 
     <!-- 每日盘后简报（云端自动生成） -->
     <div class="panel">
-      <div class="panel-title">📋 每日简报 <span id="brief-updated" style="font-weight:400;font-size:0.68rem;color:var(--muted);"></span></div>
+      <div class="panel-title"><span data-i18n="pt-daily-brief">📋 每日简报</span> <span id="brief-updated" style="font-weight:400;font-size:0.68rem;color:var(--muted);"></span></div>
       <div id="brief-content" style="font-size:0.8rem;line-height:1.7;"></div>
     </div>
 
     <!-- 双指数信号 + 模型实盘追踪 -->
     <div class="panel">
-      <div class="panel-title">📈 双指数信号 · 纳指 vs 标普</div>
+      <div class="panel-title" data-i18n="pt-dual-index">📈 双指数信号 · 纳指 vs 标普</div>
       <div id="market-clock" style="margin-bottom:.7rem;font-size:0.78rem;"></div>
       <div id="indices-compare" style="display:flex;gap:.8rem;"></div>
       <div id="live-tracking" style="margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border);"></div>
     </div>
 
-    <div class="group-hdr">⚖️ 风险与情绪</div>
+    <div class="group-hdr" data-i18n="gh-risk-sentiment">⚖️ 风险与情绪</div>
     <!-- 市场情绪仪表盘 -->
     <div class="panel" id="sentiment-panel">
-      <div class="panel-title">📊 市场情绪仪表盘</div>
+      <div class="panel-title" data-i18n="pt-sentiment">📊 市场情绪仪表盘</div>
       <div id="sentiment-gauges" style="display:flex;flex-direction:column;gap:.6rem;font-size:0.82rem;"></div>
       <div id="fear-greed-section" style="margin-top:.85rem;padding-top:.85rem;border-top:1px solid var(--border);"></div>
     </div>
 
     <!-- 卖出信号 -->
     <div class="panel">
-      <div class="panel-title">🔴 卖出信号评估</div>
+      <div class="panel-title" data-i18n="pt-sell-signal">🔴 卖出信号评估</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
-        <span style="font-size:0.82rem;color:var(--muted)">卖出压力评分</span>
+        <span style="font-size:0.82rem;color:var(--muted)" data-i18n="lbl-sell-pressure">卖出压力评分</span>
         <span id="sell-score-txt" style="font-weight:700;font-size:1rem">—/100</span>
       </div>
       <div class="sell-bar-wrap"><div class="sell-bar" id="sell-bar" style="width:0%"></div></div>
@@ -195,16 +195,16 @@
       <div class="insight" id="sell-insight" style="margin-top:.75rem;"></div>
     </div>
 
-    <div class="group-hdr">📰 资讯与事件</div>
+    <div class="group-hdr" data-i18n="gh-news-events">📰 资讯与事件</div>
     <!-- 今日市场要闻 -->
     <div class="panel">
-      <div class="panel-title">📰 今日市场要闻 <span id="news-updated" style="font-weight:400;font-size:0.68rem;color:var(--muted);"></span></div>
+      <div class="panel-title"><span data-i18n="pt-news">📰 今日市场要闻</span> <span id="news-updated" style="font-weight:400;font-size:0.68rem;color:var(--muted);"></span></div>
       <div id="news-list" style="display:flex;flex-direction:column;gap:.5rem;font-size:0.78rem;"></div>
     </div>
 
     <!-- 事件影响参考（⑦：主观 what-if 勾选框 → 真事件研究数据） -->
     <div class="panel">
-      <div class="panel-title">📅 事件影响参考 · 历史同类事件</div>
+      <div class="panel-title" data-i18n="pt-event-ref">📅 事件影响参考 · 历史同类事件</div>
       <div id="event-ref-today"></div>
     </div>
 
@@ -218,7 +218,7 @@
     <!-- 未来40个交易日信号日历 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        📅 未来40个交易日信号预览 <span class="badge">技术因子冻结当前值 · 颜色=入场档位</span>
+        <span data-i18n="ch-forecast-cal">📅 未来40个交易日信号预览</span> <span class="badge" data-i18n="bd-forecast-cal">技术因子冻结当前值 · 颜色=入场档位</span>
       </div>
       <div id="forecast-calendar" style="min-height:60px;"></div>
     </div>
@@ -227,30 +227,30 @@
   <div class="view-grid" style="margin-top:1.5rem;">
     <!-- 未来最佳入场/减仓窗口（动态预测） -->
     <div class="panel" id="opp-panel">
-      <div class="panel-title">🎯 接下来最佳操作窗口 <span style="color:var(--muted);font-size:0.72rem;font-weight:400;">未来40个交易日</span></div>
-      <div style="font-size:0.8rem;color:var(--green);font-weight:600;margin-bottom:.4rem;">▲ 最佳买入窗口（概率最高）</div>
+      <div class="panel-title"><span data-i18n="pt-opp-window">🎯 接下来最佳操作窗口</span> <span style="color:var(--muted);font-size:0.72rem;font-weight:400;" data-i18n="lbl-next40">未来40个交易日</span></div>
+      <div style="font-size:0.8rem;color:var(--green);font-weight:600;margin-bottom:.4rem;" data-i18n="lbl-best-buy">▲ 最佳买入窗口（概率最高）</div>
       <div class="opp-list" id="opp-entry-list"></div>
-      <div style="font-size:0.8rem;color:#e74c3c;font-weight:600;margin:1rem 0 .4rem;">▼ 最弱 / 适合减仓（概率最低）</div>
+      <div style="font-size:0.8rem;color:#e74c3c;font-weight:600;margin:1rem 0 .4rem;" data-i18n="lbl-weakest">▼ 最弱 / 适合减仓（概率最低）</div>
       <div class="opp-list" id="opp-exit-list"></div>
       <div class="opp-note" id="opp-note"></div>
     </div>
 
     <!-- 买卖时机：周内效应 -->
     <div class="panel">
-      <div class="panel-title">📅 买入时机 · 周内效应</div>
+      <div class="panel-title" data-i18n="pt-dow">📅 买入时机 · 周内效应</div>
       <div class="dow-grid" id="dow-grid">
-        <div style="color:var(--muted);font-size:0.8rem;grid-column:1/-1">加载中...</div>
+        <div style="color:var(--muted);font-size:0.8rem;grid-column:1/-1" data-i18n="loading-dots">加载中...</div>
       </div>
       <div class="insight" style="margin-top:.75rem;" id="dow-insight"></div>
     </div>
 
     <!-- 最佳窗口（历史统计） -->
     <div class="panel">
-      <div class="panel-title">🗓 最佳操作窗口（历史统计）</div>
+      <div class="panel-title" data-i18n="pt-best-window-hist">🗓 最佳操作窗口（历史统计）</div>
       <div class="window-grid">
         <div class="window-card window-buy">
-          <div class="window-title">▲ 买入窗口</div>
-          <div class="window-list">
+          <div class="window-title" data-i18n="wt-buy">▲ 买入窗口</div>
+          <div class="window-list" data-i18n="wl-buy">
             ✓ 每年10月底→11月初<br>
             ✓ 每年3月底→4月初<br>
             ✓ 每月第1–3个交易日<br>
@@ -260,8 +260,8 @@
           </div>
         </div>
         <div class="window-card window-sell">
-          <div class="window-title">▼ 卖出窗口</div>
-          <div class="window-list">
+          <div class="window-title" data-i18n="wt-sell">▼ 卖出窗口</div>
+          <div class="window-list" data-i18n="wl-sell">
             ✗ 每年4月中（报税抛压）<br>
             ✗ 每年8月→9月（最弱季）<br>
             ✗ RSI超过75（超买）<br>
@@ -275,13 +275,13 @@
 
     <!-- 重要经济日历 -->
     <div class="panel">
-      <div class="panel-title">🗓 重要经济日历</div>
+      <div class="panel-title" data-i18n="pt-econ-cal">🗓 重要经济日历</div>
       <div id="econ-calendar-list" style="display:flex;flex-direction:column;gap:.45rem;font-size:0.8rem;"></div>
     </div>
 
     <!-- 档位说明（阈值与档位来自 signals.json，JS 渲染，避免多处抄写） -->
     <div class="panel">
-      <div class="panel-title">五档入场等级</div>
+      <div class="panel-title" data-i18n="pt-tier-legend">五档入场等级</div>
       <div class="tier-legend" id="tier-legend"></div>
     </div>
   </div>
@@ -296,7 +296,7 @@
   <div class="view-stack">
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        ⏳ 持有期 vs 上涨概率 <span class="badge">标普98年 · 纳指55年 · SOX 26年 · 滚动重叠窗口</span>
+        <span data-i18n="ch-horizon">⏳ 持有期 vs 上涨概率</span> <span class="badge" data-i18n="bd-horizon">标普98年 · 纳指55年 · SOX 26年 · 滚动重叠窗口</span>
       </div>
       <div id="chart-horizon" style="height:300px;"></div>
       <div id="horizon-tables" style="margin-top:1rem;"></div>
@@ -305,10 +305,10 @@
 
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🏷 观察池长期质量一览 <span class="badge">描述性指标 · 质量≠预测</span>
+        <span data-i18n="ch-horizon-stocks">🏷 观察池长期质量一览</span> <span class="badge" data-i18n="bd-horizon-stocks">描述性指标 · 质量≠预测</span>
       </div>
       <div id="horizon-stocks" style="overflow-x:auto;"></div>
-      <div style="color:var(--muted);font-size:0.74rem;margin-top:.6rem;line-height:1.5;">
+      <div style="color:var(--muted);font-size:0.74rem;margin-top:.6rem;line-height:1.5;" data-i18n="note-horizon-stocks">
         以上为描述性现状（趋势/波动/距高点），不构成对未来的预测。我们的实验结论：没人能稳定预测哪只个股跑赢——
         对长期持有者，证据支持的做法是<b>指数为主、单只个股不超过组合 5-10%</b>。
       </div>
@@ -323,7 +323,7 @@
   <div class="view-stack" style="margin-bottom:1.5rem;">
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🎯 Benchmark 记分卡 <span class="badge">每个模型 vs 诚实基线 · 硬基线不self-deception</span>
+        <span data-i18n="ch-benchmark">🎯 Benchmark 记分卡</span> <span class="badge" data-i18n="bd-benchmark">每个模型 vs 诚实基线 · 硬基线不self-deception</span>
       </div>
       <div id="benchmark" style="font-size:0.8rem;"></div>
     </div>
@@ -332,14 +332,14 @@
   <div class="view-grid">
     <!-- 模拟盘（$10,000 机械跟随信号，账本不可篡改） -->
     <div class="panel">
-      <div class="panel-title">💰 模拟盘 · 五策略竞技</div>
+      <div class="panel-title" data-i18n="pt-paper">💰 模拟盘 · 五策略竞技</div>
       <div id="paper-content" style="font-size:0.8rem;line-height:1.6;"></div>
       <div id="chart-equity" style="height:260px;margin-top:.75rem;"></div>
     </div>
 
     <!-- 我的模拟盘（用户自己玩，存在浏览器） -->
     <div class="panel">
-      <div class="panel-title">🎮 我的模拟盘 · 和AI经理比一比</div>
+      <div class="panel-title" data-i18n="pt-game">🎮 我的模拟盘 · 和AI经理比一比</div>
       <div id="game-content" style="font-size:0.8rem;line-height:1.6;"></div>
     </div>
   </div>
@@ -348,12 +348,12 @@
     <!-- 预测准确率回溯 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
-        <span>🎯 近期预测 vs 实际结果 <span class="badge">信号准确率回溯</span></span>
+        <span data-i18n="ch-accuracy">🎯 近期预测 vs 实际结果 <span class="badge">信号准确率回溯</span></span>
         <select id="accuracy-days-select" onchange="renderPredictionAccuracy()"
           style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.25rem .5rem;border-radius:5px;font-size:0.75rem;">
-          <option value="20">近20天</option>
-          <option value="40" selected>近40天</option>
-          <option value="60">近60天</option>
+          <option value="20" data-i18n="opt-20d">近20天</option>
+          <option value="40" selected data-i18n="opt-40d">近40天</option>
+          <option value="60" data-i18n="opt-60d">近60天</option>
         </select>
       </div>
       <div id="accuracy-summary" style="display:flex;gap:.65rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.8rem;"></div>
@@ -364,7 +364,7 @@
     <!-- 模型体检报告（统计评估） -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        📑 模型体检报告 <span class="badge">统计评估 · 每次刷新自动更新</span>
+        <span data-i18n="ch-model-report">📑 模型体检报告</span> <span class="badge" data-i18n="bd-model-report">统计评估 · 每次刷新自动更新</span>
       </div>
       <div id="report-content" style="font-size:0.8rem;"></div>
     </div>
@@ -378,7 +378,7 @@
     <!-- 自动汇总表（从各方法 JSON 实时抓 verdict，含空/否） -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🧾 诚实总览 · 试过什么 · 结果如何 <span class="badge">自动汇总 · 含空结果/被否</span>
+        <span data-i18n="ch-honest-registry">🧾 诚实总览 · 试过什么 · 结果如何</span> <span class="badge" data-i18n="bd-honest-registry">自动汇总 · 含空结果/被否</span>
       </div>
       <div id="honest-registry"></div>
     </div>
@@ -390,7 +390,7 @@
 <section id="view-research" style="display:none">
   <div class="view-intro" data-i18n="vi-research">🔬 <b>研究：分清真规律 vs 幻觉。</b>能用的（波动率/隔夜异象/相关性体制/事件影响）与不可测的（短期方向，因子尸检证明）——都老实摊开，再加传统图表库。</div>
   <div class="panel" id="tipjar-panel" style="display:none">
-    <div class="panel-title">🎲 试胆区 <span style="font-weight:400;color:var(--muted);font-size:.7rem;">玩具预测器 · 公开计分 · 娱乐，非建议</span></div>
+    <div class="panel-title"><span data-i18n="pt-tipjar">🎲 试胆区</span> <span style="font-weight:400;color:var(--muted);font-size:.7rem;" data-i18n="pt-tipjar-sub">玩具预测器 · 公开计分 · 娱乐，非建议</span></div>
     <div id="tipjar"></div>
   </div>
   <div class="view-stack">
@@ -398,7 +398,7 @@
     <!-- 🧮 诚实总账：#5 跨检验族 FDR（把全站显著性主张汇到一个多重比较框架） -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🧮 诚实总账（跨检验族 FDR） <span class="badge">试过这么多 · 还剩几条经得起</span>
+        <span data-i18n="ch-fdr">🧮 诚实总账（跨检验族 FDR）</span> <span class="badge" data-i18n="bd-fdr">试过这么多 · 还剩几条经得起</span>
       </div>
       <div id="fdr-crossfamily"></div>
     </div>
@@ -406,7 +406,7 @@
     <!-- 因子样本外尸检（P2-5）：这个项目最诚实的一页 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🔬 因子样本外尸检 <span class="badge">OOS拼接 + 符号稳定性 + 2024-2026 终审集</span>
+        <span data-i18n="ch-factor-audit">🔬 因子样本外尸检</span> <span class="badge" data-i18n="bd-factor-audit">OOS拼接 + 符号稳定性 + 2024-2026 终审集</span>
       </div>
       <div id="factor-audit" style="font-size:0.8rem;"></div>
     </div>
@@ -414,7 +414,7 @@
     <!-- 波动率状态预测原型（P2-6）：换对靶子的证明 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        📈 波动率状态预测原型 <span class="badge">高信噪比靶子 · 梯度提升树</span>
+        <span data-i18n="ch-vol-model">📈 波动率状态预测原型</span> <span class="badge" data-i18n="bd-vol-model">高信噪比靶子 · 梯度提升树</span>
       </div>
       <div id="vol-model" style="font-size:0.8rem;"></div>
     </div>
@@ -422,7 +422,7 @@
     <!-- 市场结构解释（PCA 共动 + 相关性体制 + 因果回路）：纯解释 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🧭 市场结构解释 <span class="badge">PCA 共动 · 相关性体制 · 因果回路 · 纯解释不预测</span>
+        <span data-i18n="ch-market-structure">🧭 市场结构解释</span> <span class="badge" data-i18n="bd-market-structure">PCA 共动 · 相关性体制 · 因果回路 · 纯解释不预测</span>
       </div>
       <div id="market-structure" style="font-size:0.8rem;"></div>
     </div>
@@ -430,7 +430,7 @@
     <!-- 事件影响一览（整合宏观日历 + 历史事件研究 + 诚实框架）：放大波动不给方向 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🗓 事件影响一览 <span class="badge">放大波动 · 方向修正小且未验证 · 别当强信号</span>
+        <span data-i18n="ch-event-impact">🗓 事件影响一览</span> <span class="badge" data-i18n="bd-event-impact">放大波动 · 方向修正小且未验证 · 别当强信号</span>
       </div>
       <div id="event-impact" style="font-size:0.8rem;"></div>
     </div>
@@ -438,15 +438,15 @@
     <!-- 大跌抄底指南 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        📉 大跌抄底指南 <span class="badge">S&P500 · 1928-2026历史统计</span>
+        <span data-i18n="ch-dip-guide">📉 大跌抄底指南</span> <span class="badge" data-i18n="bd-dip-guide">S&P500 · 1928-2026历史统计</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
         <div>
-          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;text-align:center;">跌幅 → 平均恢复天数</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;text-align:center;" data-i18n="lbl-dip-recovery">跌幅 → 平均恢复天数</div>
           <div id="chart-dip-recovery" style="height:220px;"></div>
         </div>
         <div>
-          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;text-align:center;">VIX水平 → 未来3月胜率</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;text-align:center;" data-i18n="lbl-vix-entry">VIX水平 → 未来3月胜率</div>
           <div id="chart-vix-entry" style="height:220px;"></div>
         </div>
       </div>
@@ -455,19 +455,19 @@
 
     <!-- 历史走势 + 信号 -->
     <div class="chart-wrap">
-      <div class="chart-header">📈 四大资产归一化走势 <span class="badge">2015–2026</span></div>
+      <div class="chart-header"><span data-i18n="ch-price">📈 四大资产归一化走势</span> <span class="badge">2015–2026</span></div>
       <div id="chart-price" style="height:400px;"></div>
     </div>
 
     <!-- 个股观察池：七姐妹 + 优质龙头 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        💎 个股观察池 <span class="badge">七姐妹 + 优质龙头 · 近3年 vs 指数</span>
+        <span data-i18n="ch-stocks-watch">💎 个股观察池</span> <span class="badge" data-i18n="bd-stocks-watch">七姐妹 + 优质龙头 · 近3年 vs 指数</span>
       </div>
       <div id="stocks-table" style="overflow-x:auto;margin-bottom:1rem;"></div>
       <div id="stock-scorecard" style="margin-bottom:1rem;"></div>
       <div id="chart-stock" style="height:340px;"></div>
-      <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;">
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;" data-i18n="note-stocks-watch">
         点击表格行查看该股的分析卡 + vs 纳指/标普归一化对比 · 数据随流水线更新
       </div>
     </div>
@@ -475,7 +475,7 @@
     <!-- 隔夜 vs 日内收益分解 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
-        <span>🌙 隔夜 vs 日内收益分解 <span class="badge">2000–2026 · 真实ETF价格</span></span>
+        <span data-i18n="ch-overnight">🌙 隔夜 vs 日内收益分解 <span class="badge">2000–2026 · 真实ETF价格</span></span>
         <div style="display:flex;gap:.3rem;" id="overnight-btns"></div>
       </div>
       <div id="chart-overnight" style="height:340px;"></div>
@@ -485,13 +485,13 @@
     <!-- 长历史月度分析（时段选择器）-->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
-        <span>📅 S&P 500 月度胜率 <span class="badge" id="period-sample-badge">加载中</span></span>
+        <span data-i18n="ch-monthly-winrate">📅 S&P 500 月度胜率</span> <span class="badge" id="period-sample-badge">加载中</span>
         <div style="display:flex;gap:.3rem;flex-wrap:wrap;" id="period-btns">
-          <button class="period-btn active" data-period="1928+">1928+（99年）</button>
-          <button class="period-btn" data-period="1950+">1950+（76年）</button>
-          <button class="period-btn" data-period="1980+">1980+（46年）</button>
-          <button class="period-btn" data-period="2000+">2000+（26年）</button>
-          <button class="period-btn" data-period="2020+">2020+（近5年）</button>
+          <button class="period-btn active" data-period="1928+" data-i18n="per-1928">1928+（99年）</button>
+          <button class="period-btn" data-period="1950+" data-i18n="per-1950">1950+（76年）</button>
+          <button class="period-btn" data-period="1980+" data-i18n="per-1980">1980+（46年）</button>
+          <button class="period-btn" data-period="2000+" data-i18n="per-2000">2000+（26年）</button>
+          <button class="period-btn" data-period="2020+" data-i18n="per-2020">2020+（近5年）</button>
         </div>
       </div>
       <div id="chart-longmonthly" style="height:320px;"></div>
@@ -501,7 +501,7 @@
     <!-- 假日效应面板 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🎄 假日时机效应 <span class="badge">1950–2026 日频统计</span>
+        <span data-i18n="ch-holiday">🎄 假日时机效应</span> <span class="badge" data-i18n="bd-holiday">1950–2026 日频统计</span>
       </div>
       <div id="chart-holiday" style="height:300px;"></div>
       <div class="insight" id="holiday-insight" style="margin-top:.75rem;"></div>
@@ -510,7 +510,7 @@
     <!-- 熊市目录 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🐻 历史熊市目录 <span class="badge">1929–2022</span>
+        <span data-i18n="ch-bearmarkets">🐻 历史熊市目录</span> <span class="badge">1929–2022</span>
       </div>
       <div id="chart-bearmarkets" style="height:320px;"></div>
     </div>
@@ -518,39 +518,39 @@
     <!-- 标签页：相关性 / Granger / GARCH / 年度热力图 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="tabs" role="tablist">
-        <button class="tab active" role="tab" data-main-tab="forecast">30日前瞻</button>
-        <button class="tab" role="tab" data-main-tab="corr">滚动相关性</button>
-        <button class="tab" role="tab" data-main-tab="monthly">月度胜率(2000+)</button>
-        <button class="tab" role="tab" data-main-tab="garch">波动率(GARCH)</button>
-        <button class="tab" role="tab" data-main-tab="granger">Granger因果</button>
-        <button class="tab" role="tab" data-main-tab="annual">年度热力图</button>
+        <button class="tab active" role="tab" data-main-tab="forecast" data-i18n="tab-forecast30">30日前瞻</button>
+        <button class="tab" role="tab" data-main-tab="corr" data-i18n="tab-corr">滚动相关性</button>
+        <button class="tab" role="tab" data-main-tab="monthly" data-i18n="tab-monthly-wr">月度胜率(2000+)</button>
+        <button class="tab" role="tab" data-main-tab="garch" data-i18n="tab-garch">波动率(GARCH)</button>
+        <button class="tab" role="tab" data-main-tab="granger" data-i18n="tab-granger">Granger因果</button>
+        <button class="tab" role="tab" data-main-tab="annual" data-i18n="tab-annual">年度热力图</button>
       </div>
       <div class="tab-content active" id="tab-forecast">
         <div id="chart-forecast" style="height:340px;"></div>
         <div class="insight" id="forecast-insight" style="margin-top:.75rem;"></div>
       </div>
-      <div class="tab-content" id="tab-corr"><div class="chart-ph" id="ph-corr">点击标签加载图表…</div><div id="chart-corr" style="height:340px;"></div></div>
-      <div class="tab-content" id="tab-monthly"><div class="chart-ph" id="ph-monthly">点击标签加载图表…</div><div id="chart-monthly" style="height:340px;"></div></div>
-      <div class="tab-content" id="tab-garch"><div class="chart-ph" id="ph-garch">点击标签加载图表…</div><div id="chart-garch" style="height:340px;"></div></div>
-      <div class="tab-content" id="tab-granger"><div class="chart-ph" id="ph-granger">点击标签加载图表…</div><div id="chart-granger" style="height:340px;"></div></div>
-      <div class="tab-content" id="tab-annual"><div class="chart-ph" id="ph-annual">点击标签加载图表…</div><div id="chart-annual" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-corr"><div class="chart-ph" id="ph-corr" data-i18n="ph-click">点击标签加载图表…</div><div id="chart-corr" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-monthly"><div class="chart-ph" id="ph-monthly" data-i18n="ph-click">点击标签加载图表…</div><div id="chart-monthly" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-garch"><div class="chart-ph" id="ph-garch" data-i18n="ph-click">点击标签加载图表…</div><div id="chart-garch" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-granger"><div class="chart-ph" id="ph-granger" data-i18n="ph-click">点击标签加载图表…</div><div id="chart-granger" style="height:340px;"></div></div>
+      <div class="tab-content" id="tab-annual"><div class="chart-ph" id="ph-annual" data-i18n="ph-click">点击标签加载图表…</div><div id="chart-annual" style="height:340px;"></div></div>
     </div>
 
     <!-- 高级多元分析 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🔬 高级统计分析 <span class="badge">📸 研究快照·非实时（需本地 --full 刷新）· CCA/SHAP/Kalman/Prophet</span>
+        <span data-i18n="ch-advanced-stats">🔬 高级统计分析</span> <span class="badge" data-i18n="bd-advanced-stats">📸 研究快照·非实时（需本地 --full 刷新）· CCA/SHAP/Kalman/Prophet</span>
       </div>
-      <div style="font-size:0.72rem;color:#e67e22;margin:-.5rem 0 .8rem;">⚠ 本组为重型 ML 研究快照，CI 不自动刷新（缺重型依赖），数据可能滞后数日；仅作方法演示，不当实时信号。事件研究结论请看"今日"标签的 🗓 事件影响一览。</div>
+      <div style="font-size:0.72rem;color:#e67e22;margin:-.5rem 0 .8rem;" data-i18n="note-advanced-stats">⚠ 本组为重型 ML 研究快照，CI 不自动刷新（缺重型依赖），数据可能滞后数日；仅作方法演示，不当实时信号。事件研究结论请看"今日"标签的 🗓 事件影响一览。</div>
       <div class="tabs" id="mv-tabs" role="tablist">
-        <button class="tab active" role="tab" data-mv-tab="modelcmp">模型对比</button>
-        <button class="tab" role="tab" data-mv-tab="shap">SHAP因子</button>
-        <button class="tab" role="tab" data-mv-tab="prophet">Prophet预测</button>
-        <button class="tab" role="tab" data-mv-tab="kalman">卡尔曼趋势</button>
-        <button class="tab" role="tab" data-mv-tab="rolling">滚动β系数</button>
-        <button class="tab" role="tab" data-mv-tab="path">路径分析</button>
-        <button class="tab" role="tab" data-mv-tab="cca">CCA/RDA</button>
-        <button class="tab" role="tab" data-mv-tab="backtest">回测验证</button>
+        <button class="tab active" role="tab" data-mv-tab="modelcmp" data-i18n="tab-modelcmp">模型对比</button>
+        <button class="tab" role="tab" data-mv-tab="shap" data-i18n="tab-shap">SHAP因子</button>
+        <button class="tab" role="tab" data-mv-tab="prophet" data-i18n="tab-prophet">Prophet预测</button>
+        <button class="tab" role="tab" data-mv-tab="kalman" data-i18n="tab-kalman">卡尔曼趋势</button>
+        <button class="tab" role="tab" data-mv-tab="rolling" data-i18n="tab-rolling">滚动β系数</button>
+        <button class="tab" role="tab" data-mv-tab="path" data-i18n="tab-path">路径分析</button>
+        <button class="tab" role="tab" data-mv-tab="cca" data-i18n="tab-cca">CCA/RDA</button>
+        <button class="tab" role="tab" data-mv-tab="backtest" data-i18n="tab-backtest">回测验证</button>
       </div>
       <div class="tab-content" id="mvtab-backtest">
         <div id="chart-backtest-tier" style="height:300px;"></div>
@@ -580,14 +580,14 @@
 
     <!-- 历史信号概率轨迹 -->
     <div class="chart-wrap">
-      <div class="chart-header">🔮 历史入场概率轨迹 <span class="badge">贝叶斯综合信号</span></div>
+      <div class="chart-header"><span data-i18n="ch-signal-history">🔮 历史入场概率轨迹</span> <span class="badge" data-i18n="bd-signal-history">贝叶斯综合信号</span></div>
       <div id="chart-signal-history" style="height:300px;"></div>
     </div>
 
     <!-- 🔬 规律防伪：placebo 置换检验 + 多重检验校正(FDR) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🔬 规律防伪（placebo 置换检验 + FDR） <span class="badge">诚实总览 · 真伪与无定论</span>
+        <span data-i18n="ch-placebo">🔬 规律防伪（placebo 置换检验 + FDR）</span> <span class="badge" data-i18n="bd-placebo">诚实总览 · 真伪与无定论</span>
       </div>
       <div id="placebo-overview"></div>
     </div>
@@ -595,7 +595,7 @@
     <!-- 🎯 反事实事件影响 (方法B) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🎯 反事实事件影响 <span class="badge">合成控制/中断时间序列 · 准实验</span>
+        <span data-i18n="ch-event-causal">🎯 反事实事件影响</span> <span class="badge" data-i18n="bd-event-causal">合成控制/中断时间序列 · 准实验</span>
       </div>
       <div id="event-causal"></div>
     </div>
@@ -603,7 +603,7 @@
     <!-- 📉 风险仪表盘 (方法D) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        📉 风险仪表盘 <span class="badge">VXN-VIX · 条件下行 · 测风险不测方向</span>
+        <span data-i18n="ch-risk-dashboard">📉 风险仪表盘</span> <span class="badge" data-i18n="bd-risk-dashboard">VXN-VIX · 条件下行 · 测风险不测方向</span>
       </div>
       <div id="risk-dashboard"></div>
     </div>
@@ -611,7 +611,7 @@
     <!-- 📐 收益区间 (方法E 保形预测) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        📐 收益区间（保形预测） <span class="badge">实测覆盖 · 非方向预测</span>
+        <span data-i18n="ch-conformal">📐 收益区间（保形预测）</span> <span class="badge" data-i18n="bd-conformal">实测覆盖 · 非方向预测</span>
       </div>
       <div id="conformal"></div>
     </div>
@@ -619,7 +619,7 @@
     <!-- 🌀 周期检验 (方法F 谱 + 红噪声) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🌀 周期检验（谱 + 红噪声） <span class="badge">真有周期吗 · 非预测</span>
+        <span data-i18n="ch-cycles">🌀 周期检验（谱 + 红噪声）</span> <span class="badge" data-i18n="bd-cycles">真有周期吗 · 非预测</span>
       </div>
       <div id="cycles-spectral"></div>
     </div>
@@ -627,7 +627,7 @@
     <!-- 🎲 过拟合概率 PBO (方法G CSCV) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🎲 过拟合概率 PBO <span class="badge">挑最佳因子有多大概率是过拟合 · 非预测</span>
+        <span data-i18n="ch-cpcv">🎲 过拟合概率 PBO</span> <span class="badge" data-i18n="bd-cpcv">挑最佳因子有多大概率是过拟合 · 非预测</span>
       </div>
       <div id="cpcv"></div>
     </div>
@@ -635,7 +635,7 @@
     <!-- 📉 校准漂移 (#3 逐折校准随时间) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        📉 校准漂移 <span class="badge">自报把握度是否随时间偏离现实 · 非预测</span>
+        <span data-i18n="ch-calib-drift">📉 校准漂移</span> <span class="badge" data-i18n="bd-calib-drift">自报把握度是否随时间偏离现实 · 非预测</span>
       </div>
       <div id="calibration-drift"></div>
     </div>
@@ -643,7 +643,7 @@
     <!-- 🩺 个股诚实体检 (风险画像 + 规律真伪,非荐股非预测) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🩺 个股诚实体检 <span class="badge">风险画像与规律真伪 · 非荐股非预测</span>
+        <span data-i18n="ch-stock-checkup">🩺 个股诚实体检</span> <span class="badge" data-i18n="bd-stock-checkup">风险画像与规律真伪 · 非荐股非预测</span>
       </div>
       <div id="stock-checkup"></div>
     </div>
@@ -651,7 +651,7 @@
     <!-- 🪦 诚实坟场 (死掉的模型 + 消失/被刷掉的规律) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🪦 诚实坟场 <span class="badge">试过没用 · 曾有效现消失 · 被多重比较刷掉</span>
+        <span data-i18n="ch-graveyard">🪦 诚实坟场</span> <span class="badge" data-i18n="bd-graveyard">试过没用 · 曾有效现消失 · 被多重比较刷掉</span>
       </div>
       <div id="honest-graveyard"></div>
     </div>
@@ -659,7 +659,7 @@
     <!-- 🌡️ 当前市场风险体制 (R1: VIX/收益率曲线/VIX期限结构, 描述非预测) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🌡️ 当前市场风险体制 <span class="badge">现在处于什么风险环境 · 描述非预测</span>
+        <span data-i18n="ch-market-regime">🌡️ 当前市场风险体制</span> <span class="badge" data-i18n="bd-market-regime">现在处于什么风险环境 · 描述非预测</span>
       </div>
       <div id="market-regime"></div>
     </div>
@@ -667,7 +667,7 @@
     <!-- 🔬 探索区 (未验证/猜测性假设, 怀疑训练场, 非预测非可交易) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🔬 探索区 <span class="badge">未验证猜测 · 极可能是噪声 · 不可交易</span>
+        <span data-i18n="ch-exploratory">🔬 探索区</span> <span class="badge" data-i18n="bd-exploratory">未验证猜测 · 极可能是噪声 · 不可交易</span>
       </div>
       <div id="exploratory"></div>
     </div>
@@ -675,7 +675,7 @@
     <!-- 🔁 短期反转 (R3 行为金融: 大跌次日反弹? 描述非抄底建议) -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🔁 短期反转(过度反应) <span class="badge">大跌次日反弹? · 描述非抄底、不可交易</span>
+        <span data-i18n="ch-overreaction">🔁 短期反转(过度反应)</span> <span class="badge" data-i18n="bd-overreaction">大跌次日反弹? · 描述非抄底、不可交易</span>
       </div>
       <div id="overreaction"></div>
     </div>
@@ -683,13 +683,13 @@
     <!-- 日历规律统计 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        📅 日历规律统计 <span class="badge">1928-2026 · 98年S&P500</span>
+        <span data-i18n="ch-calendar-stats">📅 日历规律统计</span> <span class="badge">1928-2026 · 98年S&P500</span>
       </div>
       <div class="tabs" id="cal-tabs" role="tablist">
-        <button class="tab active" role="tab" data-cal-tab="digit">年份尾数</button>
-        <button class="tab" role="tab" data-cal-tab="cycle">任期年</button>
-        <button class="tab" role="tab" data-cal-tab="party">执政党</button>
-        <button class="tab" role="tab" data-cal-tab="calholiday">假日效应</button>
+        <button class="tab active" role="tab" data-cal-tab="digit" data-i18n="tab-digit">年份尾数</button>
+        <button class="tab" role="tab" data-cal-tab="cycle" data-i18n="tab-cycle">任期年</button>
+        <button class="tab" role="tab" data-cal-tab="party" data-i18n="tab-party">执政党</button>
+        <button class="tab" role="tab" data-cal-tab="calholiday" data-i18n="tab-calholiday">假日效应</button>
       </div>
       <div class="tab-content active" id="caltab-digit">
         <div class="digit-highlight" id="digit-highlight"></div>
@@ -720,7 +720,7 @@
   <div class="view-stack">
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🎓 量化方法论一览 <span class="badge">López de Prado 框架 · 诚实负结果</span>
+        <span data-i18n="ch-quant-overview">🎓 量化方法论一览</span> <span class="badge" data-i18n="bd-quant-overview">López de Prado 框架 · 诚实负结果</span>
       </div>
       <div id="quant-methodology" style="font-size:0.82rem;"></div>
     </div>
@@ -732,47 +732,47 @@
   <div class="view-grid">
     <!-- SpaceX IPO 追踪器 -->
     <div class="panel" id="spcx-panel">
-      <div class="panel-title">🚀 SpaceX SPCX · IPO追踪</div>
+      <div class="panel-title" data-i18n="pt-spcx-tracker">🚀 SpaceX SPCX · IPO追踪</div>
       <div id="spcx-tracker"></div>
     </div>
 
     <!-- 澳洲CGT税务计算器（与 SPCX 追踪同排，避免整行只有一张卡） -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;">
-        🇦🇺 澳洲CGT资本利得税计算器 <span class="badge">仅供参考 · 建议咨询会计师</span>
+        <span data-i18n="ch-cgt">🇦🇺 澳洲CGT资本利得税计算器</span> <span class="badge" data-i18n="bd-cgt">仅供参考 · 建议咨询会计师</span>
       </div>
       <div class="cgt-grid">
         <div class="cgt-field">
-          <label class="cgt-label">资产名称</label>
+          <label class="cgt-label" data-i18n="lbl-cgt-asset">资产名称</label>
           <select class="cgt-input" id="cgt-asset" onchange="prefillCGT()">
-            <option value="">— 选择或自定义 —</option>
+            <option value="" data-i18n="opt-cgt-choose">— 选择或自定义 —</option>
             <option value="BTC">BTC 比特币</option>
             <option value="ETH">ETH 以太坊</option>
             <option value="XLM">XLM 恒星币</option>
             <option value="DOGE">DOGE 狗狗币</option>
             <option value="HOME">HOME DeFi.app</option>
             <option value="SPCX">SPCX SpaceX</option>
-            <option value="custom">自定义资产</option>
+            <option value="custom" data-i18n="opt-cgt-custom">自定义资产</option>
           </select>
         </div>
         <div class="cgt-field">
-          <label class="cgt-label">卖出数量</label>
+          <label class="cgt-label" data-i18n="lbl-cgt-qty">卖出数量</label>
           <input class="cgt-input" type="number" id="cgt-qty" min="0" step="any" placeholder="例如：100">
         </div>
         <div class="cgt-field">
-          <label class="cgt-label">买入均价 (AUD/个)</label>
+          <label class="cgt-label" data-i18n="lbl-cgt-buy-aud">买入均价 (AUD/个)</label>
           <input class="cgt-input" type="number" id="cgt-buy-aud" min="0" step="any" placeholder="买入时AUD单价">
         </div>
         <div class="cgt-field">
-          <label class="cgt-label">卖出价格 (AUD/个)</label>
+          <label class="cgt-label" data-i18n="lbl-cgt-sell-aud">卖出价格 (AUD/个)</label>
           <input class="cgt-input" type="number" id="cgt-sell-aud" min="0" step="any" placeholder="卖出时AUD单价">
         </div>
         <div class="cgt-field">
-          <label class="cgt-label">买入日期</label>
+          <label class="cgt-label" data-i18n="lbl-cgt-buy-date">买入日期</label>
           <input class="cgt-input" type="date" id="cgt-buy-date">
         </div>
         <div class="cgt-field">
-          <label class="cgt-label">边际税率 (%) <span class="tip" data-tip="澳洲个人所得税边际税率：$0-18,200免税；$18,201-45,000税率19%；$45,001-120,000税率32.5%；$120,001-180,000税率37%；$180,001+税率45%。加Medicare征费2%。">ⓘ</span></label>
+          <label class="cgt-label"><span data-i18n="lbl-cgt-tax-rate">边际税率 (%)</span> <span class="tip" data-tip="澳洲个人所得税边际税率：$0-18,200免税；$18,201-45,000税率19%；$45,001-120,000税率32.5%；$120,001-180,000税率37%；$180,001+税率45%。加Medicare征费2%。">ⓘ</span></label>
           <select class="cgt-input" id="cgt-tax-rate">
             <option value="0">0%（年收入 < A$18,200）</option>
             <option value="19">19%（A$18,201–45,000）</option>
@@ -782,9 +782,9 @@
           </select>
         </div>
       </div>
-      <button class="cgt-btn" id="cgt-calc-btn">📊 计算税务</button>
+      <button class="cgt-btn" id="cgt-calc-btn" data-i18n="btn-cgt-calc">📊 计算税务</button>
       <div id="cgt-result"></div>
-      <div style="font-size:0.72rem;color:var(--muted);margin-top:.65rem;line-height:1.5;">
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:.65rem;line-height:1.5;" data-i18n="note-cgt">
         ⚠️ 仅为估算参考，不构成税务建议。加密货币每次交易（包括换币）均为CGT事件。
         若年收入较低，加密亏损可抵扣资本利得。建议咨询注册会计师（CPA/Tax Agent）。
       </div>
@@ -795,28 +795,28 @@
     <!-- SpaceX IPO 详情 -->
     <div class="chart-wrap" style="padding:1.25rem;" id="spcx-detail-wrap">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
-        <span>🚀 SpaceX SPCX IPO 盈亏计算 <span class="badge">2026-06-12 Nasdaq</span></span>
+        <span data-i18n="ch-spcx-pl">🚀 SpaceX SPCX IPO 盈亏计算 <span class="badge">2026-06-12 Nasdaq</span></span>
         <button id="spcx-price-btn"
-          style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
+          style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;" data-i18n="btn-spcx-price">
           📡 获取价格
         </button>
       </div>
       <div id="spcx-monitor"></div>
       <div class="spcx-detail-grid">
         <div>
-          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;">我的持仓与盈亏</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;" data-i18n="lbl-spcx-position">我的持仓与盈亏</div>
           <div id="spcx-calc" style="font-size:0.82rem;display:flex;flex-direction:column;gap:.5rem;min-height:40px;"></div>
           <div style="margin-top:.65rem;">
-            <label style="font-size:0.78rem;color:var(--muted);">申购股数（分配结果后填写）</label>
+            <label style="font-size:0.78rem;color:var(--muted);" data-i18n="lbl-spcx-shares">申购股数（分配结果后填写）</label>
             <input class="spcx-input" type="number" id="spcx-shares-input" min="0" step="1" placeholder="例如：30"
               style="margin-top:.3rem;">
-            <label style="font-size:0.78rem;color:var(--muted);margin-top:.5rem;display:block;">当前市价 USD（上市后填写或自动获取）</label>
+            <label style="font-size:0.78rem;color:var(--muted);margin-top:.5rem;display:block;" data-i18n="lbl-spcx-price">当前市价 USD（上市后填写或自动获取）</label>
             <input class="spcx-input" type="number" id="spcx-price-input" min="0" step="0.01" placeholder="发行价 135"
               style="margin-top:.3rem;">
           </div>
         </div>
         <div>
-          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;">知名科技股IPO首日涨幅参考</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;" data-i18n="lbl-spcx-ipo-ref">知名科技股IPO首日涨幅参考</div>
           <div id="chart-spcx-ipo" style="height:240px;"></div>
         </div>
       </div>
@@ -824,7 +824,7 @@
 
       <!-- IPO 周期视角：超级IPO与市场顶部（情绪温度计） -->
       <div style="margin-top:1.25rem;">
-        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;">📜 超级IPO上市后12个月大盘表现 · IPO周期视角</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:.4rem;" data-i18n="lbl-ipo-cycle">📜 超级IPO上市后12个月大盘表现 · IPO周期视角</div>
         <div id="chart-ipo-cycle" style="height:300px;"></div>
         <div class="insight" id="ipo-cycle-insight" style="margin-top:.6rem;"></div>
       </div>
@@ -833,14 +833,14 @@
     <!-- 我的持仓计算器 -->
     <div class="chart-wrap" style="padding:1.25rem;">
       <div class="chart-header" style="margin:-1.25rem -1.25rem 1rem;padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
-        <span>💼 我的持仓计算器 <span class="badge">实时价格</span></span>
+        <span data-i18n="ch-my-portfolio">💼 我的持仓计算器 <span class="badge">实时价格</span></span>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
           <button id="portfolio-refresh-btn"
-            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;" data-i18n="btn-portfolio-refresh">
             🔄 更新价格
           </button>
           <button id="auto-refresh-btn"
-            style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;">
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:.3rem .8rem;border-radius:5px;font-size:0.78rem;cursor:pointer;" data-i18n="btn-auto-refresh">
             ⏱ 自动
           </button>
         </div>
@@ -848,17 +848,17 @@
       <table style="width:100%;border-collapse:collapse;font-size:0.8rem;" id="portfolio-table">
         <thead>
           <tr style="color:var(--muted);border-bottom:1px solid var(--border);">
-            <th style="text-align:left;padding:.3rem .4rem;">资产</th>
-            <th style="text-align:right;padding:.3rem .4rem;">持仓数量</th>
-            <th style="text-align:right;padding:.3rem .4rem;">单价(USD)</th>
-            <th style="text-align:right;padding:.3rem .4rem;">市值/盈亏(AUD)</th>
+            <th style="text-align:left;padding:.3rem .4rem;" data-i18n="th-asset">资产</th>
+            <th style="text-align:right;padding:.3rem .4rem;" data-i18n="th-qty">持仓数量</th>
+            <th style="text-align:right;padding:.3rem .4rem;" data-i18n="th-price-usd">单价(USD)</th>
+            <th style="text-align:right;padding:.3rem .4rem;" data-i18n="th-value-aud">市值/盈亏(AUD)</th>
           </tr>
         </thead>
         <tbody id="portfolio-body"></tbody>
         <tfoot id="portfolio-foot"></tfoot>
       </table>
       <div style="font-size:0.72rem;color:var(--muted);margin-top:.6rem;">
-        价格来自 CoinGecko · 股票价格手动维护 · <span id="portfolio-updated">未更新</span>
+        <span data-i18n="note-portfolio-src">价格来自 CoinGecko · 股票价格手动维护</span> · <span id="portfolio-updated">未更新</span>
       </div>
       <div id="portfolio-signal" style="margin-top:.6rem;"></div>
     </div>
@@ -870,7 +870,7 @@
 
 <footer>
   Valpha Lab &nbsp;·&nbsp; <a href="https://github.com/Vambrocop/valpha-lab">github.com/Vambrocop/valpha-lab</a>
-  &nbsp;·&nbsp; 数据来源：Yahoo Finance &nbsp;·&nbsp; 仅供个人学习，不构成投资建议
+  &nbsp;·&nbsp; <span data-i18n="footer-note">数据来源：Yahoo Finance &nbsp;·&nbsp; 仅供个人学习，不构成投资建议</span>
 </footer>
 
 <!-- Plotly 移到 body 末、app-js 之前（性能①）：首屏（今日视图 + 结论 hero）不画图，不必让 1.4MB 阻塞 <head>；
@@ -909,6 +909,191 @@
     "vi-research": `🔬 <b>Research: telling real patterns from illusions.</b> What's usable (volatility / overnight anomaly / correlation regime / event impact) vs what's unmeasurable (short-term direction, proven by the factor autopsy) — all laid out honestly, plus a traditional chart library.`,
     "vi-quant": `🎓 <b>Quant methodology: is this "real quant"?</b> Yes — and one of its most rigorous schools. This screen maps every method the project uses onto the professional quant literature, and admits what we used it to falsify.`,
     "vi-mine": `💼 <b>Mine: personal tools.</b> Holdings P&L, Australian CGT tax, SpaceX tracking — data lives only in your browser, nothing uploaded. Includes the author's personal opinions (clearly labelled, not model signals).`,
+
+    /* ── 静态面板/标签扩展覆盖（2026-07-02，扩大 lite shell 覆盖面）── */
+    "h1-sub": "Honest US-stock statistics",
+    "data-freshness-loading": "📡 Loading data freshness…",
+    "btn-refresh": "🔄 Refresh",
+    "btn-ob-dismiss": "Got it, let's look",
+    "loading-dots2": "Loading…",
+    "vp-hero-lbl": "🎯 Today's takeaway · direction stated · publicly scored",
+    "vp-hero-acct": "Say it, own it · public scorecard →",
+    "vp-pred-t": "🔮 AI outlook · publicly scored",
+    "pt-digest": `📋 Today's digest <span style="font-weight:400;color:var(--muted);font-size:.7rem;">description + honest caveats</span>`,
+    "gh-signal-plan": "🎯 Signal & plan",
+    "pt-datepick": "Pick a date · view entry signal",
+    "lbl-analysis-date": "Analysis date",
+    "loading": "Loading",
+    "pt-factor-breakdown": "Signal factor breakdown",
+    "pt-daily-brief": "📋 Daily brief",
+    "pt-dual-index": "📈 Dual-index signal · Nasdaq vs S&P",
+    "pt-sentiment": "📊 Market sentiment gauges",
+    "pt-sell-signal": "🔴 Sell-signal assessment",
+    "lbl-sell-pressure": "Sell-pressure score",
+    "gh-risk-sentiment": "⚖️ Risk & sentiment",
+    "gh-news-events": "📰 News & events",
+    "pt-news": "📰 Today's market news",
+    "pt-event-ref": "📅 Event impact reference · similar past events",
+    "ch-forecast-cal": "📅 Next-40-trading-day signal preview",
+    "bd-forecast-cal": "Technical factors frozen at current value · color = entry tier",
+    "pt-opp-window": "🎯 Best upcoming action windows",
+    "lbl-next40": "next 40 trading days",
+    "lbl-best-buy": "▲ Best buy window (highest probability)",
+    "lbl-weakest": "▼ Weakest / good for trimming (lowest probability)",
+    "pt-dow": "📅 Entry timing · day-of-week effect",
+    "loading-dots": "Loading...",
+    "pt-best-window-hist": "🗓 Best action windows (historical stats)",
+    "wt-buy": "▲ Buy window",
+    "wl-buy": `✓ Late Oct → early Nov each year<br>
+            ✓ Late Mar → early Apr each year<br>
+            ✓ Trading days 1–3 of each month<br>
+            ✓ Wednesdays (highest win rate)<br>
+            ✓ Contrarian buy after Sept selloffs<br>
+            ✓ 8 days after BTC leads Nasdaq up`,
+    "wt-sell": "▼ Sell window",
+    "wl-sell": `✗ Mid-April each year (tax-sale pressure)<br>
+            ✗ Aug → Sept each year (weakest season)<br>
+            ✗ RSI above 75 (overbought)<br>
+            ✗ Moving-average death cross (50<200)<br>
+            ✗ Year-end Dec tax-loss harvesting<br>
+            ✗ Sell score > 55`,
+    "pt-econ-cal": "🗓 Key economic calendar",
+    "pt-tier-legend": "Five entry tiers",
+    "ch-horizon": "⏳ Holding period vs. probability of gain",
+    "bd-horizon": "S&P 98yr · Nasdaq 55yr · SOX 26yr · rolling overlapping windows",
+    "ch-horizon-stocks": "🏷 Watch-list long-term quality overview",
+    "bd-horizon-stocks": "Descriptive metrics · quality ≠ prediction",
+    "note-horizon-stocks": `
+        The above is a descriptive snapshot (trend / volatility / distance from high), not a forecast. Our own experiments concluded: no one can reliably predict which single stock will outperform —
+        for long-term holders, the evidence-backed approach is <b>index-first, any single stock capped at 5-10% of the portfolio</b>.
+      `,
+    "ch-benchmark": "🎯 Benchmark scorecard",
+    "bd-benchmark": "Every model vs its honest baseline · a hard baseline, no self-deception",
+    "pt-paper": "💰 Paper trading · five-strategy contest",
+    "pt-game": "🎮 My paper portfolio · vs the AI manager",
+    "ch-accuracy": `🎯 Recent predictions vs actual outcomes <span class="badge">signal accuracy backtest</span>`,
+    "opt-20d": "Last 20 days",
+    "opt-40d": "Last 40 days",
+    "opt-60d": "Last 60 days",
+    "ch-model-report": "📑 Model check-up report",
+    "bd-model-report": "Statistical evaluation · auto-updates on every refresh",
+    "ch-honest-registry": "🧾 Honest overview · what we tried · how it turned out",
+    "bd-honest-registry": "Auto-summary · includes null results / rejected",
+    "pt-tipjar": "🎲 Tip-jar",
+    "pt-tipjar-sub": "toy predictor · publicly scored · entertainment, not advice",
+    "ch-fdr": "🧮 Honest ledger (cross-family FDR)",
+    "bd-fdr": "Tried this many · how many still hold up",
+    "ch-factor-audit": "🔬 Factor out-of-sample autopsy",
+    "bd-factor-audit": "OOS splicing + sign stability + 2024-2026 final hold-out",
+    "ch-vol-model": "📈 Volatility-regime forecast prototype",
+    "bd-vol-model": "high-signal target · gradient-boosted trees",
+    "ch-market-structure": "🧭 Market-structure explanation",
+    "bd-market-structure": "PCA co-movement · correlation regime · causal loops · pure explanation, not prediction",
+    "ch-event-impact": "🗓 Event-impact overview",
+    "bd-event-impact": "amplifies volatility · direction bias small & unverified · don't treat as a strong signal",
+    "ch-dip-guide": "📉 Buy-the-dip guide",
+    "bd-dip-guide": "S&P 500 · 1928-2026 historical stats",
+    "lbl-dip-recovery": "Drawdown → average recovery days",
+    "lbl-vix-entry": "VIX level → next-3-month win rate",
+    "ch-price": "📈 Four-asset normalized price trend",
+    "ch-stocks-watch": "💎 Single-stock watch-list",
+    "bd-stocks-watch": "Magnificent Seven + quality leaders · 3yr vs index",
+    "note-stocks-watch": `
+        Click a table row to see that stock's analysis card + normalized comparison vs Nasdaq/S&P · data updates with the pipeline
+      `,
+    "ch-overnight": `🌙 Overnight vs intraday return decomposition <span class="badge">2000–2026 · real ETF prices</span>`,
+    "ch-monthly-winrate": "📅 S&P 500 monthly win rate",
+    "per-1928": "1928+ (99yr)",
+    "per-1950": "1950+ (76yr)",
+    "per-1980": "1980+ (46yr)",
+    "per-2000": "2000+ (26yr)",
+    "per-2020": "2020+ (last 5yr)",
+    "ch-holiday": "🎄 Holiday timing effect",
+    "bd-holiday": "1950–2026 daily-frequency stats",
+    "ch-bearmarkets": "🐻 Historical bear-market catalog",
+    "tab-forecast30": "30-day outlook",
+    "tab-corr": "Rolling correlation",
+    "tab-monthly-wr": "Monthly win rate (2000+)",
+    "tab-garch": "Volatility (GARCH)",
+    "tab-granger": "Granger causality",
+    "tab-annual": "Annual heatmap",
+    "ph-click": "Click a tab to load the chart…",
+    "ch-advanced-stats": "🔬 Advanced statistical analysis",
+    "bd-advanced-stats": "📸 research snapshot · not real-time (needs local --full refresh) · CCA/SHAP/Kalman/Prophet",
+    "note-advanced-stats": "⚠ This group is a heavy-ML research snapshot; CI doesn't auto-refresh it (missing heavy deps), data may lag by days; method demonstration only, not a real-time signal. For event-study conclusions see 🗓 Event-impact overview under \"Today\".",
+    "tab-modelcmp": "Model comparison",
+    "tab-shap": "SHAP factors",
+    "tab-prophet": "Prophet forecast",
+    "tab-kalman": "Kalman trend",
+    "tab-rolling": "Rolling β",
+    "tab-path": "Path analysis",
+    "tab-cca": "CCA/RDA",
+    "tab-backtest": "Backtest validation",
+    "ch-signal-history": "🔮 Historical entry-probability trajectory",
+    "bd-signal-history": "Bayesian composite signal",
+    "ch-placebo": "🔬 Pattern anti-fraud check (placebo permutation + FDR)",
+    "bd-placebo": "honest overview · real / fake / inconclusive",
+    "ch-event-causal": "🎯 Counterfactual event impact",
+    "bd-event-causal": "synthetic control / interrupted time series · quasi-experimental",
+    "ch-risk-dashboard": "📉 Risk dashboard",
+    "bd-risk-dashboard": "VXN-VIX · conditional downside · measures risk, not direction",
+    "ch-conformal": "📐 Return interval (conformal prediction)",
+    "bd-conformal": "measured coverage · not a directional forecast",
+    "ch-cycles": "🌀 Cycle test (spectral + red noise)",
+    "bd-cycles": "is there really a cycle · not a forecast",
+    "ch-cpcv": "🎲 Overfitting probability (PBO)",
+    "bd-cpcv": "how likely the \"best\" factor is just overfitting · not a forecast",
+    "ch-calib-drift": "📉 Calibration drift",
+    "bd-calib-drift": "does self-reported confidence drift from reality over time · not a forecast",
+    "ch-stock-checkup": "🩺 Single-stock honest check-up",
+    "bd-stock-checkup": "risk profile & real-vs-fake patterns · not a stock tip, not a forecast",
+    "ch-graveyard": "🪦 Honest graveyard",
+    "bd-graveyard": "tried and useless · once worked, now gone · killed by multiple-comparison correction",
+    "ch-market-regime": "🌡️ Current market risk regime",
+    "bd-market-regime": "what risk environment we're in now · descriptive, not a forecast",
+    "ch-exploratory": "🔬 Exploratory zone",
+    "bd-exploratory": "unverified guesses · very likely noise · not tradable",
+    "ch-overreaction": "🔁 Short-term reversal (overreaction)",
+    "bd-overreaction": "bounce the day after a big drop? · descriptive, not a dip-buy signal, not tradable",
+    "ch-calendar-stats": "📅 Calendar-effect statistics",
+    "tab-digit": "Year's last digit",
+    "tab-cycle": "Presidential-term year",
+    "tab-party": "Ruling party",
+    "tab-calholiday": "Holiday effect",
+    "ch-quant-overview": "🎓 Quant methodology overview",
+    "bd-quant-overview": "López de Prado framework · honest negative results",
+    "pt-spcx-tracker": "🚀 SpaceX SPCX · IPO tracker",
+    "ch-cgt": "🇦🇺 Australian CGT (capital gains tax) calculator",
+    "bd-cgt": "reference only · consult an accountant",
+    "lbl-cgt-asset": "Asset",
+    "opt-cgt-choose": "— choose or enter custom —",
+    "opt-cgt-custom": "Custom asset",
+    "lbl-cgt-qty": "Quantity sold",
+    "lbl-cgt-buy-aud": "Avg buy price (AUD/unit)",
+    "lbl-cgt-sell-aud": "Sell price (AUD/unit)",
+    "lbl-cgt-buy-date": "Buy date",
+    "lbl-cgt-tax-rate": "Marginal tax rate (%)",
+    "btn-cgt-calc": "📊 Calculate tax",
+    "note-cgt": `
+        ⚠️ Estimate only, not tax advice. Every crypto transaction (including swaps) is a CGT event.
+        If your annual income is low, crypto losses may offset capital gains. Consult a registered accountant (CPA/Tax Agent).
+      `,
+    "ch-spcx-pl": `🚀 SpaceX SPCX IPO P&L calculator <span class="badge">2026-06-12 Nasdaq</span>`,
+    "btn-spcx-price": "📡 Fetch price",
+    "lbl-spcx-position": "My position & P&L",
+    "lbl-spcx-shares": "Shares allotted (fill in after allocation)",
+    "lbl-spcx-price": "Current market price USD (fill in or auto-fetch after listing)",
+    "lbl-spcx-ipo-ref": "Notable tech-stock IPO first-day gain reference",
+    "lbl-ipo-cycle": "📜 Mega-IPO 12-month post-listing market performance · IPO-cycle lens",
+    "ch-my-portfolio": `💼 My portfolio calculator <span class="badge">live prices</span>`,
+    "btn-portfolio-refresh": "🔄 Update prices",
+    "btn-auto-refresh": "⏱ Auto",
+    "th-asset": "Asset",
+    "th-qty": "Quantity held",
+    "th-price-usd": "Price (USD)",
+    "th-value-aud": "Value/P&L (AUD)",
+    "note-portfolio-src": "Prices from CoinGecko · stock prices maintained manually",
+    "footer-note": "Data source: Yahoo Finance &nbsp;·&nbsp; for personal learning only, not investment advice",
   };
   const NAV_VIEW = {today:"📊 Today", outlook:"📈 Outlook", plan:"🗓 Plan", longterm:"⏳ Long-term",
                     research:"🔬 Research", lab:"🧪 Lab", registry:"📋 Registry", quant:"🎓 Quant", mine:"💼 Mine"};
@@ -929,6 +1114,9 @@
     const note=document.getElementById("en-mode-note"); if(note) note.style.display=lang==="en"?"":"none";
     const btn=document.getElementById("lang-toggle"); if(btn) btn.textContent=lang==="en"?"中":"EN";
     document.documentElement.lang=lang==="en"?"en":"zh-CN";
+    document.title=lang==="en"?"Valpha Lab | Honest US-stock statistics":"Valpha Lab | 美股诚实统计";
+    const refreshBtn=document.getElementById("refresh-data-btn");
+    if(refreshBtn) refreshBtn.title=lang==="en"?"Re-fetch all data and refresh page content (keeps your current position)":"重新拉取全部数据并刷新页面内容（不丢失当前位置）";
   }
   const btn=document.getElementById("lang-toggle");
   if(btn) btn.addEventListener("click",()=>{lang=lang==="en"?"zh":"en";
@@ -963,14 +1151,19 @@
   Promise.all([gj("composite_read.json"),gj("outlook.json"),gj("llm_read.json")]).then(function(a){
     var CR=a[0],OUT=a[1],LLM=a[2],h=g("vp-hero");
     if(!CR){if(h)h.style.display="none";return;}
+    var _lang="zh"; try{_lang=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
     var _d=CR.asof||CR.date||"",_le=document.querySelector(".vp-hero-lbl");
-    if(_le&&_d)_le.textContent="🎯 今日结论 · 数据截至 "+_d+" · 公开计分";
+    if(_le&&_d)_le.textContent=(_lang==="en"?"🎯 Today's takeaway · as of ":"🎯 今日结论 · 数据截至 ")+_d+(_lang==="en"?" · publicly scored":" · 公开计分");
     _score=CR.score; gauge(_score);
     g("vp-act").innerHTML='<span style="color:'+col(_score)+'">'+escc(CR.action||CR.stance)+'</span>';
-    var sub=escc(CR.stance)+(CR.confidence_level?" · 把握"+escc(CR.confidence_level):"");
+    var sub=escc(CR.stance)+(CR.confidence_level?(_lang==="en"?" · confidence ":" · 把握")+escc(CR.confidence_level):"");
     if(OUT&&OUT.index_call&&OUT.index_call.prob!=null){var ic=OUT.index_call,pct=Math.round(ic.prob*100),
-      dir=ic.prob<0.5?"偏跌":"偏涨",note=Math.abs(pct-50)<=4?"≈掷硬币，无验证优势，别当真":"短期方向谁都难测，仅参考";
-      sub+=' · <span style="color:#9da7b3">纳指'+escc(ic.horizon||"短期")+'约 '+pct+'% '+dir+'（'+note+'）</span>';}
+      dir=_lang==="en"?(ic.prob<0.5?"down":"up"):(ic.prob<0.5?"偏跌":"偏涨"),
+      note=_lang==="en"
+        ?(Math.abs(pct-50)<=4?"≈ a coin flip, no verified edge, don't take it seriously":"short-term direction is hard for anyone to call, reference only")
+        :(Math.abs(pct-50)<=4?"≈扔硬币，无验证优势，别当真":"短期方向谁都难测，仅参考");
+      var _paren=_lang==="en"?(" ("+note+")"):("（"+note+"）");
+      sub+=' · <span style="color:#9da7b3">'+(_lang==="en"?"Nasdaq "+escc(ic.horizon||"short-term")+" ≈ "+pct+"% "+dir:"纳指"+escc(ic.horizon||"短期")+"约 "+pct+"% "+dir)+_paren+'</span>';}
     g("vp-sub").innerHTML=sub;
     g("vp-read").innerHTML=(LLM&&LLM.text)?(typeof vpAnnotate==="function"?vpAnnotate(LLM.text):""):"";  /* vp_gloss.js */
   });
@@ -981,16 +1174,19 @@
   function g(id){return document.getElementById(id);}
   function gj(f){return fetch(f,{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}
   function snip(t,n){t=String(t==null?"":t);return t.length>n?t.slice(0,n)+"…":t;}
+  var _lang="zh"; try{_lang=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
   Promise.all([gj("llm_weekly.json"),gj("llm_monthly.json"),gj("prediction.json")]).then(function(a){
     var W=a[0],M=a[1],P=a[2],any=false,wrap=g("vp-llm-more");
     if(W&&W.text){any=true;var wl=W.week_label||W.week_of||"";
-      g("vp-weekly-t").textContent="📅 本周回顾"+(wl?" · "+wl:"");
+      g("vp-weekly-t").textContent=(_lang==="en"?"📅 Weekly review":"📅 本周回顾")+(wl?" · "+wl:"");
       g("vp-weekly-x").textContent=snip(W.text,90);g("vp-weekly").style.display="";}
     if(M&&M.text){any=true;var ml=M.month_label||M.month||"";
-      g("vp-monthly-t").textContent="🗓️ 本月回顾"+(ml?" · "+ml:"");
+      g("vp-monthly-t").textContent=(_lang==="en"?"🗓️ Monthly review":"🗓️ 本月回顾")+(ml?" · "+ml:"");
       g("vp-monthly-x").textContent=snip(M.text,90);g("vp-monthly").style.display="";}
     if(P){any=true;                       /* 字段名不硬依赖 → 纯入口文案，命中率明细在 prediction.html */
-      g("vp-pred-x").textContent="点开看 SPY 未来 5 交易日方向预测 + 按信心分桶的公开命中率（非投资建议·会错）";
+      g("vp-pred-x").textContent=_lang==="en"
+        ?"Open for the SPY 5-trading-day direction forecast + public hit-rate by confidence bucket (not investment advice · can be wrong)"
+        :"点开看 SPY 未来 5 交易日方向预测 + 按信心分桶的公开命中率（非投资建议·会错）";
       g("vp-pred").style.display="";}
     if(any&&wrap)wrap.style.display="";
   });
