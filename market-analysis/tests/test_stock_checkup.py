@@ -137,3 +137,57 @@ def test_compute_anomaly():
     assert 0 <= r["vol_percentile"] <= 100
     short = pd.Series(100.0 + np.arange(100.0), index=pd.bdate_range("2020-01-01", periods=100))
     assert compute_anomaly(short, short)["status"] == "insufficient"
+
+
+# ── §3 健壮性/诚实修复守门（2026-07-02·EVT/basic_risk 防御 + min_group_n_half + decoupled 边界）──
+def test_compute_evt_accepts_non_datetime_index():
+    """块1 防御：非 DatetimeIndex(字符串日期)输入不崩，且结果与 DatetimeIndex 完全一致(行为保持)。"""
+    idx = pd.bdate_range("2008-01-01", periods=3000)
+    rng = np.random.default_rng(3)
+    prices = 100 * np.cumprod(1 + rng.standard_t(3, 3000) * 0.01)
+    dt = compute_evt(pd.Series(prices, index=idx))
+    obj = compute_evt(pd.Series(prices, index=[str(d.date()) for d in idx]))     # 字符串索引
+    assert dt["status"] == "ok" and obj == dt                                    # 兜底后逐字段一致
+
+
+def test_compute_basic_risk_accepts_non_datetime_index():
+    """块1 防御：compute_basic_risk 对字符串索引不崩、结果与 DatetimeIndex 完全一致。"""
+    idx = pd.bdate_range("2008-01-01", periods=1500)
+    rng = np.random.default_rng(5)
+    px = 100 * np.cumprod(1 + rng.normal(0.0003, 0.015, 1500))
+    nas = 100 * np.cumprod(1 + rng.normal(0.0003, 0.012, 1500))
+    s = [str(d.date()) for d in idx]
+    dt = compute_basic_risk(pd.Series(px, index=idx), pd.Series(nas, index=idx))
+    obj = compute_basic_risk(pd.Series(px, index=s), pd.Series(nas, index=s))
+    assert dt["status"] == "ok" and obj == dt
+
+
+def test_compute_patterns_min_group_n_half_additive():
+    """块3 诚实显示：新增 min_group_n_half=分半实际面对的半样本组最小 n；
+    min_group_n(全样本·裁决门槛用)保留不变、half ≤ full(只多一个诚实展示字段,不改判)。"""
+    idx = pd.bdate_range("2005-01-01", periods=3000)
+    rng = np.random.default_rng(21)
+    base = rng.normal(0, 0.01, 3000)
+    base[idx.dayofweek.values == 0] += 0.004
+    r = compute_patterns(pd.Series(100 * np.cumprod(1 + base), index=idx), "TEST")
+    assert r["status"] == "ok"
+    for t in r["tests"]:
+        assert isinstance(t["min_group_n_half"], int) and t["min_group_n_half"] >= 0
+        assert t["min_group_n_half"] <= t["min_group_n"]         # 半样本组 n ≤ 全样本组 n
+
+
+def test_compute_anomaly_decoupled_boundary():
+    """块6 脱钩边界(分位≤5)：近期与纳指相关跌到历史最低档 → cp≤5 → decoupled True；
+    全程高相关 → cp>5 → decoupled False。"""
+    idx = pd.bdate_range("2008-01-01", periods=2000)
+    rng = np.random.default_rng(31)
+    nas_ret = rng.normal(0, 0.01, 2000)
+    nas = pd.Series(100 * np.cumprod(1 + nas_ret), index=idx)
+    # 脱钩：长期跟随纳指(高相关)，近 80 天注入独立噪声 → 最后一个滚动窗相关骤降到历史最低
+    dec = nas_ret.copy(); dec[-80:] = rng.normal(0, 0.01, 80)
+    r_dec = compute_anomaly(pd.Series(100 * np.cumprod(1 + dec), index=idx), nas, win=60)
+    assert r_dec["status"] == "ok" and r_dec["corr_percentile"] <= 5 and r_dec["decoupled"] is True
+    # 未脱钩：全程 = 纳指 + 小噪声 → 近期相关不在底部 → decoupled False
+    cpl = nas_ret + rng.normal(0, 0.002, 2000)
+    r_c = compute_anomaly(pd.Series(100 * np.cumprod(1 + cpl), index=idx), nas, win=60)
+    assert r_c["status"] == "ok" and r_c["decoupled"] is False

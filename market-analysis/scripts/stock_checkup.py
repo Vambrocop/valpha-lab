@@ -73,7 +73,9 @@ def beta(stock_ret, mkt_ret):
 def compute_evt(px):
     """块1：单票日损失的 EVT/GPD 尾部（ξ + 日 VaR/ES）。复用 risk_dashboard.evt_tail（需 ~1000+ 天）。
     返回紧凑子集；样本不足 → insufficient。只测尾部严重度/稀有度，不预测时点/方向。"""
-    px = pd.to_numeric(px, errors="coerce").dropna().sort_index()
+    px = pd.to_numeric(px, errors="coerce").dropna()
+    px.index = pd.to_datetime(px.index)   # 防御：非 DatetimeIndex 输入兜底（已是 DatetimeIndex 则无副作用）
+    px = px.sort_index()
     ret = px.pct_change().dropna()
     r = evt_tail(ret)
     if r.get("status") != "ok":
@@ -127,15 +129,20 @@ def _effect_test(values, labels, k, rng, recent_mask):
         r = perm_test(v, l, make_ssb_stat(k), rng)
         g, c = _group_means(v, l, k)
         gm = np.where(c > 0, g, np.nan)
-        return r["p_value"], (int(np.nanargmax(gm)) if np.isfinite(gm).any() else -1)
+        return r["p_value"], (int(np.nanargmax(gm)) if np.isfinite(gm).any() else -1), c
 
-    p1, d1 = _p_dom(values[:half], labels[:half])
-    p2, d2 = _p_dom(values[half:], labels[half:])
+    p1, d1, c1 = _p_dom(values[:half], labels[:half])
+    p2, d2, c2 = _p_dom(values[half:], labels[half:])
     stable = bool(p1 < ALPHA and p2 < ALPHA and d1 == d2 and d1 >= 0)   # 两半都显著且主导组一致
     rp = None
     if int(recent_mask.sum()) >= 100:                                  # 近期持续性：末段~5年够样本才测
         rp = round(perm_test(values[recent_mask], labels[recent_mask], make_ssb_stat(k), rng)["p_value"], 4)
+    # min_group_n=全样本每组最小n(仍用于 inconclusive 门槛,行为不变)；
+    # min_group_n_half=分半置换【实际面对】的半样本组最小n(更诚实——分半门槛看的是这个样本量，展示需一致，不得据此改判)
+    half_ns = np.concatenate([c1[c1 > 0], c2[c2 > 0]])
+    min_group_n_half = int(half_ns.min()) if len(half_ns) else 0
     return {"p_value": full["p_value"], "min_group_n": int(cnt[cnt > 0].min()),
+            "min_group_n_half": min_group_n_half,
             "split_half_p": [round(p1, 4), round(p2, 4)], "split_half_stable": stable,
             "recent_p": rp, "recent_testable": bool(rp is not None),    # 区分"近期没测"与"近期测了没效应"
             "recent_significant": bool(rp is not None and rp < ALPHA)}
@@ -265,11 +272,15 @@ def compute_conformal(px, horizon=20, level=0.90):
 
 def compute_basic_risk(px, nasdaq):
     """单票价格序列 px + 纳指价格序列 nasdaq（皆 pd.Series，索引=日期）→ 基础风险字典。"""
-    px = pd.to_numeric(px, errors="coerce").dropna().sort_index()
+    px = pd.to_numeric(px, errors="coerce").dropna()
+    px.index = pd.to_datetime(px.index)   # 防御：非 DatetimeIndex 输入兜底（已是 DatetimeIndex 则无副作用）
+    px = px.sort_index()
     if len(px) < MIN_DAYS:
         return {"status": "insufficient", "n_days": int(len(px))}
     ret = px.pct_change().dropna()
-    nas_ret = pd.to_numeric(nasdaq, errors="coerce").dropna().sort_index().pct_change().dropna()
+    nas_ret = pd.to_numeric(nasdaq, errors="coerce").dropna()
+    nas_ret.index = pd.to_datetime(nas_ret.index)
+    nas_ret = nas_ret.sort_index().pct_change().dropna()
     common = ret.index.intersection(nas_ret.index)
     b = None
     if len(common) >= 100:
