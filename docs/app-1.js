@@ -711,9 +711,9 @@ function renderDOWPanel() {
   const best = dow.reduce((a,b) => a.win_rate > b.win_rate ? a : b);
   const worst = dow.reduce((a,b) => a.win_rate < b.win_rate ? a : b);
   document.getElementById("dow-insight").innerHTML =
-    `<strong>周内规律：</strong>历史上<strong style="color:#27ae60">${NAMES[best.dow]}（${best.win_rate}%）</strong>是最佳买入日，
+    `<strong>周内规律：</strong>历史上<strong style="color:#27ae60">${NAMES[best.dow]}（${best.win_rate}%）</strong>历史胜率最高，
      <strong style="color:#e74c3c">${NAMES[worst.dow]}（${worst.win_rate}%）</strong>最弱。
-     BTC周四往往有期权Gamma压力，科技股周三/周一开盘后回调是加仓时机。`;
+     <br><span style="color:var(--muted);font-size:0.79rem">⚠ 周内效应在现代段（2000后）已被套利趋弱（见🪦坟场），此为历史描述、非操作建议。</span>`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -762,12 +762,12 @@ function renderSellPanel() {
     </div>
   `;
 
-  const advice = score >= 70 ? "⚠️ 多重卖出信号触发，建议减仓至少50%，等待回调后再建仓" :
-                 score >= 55 ? "注意风险上升，可考虑止盈部分仓位，保留核心持仓" :
-                 score >= 40 ? "信号混合，建议持有但不加仓，设好止损位" :
-                 "当前持有安全，继续持有等待更好的卖出时机";
+  const advice = score >= 70 ? "⚠️ 卖出评分处于历史高位区（多重风险信号叠加）" :
+                 score >= 55 ? "风险评分偏高" :
+                 score >= 40 ? "信号混合" :
+                 "评分平静";
   document.getElementById("sell-insight").innerHTML =
-    `<strong>建议：</strong>${advice}`;
+    `<strong>当前风险状态：</strong>${advice}`;
 }
 
 // ══════════════════════════════════════════════════════

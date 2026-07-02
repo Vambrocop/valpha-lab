@@ -233,9 +233,15 @@ function renderBacktestCharts() {
      <span style="color:#f1c40f">△ 第3档信号：</span>
      20日胜率 ${t3?.horizons?.["20d"]?.win_rate||"?"}%，略低于基准（几乎中性）<br><br>
      <span style="color:var(--muted);font-size:0.79rem">
-       校准曲线：模型预测概率越高 → 实际胜率越高，说明信号有单调性。<br>
+       ${(() => {
+         if (!cal.length) return "校准曲线：数据不足，暂无法评估单调性。";
+         const calMonotonic = cal.every((c, i) => i === 0 || c.actual_wr_20d >= cal[i - 1].actual_wr_20d);
+         return calMonotonic
+           ? "校准曲线：模型预测概率越高 → 实际胜率确实更高，信号有单调性。"
+           : "校准曲线：分段胜率非单调（高置信区间 ≠ 更准），需谨慎解读概率区间。";
+       })()}<br>
        「仅Tier≥4入场」策略 20日胜率 ${s4.win_rate_20d||"?"}% vs 随时买入 ${s4.baseline_win_rate||"?"}%，
-       p=${s4.p_value||"?"}（<strong>高度显著</strong>）。绝对差距 +${s4.diff||"?"}pp，持续复利后可产生显著超额收益。
+       p=${s4.p_value||"?"}${s4.significant === undefined ? "" : s4.significant ? "（<strong>统计显著</strong>）" : "（<strong>未达显著，纯噪声区间</strong>）"}。绝对差距 +${s4.diff||"?"}pp。
      </span>`;
 }
 
