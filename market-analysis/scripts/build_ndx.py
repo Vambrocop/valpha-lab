@@ -50,7 +50,7 @@ def build_all():
            "added": added, "removed": removed,
            "not_in_valpha150": not_in, "in_valpha150": len(set(cur) & v150)}
     from util_io import write_json
-    write_json("ndx.json", out)
+    write_json("ndx.json", out, allow_nan=False)
     pd.DataFrame({"ticker": cur}).to_csv(SNAP, index=False)
     print(f"[OK] ndx.json — 成分 {len(cur)} · 新进 {added or '—'} · 调出 {removed or '—'} · 150未覆盖 {len(not_in)}")
 

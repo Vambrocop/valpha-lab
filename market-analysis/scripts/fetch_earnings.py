@@ -67,7 +67,7 @@ def run():
         "n": len(earn), "earnings": earn,
         "note": "Finnhub 财报日历。财报前后跳空/波动放大 = 已知高风险窗口，非荐股、非预测——只提示你留意。",
     }
-    payload = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
+    payload = json.dumps(out, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     for d in (BASE / "web", BASE.parent / "docs"):
         if d.exists():
             (d / "earnings.json").write_text(payload, encoding="utf-8")

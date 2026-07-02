@@ -48,7 +48,7 @@ def build_all():
     out = {"generated": date.today().isoformat(), "n": len(rows), "stocks": rows}
     for d in [BASE / "web", BASE.parent / "docs"]:
         (d / "wildpool.json").write_text(
-            json.dumps(out, ensure_ascii=False, separators=(",", ":")),
+            json.dumps(out, ensure_ascii=False, separators=(",", ":"), allow_nan=False),
             encoding="utf-8",
         )
     print(

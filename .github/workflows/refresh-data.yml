@@ -89,6 +89,16 @@ jobs:
           python market-analysis/scripts/build_ndx.py || echo "::warning::纳指100成分追踪失败(非致命，下次重试)"
           python market-analysis/scripts/fetch_earnings.py || echo "::warning::财报日历失败(非致命，下次重试)"
 
+      - name: Strict-JSON check for Valpha150 family products (P1-6：拦截 NaN/Infinity 白屏)
+        # 上一步 5 个产物在 run_all 的 verify_output 质量门之后单独生成，不过那道门。
+        # Python json.load 默认放行 NaN/Infinity（悄悄转成 float('nan') 通过），
+        # 但浏览器 JSON.parse 会拒绝整份文件 → 前端白屏；本步非零退出会阻断下面的
+        # 提交/推送步骤，防止把含 NaN 的坏产物推上线（把关哲学与 verify_output 一致）。
+        if: github.event.schedule == '30 21 * * 1-5' || github.event_name == 'workflow_dispatch'
+        run: >
+          python market-analysis/scripts/check_strict_json.py
+          valpha150.json wildpool.json ticker_ondemand.json ndx.json earnings.json
+
       - name: Signal alerts (state changes only)
         env:                                  # 可选 Telegram 推送；未配置 Secrets 则脚本静默跳过
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

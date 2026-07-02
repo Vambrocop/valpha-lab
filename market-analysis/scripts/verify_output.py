@@ -498,6 +498,22 @@ except Exception as e:
     errors.append(f"picks 形状检查失败: {e}")
     print(f"  ✗ picks 形状检查失败: {e}")
 
+# 3l5b. 观点/预测 outlook.json 免责门(P1-7:disclaimer 非空且含"非投资建议"关键词。
+#        存在才查、缺失不致命)
+#        诚实纪律:outlook 是用户明确授权的"出格"荐方向区,越出全站"不预测方向"红线的
+#        唯一豁免条件是"带免责"——免责字段绝不能悄悄丢空,同 picks/insider_signal 的认账口径。
+try:
+    ol_path = WEB_DIR / "outlook.json"
+    if ol_path.exists():
+        with open(ol_path, encoding="utf-8") as fh:
+            ol = json.load(fh)
+        dc = ol.get("disclaimer", "")
+        check(bool(dc) and "非投资建议" in dc,
+              f"outlook.json disclaimer 非空且含非投资建议免责框（当前：{dc[:20] + '…' if dc else '空'}）")
+except Exception as e:
+    errors.append(f"outlook 免责门检查失败: {e}")
+    print(f"  ✗ outlook 免责门检查失败: {e}")
+
 # 3l6. AI 前瞻预测前向计分形状(track_record 全含 by_confidence/latest/recent。存在才查、缺失不致命)
 #       诚实纪律:LLM 预测产物必须带"非投资建议 + 会错 + append 认账"框,且 track_record 含分信心命中(高信心是否真更准)。
 try:
