@@ -13,6 +13,8 @@
 """
 import csv
 import datetime
+import io
+import re
 from pathlib import Path
 
 import candidate_space as cs
@@ -53,6 +55,67 @@ def sync(today=None, path=LOG, write=True):
             for r in new:                       # 只 append 新候选；已登记的一行都不碰（append-only 红线）
                 w.writerow(r)
     return len(new)
+
+
+def _parse(text):
+    """CSV 文本 → (header 列表, 行 dict 列表)。用 csv 模块解析(容 CRLF/引号，不比字节)。"""
+    reader = csv.DictReader(io.StringIO(text))
+    rows = list(reader)
+    return list(reader.fieldnames or []), rows
+
+
+def check_registry_immutable(old_text, new_text):
+    """P2-10 门:比较新旧两版 registry 文本(**语义行**，不比字节) → 违反 append-only 的问题串列表(空=通过)。
+
+    三条不变量(用 candidate_id 做行身份对齐):
+    ① old 里已有的每一行，在 new 同 candidate_id 下逐字段不变(**限 old 的列集**——new 加新列不算违反)。
+    ② new 里 candidate_id 无重复(防 load_anchors 静默二选一)。
+    ③ new 新增行的 declared_date ≥ old 里最晚的 declared_date(防倒填造假长 OOS)。
+    old_text 为空(首次建档)→ 无历史行可比，只查②。
+    """
+    problems = []
+    new_cols, new_rows = _parse(new_text)
+
+    ids = [r.get("candidate_id") for r in new_rows]
+    dupes = sorted({i for i in ids if i and ids.count(i) > 1})
+    if dupes:
+        problems.append(f"candidate_id 重复(new 中出现 >1 次): {dupes}")
+
+    old_cols, old_rows = _parse(old_text) if old_text.strip() else ([], [])
+    if not old_rows:
+        return problems              # 首次建档:无历史行需要保护，只需查重(上面已做)
+
+    new_by_id = {}
+    for r in new_rows:
+        new_by_id.setdefault(r.get("candidate_id"), r)   # 重复已在②报过，这里取第一条即可
+
+    for old_r in old_rows:
+        cid = old_r.get("candidate_id")
+        new_r = new_by_id.get(cid)
+        if new_r is None:
+            problems.append(f"历史候选 {cid} 在新版本中消失(append-only 不许删行/改名)")
+            continue
+        for col in old_cols:         # 限 old 的列集——new 加新列不算违反
+            if str(old_r.get(col, "")) != str(new_r.get(col, "")):
+                problems.append(f"历史候选 {cid} 字段 {col!r} 被篡改: "
+                                 f"{old_r.get(col)!r} → {new_r.get(col)!r}")
+
+    old_ids = {r.get("candidate_id") for r in old_rows}
+    old_max_date = max((r.get("declared_date") or "" for r in old_rows), default="")
+    iso = re.compile(r"^\d{4}-\d{2}-\d{2}$")     # ③ 依赖字典序≡时间序,只对零填充 ISO 成立
+    for r in new_rows:
+        if r.get("candidate_id") in old_ids:
+            continue                 # 已有行，字段不变性已在上面查过
+        d = (r.get("declared_date") or "").strip()
+        # Opus 审洞:非零填充日期(如 '2026-1-1')字典序 > '2026-06-26' 但语义是 1 月 → 绕过倒填检查。
+        # sync() 恒写 isoformat() 规范格式 → 非规范只可能来自手工篡改(正在威胁模型内),直接拒。
+        if not iso.match(d):
+            problems.append(f"新增候选 {r.get('candidate_id')} 的 declared_date={d!r} "
+                             f"非规范 ISO(YYYY-MM-DD)——拒绝(防非规范格式绕过倒填检查)")
+        elif old_max_date and d < old_max_date:
+            problems.append(f"新增候选 {r.get('candidate_id')} 的 declared_date={d!r} "
+                             f"早于历史最晚锚点 {old_max_date!r}(疑似倒填造假长 OOS)")
+    return problems
 
 
 if __name__ == "__main__":

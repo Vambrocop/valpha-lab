@@ -53,6 +53,12 @@ jobs:
           key: market-data-${{ github.run_id }}
           restore-keys: market-data-
 
+      - name: Re-assert candidate_registry.csv from git (cache can't override append-only ledger)
+        # 实证隐患(06-30)：restore-keys 命中旧缓存时，会把陈旧版 candidate_registry.csv 整个
+        # 灌回 market-analysis/data、盖掉之后才提交的锚点行。git 已提交(HEAD)的版本才是真相——
+        # 缓存回灌后立刻用它压一遍，管道再往上 append 新候选(sync 幂等，不丢数据)。
+        run: git checkout -- market-analysis/data/candidate_registry.csv
+
       - name: Run pipeline (intraday 30-min = light, pre-open/post-close = full)
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}   # 取 FRED 全史(BAA10Y 信用利差等日频);未配置则脚本自动回退 graph CSV(~2年)

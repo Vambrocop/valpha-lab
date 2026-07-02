@@ -614,6 +614,33 @@ except Exception as e:
     errors.append(f"sidecar 账本检查失败: {e}")
     print(f"  ✗ sidecar 账本检查失败: {e}")
 
+# 4c. Registry 不可变门（P2-10）：candidate_registry.csv 相对上次 git 提交(HEAD)必须只 append，
+#     不许改历史行/删行/倒填锚点(declared_date)——git 历史本身当"外部真相"，不依赖自维护 manifest
+#     (补 4b sidecar 的盲区：manifest 与账本被同一次提交一起伪造)。缺 git/非仓库/HEAD 无此文件
+#     (bootstrap/git archive 检出) → 跳过+警告，不拦发布。
+try:
+    import shutil as _shutil
+    import subprocess as _sp
+    import candidate_registry as _creg
+    _repo_root = Path(__file__).parent.parent.parent
+    _reg_path = WEB_DIR.parent / "data" / "candidate_registry.csv"
+    _git = _shutil.which("git")
+    if not _git or not (_repo_root / ".git").exists() or not _reg_path.exists():
+        print("  · candidate_registry 不可变门跳过（无 git/非仓库/文件不存在 —— bootstrap 友好）")
+    else:
+        _r = _sp.run([_git, "show", "HEAD:market-analysis/data/candidate_registry.csv"],
+                      capture_output=True, text=True, encoding="utf-8", cwd=_repo_root)  # reason 含中文;不显式 utf-8 在 cp936 会解码歪→误报(Opus 审)
+        if _r.returncode != 0:
+            print(f"  · candidate_registry 不可变门跳过（HEAD 无此文件：{_r.stderr.strip()[:100]}）")
+        else:
+            _new_text = _reg_path.read_text(encoding="utf-8")
+            _immut_problems = _creg.check_registry_immutable(_r.stdout, _new_text)
+            check(not _immut_problems,
+                  f"candidate_registry 相对 HEAD 只 append（问题：{_immut_problems or '无'}）")
+except Exception as e:
+    errors.append(f"candidate_registry 不可变门检查失败: {e}")
+    print(f"  ✗ candidate_registry 不可变门检查失败: {e}")
+
 if errors:
     print(f"\n[FAIL] {len(errors)} 项检查未通过，拒绝发布")
     sys.exit(1)
