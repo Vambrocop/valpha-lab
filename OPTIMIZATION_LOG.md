@@ -137,6 +137,7 @@
 - **块4(保形区间)**:审查 SHOULD-FIX(coverage 真分母 n_test、补"无条件非预测"caveat)+ NICE(带符号边界、修测试除零)全采纳,无遗留。
 - **块5(综述卡)**:审查 SHOULD-FIX(null-β渲染、"更稳/更颠"改中性敏感度防误读、登记簿0真重述)全采纳。
 - **块6(风险状态)**:审查 SHOULD-FIX(绿灯误读→正常态中性灰、脱钩四舍五入边界)全采纳;NICE 脱钩"无关好坏方向"已加。遗留 NICE:加 decoupled 边界测试(分位≤5)。
+- **backtest.py 空/无重叠输入崩溃(2026-07-02·Wave2-D 补测时 Sonnet5 STOP 发现·Fable5 裁定)**:`run_backtest()` 在 `daily={}` 或 daily 日期与长历史CSV零重叠时 `records=[]` → `pd.DataFrame([]).dropna(subset=[...])` 抛 KeyError;run_all subprocess+sys.exit(1) → 会中止整条流水线。**Fable 裁定:真 bug 但低触发(需上游CSV灾难性损坏·backtest 不在 LIGHT_STEPS)、且当前是 fail-closed(发布前中止·Pages 续服务旧好数据)对"上游损坏"恰是诚实**。**最小安全修(单独小任务·非本波)**:不是"降级续跑"(builder 原提议·会把响亮 fail-closed 换成无声诚实性退化·方向反了),而是把隐式 KeyError 换成显式 `raise ValueError("信号与CSV日期零重叠·上游数据损坏")`——保 fail-closed、不碰发布结构、报错可行动。届时 test_backtest 两条 `pytest.raises(KeyError)` 同步改 `pytest.raises(ValueError, match=...)`。若将来要真降级续跑,前置=先审下游消费者(build_signals嵌入/verify_output/app.js 渲染)。
 
 ---
 
