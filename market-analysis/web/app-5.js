@@ -500,8 +500,19 @@ function loadOutlook() {
     const up = "var(--green,#2ecc71)", dn = "#e74c3c";
     const picks = (arr) => (arr || []).map(p =>
       `<li style="margin:.25rem 0;"><b>${esc(p.symbol)}</b> <span style="color:${p.view === '看好' ? up : dn};font-weight:600;">${esc(p.view)}</span> <span style="color:var(--muted);font-size:.78rem;">${esc(p.reason)}</span></li>`).join("");
+    // P1-7 coin-flip band：|prob−50%|≤4 → 不加粗绿红、显"≈掷硬币"（复用 index.html nasdaqPlain 的阈值/措辞）
+    let icHtml = "";
+    if (ic) {
+      const pct = ic.prob != null ? Math.round(ic.prob * 100) : null;
+      const coin = pct != null && Math.abs(pct - 50) <= 4;
+      const callStyle = coin ? "color:var(--muted);font-weight:400;" : `color:${ic.call === '看涨' ? up : dn};`;
+      const note = pct == null ? "" : (coin ? "≈掷硬币，无验证优势，别当真" : "短期方向谁都难测，仅参考");
+      icHtml = `<div style="margin:.2rem 0 .5rem;font-size:1rem;">🎯 <b>${esc(ic.target)}${esc(ic.horizon)}方向：<span style="${callStyle}">${esc(ic.call)}</span></b> <span style="color:var(--muted);font-size:.76rem;">${esc(ic.basis)}</span>`
+        + (note ? ` <span style="color:var(--muted);font-size:.76rem;">（${note}）</span>` : "")
+        + `</div>`;
+    }
     el.innerHTML =
-      (ic ? `<div style="margin:.2rem 0 .5rem;font-size:1rem;">🎯 <b>${esc(ic.target)}${esc(ic.horizon)}方向：<span style="color:${ic.call === '看涨' ? up : dn};">${esc(ic.call)}</span></b> <span style="color:var(--muted);font-size:.76rem;">${esc(ic.basis)}</span></div>` : "")
+      icHtml
       + `<div style="display:flex;gap:2rem;flex-wrap:wrap;">`
       + `<div><div style="font-weight:600;margin-bottom:.2rem;">👍 看好</div><ul style="margin:0;padding-left:1.1rem;list-style:none;">${picks(d.bullish)}</ul></div>`
       + `<div><div style="font-weight:600;margin-bottom:.2rem;">👎 看淡</div><ul style="margin:0;padding-left:1.1rem;list-style:none;">${picks(d.bearish)}</ul></div>`
