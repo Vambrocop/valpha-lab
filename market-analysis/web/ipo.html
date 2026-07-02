@@ -47,6 +47,11 @@
   <div class="note" data-i18n="note" style="margin-top:6px"></div>
 </details>
 <div id="tiers"></div>
+
+<h2 class="tier" style="margin-top:30px" data-i18n="autoHead"></h2>
+<p class="sub" data-i18n="autoSub"></p>
+<div id="autoipo"></div>
+
 <div class="mut" data-i18n="foot"></div>
 
 <script>
@@ -76,7 +81,18 @@ const I18N={
   sListed:{zh:"已在交易所挂牌、可买卖。本站观察池已纳入。",en:"Listed on an exchange and tradable. Already in this site's watch pool."},
   sFiled:{zh:"已正式向 SEC 递交 S-1（公开或保密）。递交 ≠ 一定上市，时间与定价仍可能变。",en:"An S-1 has been formally filed with the SEC (public or confidential). Filing ≠ guaranteed listing; timing and pricing can still change."},
   sRumor:{zh:"尚未正式申报，仅见于报道或市场预期。可能延期、改道，或根本不上市。",en:"Not yet formally filed — only reported or market-expected. May be delayed, take another route, or never happen."},
-  noadv:{zh:"未证实",en:"unconfirmed"}
+  noadv:{zh:"未证实",en:"unconfirmed"},
+  // ---- auto section (SEC EDGAR live filings) ----
+  autoHead:{zh:"📡 SEC 近期申报（自动抓取 · 每交易日刷新）",en:"📡 Recent SEC filings (auto-updated each trading day)"},
+  autoSub:{zh:"直接读 SEC EDGAR 近 30 天 S-1 / 424B 申报。⚠ 这是【全体】申报、含大量小盘/微盘/SPAC/空壳，非策展、非上方明星快照；仅为客观事实流，非荐股非预测。",
+           en:"Pulled straight from SEC EDGAR — all S-1 / 424B filings in the last 30 days. ⚠ This is the FULL feed: mostly small / micro-cap / SPAC / shell companies, not curated and not the marquee snapshot above. A raw factual stream only — not advice, not a forecast."},
+  autoFiled:{zh:"已递交招股书 S-1",en:"Filed prospectus (S-1)"},
+  autoPriced:{zh:"已定价 / 生效 424B",en:"Priced / effective (424B)"},
+  autoFiledSub:{zh:"已向 SEC 递交 S-1（或 S-1/A 修订）。递交 ≠ 一定上市。",en:"S-1 (or S-1/A amendment) filed with the SEC. Filing ≠ guaranteed listing."},
+  autoPricedSub:{zh:"已递交 424B 定价招股书，更接近真正挂牌。",en:"A 424B priced prospectus is filed — closer to an actual listing."},
+  autoStamp:{zh:"数据抓取于",en:"Fetched"},
+  autoNone:{zh:"暂无数据（SEC 抓取未配置或近 30 天无申报）。",en:"No data yet (SEC fetch not configured, or no filings in the last 30 days)."},
+  autoNoTk:{zh:"无代码",en:"no ticker"}
 };
 
 // ---- Static snapshot data (2026-06). Each row carries bilingual sector + detail. ----
@@ -165,10 +181,46 @@ function render(){
   $("tiers").innerHTML=h;
 }
 
-function redraw(){applyStatic();render();}
+// ---- auto section: read SEC EDGAR live filings (fetched by fetch_ipo.py) ----
+let AUTO=null;   // ipo_filings.json payload, or null if unavailable
+
+function renderAuto(){
+  const box=$("autoipo"); if(!box) return;
+  if(!AUTO){ box.innerHTML=`<p class="sub">${esc(t("autoNone"))}</p>`; return; }
+  const stamp=(AUTO.generated||"").slice(0,10);
+  const block=(rows,head,sub,cls)=>{
+    let h=`<section class="${cls}">`;
+    h+=`<h2 class="tier" style="font-size:.95rem">${esc(t(head))}<span class="tag">${esc(rows.length)}</span></h2>`;
+    h+=`<p class="sub">${esc(t(sub))}</p><div class="grid">`;
+    rows.forEach(r=>{
+      h+=`<div class="card"><div class="co">${esc(r.company||"")}`;
+      h+= r.ticker ? `<span class="tk">${esc(r.ticker)}</span>` : `<span class="tk" style="opacity:.6">${esc(t("autoNoTk"))}</span>`;
+      h+=`</div>`;
+      h+=`<div class="det">${esc(r.form||"")} · ${esc(r.filed||"")}</div>`;
+      h+=`</div>`;
+    });
+    h+=`</div></section>`;
+    return h;
+  };
+  let h="";
+  h+=block(AUTO.priced||[], "autoPriced", "autoPricedSub", "t-listed");
+  h+=block(AUTO.filed||[],  "autoFiled",  "autoFiledSub",  "t-filed");
+  if(stamp) h+=`<p class="sub" style="margin-top:10px">${esc(t("autoStamp"))} ${esc(stamp)} · SEC EDGAR</p>`;
+  box.innerHTML=h;
+}
+
+function loadAuto(){
+  fetch("ipo_filings.json",{cache:"no-store"})
+    .then(r=>r.ok?r.json():null)
+    .then(d=>{AUTO=(d&&Array.isArray(d.filed)&&Array.isArray(d.priced))?d:null;renderAuto();})
+    .catch(()=>{AUTO=null;renderAuto();});
+}
+
+function redraw(){applyStatic();render();renderAuto();}
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};redraw();};
 
 redraw();
+loadAuto();
 </script>
 </body>
 </html>

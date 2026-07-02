@@ -272,6 +272,32 @@ except Exception as e:
     errors.append(f"data_health 形状检查失败: {e}")
     print(f"  ✗ data_health 形状检查失败: {e}")
 
+# 3i-3. IPO 近期申报形状（SEC EDGAR：两档均为列表、行带 company/cik、日期倒序。存在才查、缺失不致命）
+try:
+    ipo_path = WEB_DIR / "ipo_filings.json"
+    if ipo_path.exists():
+        with open(ipo_path, encoding="utf-8") as fh:
+            ipo = json.load(fh)
+        filed = ipo.get("filed", [])
+        priced = ipo.get("priced", [])
+        rows = filed + priced
+        shape_ok = (
+            isinstance(filed, list) and isinstance(priced, list)
+            and ipo.get("n_filed") == len(filed) and ipo.get("n_priced") == len(priced)
+            and len(rows) > 0
+            and all(r.get("company") and r.get("cik") for r in rows)
+        )
+        # 每档内部按 filed 日期倒序（新→旧）——防脚本改动打乱排序
+        def _desc(lst):
+            ds = [r.get("filed") or "" for r in lst]
+            return ds == sorted(ds, reverse=True)
+        order_ok = _desc(filed) and _desc(priced)
+        check(shape_ok and order_ok,
+              f"ipo_filings.json 形状正常（S-1 {len(filed)} / 424B {len(priced)}，倒序={order_ok}）")
+except Exception as e:
+    errors.append(f"ipo_filings 形状检查失败: {e}")
+    print(f"  ✗ ipo_filings 形状检查失败: {e}")
+
 # 3l. R3 短期反转形状(full 有 p_value/diff_pct、verdict 合法。存在才查、缺失不致命)
 try:
     ov_path = WEB_DIR / "overreaction.json"
