@@ -107,6 +107,24 @@
     </div>
   </div>
 
+  <!-- 更多 AI 解读（周报/月报/前瞻预测）teaser —— 自包含·命名空间隔离·有内容才显示 -->
+  <div id="vp-llm-more" style="max-width:760px;margin:-0.7rem auto 1.3rem;display:none">
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <a id="vp-weekly" href="index.html#weekly-card" style="display:none;flex:1 1 210px;text-decoration:none;color:inherit;border:1px solid #30363d;border-radius:10px;padding:9px 12px;background:rgba(88,166,255,.05)">
+        <div style="font-size:.74rem;color:#58a6ff;font-weight:600" id="vp-weekly-t">📅 本周回顾</div>
+        <div style="font-size:.76rem;color:var(--muted);margin-top:3px;line-height:1.45" id="vp-weekly-x"></div>
+      </a>
+      <a id="vp-monthly" href="index.html#monthly-card" style="display:none;flex:1 1 210px;text-decoration:none;color:inherit;border:1px solid #30363d;border-radius:10px;padding:9px 12px;background:rgba(163,113,247,.05)">
+        <div style="font-size:.74rem;color:#a371f7;font-weight:600" id="vp-monthly-t">🗓️ 本月回顾</div>
+        <div style="font-size:.76rem;color:var(--muted);margin-top:3px;line-height:1.45" id="vp-monthly-x"></div>
+      </a>
+      <a id="vp-pred" href="prediction.html" style="display:none;flex:1 1 210px;text-decoration:none;color:inherit;border:1px solid #30363d;border-radius:10px;padding:9px 12px;background:rgba(63,185,80,.05)">
+        <div style="font-size:.74rem;color:#3fb950;font-weight:600">🔮 AI 前瞻预测 · 公开计分</div>
+        <div style="font-size:.76rem;color:var(--muted);margin-top:3px;line-height:1.45" id="vp-pred-x"></div>
+      </a>
+    </div>
+  </div>
+
   <div class="view-intro" data-i18n="vi-today">📊 <b>今日：现在该不该动手。</b>上面是当下结论（倾向 / 方向），下面是支撑它的信号、简报、风险红绿灯、卖出评估——一屏看完。⚠ 实验性、会错，每条都公开计分。</div>
   <div class="panel" id="daily-digest-panel" style="display:none">
     <div class="panel-title">📋 今日摘要 <span style="font-weight:400;color:var(--muted);font-size:.7rem;">描述 + 诚实留意点</span></div>
@@ -957,6 +975,25 @@
     g("vp-read").innerHTML=(LLM&&LLM.text)?(typeof vpAnnotate==="function"?vpAnnotate(LLM.text):""):"";  /* vp_gloss.js */
   });
   window.addEventListener("resize",function(){gauge(_score);});
+})();
+/* 更多 AI 解读（周报/月报/前瞻预测）teaser —— 自包含·esc 防注入·有内容才显示（不碰 app-*.js）*/
+(function(){
+  function g(id){return document.getElementById(id);}
+  function gj(f){return fetch(f,{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}
+  function snip(t,n){t=String(t==null?"":t);return t.length>n?t.slice(0,n)+"…":t;}
+  Promise.all([gj("llm_weekly.json"),gj("llm_monthly.json"),gj("prediction.json")]).then(function(a){
+    var W=a[0],M=a[1],P=a[2],any=false,wrap=g("vp-llm-more");
+    if(W&&W.text){any=true;var wl=W.week_label||W.week_of||"";
+      g("vp-weekly-t").textContent="📅 本周回顾"+(wl?" · "+wl:"");
+      g("vp-weekly-x").textContent=snip(W.text,90);g("vp-weekly").style.display="";}
+    if(M&&M.text){any=true;var ml=M.month_label||M.month||"";
+      g("vp-monthly-t").textContent="🗓️ 本月回顾"+(ml?" · "+ml:"");
+      g("vp-monthly-x").textContent=snip(M.text,90);g("vp-monthly").style.display="";}
+    if(P){any=true;                       /* 字段名不硬依赖 → 纯入口文案，命中率明细在 prediction.html */
+      g("vp-pred-x").textContent="点开看 SPY 未来 5 交易日方向预测 + 按信心分桶的公开命中率（非投资建议·会错）";
+      g("vp-pred").style.display="";}
+    if(any&&wrap)wrap.style.display="";
+  });
 })();
 </script>
 <script src="vp_gloss.js"></script>
