@@ -138,6 +138,12 @@ def export_json(verdicts, results, members, today, write=True, path=LOG):
         if v["oos_status"] in (oos_gate.CONFIRMED, oos_gate.OVERTURNED, oos_gate.NEUTRAL):
             movements.append(item)              # 锚后已有动静(早于晋升的信号)
     osum = oos_gate.summarize(verdicts)
+    # 因子族 OOS 尚未接入(§10 待办)——oos_gate 对 factor 恒返回带"§10"的 pending。提前明示，
+    # 否则 factor 候选长期挂"未到可判"会被误读为引擎卡住。§10 接通后 note 变化 → 此句自动消失。
+    caveat = ("样本外确认只认每条规律'注册锚点之后'的新数据；未到可判=数据还不够、绝不凑结论；"
+              "晋升≠未来一定重演，非荐股、会错。")
+    if any(v["family"] == "factor" and "§10" in (v.get("note") or "") for v in verdicts):
+        caveat += "（注：因子族 OOS 暂未接入（§10 待办），factor 候选暂不参与晋升、长期显示未到可判属预期，非引擎故障。）"
     out = {
         "generated": _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "anchor_common": anchor_common, "days_since_anchor": days, "min_oos_n": oos_gate.MIN_OOS_N,
@@ -148,8 +154,7 @@ def export_json(verdicts, results, members, today, write=True, path=LOG):
         "movements": movements,
         "history": [{k: r.get(k) for k in ("date", "key", "action", "anchor_date", "oos_n", "oos_p", "oos_sign", "trigger")}
                     for r in reversed(rows)],
-        "caveat": ("样本外确认只认每条规律'注册锚点之后'的新数据；未到可判=数据还不够、绝不凑结论；"
-                   "晋升≠未来一定重演，非荐股、会错。"),
+        "caveat": caveat,
     }
     if write:
         from util_io import write_json
