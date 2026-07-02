@@ -600,9 +600,10 @@ function renderDipGuide() {
   }, {responsive:true});
 
   document.getElementById("dip-insight").innerHTML =
-    `<strong>抄底黄金法则：</strong>跌幅越大、VIX越高，历史胜率越高，但恢复时间也越长。<br>
-     <span style="color:#27ae60">VIX > 30</span>时买入，3个月胜率达 <strong>78%+</strong>；
-     <span style="color:#f1c40f">VIX < 15</span>（现在）市场过于乐观，<strong>不是抄底时机</strong>，是减少新仓的时机。<br>
+    `<div style="color:var(--muted);font-size:0.72rem;margin-bottom:.35rem">以下为历史统计描述 · 非操作建议 · 见🪦坟场</div>
+     <strong>历史统计规律：</strong>跌幅越大、VIX越高，历史胜率越高，但恢复时间也越长。<br>
+     <span style="color:#27ae60">VIX > 30</span>（历史高恐慌区），3个月胜率达 <strong>78%+</strong>；
+     <span style="color:#f1c40f">VIX < 15</span>（现在）市场过于乐观，历史该区间胜率较低，属<strong>偏弱窗口</strong>。<br>
      <span style="color:var(--muted);font-size:0.78rem">数据来源：S&P 500 1928-2026历史统计，非投资建议。</span>`;
 }
 
@@ -648,7 +649,7 @@ function renderSentimentPanel() {
     {from:0,   to:15,  color:"#f1c40f", label:"过度乐观 ⚠️"},
     {from:15,  to:20,  color:"#2ecc71", label:"正常"},
     {from:20,  to:30,  color:"#e67e22", label:"担忧"},
-    {from:30,  to:999, color:"#e74c3c", label:"极度恐慌 → 买入机会"},
+    {from:30,  to:999, color:"#e74c3c", label:"极度恐慌区(历史反弹样本)"},
   ];
   const rsiZones = [
     {from:0,  to:30,  color:"#e74c3c", label:"超卖 → 可能反弹"},
@@ -674,7 +675,7 @@ function renderSentimentPanel() {
 
   el.innerHTML = [
     gauge("VIX（波动率/恐慌指数）", vixProxy, 10, 50, vixZones, "",
-      vixProxy ? `<30=恐慌买入机会 · <15=过度乐观需谨慎 · 数据截至 ${SIGNALS.generated}` : ""),
+      vixProxy ? `>30=恐慌区(历史反弹样本) · <15=过度乐观需谨慎 · 数据截至 ${SIGNALS.generated}` : ""),
     gauge("纳指RSI（超买超卖）", rsi, 0, 100, rsiZones, "",
       "RSI>70超买，<30超卖；现在" + (rsi>70?"偏高，注意回调":rsi<30?"极度超卖，反弹概率大":"正常区间")),
     gauge("BTC 20日动量", btcPct, -50, 50, btcZones, "%",
@@ -687,7 +688,7 @@ function renderSentimentPanel() {
   const warning = (vixProxy && vixProxy < 15) || (rsi && rsi > 75);
   const bullish  = (vixProxy && vixProxy > 30) || (rsi && rsi < 30);
   const summary = bullish
-    ? `<div style="color:#2ecc71;font-size:0.78rem;margin-top:.4rem">📈 恐慌信号出现 → 历史上往往是逆向买入机会</div>`
+    ? `<div style="color:#2ecc71;font-size:0.78rem;margin-top:.4rem">📈 恐慌信号出现 → 历史上此后多为逆向反弹样本</div>`
     : warning
     ? `<div style="color:#f1c40f;font-size:0.78rem;margin-top:.4rem">⚠️ 市场情绪偏乐观，短线注意回调风险</div>`
     : `<div style="color:var(--muted);font-size:0.78rem;margin-top:.4rem">情绪中性，无极端信号</div>`;

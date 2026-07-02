@@ -440,7 +440,7 @@ function renderEventRefToday() {
       <tr class="u-cap"><td style="padding:.2rem .4rem">事件类型</td><td style="padding:.2rem .4rem;text-align:center">样本</td><td style="padding:.2rem .4rem;text-align:right">30日均涨跌</td><td style="padding:.2rem .4rem;text-align:right">胜率 vs 基准</td></tr>
       ${rows}
     </table>
-    <div style="font-size:0.7rem;color:var(--muted);margin-top:.4rem">→ 纳入方式：这些情形下<b>降杠杆 / 不重仓新开</b>，等不确定性消化，而非猜方向。反事实因果(SVB→KRE)见"📋 登记簿"。</div>`;
+    <div style="font-size:0.7rem;color:var(--muted);margin-top:.4rem">→ 统计含义：这些情形下市场不确定性/波动历史上通常放大，而非可交易方向信号。反事实因果(SVB→KRE)见"📋 登记簿"。</div>`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -644,10 +644,10 @@ async function renderSignalHistory() {
     {x:dates,y:probs,type:"scatter",mode:"lines",name:"贝叶斯概率",
      line:{color:"#3498db",width:1.5},fill:"tozeroy",fillcolor:"rgba(52,152,219,.15)"},
     {x:dates,y:Array(dates.length).fill(60),mode:"lines",
-     line:{color:"#2ecc71",dash:"dot",width:1},name:"入场线(60%)",showlegend:true},
+     line:{color:"#2ecc71",dash:"dot",width:1},name:"参考线(60%)",showlegend:true},
     {x:dates,y:Array(dates.length).fill(80),mode:"lines",
      line:{color:"#27ae60",dash:"dot",width:1},name:"强势线(80%)",showlegend:true},
-  ],{...DARK,yaxis:{...DARK.yaxis,range:[0,100],title:"入场概率%"},
+  ],{...DARK,yaxis:{...DARK.yaxis,range:[0,100],title:"信号概率%"},
     hovermode:"x unified",legend:{orientation:"h",y:1.05}},{responsive:true});
 }
 
@@ -745,7 +745,7 @@ function renderSellPanel() {
 
   document.getElementById("sell-metrics").innerHTML = `
     <div class="sell-metric">
-      <div class="sell-metric-label">RSI（超75卖出）</div>
+      <div class="sell-metric-label">RSI（>75 超买区）</div>
       <div class="sell-metric-val" style="color:${rsiColor}">${rsi}</div>
     </div>
     <div class="sell-metric">
