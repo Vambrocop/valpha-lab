@@ -68,6 +68,9 @@ def run_backtest(daily, long_csv, label):
 
         records.append(row)
 
+    if not records:
+        raise ValueError(f"信号与 {long_csv} 无重叠日期(0 条可回测记录)——上游数据损坏或错位,fail-closed 中止")
+
     df = pd.DataFrame(records).dropna(subset=[f"ret_{h}d" for h in HORIZONS])
     print(f"  可回测记录：{len(df)} 天（含完整前向数据）\n")
 

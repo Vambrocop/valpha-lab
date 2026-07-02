@@ -9,12 +9,12 @@
     这些字段被 build_signals.py 的 load_backtest() 直接嵌入已发布 signals.json
     （P0-1 "高度显著" 前端文案就读 by_tier/calibration_20d 的 significant 字段）。
 
-⚠️ 本文件锁死了两类现状：
+本文件覆盖两类场景：
   (a) 三个「正常聚合」测试 —— 用已知构造的胜率分布验证 by_tier / calibration_20d /
       tier4_strategy 的计算不跑偏；
-  (b) 两个「空输入/无重叠」的边界测试 —— 发现这两条路径现状是 KeyError 崩溃，
-      不是任务要求的"优雅不崩"。已按协议停手未改 backtest.py，测试如实锁定现状
-      （pytest.raises(KeyError)），细节见测试内注释和交付报告。
+  (b) 两个「空输入/无重叠」的边界测试 —— 锁定 fail-closed 显式诊断：records=[] 时
+      backtest.py 主动抛 ValueError("无重叠日期"...)，而不是深层 pandas 隐式 KeyError，
+      让 run_all.py 的非零退出码带上可行动的诊断信息。细节见测试内注释。
 """
 import math
 
@@ -140,30 +140,29 @@ def test_tiny_nonzero_sample_no_crash(tmp_path, monkeypatch):
     assert math.isnan(res["tier4_strategy"]["p_value"])
 
 
-# ── ⚠️ STOP 发现：空输入 / 无重叠日期 → KeyError 崩溃（不是"优雅不崩"）────────
-def test_empty_daily_signals_crashes_keyerror(tmp_path, monkeypatch):
-    """疑似 bug（如实锁定现状，未改 backtest.py，已在交付报告中说明待主脑定）：
-    daily={} 时 records=[] → pd.DataFrame([]).dropna(subset=["ret_1d",...]) 对
-    没有这些列的空 DataFrame 直接 KeyError；不是任务期望的"优雅不崩"。
-    run_all.py 逐步骤 subprocess 跑、任何一步非零退出码就 sys.exit(1) 终止整条流水线，
-    所以这条路径若被真实触发会打断整条流水线，不只是这一步降级。"""
+# ── 空输入 / 无重叠日期 → fail-closed 显式 ValueError（非隐式 KeyError）────────
+def test_empty_daily_signals_raises_valueerror(tmp_path, monkeypatch):
+    """daily={} 时 records=[] → backtest.py 主动 raise ValueError("无重叠日期"...)，
+    而不是深层 pandas 栈里的隐式 KeyError。fail-closed 语义不变（该红仍红，
+    run_all.py 逐步骤 subprocess 跑、非零退出码仍会 sys.exit(1) 终止整条流水线），
+    只是把不可行动的 KeyError 换成可行动的诊断信息。"""
     idx = pd.bdate_range("2015-01-01", periods=400)
     prices = [100.0 + i * 0.1 for i in range(400)]
     monkeypatch.setattr(bt, "RAW_DIR", tmp_path)
     _write_price_csv(tmp_path / "TEST_long.csv", idx, prices)
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError, match="无重叠日期"):
         bt.run_backtest({}, "TEST_long.csv", "TEST")
 
 
-def test_no_overlapping_dates_also_crashes_keyerror(tmp_path, monkeypatch):
-    """同一 bug 的第二条触发路径：daily 非空，但没有一天落在价格历史的日期范围内
-    （ts not in sp_dates → continue，records 同样变成 []）——现状同样 KeyError。
-    真实场景类比：长历史 CSV 更新滞后/格式错乱，导致其日期范围与当天 daily_signals
-    完全脱节。"""
+def test_no_overlapping_dates_also_raises_valueerror(tmp_path, monkeypatch):
+    """同一诊断的第二条触发路径：daily 非空，但没有一天落在价格历史的日期范围内
+    （ts not in sp_dates → continue，records 同样变成 []）——同样抛出
+    ValueError("无重叠日期"...)。真实场景类比：长历史 CSV 更新滞后/格式错乱，
+    导致其日期范围与当天 daily_signals 完全脱节。"""
     idx = pd.bdate_range("2015-01-01", periods=400)
     prices = [100.0 + i * 0.1 for i in range(400)]
     monkeypatch.setattr(bt, "RAW_DIR", tmp_path)
     _write_price_csv(tmp_path / "TEST_long.csv", idx, prices)
     daily = {"1990-01-01": {"prob": 0.5, "tier": 3, "month": 1}}   # 早于价格历史起点
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError, match="无重叠日期"):
         bt.run_backtest(daily, "TEST_long.csv", "TEST")

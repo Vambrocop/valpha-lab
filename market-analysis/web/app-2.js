@@ -222,7 +222,7 @@ function renderForecastChart() {
     hovertemplate: "<b>%{x}</b> (%{text})<br>概率: <b>%{y:.1f}%</b><br>%{customdata}<extra></extra>",
   }], {
     ...DARK,
-    yaxis: {...DARK.yaxis, title: "入场概率 (%)", range: [45, 80]},
+    yaxis: {...DARK.yaxis, title: "信号概率 (%)", range: [45, 80]},
     xaxis: {...DARK.xaxis, tickangle: -45, tickfont: {size: 10}},
     margin: {t:20, b:80, l:60, r:20},
     shapes: [
@@ -232,7 +232,7 @@ function renderForecastChart() {
        line:{color:"#f1c40f", dash:"dot", width:1}},
     ],
     annotations: [
-      {x:dates[Math.floor(dates.length*0.9)], y:60.5, text:"60% 入场线",
+      {x:dates[Math.floor(dates.length*0.9)], y:60.5, text:"60% 参考线",
        showarrow:false, font:{color:"#2ecc71",size:10}},
       {x:dates[Math.floor(dates.length*0.9)], y:55.5, text:"55% 中性线",
        showarrow:false, font:{color:"#f1c40f",size:10}},
@@ -244,8 +244,8 @@ function renderForecastChart() {
   const maState = tech.nasdaq_ma200 === 1 ? "NASDAQ在200均线上方（偏多）" : "NASDAQ在200均线下方（偏空）";
   document.getElementById("forecast-insight").innerHTML =
     `<strong>未来45交易日概率前瞻</strong><br>
-     <span style="color:#27ae60">绿色</span>=最佳买入窗口 &nbsp;
-     <span style="color:#e74c3c">红色</span>=最弱/减仓窗口 &nbsp;
+     <span style="color:#27ae60">绿色</span>=历史偏强窗口 &nbsp;
+     <span style="color:#e74c3c">红色</span>=历史偏弱窗口 &nbsp;
      <span style="color:#3498db">蓝色</span>=普通日<br>
      最高概率日：<strong style="color:#27ae60">${topDate.date} (${topDate.dow_cn})</strong>
      — ${topDate.prob*100 > 0 ? (topDate.prob*100).toFixed(1) : "—"}%，原因：${topDate.reasons.join("、") || "日历因子叠加"}<br>
