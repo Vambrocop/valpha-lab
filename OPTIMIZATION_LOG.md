@@ -103,13 +103,16 @@
   - **Sonnet 4.6 全审抓到真诚实 bug(2026-07-01·审查好点子·f3dba85→修)**：`september` 效应 `label==1=非九月`(先验强组·见 autodiscovery `_cal_windows` l==1)，我原文把 `up_pct=54%`(其实是非九月的)当成"九月上涨率·偏正"公开了——九月实为最弱月(51%)，方向反了。修法:每条描述符显式记`触发组(label==1)/对照组`，edge 恒按真实组名拼("非九月 54% vs 九月 51%")+方向守门单测锁死。同时补:survivor 会 flicker(我快照5条→审时8条·world_cup/BTC_neg/NASDAQ_ma200 翻上来)→补全8描述符+未接入中性兜底+LLM铁律7防"未接入"越界。**教训:up_pct 恒=label==1 组，对"某期偏弱"先验(九月/世界杯/sell-in-may)那是相反的强组，别按族名想当然把 up 安到条件本身。reviewer≠builder 真值钱。**
   - **Opus 4.8 复审又抓到第二层 bug(2026-07-01·分层审查持续见效·a8c28be→修)**：修 september 时我假设"base_pct=对照组"对所有族成立——**只对日历族(_cal_windows base=label==0 补集)成立**；factor/regime/rebound 走 `_diff_windows`，`base_pct=yy.mean()=全样本基率(含触发日·非补集)`。我把它标成补集名("200线下方/未成立/其余日")——独立核实:NASDAQ_above_ma200 触发65%·全样本基率62%·**真补集(200线下方)仅55%**，数字对不上组名。修:这5条 rest 改"全样本基率"+守门测试。另修 world_cup:年份表缺 2026(真·世界杯年6/11-7/19)→显示"2026非杯年"是假的;补 2026 进 WORLD_CUP_YEARS + `_world_cup_state` 改"夏季且非杯年才应期"→2026夏正确变休眠。加"边界易闪"标注(recent_p∈(0.08,0.10]·可能退出)。**教训2:两窗口函数 base 口径不同(_cal_windows=补集 vs _diff_windows=全样本)，别一个 mental model 套所有族。Sonnet 抓一层·Opus 抓更深一层，两道审都值回票价。**
 - [ ] **P-E 自动提案层**：自生长最后一块(最高风险后门)——在预声明元空间枚举未注册格点→proposals 待审(不算p/不进分母/不上战绩),按 SELF_GROWING_PLAN §4/§7④ 硬门槛 + 双审。
-- [ ] **LLM 展示更显眼**：周报/月报/AI预测在 dashboard/导航露出;确认 weekly 有没有前端面。
-- [ ] **数据卫生体检**：`git ls-files` 查大体积可再生产物是否误提交(§5 待查)。
+- [~] **LLM 展示更显眼**：✅ index.html 已接"🗓️本月回顾"card(2026-07-01·f6bc1c2·月报此前无页引用=不可见)+ 周报card已有 + AI预测已7页露出;**余**:dashboard.html 主盘导航露出 LLM 三件套(小·待做)。
+- [x] **数据卫生体检(2026-07-01 已跑)**：`git ls-files` 扫过——**无误提交的大二进制**(无 .pkl/.parquet/.db)。最大 `signals_history.json` 1.6MB(×docs=3.2MB)=前端历史图必需·有意提交;`senate_trades.csv` 410KB=已搁置历史研究死数据(按搁置决定保留)。结论:无需清理。
 
-**个股体检 loop(STOCK_CHECKUP_SPEC.md)——已完成块0–3,余:**
-- [ ] 块4 保形区间(每票 N 日收益区间,给范围不给方向)
-- [ ] 块5 裁决卡 + 进诚实登记簿(每票综合三态卡)
-- [ ] 块6 风险型异动监测(描述性,非信号)
+**🔭 backlog vs 代码现实 侦察核对(2026-07-02·Explore 子代理)：文档落后代码 1-2 周。** 大批"待做"其实早建好审好(块4/5/6·R1/R2/R3·坟场·分段透镜·insider/pick_ledger·自生长P-A~D·LLM系列·survivors/flicker·heatmap/risk 全已建·已上线)。**真·未做(核实无实现)仅**：① P-E(已 NO-GO·§4c) ② dashboard.html 主盘 LLM 三件套导航露出(小) ③ dashboard 全量双语(中·可选·工具页已有范例) ④ IPO 数据定期更新自动化(小-中·缓·用户需求再说)。**其余"下一步"多为文档债,非代码债。**
+
+**个股体检 loop(STOCK_CHECKUP_SPEC.md)——✅ 6 块全部完成(2026-06-16·4轮独立 Opus 审·本 TODO 曾过期,2026-07-02 校正)：**
+- [x] 块4 保形区间(`compute_conformal`·20日90% split-conformal 双边区间+实测覆盖·复用 conformal.py)
+- [x] 块5 裁决卡 + 诚实登记簿(`summary` 聚合·风险画像综述卡·审修 null-β/中性措辞/0真规律重述)
+- [x] 块6 风险型异动监测(`compute_anomaly`·当前波动/相关分位·被动per-stock免FDR·审修绿灯误读)
+  > 详见 `STOCK_CHECKUP_SPEC.md` 98-106 行(全 [x])。**教训:文档 TODO 落后代码 1-2 周 → 每完成一块即时回勾,别攒**。
 
 **理论/体制轨**
 - ✅ R1 当前市场风险体制盘(VIX/曲线/期限结构,已完成;见 §4b)
