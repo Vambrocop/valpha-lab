@@ -602,6 +602,18 @@ try:
 except Exception as e:
     errors.append(f"账本检查失败: {e}")
 
+# 4b. Sidecar 哈希链（P2-9）：其余 append-only 公开账本（data/*.csv 计分账本——账本本体
+#     无 hash 列，链存 data/ledger_hashchain.csv manifest）。相对上次封存抓「外改历史行/
+#     删行截尾」；账本或封存记录缺失 → 跳过（bootstrap 友好）。诚实边界同 ledger_hash
+#     docstring：独立审计（重封前跑本脚本）才抓得到外改；流水线重封会祝福当前内容。
+try:
+    import ledger_sidecar
+    for _fname, _s_errors in ledger_sidecar.verify_all():
+        check(not _s_errors, f"{_fname} sidecar hash 链完整（{_s_errors or 'ok'}）")
+except Exception as e:
+    errors.append(f"sidecar 账本检查失败: {e}")
+    print(f"  ✗ sidecar 账本检查失败: {e}")
+
 if errors:
     print(f"\n[FAIL] {len(errors)} 项检查未通过，拒绝发布")
     sys.exit(1)

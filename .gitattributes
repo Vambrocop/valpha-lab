@@ -1,2 +1,5 @@
 # append-only 账本：冲突时取并集而不是二选一（脚本加载时会排序+去重）
 market-analysis/data/processed/*.csv merge=union
+# sidecar 哈希链 manifest（P2-9）本身 append-only：并集合并后 verify_all 取
+# sealed_at 最新记录；若与合并后账本不符，下次 seal（run_all）会追加新记录收敛
+market-analysis/data/ledger_hashchain.csv merge=union

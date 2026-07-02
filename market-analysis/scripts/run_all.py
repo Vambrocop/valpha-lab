@@ -84,6 +84,7 @@ steps = [
     ("证据库总览(吸收)", "evidence_ledger.py"),   # 把已测规律族汇成单一诚实总览(每族 scope+证据+裁决+详情链接·没证据不进库);须在 autodiscovery/placebo/btc/regime 后
     ("门4样本外→知识库晋升降级(自生长P-C)", "knowledge_base.py"),  # OOS门4(oos_gate)只认注册锚后数据:survive∧confirmed→晋升/在库∧翻盘→降级;append-only单调写kb_ledger;须在autodiscovery+candidate_registry后;不入light;Opus双审GO(B1/S1已修);今日全pending=0晋升(边跑边攒约1月出首批)
     ("防闪烁稳定度(自生长P-B)", "flicker.py"),   # 读autodiscovery_log前向史:抓在FDR边界来回横跳的脆弱候选+诚实标注"裁决稳定≠独立确认(自相关)";纯描述不引新统计;须在autodiscovery后;不入light
+    ("账本sidecar哈希链封存", "ledger_sidecar.py"),  # P2-9:13个append-only公开计分账本的链哈希存独立manifest(账本本体零写入);身份字段verify-before-seal被改则拒封;须在全部账本写手后、verify前;入light(无变化=no-op,顺带小时级抓外改)
     ("发布前自检",         "verify_output.py"),   # 失败则终止，不发布坏数据
 ]
 
@@ -97,7 +98,8 @@ full_steps = [
 LIGHT_STEPS = {
     "fetch_data.py", "build_signals.py", "track_predictions.py",
     "export_chart_data.py", "export_fx.py", "export_stocks.py", "fetch_news.py",
-    "paper_trading.py", "daily_brief.py", "weekly_report.py", "verify_output.py",
+    "paper_trading.py", "daily_brief.py", "weekly_report.py",
+    "ledger_sidecar.py", "verify_output.py",
 }
 
 if "--full" in sys.argv:
