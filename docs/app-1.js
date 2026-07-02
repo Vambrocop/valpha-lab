@@ -7,16 +7,16 @@ let MV      = null;  // multivariate analysis results
 let selectedDate = null;
 
 const TIER_META = {
-  5: { label:"强势入场", stars:"★★★★★", color:"#27ae60", short:"季节 + 技术 + 宏观全面支撑",
+  5: { label:"信号最强档", stars:"★★★★★", color:"#27ae60", short:"季节 + 技术 + 宏观全面支撑",
        desc:"季节性、技术面、宏观全面支撑，历史上此类信号后20天平均涨幅最大" },
-  4: { label:"适合入场", stars:"★★★★☆", color:"#2ecc71", short:"多数指标偏多，可正常仓位",
-       desc:"多数指标偏多，可按计划正常仓位入场" },
-  3: { label:"中性观望", stars:"★★★☆☆", color:"#f1c40f", short:"信号混合，小仓位或等待",
-       desc:"信号混合，建议小仓位试探或等待更明确信号" },
-  2: { label:"谨慎等待", stars:"★★☆☆☆", color:"#e67e22", short:"偏空信号为主，建议观望",
-       desc:"偏空信号为主，建议观望，不宜重仓" },
-  1: { label:"极高风险", stars:"★☆☆☆☆", color:"#e74c3c", short:"多重负面因素叠加，规避",
-       desc:"多重负面因素叠加，历史上此类时期平均亏损，建议规避" },
+  4: { label:"信号偏强", stars:"★★★★☆", color:"#2ecc71", short:"多数指标偏多",
+       desc:"多数指标偏多，历史上此档位偏正面" },
+  3: { label:"中性观望", stars:"★★★☆☆", color:"#f1c40f", short:"信号混合，方向不明",
+       desc:"信号混合、方向性不明确，历史上此档位缺乏统计优势" },
+  2: { label:"信号偏弱", stars:"★★☆☆☆", color:"#e67e22", short:"偏空信号为主",
+       desc:"偏空信号为主，负面因素略占上风" },
+  1: { label:"极高风险", stars:"★☆☆☆☆", color:"#e74c3c", short:"多重负面因素叠加",
+       desc:"多重负面因素叠加，历史上此类时期平均亏损" },
 };
 
 // 档位阈值：唯一来源是 signals.json（build_signals 从 signal_model.TIER_THRESHOLDS 下发）
@@ -361,7 +361,7 @@ function renderFactors(rec, finalProb) {
                   (rec.month===4 && rec.dom<=14)  ? "报税季前(57%)" :
                   (rec.month===12 && rec.dom>=11 && rec.dom<=15) ? "税损收割(47%)" :
                   (rec.month===12 && rec.dom>=21 && rec.dom<=25) ? "圣诞前(61%)" :
-                  ([1,4,7,10].includes(rec.month) && rec.dom<=5) ? "季初建仓(59%)" : "普通";
+                  ([1,4,7,10].includes(rec.month) && rec.dom<=5) ? "季初历史偏强窗口(59%)" : "普通";
 
   const factors = [
     { name:"月度季节性", tip:"基于1928年以来S&P500月度历史胜率的贝叶斯先验概率，6月历史均值约62%",
@@ -372,7 +372,7 @@ function renderFactors(rec, finalProb) {
       val: lrToText(DOW_LR[rec.dow||0])+" LR×"+DOW_LR[rec.dow||0],
       score: lrToScore(DOW_LR[rec.dow||0]),
       dir: DOW_LR[rec.dow||0]>=1?"↑":"↓" },
-    { name:`月内第${rec.wom||"?"}周`, tip:"月内周次效应：第1周(季初建仓)和第3周往往强于第4周(月末税收/平仓压力)",
+    { name:`月内第${rec.wom||"?"}周`, tip:"月内周次效应：第1周(季初历史偏强窗口)和第3周往往强于第4周(月末税收/平仓压力)",
       val: lrToText(womLR)+" LR×"+womLR.toFixed(3),
       score: lrToScore(womLR),
       dir: womLR>=1?"↑":"↓" },
@@ -380,7 +380,7 @@ function renderFactors(rec, finalProb) {
       val: calNote+" LR×"+calLR.toFixed(3),
       score: lrToScore(calLR),
       dir: calLR>=1.05?"↑":calLR<=0.95?"↓":"→" },
-    { name:"假日效应", tip:"感恩节前夕胜率76%、节前节后均高于基准。节前买入、节后卖出是有统计支持的策略",
+    { name:"假日效应", tip:"感恩节前夕胜率76%、节前节后历史胜率均高于基准（历史统计描述·非操作建议）",
       val: hlLR>1.2?"节日窗口 ↑↑":hlLR>1.0?"节前/后 ↑":"普通",
       score: lrToScore(hlLR),
       dir: hlLR>1?"↑":"→" },

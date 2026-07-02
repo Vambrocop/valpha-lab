@@ -245,7 +245,7 @@ function renderBacktestCharts() {
      </span>`;
 }
 
-// ── 今日操作建议 ──
+// ── 信号解读 ──
 // adjustedProb: pass event-adjusted probability from updateSignal so the box stays in sync
 function renderTodayRec(adjustedProb) {
   const el = document.getElementById("today-rec");
@@ -274,7 +274,7 @@ function renderTodayRec(adjustedProb) {
     const br = Math.round((SIGNALS.base_rate_20d ?? 0.62) * 100);
     el.innerHTML = `
       <div style="background:rgba(241,196,15,.07);border:1px solid #f1c40f44;border-radius:8px;padding:.85rem 1rem;">
-        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.3rem;">今日操作建议</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.3rem;">信号解读</div>
         <div style="font-size:1.05rem;font-weight:700;color:#f1c40f">⏸ 无样本外优势 · 不输出档位</div>
         <div style="font-size:0.8rem;color:var(--text);margin-top:.4rem;line-height:1.55">
           walk-forward 块自助验证未发现该信号有样本外区分度——任意一天的 20 日上涨概率都≈基率 ${br}%。
@@ -286,22 +286,22 @@ function renderTodayRec(adjustedProb) {
   tierNum = tier(prob);
 
   const map = {
-    5: { color:"#27ae60", bg:"rgba(39,174,96,.12)", icon:"🟢", action:"积极加仓",
-         desc:"多重指标全面支撑，历史最强信号。适合以较大仓位买入美股/主流加密货币。" },
-    4: { color:"#2ecc71", bg:"rgba(46,204,113,.09)", icon:"✅", action:"适合买入",
-         desc:"信号偏多，可以正常仓位入场。美股ETF（QQQ/SPY）或BTC/ETH均合适。" },
-    3: { color:"#f1c40f", bg:"rgba(241,196,15,.09)", icon:"⏸",  action:"观望持有",
-         desc:"信号中性，不是最佳入场时机。现有持仓无需操作，等待更强信号出现。" },
-    2: { color:"#e67e22", bg:"rgba(230,126,34,.09)", icon:"⚠️", action:"谨慎等待",
-         desc:"偏空信号。不建议新建仓位，可考虑减少高风险持仓，保留现金等待机会。" },
-    1: { color:"#e74c3c", bg:"rgba(231,76,60,.09)", icon:"🔴", action:"规避风险",
-         desc:"信号极弱，多重负面因素叠加。建议低仓位或空仓，等待市场企稳。" },
+    5: { color:"#27ae60", bg:"rgba(39,174,96,.12)", icon:"🟢", action:"倾向积极（信号偏多）",
+         desc:"多重指标全面支撑，历史最强信号组合。当前处于信号最强档。" },
+    4: { color:"#2ecc71", bg:"rgba(46,204,113,.09)", icon:"✅", action:"偏向乐观",
+         desc:"信号偏多，多数支撑指标指向正面。属信号偏强档。" },
+    3: { color:"#f1c40f", bg:"rgba(241,196,15,.09)", icon:"⏸",  action:"中性观望",
+         desc:"信号中性，多空力量大致均衡、方向性不明确。历史上此档位缺乏统计优势。" },
+    2: { color:"#e67e22", bg:"rgba(230,126,34,.09)", icon:"⚠️", action:"偏向谨慎",
+         desc:"偏空信号，负面因素略占上风。属信号偏弱档。" },
+    1: { color:"#e74c3c", bg:"rgba(231,76,60,.09)", icon:"🔴", action:"信号偏防御",
+         desc:"信号极弱，多重负面因素叠加，历史最弱信号组合。属信号最弱档。" },
   };
   const c = map[tierNum] || map[3];
   const tag = isForecast ? `<span style="color:var(--muted);font-size:0.72rem">（预测）</span>` : "";
   el.innerHTML = `
     <div style="background:${c.bg};border:1px solid ${c.color}55;border-radius:8px;padding:.85rem 1rem;">
-      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.3rem;">今日操作建议${tag}</div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.3rem;">信号解读${tag}</div>
       <div style="font-size:1.05rem;font-weight:700;color:${c.color}">${c.icon} 第${tierNum}档 · ${c.action}</div>
       <div style="font-size:0.8rem;color:var(--text);margin-top:.4rem;line-height:1.55">${c.desc}</div>
       <div style="font-size:0.72rem;color:var(--muted);margin-top:.4rem">上涨概率 ${Math.round(prob*100)}% · 仅供参考，不构成投资建议</div>
@@ -335,7 +335,7 @@ function renderForecastCalendar() {
   // Legend
   let html = `<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.5rem;font-size:0.72rem;">
     <span style="color:var(--muted)">颜色说明：</span>
-    <span><span style="color:#2ecc71">■</span> 强势买入(T4-5)</span>
+    <span><span style="color:#2ecc71">■</span> 偏强信号(T4-5)</span>
     <span><span style="color:#f1c40f">■</span> 中性观望(T3)</span>
     <span><span style="color:#e74c3c">■</span> 偏弱谨慎(T1-2)</span>
     <span style="color:var(--muted)">· 今日有发光边框</span>
@@ -351,7 +351,7 @@ function renderForecastCalendar() {
       const dom = parseInt(d.date.slice(8, 10)); // parse directly — timezone-safe
       const isToday = d.date === today;
       const border = isToday ? `2px solid ${TC[d.tier]}` : `1px solid ${TC[d.tier]}44`;
-      html += `<div title="${d.date}  概率${Math.round(d.prob*100)}%  第${d.tier}档${d.macro ? "  ⚠"+d.macro : ""}（点击查看操作计划）"
+      html += `<div title="${d.date}  概率${Math.round(d.prob*100)}%  第${d.tier}档${d.macro ? "  ⚠"+d.macro : ""}（点击查看信号解读）"
         role="button" tabindex="0" data-forecast-date="${d.date}"
         style="width:36px;height:36px;border-radius:5px;background:${TB[d.tier]};border:${border};cursor:pointer;
                display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -496,7 +496,7 @@ function renderPortfolioTable(audRate) {
   if (sigEl && SIGNALS) {
     const t = SIGNALS.latest_tier || 3;
     const tColor = {5:"#27ae60",4:"#2ecc71",3:"#f1c40f",2:"#e67e22",1:"#e74c3c"};
-    const tText  = {5:"全力持有",4:"可以加仓",3:"观望，不追高",2:"考虑减仓",1:"建议减仓保现金"};
+    const tText  = {5:"信号最强档",4:"信号偏强",3:"中性观望",2:"信号偏弱",1:"信号最弱档"};
     sigEl.innerHTML = `<div style="font-size:0.78rem;color:var(--muted);">当前信号第${t}档 →
       <strong style="color:${tColor[t]||"#f1c40f"}">${tText[t]||"观望"}</strong></div>`;
   }
