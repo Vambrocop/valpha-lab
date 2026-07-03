@@ -32,6 +32,47 @@
 <div class="lead" data-i18n="lead"></div>
 <div class="note" data-i18n="note"></div>
 <div class="grid" id="grid"></div>
+
+<div class="card vp-card" id="engself" style="margin-top:16px">
+  <h2 data-i18n="es_title" style="font-size:1.05rem;margin:0 0 8px"></h2>
+  <p class="how" data-i18n="es_lead" style="margin:0 0 12px"></p>
+  <div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;font-size:.86rem">
+    <thead>
+      <tr style="border-bottom:1px solid var(--border)">
+        <th style="text-align:left;padding:6px 8px" data-i18n="es_h_dim"></th>
+        <th style="text-align:left;padding:6px 8px;white-space:nowrap" data-i18n="es_h_score"></th>
+        <th style="text-align:left;padding:6px 8px" data-i18n="es_h_note"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px 8px" data-i18n="es_d1"></td><td style="padding:6px 8px">5</td>
+        <td style="padding:6px 8px;color:var(--mut)" data-i18n="es_n1"></td></tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px 8px" data-i18n="es_d2"></td><td style="padding:6px 8px">5</td>
+        <td style="padding:6px 8px;color:var(--mut)" data-i18n="es_n2"></td></tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px 8px" data-i18n="es_d3"></td><td style="padding:6px 8px">5</td>
+        <td style="padding:6px 8px;color:var(--mut)" data-i18n="es_n3"></td></tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px 8px" data-i18n="es_d4"></td><td style="padding:6px 8px">4.5</td>
+        <td style="padding:6px 8px;color:var(--mut)" data-i18n="es_n4"></td></tr>
+      <tr style="border-bottom:2px solid var(--acc);background:rgba(163,113,247,.10)">
+        <td style="padding:6px 8px;font-weight:700" data-i18n="es_d5"></td><td style="padding:6px 8px;font-weight:700">4.5</td>
+        <td style="padding:6px 8px;color:var(--acc);font-weight:600" data-i18n="es_n5"></td></tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px 8px" data-i18n="es_d6"></td><td style="padding:6px 8px">4.5</td>
+        <td style="padding:6px 8px;color:var(--mut)" data-i18n="es_n6"></td></tr>
+      <tr>
+        <td style="padding:6px 8px" data-i18n="es_d7"></td><td style="padding:6px 8px">5</td>
+        <td style="padding:6px 8px;color:var(--mut)" data-i18n="es_n7"></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="font-size:.76rem;color:var(--mut);margin-top:10px" data-i18n="es_snap"></p>
+</div>
+
 <div class="mut" data-i18n="foot"></div>
 
 <script src="vp_i18n.js"></script>
@@ -73,7 +114,31 @@ const I18N={
   c6t:{zh:"🪦 登记簿 / 坟场",en:"🪦 Registry / Graveyard"},
   c6g:{zh:"防：只晒成功、藏起失败",en:"Guards against: showing only wins, hiding the losses"},
   c6h:{zh:"过了上面所有门的，进「登记簿」（认定的真规律）；没过的，进「坟场」——并标注死因（败在哪道门）。失败也公开，这是本站的魂。",
-       en:"What passes all the gates above goes into the registry (patterns we accept as real); what fails goes into the graveyard — tagged with its cause of death (which gate it failed). We publish the failures too — that's the soul of this site."}
+       en:"What passes all the gates above goes into the registry (patterns we accept as real); what fails goes into the graveyard — tagged with its cause of death (which gate it failed). We publish the failures too — that's the soul of this site."},
+
+  es_title:{zh:"🧪 工程自评——诚实计分也适用于我们自己",en:"🧪 Engineering self-assessment — honest scoring applies to us too"},
+  es_lead:{zh:"我们给自己的工程质量打分并公开，和坟场页公开认死是同一个基因；分数不 inflate。",
+           en:"We score our own engineering quality and publish it — the same instinct as publicly admitting dead patterns in the graveyard above; scores aren't inflated."},
+  es_h_dim:{zh:"维度",en:"Dimension"},
+  es_h_score:{zh:"自评(1-5)",en:"Self-score (1-5)"},
+  es_h_note:{zh:"一句话",en:"One-line note"},
+
+  es_d1:{zh:"统计严谨",en:"Statistical rigor"},
+  es_n1:{zh:"每个新统计过独立双审",en:"Every new statistical method gets an independent double review"},
+  es_d2:{zh:"诚实·红线",en:"Honesty & red lines"},
+  es_n2:{zh:"全站操作指令清零，文案与数据强制一致",en:"Zero action-instruction language sitewide; copy is enforced to match the underlying data"},
+  es_d3:{zh:"正确性",en:"Correctness"},
+  es_n3:{zh:"452 项自动化测试+发布门禁",en:"452 automated tests + release gates"},
+  es_d4:{zh:"新颖性",en:"Novelty"},
+  es_n4:{zh:"护栏/流程创新，统计方法未升级",en:"Novel in guardrails/process; the statistical methods themselves aren't cutting-edge"},
+  es_d5:{zh:"设计/可懂性",en:"Design / clarity"},
+  es_n5:{zh:"主盘信息密度仍偏高——这是我们当前最大的短板",en:"The main dashboard is still information-dense — our biggest current weakness"},
+  es_d6:{zh:"性能",en:"Performance"},
+  es_n6:{zh:"无用户可感痛点",en:"No user-perceptible pain points"},
+  es_d7:{zh:"可维护",en:"Maintainability"},
+  es_n7:{zh:"单一真相源+模块化",en:"Single source of truth + modular structure"},
+  es_snap:{zh:"快照日期：2026-07-02 · 手工同步，最新见仓库 OPTIMIZATION_LOG.md。",
+           en:"Snapshot date: 2026-07-02 · synced manually — see the repo's OPTIMIZATION_LOG.md for the latest."}
 };
 const $=id=>document.getElementById(id);
 const CARDS=[
@@ -96,5 +161,6 @@ vpApplyStatic(I18N);
 vpBindLang(I18N,render);
 render();
 </script>
+<script src="vp_gloss.js" data-autoscan></script>
 </body>
 </html>

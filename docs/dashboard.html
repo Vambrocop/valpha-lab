@@ -33,6 +33,10 @@
   </div>
   <div style="display:flex;align-items:center;gap:.55rem;">
     <div style="color:var(--muted);font-size:0.8rem;" id="updated-time">—</div>
+    <button id="ob-guide-btn" aria-label="新手指南 / Guide" title="新手指南 / Guide"
+      style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
+      border-radius:50%;width:28px;height:28px;font-size:0.82rem;cursor:pointer;display:flex;
+      align-items:center;justify-content:center;flex-shrink:0;padding:0;">❓</button>
     <button id="lang-toggle" aria-label="切换语言 / switch language"
       style="background:var(--surface2);border:1px solid var(--border);color:var(--text);
       padding:.3rem .7rem;border-radius:6px;font-size:0.76rem;cursor:pointer;">EN</button>
@@ -71,16 +75,15 @@
 
 <div id="en-mode-note" style="display:none;max-width:720px;margin:.5rem auto;padding:.4rem .7rem;font-size:.78rem;color:var(--muted);background:rgba(127,127,127,.08);border:1px solid var(--border-faint,rgba(127,127,127,.25));border-radius:8px;text-align:center;">🌐 Navigation & section intros are in English; detailed panel analyses stay in Chinese for now.</div>
 
-<!-- 新手引导（首次访问显示，可关闭） -->
+<!-- 新手引导（首次访问显示，可关闭；点击右上角 ❓ 可重新打开） -->
 <div class="onboarding" id="onboarding" style="display:none">
   <div data-i18n="ob">
-  <h3>👋 第一次来?30 秒看懂</h3>
-  这是个<b>诚实统计 + 敢给结论</b>的工具——既帮你<b>拆穿真假规律、看清风险有多深</b>,也<b>敢给当下倾向、纳指方向、个股看好看淡</b>。区别在于:每条判断都<b>公开计分、敢认账</b>(会错、过去≠未来),你拿来参考、自己拍。
+  <h3>👋 3 步看懂这站</h3>
+  这是个<b>诚实统计</b>工具——不是又一个"AI 喊你买"的吹票机;既拆穿真假规律、量清风险有多深,也敢给方向,但每条都<b>公开计分、敢认账</b>(会错、过去≠未来)。
   <ul>
-    <li><b>📊 今日结论</b>:首页顶部给当下倾向(防御↔积极)+ 纳指方向——<b>每条都进公开计分卡</b>,看真命中率判断可信度,别当包票;</li>
-    <li><b>🧾 登记簿</b>:哪些"规律"是真的、哪些是幻觉 / 已被套利(🪦坟场) / 还没验证(🔬探索区);</li>
-    <li><b>🩺 个股体检</b>:一只票的风险画像(波动/回撤/大跌后全貌),不是买卖建议;</li>
-    <li><b>🌡️ 风险体制</b>:当前市场环境(波动/曲线/信用/羊群),描述非预测。</li>
+    <li><b>① 先看「今日结论」</b>:它是温度计,不是命令——已验证短期没有样本外预测优势,别当真理;</li>
+    <li><b>② 想查某句话是真是假</b>:看 🧾 登记簿 / 🪦 坟场——哪些规律是真的、哪些已经证伪死透;</li>
+    <li><b>③ 想看我们说得对不对</b>:看 📊 公开战绩卡——每条判断都记账,错了也不删。</li>
   </ul>
   ⚠ <b>出格区(首页结论/观点/野蛮)敢给方向、但都公开计分;其余面板多为描述性</b>。都不打包票,投资有风险、亏损自负。
   </div>
@@ -892,15 +895,14 @@
 (function(){
   const EN = {
     "hdr-sub": `<b>Honest statistics</b> · measure risk, not direction · expose real vs fake patterns · live & publicly accountable　|　📈 the Outlook tab is the only "out-of-bounds" exception (with a scorecard — entertainment, not advice)`,
-    "ob": `<h3>👋 First time here? A 30-second guide</h3>
-  This is an <b>honest-statistics</b> tool — <b>no stock tips, no up/down calls</b>. It just helps you tell <b>real patterns from illusions</b> and see <b>how deep the risk runs</b>, so you decide better yourself.
+    "ob": `<h3>👋 3 steps to get started</h3>
+  This is an <b>honest-statistics</b> tool — not another "AI says buy" hype machine. It tells real patterns from illusions, measures how deep the risk runs, and does give a direction — but every call is <b>scored publicly and owned</b> (we can be wrong, past ≠ future).
   <ul>
-    <li><b>📊 Today's signal</b>: read it as a <b>thermometer</b> — we've verified it has <b>no out-of-sample predictive power</b>, don't treat it as conviction;</li>
-    <li><b>🧾 Registry</b>: which "patterns" are real, which are illusions / already arbitraged (🪦 graveyard) / not yet verified (🔬 exploratory);</li>
-    <li><b>🩺 Stock check-up</b>: one stock's risk profile (volatility / drawdown / full picture after big drops) — not buy/sell advice;</li>
-    <li><b>🌡️ Risk regime</b>: the current market environment (volatility / yield curve / credit / herding) — descriptive, not a forecast.</li>
+    <li><b>① Start with "Today's read"</b>: it's a thermometer, not an order — we've verified it has no proven out-of-sample edge, don't treat it as gospel;</li>
+    <li><b>② Want to check if a claim is true or false?</b> See the 🧾 registry / 🪦 graveyard — which patterns are real, which are already falsified and dead;</li>
+    <li><b>③ Want to see if we've called it right?</b> See the 📊 public scorecard — every call is logged, nothing deleted when we miss.</li>
   </ul>
-  ⚠ <b>No number on this page is an instruction to act</b>; investing carries risk, losses are your own.`,
+  ⚠ <b>The out-of-bounds zone (home page's headline call / Outlook / Wild) does give direction, but every call is publicly scored</b>; other panels are mostly descriptive. No guarantees — investing carries risk, losses are your own.`,
     "vi-outlook": `📈 <b>Outlook / forecast: direction stated, bull or bear.</b> This zone <b>deliberately steps outside</b> the site's "measure risk, not direction" rule — giving an outright Nasdaq direction and per-stock views. ⚠ Reference only, <b>not investment advice</b>; the real hit-rate of these direction calls is in the 🎲 Tip-jar (hint: ≈ a coin flip).`,
     "vi-today": `📊 <b>Today: should you act now?</b> Signal, daily brief, risk traffic-light, sell-side check — the current state on one screen. ⚠ The signal is experimental; direction is not reliably predictable — reference only.`,
     "vi-plan": `🗓 <b>Plan: upcoming action windows.</b> Calendar odds, best/weakest timing, economic events — know in advance which days are worth watching. Calendar effects hold in-sample; out-of-sample they are reference only.`,
@@ -1124,6 +1126,20 @@
   if(btn) btn.addEventListener("click",()=>{lang=lang==="en"?"zh":"en";
     try{localStorage.setItem("valpha_lang",lang);}catch(e){} apply();});
   apply();
+})();
+</script>
+<script>
+/* ❓ 新手指南重开按钮：自包含、命名空间隔离(不碰 app-*.js)。onboarding 横幅在 <main> 顶层，
+   不受 view 切换隐藏，点击直接显示 + 滚动到可见位置；不重置 localStorage 已读标记。 */
+(function(){
+  var btn=document.getElementById("ob-guide-btn");
+  if(!btn) return;
+  btn.addEventListener("click",function(){
+    var el=document.getElementById("onboarding");
+    if(!el) return;
+    el.style.display="";
+    el.scrollIntoView({behavior:"smooth",block:"start"});
+  });
 })();
 </script>
 <script>
