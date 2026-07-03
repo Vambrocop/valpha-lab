@@ -14,7 +14,8 @@ function renderPredictionAccuracy() {
   if (!recent.length) return;
 
   // Build result objects
-  const DOW_CN = ["周一","周二","周三","周四","周五","周六","周日"];
+  const DOW_LABELS = vpL(["周一","周二","周三","周四","周五","周六","周日"],
+                          ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]);
   const rows = recent.map(([date, v]) => {
     const prob    = v.prob;
     const ret     = v.ret;           // actual % return
@@ -52,11 +53,15 @@ function renderPredictionAccuracy() {
 
   const summaryEl = document.getElementById("accuracy-summary");
   if (summaryEl) summaryEl.innerHTML = [
-    { label:`第4-5档信号准确率`,   val:h4Acc,   n:tier45.length,  hint:"概率≥60%时，预测上涨是否正确" },
-    { label:`第1-2档信号准确率`,   val:l2Acc,   n:tier12.length,  hint:"概率≤40%时，预测下跌是否正确" },
-    { label:`总体有效信号准确率`,   val:overall, n:called.length,  hint:"所有非中性预测的综合准确率" },
-    { label:`近${nDays}天上涨天数`, val: rows.filter(r=>r.actualUp).length / rows.length * 100,
-      n:rows.length, hint:"实际市场上涨天数占比" },
+    { label: vpL("第4-5档信号准确率","Tier 4-5 signal accuracy"), val:h4Acc, n:tier45.length,
+      hint: vpL("概率≥60%时，预测上涨是否正确","Whether the up-call was correct when probability ≥60%") },
+    { label: vpL("第1-2档信号准确率","Tier 1-2 signal accuracy"), val:l2Acc, n:tier12.length,
+      hint: vpL("概率≤40%时，预测下跌是否正确","Whether the down-call was correct when probability ≤40%") },
+    { label: vpL("总体有效信号准确率","Overall active-signal accuracy"), val:overall, n:called.length,
+      hint: vpL("所有非中性预测的综合准确率","Combined accuracy across all non-neutral calls") },
+    { label: vpL(`近${nDays}天上涨天数`, `Up days (last ${nDays}d)`),
+      val: rows.filter(r=>r.actualUp).length / rows.length * 100,
+      n:rows.length, hint: vpL("实际市场上涨天数占比","Share of days the market actually rose") },
   ].map(c => `
     <div class="acc-card">
       <div class="acc-card-num" style="color:${accColor(c.val)}">${c.val!=null ? c.val.toFixed(1)+"%" : "—"}</div>
@@ -72,28 +77,31 @@ function renderPredictionAccuracy() {
     return r.correct ? "rgba(46,204,113,.75)" : "rgba(231,76,60,.75)";
   });
   const hoverText = rows.map(r => {
-    const callStr = r.predicted === "up" ? "📈看多" : r.predicted === "down" ? "📉看空" : "中性";
+    const callStr = r.predicted === "up" ? vpL("📈看多","📈 Bullish") : r.predicted === "down" ? vpL("📉看空","📉 Bearish") : vpL("中性","Neutral");
     const outStr  = r.actualUp ? `+${r.ret.toFixed(2)}%↑` : `${r.ret.toFixed(2)}%↓`;
-    const res     = r.hasCall ? (r.correct ? "✓正确" : "✗错误") : "中性(不计)";
-    return `${r.date}<br>信号: ${callStr} (${(r.prob*100).toFixed(1)}%)<br>实际: ${outStr}<br>${res}`;
+    const res     = r.hasCall ? (r.correct ? vpL("✓正确","✓ Correct") : vpL("✗错误","✗ Wrong")) : vpL("中性(不计)","Neutral (excluded)");
+    return vpL(
+      `${r.date}<br>信号: ${callStr} (${(r.prob*100).toFixed(1)}%)<br>实际: ${outStr}<br>${res}`,
+      `${r.date}<br>Signal: ${callStr} (${(r.prob*100).toFixed(1)}%)<br>Actual: ${outStr}<br>${res}`
+    );
   });
 
   Plotly.newPlot("chart-accuracy", [
-    { type:"bar", name:"预测概率%", x:dates, y:probs,
+    { type:"bar", name: vpL("预测概率%","Predicted prob %"), x:dates, y:probs,
       marker:{ color: barColors },
       text: hoverText, hovertemplate:"%{text}<extra></extra>",
       width: 0.7 },
-    { type:"scatter", name:"实际涨跌%", x:dates, y:rets,
+    { type:"scatter", name: vpL("实际涨跌%","Actual return %"), x:dates, y:rets,
       mode:"lines+markers", yaxis:"y2",
       line:{ color:"rgba(52,152,219,.8)", width:1.5 },
       marker:{ size:4, color: rets.map(r => r>0?"#2ecc71":"#e74c3c") },
-      hovertemplate:"%{x}<br>实际: %{y:.2f}%<extra></extra>" },
-    { type:"scatter", name:"60% 基准线", x:[dates[0],dates[dates.length-1]], y:[60,60],
+      hovertemplate: vpL("%{x}<br>实际: %{y:.2f}%<extra></extra>","%{x}<br>Actual: %{y:.2f}%<extra></extra>") },
+    { type:"scatter", name: vpL("60% 基准线","60% baseline"), x:[dates[0],dates[dates.length-1]], y:[60,60],
       mode:"lines", line:{color:"rgba(46,204,113,.4)",dash:"dot",width:1}, hoverinfo:"skip" },
   ], {
     ...DARK,
-    yaxis:  { ...DARK.yaxis, title:"预测概率 %", range:[35,90] },
-    yaxis2: { overlaying:"y", side:"right", title:"实际涨跌 %", zeroline:true,
+    yaxis:  { ...DARK.yaxis, title: vpL("预测概率 %","Predicted probability %"), range:[35,90] },
+    yaxis2: { overlaying:"y", side:"right", title: vpL("实际涨跌 %","Actual return %"), zeroline:true,
                zerolinecolor:"#444", gridcolor:"transparent", tickformat:".1f" },
     legend: { orientation:"h", y:1.08, font:{size:10} },
     margin: { t:10, b:55, l:55, r:55 },
@@ -110,19 +118,19 @@ function renderPredictionAccuracy() {
   tableEl.innerHTML = `
     <table style="width:100%;border-collapse:collapse;min-width:480px;">
       <thead><tr style="border-bottom:1px solid var(--border);">
-        <th style="${headerStyle}text-align:left">日期</th>
-        <th style="${headerStyle}text-align:right">预测方向</th>
-        <th style="${headerStyle}text-align:right">概率</th>
-        <th style="${headerStyle}text-align:right">实际涨跌</th>
-        <th style="${headerStyle}text-align:center">结果</th>
+        <th style="${headerStyle}text-align:left">${vpL("日期","Date")}</th>
+        <th style="${headerStyle}text-align:right">${vpL("预测方向","Predicted direction")}</th>
+        <th style="${headerStyle}text-align:right">${vpL("概率","Probability")}</th>
+        <th style="${headerStyle}text-align:right">${vpL("实际涨跌","Actual return")}</th>
+        <th style="${headerStyle}text-align:center">${vpL("结果","Result")}</th>
       </tr></thead>
       <tbody>
       ${last14.map(r => {
         const signalStr = r.predicted === "up"
-          ? `<span style="color:#2ecc71">📈 看多(T${r.tier})</span>`
+          ? `<span style="color:#2ecc71">${vpL(`📈 看多(T${r.tier})`, `📈 Bullish (T${r.tier})`)}</span>`
           : r.predicted === "down"
-          ? `<span style="color:#e74c3c">📉 看空(T${r.tier})</span>`
-          : `<span style="color:var(--muted)">→ 中性(T${r.tier})</span>`;
+          ? `<span style="color:#e74c3c">${vpL(`📉 看空(T${r.tier})`, `📉 Bearish (T${r.tier})`)}</span>`
+          : `<span style="color:var(--muted)">${vpL(`→ 中性(T${r.tier})`, `→ Neutral (T${r.tier})`)}</span>`;
         const retColor  = r.ret > 0 ? "#2ecc71" : r.ret < 0 ? "#e74c3c" : "var(--muted)";
         const retStr    = `<span style="color:${retColor}">${r.ret > 0 ? "+" : ""}${r.ret.toFixed(2)}%</span>`;
         const resultStr = !r.hasCall ? `<span style="color:var(--muted)">—</span>`
@@ -130,7 +138,7 @@ function renderPredictionAccuracy() {
           : `<span style="color:#e74c3c;font-weight:700">✗</span>`;
         const todayBg   = r.date === localDateStr() ? "background:rgba(52,152,219,.07);" : "";
         return `<tr style="border-bottom:1px solid var(--border-faint);${todayBg}">
-          <td style="${cellStyle}">${r.date} <span style="color:var(--muted);font-size:0.72rem">${DOW_CN[r.dow||0]}</span></td>
+          <td style="${cellStyle}">${r.date} <span style="color:var(--muted);font-size:0.72rem">${DOW_LABELS[r.dow||0]}</span></td>
           <td style="${cellStyle}text-align:right">${signalStr}</td>
           <td style="${cellStyle}text-align:right;font-weight:700">${(r.prob*100).toFixed(1)}%</td>
           <td style="${cellStyle}text-align:right">${retStr}</td>
@@ -140,8 +148,14 @@ function renderPredictionAccuracy() {
       </tbody>
     </table>
     <div style="font-size:0.72rem;color:var(--muted);margin-top:.5rem;line-height:1.5;">
-      ✓/✗ 仅统计信号概率≥60%（看多）或≤40%（看空）的有效预测。中性区间(40-60%)不纳入准确率计算。
-      <br>注意：本模型预测的是"统计上有利的入场时机"，不是逐日涨跌预测——单日准确率参考意义有限，多日累积效果更重要。
+      ${vpL(
+        "✓/✗ 仅统计信号概率≥60%（看多）或≤40%（看空）的有效预测。中性区间(40-60%)不纳入准确率计算。",
+        "✓/✗ only count signals with probability ≥60% (bullish) or ≤40% (bearish). The neutral 40-60% band is excluded from the accuracy calculation."
+      )}
+      <br>${vpL(
+        "注意：本模型预测的是\"统计上有利的入场时机\"，不是逐日涨跌预测——单日准确率参考意义有限，多日累积效果更重要。",
+        "Note: this model predicts a \"statistically favorable entry window,\" not day-by-day direction — single-day accuracy has limited meaning; the cumulative multi-day effect matters more."
+      )}
     </div>`;
 }
 
@@ -159,8 +173,10 @@ function renderBacktestCharts() {
   // 这里必须显式识别并给出诚实占位，否则 [] 是 truthy、会静默往下走空数组画图、
   // 渲染出一堆 "?" 和硬编码兜底基准（63.1%），看起来像"分析结果"实则是垃圾。
   if (bt.degraded || tiers.length === 0) {
-    const msg = "⚠ 回测数据本轮不可用（信号与价格历史无重叠，或前向窗口数据缺失，疑似上游数据源异常）——" +
-      "本次未产出可评估的统计结果，不代表模型失效，请等待下次数据刷新或核查数据源。";
+    const msg = vpL(
+      "⚠ 回测数据本轮不可用（信号与价格历史无重叠，或前向窗口数据缺失，疑似上游数据源异常）——本次未产出可评估的统计结果，不代表模型失效，请等待下次数据刷新或核查数据源。",
+      "⚠ Backtest data unavailable this run (no overlap between signal and price history, or forward-window data missing — likely an upstream data-source issue). No evaluable statistical result was produced this time; this does not mean the model has failed. Please wait for the next data refresh or check the data source."
+    );
     const tierEl = document.getElementById("chart-backtest-tier");
     const calEl  = document.getElementById("chart-backtest-cal");
     const insightEl = document.getElementById("backtest-insight");
@@ -171,24 +187,28 @@ function renderBacktestCharts() {
   }
   const base20  = bt.baseline?.["20d"]?.win_rate || 63.1;
   const TIER_COLOR = { 1:"#e74c3c", 2:"#e74c3c", 3:"#f1c40f", 4:"#2ecc71", 5:"#27ae60" };
-  const TIER_LABEL = { 1:"第1档", 2:"第2档", 3:"第3档", 4:"第4档", 5:"第5档" };
+  const TIER_LABEL = vpL(
+    { 1:"第1档", 2:"第2档", 3:"第3档", 4:"第4档", 5:"第5档" },
+    { 1:"Tier 1", 2:"Tier 2", 3:"Tier 3", 4:"Tier 4", 5:"Tier 5" }
+  );
 
   // ── 图1：各档位实际20日胜率 ──────────────────────────────────
   const horizons = ["1d","5d","10d","20d","30d"];
-  const hLabels  = ["1日","5日","10日","20日","30日"];
+  const hLabels  = vpL(["1日","5日","10日","20日","30日"], ["1d","5d","10d","20d","30d"]);
   const traces = tiers.map(t => ({
     type: "scatter", mode: "lines+markers",
-    name: TIER_LABEL[t.tier] + `（n=${t.n}）`,
+    name: TIER_LABEL[t.tier] + vpL(`（n=${t.n}）`, ` (n=${t.n})`),
     x: hLabels,
     y: horizons.map(h => t.horizons[h]?.win_rate ?? null),
     line: { color: TIER_COLOR[t.tier] || "#3498db", width: 2 },
     marker: { size: 7 },
-    hovertemplate: `<b>Tier ${t.tier} %{x}</b><br>胜率: %{y:.1f}%<extra></extra>`,
+    hovertemplate: vpL(`<b>Tier ${t.tier} %{x}</b><br>胜率: %{y:.1f}%<extra></extra>`,
+                        `<b>Tier ${t.tier} %{x}</b><br>Win rate: %{y:.1f}%<extra></extra>`),
   }));
   // 基准线
   traces.push({
     type: "scatter", mode: "lines",
-    name: `基准（全样本 ${base20}%）`,
+    name: vpL(`基准（全样本 ${base20}%）`, `Baseline (full sample ${base20}%)`),
     x: hLabels, y: hLabels.map(() => base20),
     line: { color: "#8b949e", dash: "dot", width: 1.5 },
     hoverinfo: "skip",
@@ -196,8 +216,8 @@ function renderBacktestCharts() {
 
   Plotly.newPlot("chart-backtest-tier", traces, {
     ...DARK,
-    yaxis: {...DARK.yaxis, title: "实际上涨胜率 (%)", range: [25, 80]},
-    xaxis: {...DARK.xaxis, title: "持有天数"},
+    yaxis: {...DARK.yaxis, title: vpL("实际上涨胜率 (%)","Actual up-move win rate (%)"), range: [25, 80]},
+    xaxis: {...DARK.xaxis, title: vpL("持有天数","Holding days")},
     margin: {t: 20, b: 50, l: 60, r: 20},
     legend: {orientation: "h", y: 1.12},
   }, {responsive: true});
@@ -214,16 +234,17 @@ function renderBacktestCharts() {
       x: calX, y: calY,
       marker: { color: calColors },
       text: cal.map(c => `n=${c.n}`),
-      hovertemplate: "<b>预测概率区间: %{x}</b><br>实际20日胜率: %{y:.1f}%<br>%{text}<extra></extra>",
+      hovertemplate: vpL("<b>预测概率区间: %{x}</b><br>实际20日胜率: %{y:.1f}%<br>%{text}<extra></extra>",
+                          "<b>Predicted-probability bucket: %{x}</b><br>Actual 20-day win rate: %{y:.1f}%<br>%{text}<extra></extra>"),
     }, {
       type: "scatter", mode: "lines",
       x: calX, y: calX.map(() => base20),
       line: { color: "#8b949e", dash: "dot", width: 1.5 },
-      name: "基准", hoverinfo: "skip",
+      name: vpL("基准","Baseline"), hoverinfo: "skip",
     }], {
       ...DARK,
-      yaxis: {...DARK.yaxis, title: "实际胜率 (%)", range: [45, 75]},
-      xaxis: {...DARK.xaxis, title: "模型预测概率区间"},
+      yaxis: {...DARK.yaxis, title: vpL("实际胜率 (%)","Actual win rate (%)"), range: [45, 75]},
+      xaxis: {...DARK.xaxis, title: vpL("模型预测概率区间","Model-predicted probability bucket")},
       margin: {t: 10, b: 50, l: 60, r: 20},
       showlegend: false,
     }, {responsive: true});
@@ -237,8 +258,37 @@ function renderBacktestCharts() {
   const sig4 = t4?.horizons?.["20d"]?.significant;
   const sig2 = t2?.horizons?.["5d"]?.significant;
 
-  document.getElementById("backtest-insight").innerHTML =
-    `<strong>历史回测结论（2000-2026，${SIGNALS.backtest?.NASDAQ?.baseline?.["20d"]?.n ?? Object.values(SIGNALS.daily_signals).length}个交易日）：</strong><br><br>
+  const calInsight = (() => {
+    if (!cal.length) return vpL("校准曲线：数据不足，暂无法评估单调性。","Calibration curve: insufficient data to assess monotonicity.");
+    const calMonotonic = cal.every((c, i) => i === 0 || c.actual_wr_20d >= cal[i - 1].actual_wr_20d);
+    return calMonotonic
+      ? vpL("校准曲线：模型预测概率越高 → 实际胜率确实更高，信号有单调性。",
+            "Calibration curve: higher predicted probability really does mean a higher actual win rate — the signal is monotonic.")
+      : vpL("校准曲线：分段胜率非单调（高置信区间 ≠ 更准），需谨慎解读概率区间。",
+            "Calibration curve: bucketed win rates are non-monotonic (higher confidence ≠ more accurate) — interpret probability buckets with caution.");
+  })();
+  const s4SigStr = s4.significant === undefined ? ""
+    : s4.significant ? vpL("（<strong>统计显著</strong>）"," (<strong>statistically significant</strong>)")
+    : vpL("（<strong>未达显著，纯噪声区间</strong>）"," (<strong>not significant — pure noise range</strong>)");
+
+  document.getElementById("backtest-insight").innerHTML = vpLang() === "en" ? `
+     <strong>Historical backtest conclusion (2000-2026, ${SIGNALS.backtest?.NASDAQ?.baseline?.["20d"]?.n ?? Object.values(SIGNALS.daily_signals).length} trading days):</strong><br><br>
+     <span style="color:#2ecc71">▲ Tier 4 signal (≥60%, n=${t4?.n||0}d):</span>
+     20-day actual win rate <strong style="color:#2ecc71">${t4?.horizons?.["20d"]?.win_rate||"?"}%</strong>,
+     above the full-sample baseline of ${base20}% (+${t4?.horizons?.["20d"]?.diff_vs_baseline||"?"}pp),
+     <strong>p=${t4?.horizons?.["20d"]?.p_value||"?"}</strong>${sig4?" ✓ statistically significant":""}<br>
+     <span style="color:#e74c3c">▼ Tier 2 signal (≤40%, n=${t2?.n||0}d):</span>
+     5-day win rate only <strong style="color:#e74c3c">${t2?.horizons?.["5d"]?.win_rate||"?"}%</strong>,
+     well below baseline (${t2?.horizons?.["5d"]?.diff_vs_baseline||"?"}pp),
+     <strong>p=${t2?.horizons?.["5d"]?.p_value||"?"}</strong>${sig2?" ✓ statistically significant":""}<br>
+     <span style="color:#f1c40f">△ Tier 3 signal:</span>
+     20-day win rate ${t3?.horizons?.["20d"]?.win_rate||"?"}%, slightly below baseline (essentially neutral)<br><br>
+     <span style="color:var(--muted);font-size:0.79rem">
+       ${calInsight}<br>
+       The "Tier ≥4 entry only" strategy: 20-day win rate ${s4.win_rate_20d||"?"}% vs ${s4.baseline_win_rate||"?"}% for buying anytime,
+       p=${s4.p_value||"?"}${s4SigStr}. Absolute gap +${s4.diff||"?"}pp.
+     </span>` : `
+     <strong>历史回测结论（2000-2026，${SIGNALS.backtest?.NASDAQ?.baseline?.["20d"]?.n ?? Object.values(SIGNALS.daily_signals).length}个交易日）：</strong><br><br>
      <span style="color:#2ecc71">▲ 第4档信号（≥60%，n=${t4?.n||0}天）：</span>
      20日实际胜率 <strong style="color:#2ecc71">${t4?.horizons?.["20d"]?.win_rate||"?"}%</strong>，
      高于全样本基准 ${base20}%（+${t4?.horizons?.["20d"]?.diff_vs_baseline||"?"}pp），
@@ -250,15 +300,9 @@ function renderBacktestCharts() {
      <span style="color:#f1c40f">△ 第3档信号：</span>
      20日胜率 ${t3?.horizons?.["20d"]?.win_rate||"?"}%，略低于基准（几乎中性）<br><br>
      <span style="color:var(--muted);font-size:0.79rem">
-       ${(() => {
-         if (!cal.length) return "校准曲线：数据不足，暂无法评估单调性。";
-         const calMonotonic = cal.every((c, i) => i === 0 || c.actual_wr_20d >= cal[i - 1].actual_wr_20d);
-         return calMonotonic
-           ? "校准曲线：模型预测概率越高 → 实际胜率确实更高，信号有单调性。"
-           : "校准曲线：分段胜率非单调（高置信区间 ≠ 更准），需谨慎解读概率区间。";
-       })()}<br>
+       ${calInsight}<br>
        「仅Tier≥4入场」策略 20日胜率 ${s4.win_rate_20d||"?"}% vs 随时买入 ${s4.baseline_win_rate||"?"}%，
-       p=${s4.p_value||"?"}${s4.significant === undefined ? "" : s4.significant ? "（<strong>统计显著</strong>）" : "（<strong>未达显著，纯噪声区间</strong>）"}。绝对差距 +${s4.diff||"?"}pp。
+       p=${s4.p_value||"?"}${s4SigStr}。绝对差距 +${s4.diff||"?"}pp。
      </span>`;
 }
 
@@ -289,7 +333,14 @@ function renderTodayRec(adjustedProb) {
   // 模型无样本外区分度时，不输出"档位/买卖"建议——否则与中性信号环自相矛盾
   if (SIGNALS.calibration_flat) {
     const br = Math.round((SIGNALS.base_rate_20d ?? 0.62) * 100);
-    el.innerHTML = `
+    el.innerHTML = vpLang() === "en" ? `
+      <div style="background:rgba(241,196,15,.07);border:1px solid #f1c40f44;border-radius:8px;padding:.85rem 1rem;">
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.3rem;">Signal read</div>
+        <div style="font-size:1.05rem;font-weight:700;color:#f1c40f">⏸ No out-of-sample edge · tier suppressed</div>
+        <div style="font-size:0.8rem;color:var(--text);margin-top:.4rem;line-height:1.55">
+          Walk-forward block-bootstrap validation found no out-of-sample discriminative power for this signal — the 20-day up-probability on any given day is ≈ the base rate of ${br}%.
+          This is an experimental research tool and does not constitute market-timing advice.</div>
+      </div>` : `
       <div style="background:rgba(241,196,15,.07);border:1px solid #f1c40f44;border-radius:8px;padding:.85rem 1rem;">
         <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.3rem;">信号解读</div>
         <div style="font-size:1.05rem;font-weight:700;color:#f1c40f">⏸ 无样本外优势 · 不输出档位</div>
@@ -303,25 +354,35 @@ function renderTodayRec(adjustedProb) {
   tierNum = tier(prob);
 
   const map = {
-    5: { color:"#27ae60", bg:"rgba(39,174,96,.12)", icon:"🟢", action:"倾向积极（信号偏多）",
-         desc:"多重指标全面支撑，历史最强信号组合。当前处于信号最强档。" },
-    4: { color:"#2ecc71", bg:"rgba(46,204,113,.09)", icon:"✅", action:"偏向乐观",
-         desc:"信号偏多，多数支撑指标指向正面。属信号偏强档。" },
-    3: { color:"#f1c40f", bg:"rgba(241,196,15,.09)", icon:"⏸",  action:"中性观望",
-         desc:"信号中性，多空力量大致均衡、方向性不明确。历史上此档位缺乏统计优势。" },
-    2: { color:"#e67e22", bg:"rgba(230,126,34,.09)", icon:"⚠️", action:"偏向谨慎",
-         desc:"偏空信号，负面因素略占上风。属信号偏弱档。" },
-    1: { color:"#e74c3c", bg:"rgba(231,76,60,.09)", icon:"🔴", action:"信号偏防御",
-         desc:"信号极弱，多重负面因素叠加，历史最弱信号组合。属信号最弱档。" },
+    5: { color:"#27ae60", bg:"rgba(39,174,96,.12)", icon:"🟢",
+         action: vpL("倾向积极（信号偏多）","Leaning positive (bullish tilt)"),
+         desc: vpL("多重指标全面支撑，历史最强信号组合。当前处于信号最强档。",
+                    "Broad support across multiple indicators — historically the strongest signal combination. Currently in the strongest tier.") },
+    4: { color:"#2ecc71", bg:"rgba(46,204,113,.09)", icon:"✅",
+         action: vpL("偏向乐观","Leaning optimistic"),
+         desc: vpL("信号偏多，多数支撑指标指向正面。属信号偏强档。",
+                    "Signal tilts bullish; most supporting indicators point positive. A stronger-than-average tier.") },
+    3: { color:"#f1c40f", bg:"rgba(241,196,15,.09)", icon:"⏸",
+         action: vpL("中性观望","Neutral / wait-and-see"),
+         desc: vpL("信号中性，多空力量大致均衡、方向性不明确。历史上此档位缺乏统计优势。",
+                    "Signal is neutral — bullish and bearish forces are roughly balanced with no clear direction. Historically this tier has shown no statistical edge.") },
+    2: { color:"#e67e22", bg:"rgba(230,126,34,.09)", icon:"⚠️",
+         action: vpL("偏向谨慎","Leaning cautious"),
+         desc: vpL("偏空信号，负面因素略占上风。属信号偏弱档。",
+                    "Signal tilts bearish; negative factors slightly outweigh positive ones. A weaker-than-average tier.") },
+    1: { color:"#e74c3c", bg:"rgba(231,76,60,.09)", icon:"🔴",
+         action: vpL("信号偏防御","Defensive-leaning signal"),
+         desc: vpL("信号极弱，多重负面因素叠加，历史最弱信号组合。属信号最弱档。",
+                    "Signal is very weak, with multiple negative factors stacking up — historically the weakest signal combination. Currently in the weakest tier.") },
   };
   const c = map[tierNum] || map[3];
-  const tag = isForecast ? `<span style="color:var(--muted);font-size:0.72rem">（预测）</span>` : "";
+  const tag = isForecast ? `<span style="color:var(--muted);font-size:0.72rem">${vpL("（预测）"," (forecast)")}</span>` : "";
   el.innerHTML = `
     <div style="background:${c.bg};border:1px solid ${c.color}55;border-radius:8px;padding:.85rem 1rem;">
-      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.3rem;">信号解读${tag}</div>
-      <div style="font-size:1.05rem;font-weight:700;color:${c.color}">${c.icon} 第${tierNum}档 · ${c.action}</div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:.3rem;">${vpL("信号解读","Signal read")}${tag}</div>
+      <div style="font-size:1.05rem;font-weight:700;color:${c.color}">${c.icon} ${vpL(`第${tierNum}档`, `Tier ${tierNum}`)} · ${c.action}</div>
       <div style="font-size:0.8rem;color:var(--text);margin-top:.4rem;line-height:1.55">${c.desc}</div>
-      <div style="font-size:0.72rem;color:var(--muted);margin-top:.4rem">上涨概率 ${Math.round(prob*100)}% · 仅供参考，不构成投资建议</div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:.4rem">${vpL(`上涨概率 ${Math.round(prob*100)}% · 仅供参考，不构成投资建议`, `Up-probability ${Math.round(prob*100)}% · reference only, not investment advice`)}</div>
     </div>`;
 }
 
@@ -330,7 +391,7 @@ function renderForecastCalendar() {
   const el = document.getElementById("forecast-calendar");
   if (!el || !SIGNALS) return;
   const allFc = SIGNALS.next_opportunities?.all_forecast || [];
-  if (!allFc.length) { el.innerHTML = `<span style="color:var(--muted);font-size:0.82rem">暂无预测数据</span>`; return; }
+  if (!allFc.length) { el.innerHTML = `<span style="color:var(--muted);font-size:0.82rem">${vpL("暂无预测数据","No forecast data yet")}</span>`; return; }
 
   const TC = { 5:"#27ae60", 4:"#2ecc71", 3:"#f1c40f", 2:"#e67e22", 1:"#e74c3c" };
   const TB = { 5:"rgba(39,174,96,.22)", 4:"rgba(46,204,113,.18)", 3:"rgba(241,196,15,.18)", 2:"rgba(230,126,34,.18)", 1:"rgba(231,76,60,.18)" };
@@ -351,11 +412,11 @@ function renderForecastCalendar() {
   const today = localDateStr();
   // Legend
   let html = `<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.5rem;font-size:0.72rem;">
-    <span style="color:var(--muted)">颜色说明：</span>
-    <span><span style="color:#2ecc71">■</span> 偏强信号(T4-5)</span>
-    <span><span style="color:#f1c40f">■</span> 中性观望(T3)</span>
-    <span><span style="color:#e74c3c">■</span> 偏弱谨慎(T1-2)</span>
-    <span style="color:var(--muted)">· 今日有发光边框</span>
+    <span style="color:var(--muted)">${vpL("颜色说明：","Color key:")}</span>
+    <span><span style="color:#2ecc71">■</span> ${vpL("偏强信号(T4-5)","Strong-leaning (T4-5)")}</span>
+    <span><span style="color:#f1c40f">■</span> ${vpL("中性观望(T3)","Neutral (T3)")}</span>
+    <span><span style="color:#e74c3c">■</span> ${vpL("偏弱谨慎(T1-2)","Weak-leaning (T1-2)")}</span>
+    <span style="color:var(--muted)">${vpL("· 今日有发光边框","· Today has a glowing border")}</span>
   </div>`;
   html += `<div style="display:flex;flex-direction:column;gap:5px;">`;
   Object.keys(weeks).sort().forEach(wk => {
@@ -368,12 +429,16 @@ function renderForecastCalendar() {
       const dom = parseInt(d.date.slice(8, 10)); // parse directly — timezone-safe
       const isToday = d.date === today;
       const border = isToday ? `2px solid ${TC[d.tier]}` : `1px solid ${TC[d.tier]}44`;
-      html += `<div title="${d.date}  概率${Math.round(d.prob*100)}%  第${d.tier}档${d.macro ? "  ⚠"+d.macro : ""}（点击查看信号解读）"
+      const titleAttr = vpL(
+        `${d.date}  概率${Math.round(d.prob*100)}%  第${d.tier}档${d.macro ? "  ⚠"+d.macro : ""}（点击查看信号解读）`,
+        `${d.date}  prob ${Math.round(d.prob*100)}%  Tier ${d.tier}${d.macro ? "  ⚠"+d.macro : ""} (click to see signal read)`
+      );
+      html += `<div title="${titleAttr}"
         role="button" tabindex="0" data-forecast-date="${d.date}"
         style="width:36px;height:36px;border-radius:5px;background:${TB[d.tier]};border:${border};cursor:pointer;
                display:flex;flex-direction:column;align-items:center;justify-content:center;
                ${isToday ? "box-shadow:0 0 0 3px "+TC[d.tier]+"66;" : ""}">
-        <span style="font-size:0.65rem;color:var(--muted);line-height:1">${dom}日</span>
+        <span style="font-size:0.65rem;color:var(--muted);line-height:1">${dom}${vpL("日","")}</span>
         <span style="font-size:0.7rem;font-weight:700;color:${TC[d.tier]};line-height:1.3">${Math.round(d.prob*100)}%</span>
       </div>`;
     });
@@ -385,10 +450,10 @@ function renderForecastCalendar() {
   const weak   = allFc.filter(d => d.tier <= 2).length;
   const neut   = allFc.length - strong - weak;
   html += `<div style="font-size:0.75rem;color:var(--muted);margin-top:.6rem;display:flex;gap:1rem;flex-wrap:wrap;">
-    <span>共 ${allFc.length} 个交易日</span>
-    <span style="color:#2ecc71">强势: ${strong}天</span>
-    <span style="color:#f1c40f">中性: ${neut}天</span>
-    <span style="color:#e74c3c">偏弱: ${weak}天</span>
+    <span>${vpL(`共 ${allFc.length} 个交易日`, `${allFc.length} trading days total`)}</span>
+    <span style="color:#2ecc71">${vpL(`强势: ${strong}天`, `Strong: ${strong}d`)}</span>
+    <span style="color:#f1c40f">${vpL(`中性: ${neut}天`, `Neutral: ${neut}d`)}</span>
+    <span style="color:#e74c3c">${vpL(`偏弱: ${weak}天`, `Weak: ${weak}d`)}</span>
   </div>`;
 
   el.innerHTML = html;
@@ -401,10 +466,14 @@ function renderEconCalendar() {
   const today = localDateStr();
   // 特殊事件（手工维护）
   const events = [
-    { date:"2026-06-11", emoji:"⚽", label:"世界杯开幕",          type:"event", note:"美/加/墨主办，Fox Corp受益" },
-    { date:"2026-06-12", emoji:"🚀", label:"SpaceX SPCX 上市",    type:"ipo",   note:"Nasdaq，发行价US$135，通过CommSec" },
-    { date:"2026-07-02", emoji:"📊", label:"6月非农就业数据",      type:"nfp",   note:"超预期→加息压力→短期利空" },
-    { date:"2026-07-19", emoji:"⚽", label:"世界杯决赛",           type:"event", note:"冠军国股市往往短暂上涨" },
+    { date:"2026-06-11", emoji:"⚽", label: vpL("世界杯开幕","World Cup opening"), type:"event",
+      note: vpL("美/加/墨主办，Fox Corp受益","Hosted by US/Canada/Mexico; Fox Corp benefits") },
+    { date:"2026-06-12", emoji:"🚀", label: vpL("SpaceX SPCX 上市","SpaceX (SPCX) IPO"), type:"ipo",
+      note: vpL("Nasdaq，发行价US$135，通过CommSec","Nasdaq, IPO price US$135, via CommSec") },
+    { date:"2026-07-02", emoji:"📊", label: vpL("6月非农就业数据","June non-farm payrolls"), type:"nfp",
+      note: vpL("超预期→加息压力→短期利空","Beat expectations → rate-hike pressure → short-term headwind") },
+    { date:"2026-07-19", emoji:"⚽", label: vpL("世界杯决赛","World Cup final"), type:"event",
+      note: vpL("冠军国股市往往短暂上涨","Champion nation's stock market often sees a brief rally") },
   ];
   // 官方宏观日历（CPI/FOMC，来自 signals.json，由 BLS/Fed 日程生成）
   (SIGNALS?.macro_calendar || []).forEach(m => {
@@ -414,7 +483,8 @@ function renderEconCalendar() {
       emoji: isCpi ? "📊" : "🏦",
       label: m.label,
       type: isCpi ? "cpi" : "fed",
-      note: isCpi ? "美东8:30发布·当日波动放大" : "美东14:00决议·当日波动放大",
+      note: isCpi ? vpL("美东8:30发布·当日波动放大","Released 8:30am ET · intraday volatility spikes")
+                   : vpL("美东14:00决议·当日波动放大","Decision at 2:00pm ET · intraday volatility spikes"),
     });
   });
   events.sort((a, b) => a.date.localeCompare(b.date));
@@ -423,7 +493,7 @@ function renderEconCalendar() {
   el.innerHTML = upcoming.map(e => {
     const diff = Math.round((new Date(e.date) - new Date(today)) / 86400000);
     const urgency = diff <= 3 ? "#e74c3c" : diff <= 7 ? "#e67e22" : "var(--muted)";
-    const diffLabel = diff === 0 ? "今天" : diff === 1 ? "明天" : `${diff}天后`;
+    const diffLabel = diff === 0 ? vpL("今天","Today") : diff === 1 ? vpL("明天","Tomorrow") : vpL(`${diff}天后`, `in ${diff}d`);
     return `<div style="display:flex;align-items:flex-start;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--border-faint);">
       <span style="font-size:1rem;flex-shrink:0">${e.emoji}</span>
       <div style="flex:1;">
@@ -434,7 +504,7 @@ function renderEconCalendar() {
         <div style="color:var(--muted);font-size:0.72rem">${e.date}${e.note ? " · " + e.note : ""}</div>
       </div>
     </div>`;
-  }).join("") || `<div style="color:var(--muted);font-size:0.8rem">近期无重要事件</div>`;
+  }).join("") || `<div style="color:var(--muted);font-size:0.8rem">${vpL("近期无重要事件","No major events upcoming")}</div>`;
 }
 
 // ── 我的持仓计算器 ──
@@ -458,7 +528,7 @@ function defaultPortfolio() {
     { ticker:"XLM",  qty:503.78,   priceUSD:null, costUSD:null,  type:"crypto" },
     { ticker:"DOGE", qty:1360.5,   priceUSD:null, costUSD:null,  type:"crypto" },
     { ticker:"HOME", qty:100,      priceUSD:null, costUSD:null,  type:"crypto" },
-    { ticker:"SPCX", qty:0,        priceUSD:135,  costUSD:135,   type:"stock",  note:"IPO发行价US$135" },
+    { ticker:"SPCX", qty:0,        priceUSD:135,  costUSD:135,   type:"stock",  note: vpL("IPO发行价US$135","IPO price US$135") },
   ];
 }
 
@@ -487,7 +557,7 @@ function renderPortfolioTable(audRate) {
     const plStr = qty <= 0 ? "" :
       plAUD != null
       ? `<br><span class="${plAUD >= 0 ? 'pl-up' : 'pl-dn'}">${plAUD >= 0 ? '+' : ''}A$${plAUD.toFixed(0)} (${plPct >= 0 ? '+' : ''}${(plPct||0).toFixed(1)}%)</span>`
-      : `<br><span class="cost-link" role="button" tabindex="0" data-cost-index="${i}">设置成本价</span>`;
+      : `<br><span class="cost-link" role="button" tabindex="0" data-cost-index="${i}">${vpL("设置成本价","Set cost basis")}</span>`;
     const valStr = val ? `A$${val.toFixed(2)}` : "—";
     const pStr  = p   ? `$${p < 1 ? p.toFixed(4) : p.toFixed(2)}` : "—";
     const ticker = escPortfolio(item.ticker);
@@ -504,7 +574,7 @@ function renderPortfolioTable(audRate) {
   const plTotalStr = plTotal != null
     ? `<span class="${plTotal >= 0 ? 'pl-up' : 'pl-dn'}" style="font-size:0.8rem;margin-left:.5rem">${plTotal >= 0 ? '+' : ''}A$${plTotal.toFixed(0)} (${plTotalPct >= 0 ? '+' : ''}${(plTotalPct||0).toFixed(1)}%)</span>` : "";
   foot.innerHTML = total > 0 ? `<tr style="border-top:1px solid var(--border);">
-    <td colspan="3" style="padding:.4rem;font-weight:700;color:var(--muted)">总计</td>
+    <td colspan="3" style="padding:.4rem;font-weight:700;color:var(--muted)">${vpL("总计","Total")}</td>
     <td style="text-align:right;padding:.4rem;font-weight:800;font-size:1rem;color:var(--green)">A$${total.toFixed(2)}${plTotalStr}</td>
   </tr>` : "";
 
@@ -513,9 +583,12 @@ function renderPortfolioTable(audRate) {
   if (sigEl && SIGNALS) {
     const t = SIGNALS.latest_tier || 3;
     const tColor = {5:"#27ae60",4:"#2ecc71",3:"#f1c40f",2:"#e67e22",1:"#e74c3c"};
-    const tText  = {5:"信号最强档",4:"信号偏强",3:"中性观望",2:"信号偏弱",1:"信号最弱档"};
-    sigEl.innerHTML = `<div style="font-size:0.78rem;color:var(--muted);">当前信号第${t}档 →
-      <strong style="color:${tColor[t]||"#f1c40f"}">${tText[t]||"观望"}</strong></div>`;
+    const tText  = vpL(
+      {5:"信号最强档",4:"信号偏强",3:"中性观望",2:"信号偏弱",1:"信号最弱档"},
+      {5:"Strongest tier",4:"Signal tilts strong",3:"Neutral / wait-and-see",2:"Signal tilts weak",1:"Weakest tier"}
+    );
+    sigEl.innerHTML = `<div style="font-size:0.78rem;color:var(--muted);">${vpL(`当前信号第${t}档 →`, `Current signal: Tier ${t} →`)}
+      <strong style="color:${tColor[t]||"#f1c40f"}">${tText[t]||vpL("观望","Neutral")}</strong></div>`;
   }
 }
 
@@ -524,11 +597,11 @@ function setPortfolioCost(i) {
   const item = port[i];
   if (!item) return;
   const fallback = item.costUSD ?? item.priceUSD ?? portfolioPrices[item.ticker] ?? "";
-  const input = prompt(`设置 ${item.ticker || "资产"} 的 USD 成本价`, fallback);
+  const input = prompt(vpL(`设置 ${item.ticker || "资产"} 的 USD 成本价`, `Set USD cost basis for ${item.ticker || "asset"}`), fallback);
   if (input === null) return;
   const cost = Number(input);
   if (!Number.isFinite(cost) || cost <= 0) {
-    alert("请输入有效的正数成本价。");
+    alert(vpL("请输入有效的正数成本价。","Please enter a valid positive cost price."));
     return;
   }
   item.costUSD = cost;
@@ -538,17 +611,17 @@ function setPortfolioCost(i) {
 
 async function fetchPortfolioPrices() {
   const btn = document.getElementById("portfolio-refresh-btn");
-  if (btn) btn.textContent = "⏳ 获取中...";
+  if (btn) btn.textContent = vpL("⏳ 获取中...","⏳ Fetching...");
   try {
     // 优先用同源 quotes.json（服务端 quick_quotes 抓的 CoinGecko）——中国访客不必直连境外 API
     if (typeof loadQuotes === "function") { try { await loadQuotes(); } catch (e) { /* 用已有 QUOTES */ } }
-    let crypto = QUOTES?.crypto, audRate = QUOTES?.aud_rate, src = "同源";
+    let crypto = QUOTES?.crypto, audRate = QUOTES?.aud_rate, src = vpL("同源","same-origin");
     if (!crypto || !Object.keys(crypto).length) {
       // 兜底：直连 CoinGecko（境外，可能 CORS/被墙；仅当同源缺失时）
       const ids = Object.values(COIN_IDS).join(",");
       const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd,aud`);
       const data = await r.json();
-      crypto = {}; src = "直连";
+      crypto = {}; src = vpL("直连","direct");
       Object.entries(COIN_IDS).forEach(([ticker, id]) => {
         if (data[id]?.usd) crypto[ticker] = data[id].usd;
         if (!audRate && data[id]?.usd && data[id]?.aud) audRate = data[id].usd / data[id].aud;
@@ -556,7 +629,7 @@ async function fetchPortfolioPrices() {
     }
     Object.assign(portfolioPrices, crypto);
     const updEl = document.getElementById("portfolio-updated");
-    if (updEl) updEl.textContent = `1 AUD ≈ US$${audRate ? audRate.toFixed(4) : "?"}（${src}报价）`;
+    if (updEl) updEl.textContent = `1 AUD ≈ US$${audRate ? audRate.toFixed(4) : "?"}${vpL(`（${src}报价）`, ` (${src} quote)`)}`;
     renderPortfolioTable(audRate || 0.71);
     renderSPCXTracker();
     updateSPCXCalc();
@@ -564,7 +637,7 @@ async function fetchPortfolioPrices() {
     console.warn("Portfolio price fetch failed:", e);
     renderPortfolioTable(0.71);
   } finally {
-    if (btn) btn.textContent = "🔄 更新价格";
+    if (btn) btn.textContent = vpL("🔄 更新价格","🔄 Update prices");
   }
 }
 
@@ -584,13 +657,13 @@ function renderDipGuide() {
   Plotly.newPlot(dipEl, [{
     type:"bar", x:dipData.map(d=>d.drop), y:dipData.map(d=>d.days),
     marker:{color:dipColors},
-    text:dipData.map(d=>`${d.days}天<br>n=${d.n}次`),
+    text:dipData.map(d=> vpL(`${d.days}天<br>n=${d.n}次`, `${d.days}d<br>n=${d.n}`)),
     textposition:"outside", cliponaxis:false,
-    hovertemplate:"<b>%{x}</b><br>平均恢复 %{y} 天<extra></extra>",
+    hovertemplate: vpL("<b>%{x}</b><br>平均恢复 %{y} 天<extra></extra>","<b>%{x}</b><br>avg recovery %{y} days<extra></extra>"),
   }], {
     ...DARK, margin:{t:10,b:40,l:45,r:10},
     // y 轴顶部留 18% 余量，给最高柱(700天)的 outside 文字留位置
-    yaxis:{...DARK.yaxis, title:"平均恢复天数", range:[0, 700*1.18]},
+    yaxis:{...DARK.yaxis, title: vpL("平均恢复天数","Average recovery days"), range:[0, 700*1.18]},
     // 必须强制分类轴："-5%" 会被 Plotly 自动当数字解析（parseFloat 截断），
     // "-40%+" 解析失败 → 整根柱子凭空消失 + translate(NaN) 报错
     xaxis:{...DARK.xaxis, type:"category"},
@@ -608,20 +681,26 @@ function renderDipGuide() {
     marker:{color:vixColors},
     text:vixData.map(d=>`${d.wr}%`),
     textposition:"outside", cliponaxis:false,
-    hovertemplate:"<b>VIX %{x}</b><br>3月胜率 %{y}%<extra></extra>",
+    hovertemplate: vpL("<b>VIX %{x}</b><br>3月胜率 %{y}%<extra></extra>","<b>VIX %{x}</b><br>3-month win rate %{y}%<extra></extra>"),
   }], {
     ...DARK, margin:{t:10,b:40,l:40,r:10},
-    yaxis:{...DARK.yaxis, title:"3个月胜率%", range:[45,100]},
+    yaxis:{...DARK.yaxis, title: vpL("3个月胜率%","3-month win rate %"), range:[45,100]},
     xaxis:{...DARK.xaxis, type:"category"},   // "15-20" 会被自动解析成数字 15，同 dip 图
     shapes:[{type:"line",x0:-0.5,x1:4.5,y0:58,y1:58,line:{color:"#555",dash:"dot",width:1}}],
   }, {responsive:true});
 
-  document.getElementById("dip-insight").innerHTML =
+  document.getElementById("dip-insight").innerHTML = vpL(
     `<div style="color:var(--muted);font-size:0.72rem;margin-bottom:.35rem">以下为历史统计描述 · 非操作建议 · 见🪦坟场</div>
      <strong>历史统计规律：</strong>跌幅越大、VIX越高，历史胜率越高，但恢复时间也越长。<br>
      <span style="color:#27ae60">VIX > 30</span>（历史高恐慌区），3个月胜率达 <strong>78%+</strong>；
      <span style="color:#f1c40f">VIX < 15</span>（现在）市场过于乐观，历史该区间胜率较低，属<strong>偏弱窗口</strong>。<br>
-     <span style="color:var(--muted);font-size:0.78rem">数据来源：S&P 500 1928-2026历史统计，非投资建议。</span>`;
+     <span style="color:var(--muted);font-size:0.78rem">数据来源：S&P 500 1928-2026历史统计，非投资建议。</span>`,
+    `<div style="color:var(--muted);font-size:0.72rem;margin-bottom:.35rem">The following is a historical statistical description · not a trading recommendation · see the 🪦 graveyard</div>
+     <strong>Historical statistical pattern:</strong> the bigger the drop and the higher the VIX, the higher the historical win rate — but the longer the recovery time too.<br>
+     <span style="color:#27ae60">VIX > 30</span> (historically extreme panic), 3-month win rate reaches <strong>78%+</strong>;
+     <span style="color:#f1c40f">VIX < 15</span> (current) the market is overly optimistic — historically this range shows a lower win rate, a <strong>weak-leaning window</strong>.<br>
+     <span style="color:var(--muted);font-size:0.78rem">Data source: S&P 500, 1928-2026 historical stats — not investment advice.</span>`
+  );
 }
 
 // ── 市场情绪仪表盘 ──
@@ -663,52 +742,57 @@ function renderSentimentPanel() {
   // ——之前重复年化导致显示 276 并永远"极度恐慌"
   const vixProxy = nasVol ? +(nasVol * 100).toFixed(1) : null;
   const vixZones = [
-    {from:0,   to:15,  color:"#f1c40f", label:"过度乐观 ⚠️"},
-    {from:15,  to:20,  color:"#2ecc71", label:"正常"},
-    {from:20,  to:30,  color:"#e67e22", label:"担忧"},
-    {from:30,  to:999, color:"#e74c3c", label:"极度恐慌区(历史反弹样本)"},
+    {from:0,   to:15,  color:"#f1c40f", label: vpL("过度乐观 ⚠️","Overly optimistic ⚠️")},
+    {from:15,  to:20,  color:"#2ecc71", label: vpL("正常","Normal")},
+    {from:20,  to:30,  color:"#e67e22", label: vpL("担忧","Concern")},
+    {from:30,  to:999, color:"#e74c3c", label: vpL("极度恐慌区(历史反弹样本)","Extreme panic zone (historical bounce sample)")},
   ];
   const rsiZones = [
-    {from:0,  to:30,  color:"#e74c3c", label:"超卖 → 可能反弹"},
-    {from:30, to:50,  color:"#e67e22", label:"弱势"},
-    {from:50, to:70,  color:"#2ecc71", label:"正常偏多"},
-    {from:70, to:100, color:"#f1c40f", label:"超买 ⚠️"},
+    {from:0,  to:30,  color:"#e74c3c", label: vpL("超卖 → 可能反弹","Oversold → possible bounce")},
+    {from:30, to:50,  color:"#e67e22", label: vpL("弱势","Weak")},
+    {from:50, to:70,  color:"#2ecc71", label: vpL("正常偏多","Normal, tilting bullish")},
+    {from:70, to:100, color:"#f1c40f", label: vpL("超买 ⚠️","Overbought ⚠️")},
   ];
   const btcPct = btcMom != null ? +(btcMom * 100).toFixed(1) : null;
   const btcZones = [
-    {from:-100, to:-20, color:"#e74c3c", label:"极度疲弱"},
-    {from:-20,  to:-5,  color:"#e67e22", label:"偏弱"},
-    {from:-5,   to:5,   color:"#8b949e", label:"横盘"},
-    {from:5,    to:20,  color:"#2ecc71", label:"偏强"},
-    {from:20,   to:999, color:"#27ae60", label:"强势"},
+    {from:-100, to:-20, color:"#e74c3c", label: vpL("极度疲弱","Extremely weak")},
+    {from:-20,  to:-5,  color:"#e67e22", label: vpL("偏弱","Weak-leaning")},
+    {from:-5,   to:5,   color:"#8b949e", label: vpL("横盘","Flat / sideways")},
+    {from:5,    to:20,  color:"#2ecc71", label: vpL("偏强","Strong-leaning")},
+    {from:20,   to:999, color:"#27ae60", label: vpL("强势","Strong")},
   ];
   // 💵 美元强弱(DXY 趋势)——与美股通常负相关；颜色按"对股市的含义"上色(走强=承压)
   const dxyPct = tech.dxy_trend != null ? +(tech.dxy_trend * 100).toFixed(1) : null;
   const dxyZones = [
-    {from:-100, to:-1, color:"#2ecc71", label:"美元走弱 → 股市顺风"},
-    {from:-1,   to:1,  color:"#8b949e", label:"美元横盘"},
-    {from:1,    to:100, color:"#e67e22", label:"美元走强 → 股市承压"},
+    {from:-100, to:-1, color:"#2ecc71", label: vpL("美元走弱 → 股市顺风","Dollar weakening → tailwind for stocks")},
+    {from:-1,   to:1,  color:"#8b949e", label: vpL("美元横盘","Dollar flat")},
+    {from:1,    to:100, color:"#e67e22", label: vpL("美元走强 → 股市承压","Dollar strengthening → headwind for stocks")},
   ];
 
   el.innerHTML = [
-    gauge("VIX（波动率/恐慌指数）", vixProxy, 10, 50, vixZones, "",
-      vixProxy ? `>30=恐慌区(历史反弹样本) · <15=过度乐观需谨慎 · 数据截至 ${SIGNALS.generated}` : ""),
-    gauge("纳指RSI（超买超卖）", rsi, 0, 100, rsiZones, "",
-      "RSI>70超买，<30超卖；现在" + (rsi>70?"偏高，注意回调":rsi<30?"极度超卖，反弹概率大":"正常区间")),
-    gauge("BTC 20日动量", btcPct, -50, 50, btcZones, "%",
-      "BTC往往领先美股科技股1-2周，负值代表近期加密偏弱"),
-    gauge("💵 美元强弱 (DXY趋势)", dxyPct, -5, 5, dxyZones, "%",
-      "美元指数与美股通常负相关：美元强→外资回流美债、股市承压；美元弱→股市常受益。统计相关、非因果铁律"),
+    gauge(vpL("VIX（波动率/恐慌指数）","VIX (volatility / fear index)"), vixProxy, 10, 50, vixZones, "",
+      vixProxy ? vpL(`>30=恐慌区(历史反弹样本) · <15=过度乐观需谨慎 · 数据截至 ${SIGNALS.generated}`,
+                     `>30 = panic zone (historical bounce sample) · <15 = overly optimistic, caution · data as of ${SIGNALS.generated}`) : ""),
+    gauge(vpL("纳指RSI（超买超卖）","Nasdaq RSI (overbought/oversold)"), rsi, 0, 100, rsiZones, "",
+      vpL("RSI>70超买，<30超卖；现在","RSI>70 = overbought, <30 = oversold; currently ") +
+      (rsi>70 ? vpL("偏高，注意回调","elevated, watch for a pullback")
+       : rsi<30 ? vpL("极度超卖，反弹概率大","deeply oversold, high odds of a bounce")
+       : vpL("正常区间","in the normal range"))),
+    gauge(vpL("BTC 20日动量","BTC 20-day momentum"), btcPct, -50, 50, btcZones, "%",
+      vpL("BTC往往领先美股科技股1-2周，负值代表近期加密偏弱","BTC often leads US tech stocks by 1-2 weeks; a negative value means crypto has been weak recently")),
+    gauge(vpL("💵 美元强弱 (DXY趋势)","💵 Dollar strength (DXY trend)"), dxyPct, -5, 5, dxyZones, "%",
+      vpL("美元指数与美股通常负相关：美元强→外资回流美债、股市承压；美元弱→股市常受益。统计相关、非因果铁律",
+          "The dollar index is usually negatively correlated with US stocks: a strong dollar → foreign capital flows back into Treasuries, pressuring stocks; a weak dollar → stocks often benefit. Statistical correlation, not a causal law.")),
   ].filter(Boolean).join("");
 
   // Summary line
   const warning = (vixProxy && vixProxy < 15) || (rsi && rsi > 75);
   const bullish  = (vixProxy && vixProxy > 30) || (rsi && rsi < 30);
   const summary = bullish
-    ? `<div style="color:#2ecc71;font-size:0.78rem;margin-top:.4rem">📈 恐慌信号出现 → 历史上此后多为逆向反弹样本</div>`
+    ? `<div style="color:#2ecc71;font-size:0.78rem;margin-top:.4rem">${vpL("📈 恐慌信号出现 → 历史上此后多为逆向反弹样本","📈 Panic signal detected → historically often followed by a contrarian bounce")}</div>`
     : warning
-    ? `<div style="color:#f1c40f;font-size:0.78rem;margin-top:.4rem">⚠️ 市场情绪偏乐观，短线注意回调风险</div>`
-    : `<div style="color:var(--muted);font-size:0.78rem;margin-top:.4rem">情绪中性，无极端信号</div>`;
+    ? `<div style="color:#f1c40f;font-size:0.78rem;margin-top:.4rem">${vpL("⚠️ 市场情绪偏乐观，短线注意回调风险","⚠️ Sentiment is skewing optimistic — watch short-term pullback risk")}</div>`
+    : `<div style="color:var(--muted);font-size:0.78rem;margin-top:.4rem">${vpL("情绪中性，无极端信号","Sentiment neutral, no extreme signal")}</div>`;
   el.innerHTML += summary;
 }
 

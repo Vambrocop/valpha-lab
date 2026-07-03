@@ -6,6 +6,7 @@
      vpLang()                   — 读当前语言（"zh" | "en"），默认 "zh"
      vpSetLang(l)               — 持久化语言到 localStorage
      vpT(I18N, key, lang)       — 查 I18N[key][lang]，回退到 key 本身
+     vpL(zh, en)                — 按当前语言在 zh/en 间选一个（内联双语，见下方定义处用法）
      vpApplyStatic(I18N, opts)  — 批量渲染 [data-i18n] 元素 + #lang 按钮 + html.lang
      vpBindLang(I18N, onToggle) — 绑定 #lang 点击切换，可传可选的页面重渲染回调
 
@@ -45,6 +46,18 @@
   ────────────────────────────────────────────────────────────────── */
   function vpT(I18N, key, lang) {
     return (I18N[key] && I18N[key][lang]) || key;
+  }
+
+  /* ── vpL ──────────────────────────────────────────────────────────
+     通用双语内联 helper：按当前语言在 zh/en 两个值之间选一个。
+     不限于字符串——数组/对象同样可用（如按语言切换整份标签表）。
+     用法：
+       短标签    vpL("卖出窗口","Sell window")
+       插值句    vpLang()==="en" ? `tier ${n}` : `第${n}档`（整句双写，见规格 §1）
+     供深度面板脚本（app-1..5.js）内联调用，单一实现、不逐文件复制。
+  ────────────────────────────────────────────────────────────────── */
+  function vpL(zh, en) {
+    return vpLang() === "en" ? en : zh;
   }
 
   /* ── vpApplyStatic ────────────────────────────────────────────────
@@ -99,6 +112,7 @@
   win.vpLang        = vpLang;
   win.vpSetLang     = vpSetLang;
   win.vpT           = vpT;
+  win.vpL           = vpL;
   win.vpApplyStatic = vpApplyStatic;
   win.vpBindLang    = vpBindLang;
 

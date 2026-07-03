@@ -73,7 +73,7 @@
 
 <main>
 
-<div id="en-mode-note" style="display:none;max-width:720px;margin:.5rem auto;padding:.4rem .7rem;font-size:.78rem;color:var(--muted);background:rgba(127,127,127,.08);border:1px solid var(--border-faint,rgba(127,127,127,.25));border-radius:8px;text-align:center;">🌐 Navigation & section intros are in English; detailed panel analyses stay in Chinese for now.</div>
+<div id="en-mode-note" style="display:none;max-width:720px;margin:.5rem auto;padding:.4rem .7rem;font-size:.78rem;color:var(--muted);background:rgba(127,127,127,.08);border:1px solid var(--border-faint,rgba(127,127,127,.25));border-radius:8px;text-align:center;">🌐 Navigation & section intros are in English; deep-panel bilingual rollout is in progress (some panels — signal read, backtest, sentiment gauges, dip guide — are now bilingual; the rest still render in Chinese).</div>
 
 <!-- 新手引导（首次访问显示，可关闭；点击右上角 ❓ 可重新打开） -->
 <div class="onboarding" id="onboarding" style="display:none">
@@ -880,6 +880,9 @@
 <!-- Plotly 移到 body 末、app-js 之前（性能①）：首屏（今日视图 + 结论 hero）不画图，不必让 1.4MB 阻塞 <head>；
      app-js 仍在它之后按序加载、Plotly 全局可用。部分包 ~1.4MB，同源自托管（中国访客可达），不引境外 CDN。 -->
 <script src="plotly-cartesian-2.35.2.min.js"></script>
+<!-- 深度面板双语化(#5 W1a起)：vp_i18n.js 提供 vpL(zh,en) 内联 helper，供 app-1..5.js 调用；
+     必须先于它们加载。与工具页共用同一份脚手架、同一个 localStorage "valpha_lang" 键。 -->
+<script src="vp_i18n.js"></script>
 <!-- app.js 已按模块拆成 5 个有序经典脚本（共享全局作用域，onclick 处理器照常可用）。
      顺序至关重要，不可重排：app-5 含 init().then 引导，依赖前 4 个已加载。
      拼回 app-1..5 === 原 app.js（逐字节）。改代码后跑 tools/audit_frontend.py 校验。 -->
@@ -1124,7 +1127,18 @@
   }
   const btn=document.getElementById("lang-toggle");
   if(btn) btn.addEventListener("click",()=>{lang=lang==="en"?"zh":"en";
-    try{localStorage.setItem("valpha_lang",lang);}catch(e){} apply();});
+    try{localStorage.setItem("valpha_lang",lang);}catch(e){} apply();
+    // 深度面板双语化(#5 W1a起)：lite-shell 只管导航/intro；面板内文由 app-*.js 里的
+    // vpL() 内联调用负责，读同一个 localStorage 键。渲染器均幂等覆盖（"🔄 刷新"已验证的
+    // 假设），重跑 renderAll() 即可让已可见的面板/懒图（app-5 lazyRender 注册表按 offsetParent
+    // 可见性直接重画，不可见的重新挂 IntersectionObserver）用新语言重画，无需整页刷新。
+    try{ if(typeof renderAll==="function") renderAll(); }catch(e){ console.warn("lang toggle renderAll failed", e); }
+    // W1b 审出的集成缺口：renderAll() 不覆盖「今日」信号面板与档位图例——
+    // updateSignal 会重填被 apply() 踩掉的 #signal-label(带遗留 data-i18n="loading" 属性)，
+    // renderTierLegend 让 TIER_META 的 vpL getter 用新语言重画图例。
+    try{ if(typeof renderTierLegend==="function") renderTierLegend(); }catch(e){ console.warn("lang toggle renderTierLegend failed", e); }
+    try{ if(typeof updateSignal==="function" && typeof selectedDate!=="undefined" && selectedDate) updateSignal(selectedDate); }catch(e){ console.warn("lang toggle updateSignal failed", e); }
+  });
   apply();
 })();
 </script>
