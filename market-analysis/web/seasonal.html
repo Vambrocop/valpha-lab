@@ -182,5 +182,6 @@ $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valp
 (async()=>{applyStatic();const g=u=>fetch(u,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
   [SEAD,PLACD]=await Promise.all([g(SEA),g(PLAC)]);render();})();
 </script>
+<script src="vp_gloss.js" data-autoscan></script>
 </body>
 </html>
