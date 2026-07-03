@@ -113,9 +113,9 @@
 1. ✅ **v1.0 可懂性冲刺(2026-07-03 完成·efb6d20)**:① hover 术语全站化——vp_gloss v1.1 加 `vpGlossScan` 自动扫描(TreeWalker·全页首现·幂等·防"显著性"错切·2s 二次扫接 fetch 渲染)+词表 11→24 条(Fable 亲草·金叉标"不是买入指令")+27 页 data-autoscan(老 6 页手动模式不动);② 新手引导统一"3步看懂"(温度计/查真假→登记簿坟场/看战绩→计分卡·双语)+dashboard 补 ❓ 重开钮;③ 桌面+移动 interaction_audit 全✓+playwright 功能实测(zh 每页 4-5 注解·EN 0 注解·❓重开✓);④ methodology"🧪工程自评"块(7 维快照·短板行重点样式公开认"主盘密度仍偏高")。**真机实测仍欢迎用户手机上翻一遍**。
 2. **[时间触发·~2026-08-初] KB 首批晋升验收**——锚 2026-06-26+min_oos_n 30 → 日频效应约 30 交易日后首批 confirmed 可期(queue 已 6 条存活者)。届时验收全链路(门4→KB晋升→survivors_live→前端→可选 Telegram 通知"知识库首次自生长"),这是自生长真正"活"的第一刻。**放日历·现在不用动。**
 3. **[等数据] AI 预测展示丰富**——SPY 5日预测日日 append,~8月有 20+ 结算样本时按信心分桶命中才有统计意义,届时丰富 prediction.html。别过早优化。
-4. **[小·安全卫生] LLM 输出 XSS 一次确认**——vpAnnotate 对 llm_read/weekly 文本的转义路径,双模型审都标"委派未回未覆盖"。一个小审查任务收掉。
+4. ✅ **LLM 输出 XSS 确认(2026-07-03 审毕·零缺陷·未改一行)**:逐 sink 清单 11 处——LLM 文本进 innerHTML 的全过 esc()/escc()/vpAnnotate()(核实 vpAnnotate 整串先转义·tooltip 只来自静态词表),其余 textContent;唯一责任重大 sink(prediction.html 的 LLM 自由文本 reason)esc() 在位;新 vpGlossScan 只动文本节点不开新注入面。结论:LLM→前端转义闭环。
 5. **[大·排后] dashboard 深度面板双语**——app-js content-i18n 单独立项(20+ 容器跨 9 页共用);中文用户是主受众,排在中文可懂性之后。
-6. **[运维小项]** overreaction_signal_log 挪出 union 区收编 sidecar(用户拍板) · IPO 明星快照(2026-06)渐旧提醒(SEC 自动层已兜底)。
+6. ✅ **运维两项(2026-07-03·56acb38)**:① overreaction 账本——调查揭出**从未被 git 跟踪**(.gitignore 负模式对未跟踪文件失效·靠 actions/cache 假活数月)→ git add -f 建跟踪(创世=当时态·不伪造历史)+merge=text 挪出 union+CI 缓存防护+收编 sidecar;**实弹又抓到 sidecar 键 bug**(manifest 存 basename、查用子目录 fname → verify-before-seal 静默跳过)→修+2回归锁。② IPO 策展快照渐旧横幅(>2月自动提醒·SEC 自动层兜底)。454 tests。
 7. **[探索型·用户方向] 新数据源**(社交情绪等):先验证"够长历史可回测+澳洲可达"再立项,照 candidate_space 双审纪律进 FDR 池。
 8. **[考虑项·用户 2026-07-02 定"后续再议做不做"] backtest 空输入第③层(优雅降级续跑)**:现状=②fail-closed 显式诊断(终态候选·该红仍红·停发布保旧好数据)。若将来要"数据坏也不中断流水线"(③返回 insufficient 结构+前端显示"回测本轮不可用"),**前置=先审三个下游消费者**(build_signals 嵌入/verify_output 拦空/app-3.js 渲染空),约半天+一轮审。Fable 判断:触发罕见(需长历史 CSV 灾难损坏·数月未发生)、真防线在上游取数,**默认不做**;用户到此项时再拍。
 - [x] ~~§1 评分卡补 2026-07-02 行~~(2026-07-02 已补·含"提升方向"节刷新——旧版还写 UX=3/建议已否决的置换缓存,已过期校正)。
