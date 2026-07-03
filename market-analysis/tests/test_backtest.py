@@ -12,9 +12,11 @@
 本文件覆盖两类场景：
   (a) 三个「正常聚合」测试 —— 用已知构造的胜率分布验证 by_tier / calibration_20d /
       tier4_strategy 的计算不跑偏；
-  (b) 两个「空输入/无重叠」的边界测试 —— 锁定 fail-closed 显式诊断：records=[] 时
-      backtest.py 主动抛 ValueError("无重叠日期"...)，而不是深层 pandas 隐式 KeyError，
-      让 run_all.py 的非零退出码带上可行动的诊断信息。细节见测试内注释。
+  (b) 两个「空输入/无重叠」的边界测试 —— 2026-07-03 用户拍板由 fail-closed 改为
+      **优雅降级续跑**：records=[] 时 backtest.py 不再 raise，而是打印响亮 warning
+      并返回与「样本极小但非空」路径（见 test_tiny_nonzero_sample_no_crash）同形状的
+      降级结构（by_tier=[]、calibration_20d=[]、tier4_strategy 全 NaN），外加显式
+      `degraded=True` 标记供下游（build_signals/前端）感知。细节见测试内注释。
 """
 import math
 
@@ -124,8 +126,9 @@ def test_tier4_strategy_fields_and_diff_consistency(planted):
 def test_tiny_nonzero_sample_no_crash(tmp_path, monkeypatch):
     """3 条信号、全 tier1（<15 门槛、无 tier>=4）：by_tier / calibration 全跳过，
     tier4_strategy 优雅退化成 NaN（不 raise）。下游 build_signals._clean() 会把
-    NaN/Inf 转 null 再落盘 signals.json，所以这条路径对最终产物是安全的——
-    与下面两个"空输入直接崩"的路径性质不同。"""
+    NaN/Inf 转 null 再落盘 signals.json，所以这条路径对最终产物是安全的。
+    这里 df 本身非空（3 行有效记录），故 degraded 应为 False——
+    与下面两个"0 条可回测记录"的降级路径（degraded=True）区分开。"""
     idx = pd.bdate_range("2015-01-01", periods=400)
     prices = [100.0 + i * 0.1 for i in range(400)]
     monkeypatch.setattr(bt, "RAW_DIR", tmp_path)
@@ -138,31 +141,46 @@ def test_tiny_nonzero_sample_no_crash(tmp_path, monkeypatch):
     assert res["tier4_strategy"]["n_days"] == 0
     assert math.isnan(res["tier4_strategy"]["win_rate_20d"])
     assert math.isnan(res["tier4_strategy"]["p_value"])
+    assert res["degraded"] is False
 
 
-# ── 空输入 / 无重叠日期 → fail-closed 显式 ValueError（非隐式 KeyError）────────
-def test_empty_daily_signals_raises_valueerror(tmp_path, monkeypatch):
-    """daily={} 时 records=[] → backtest.py 主动 raise ValueError("无重叠日期"...)，
-    而不是深层 pandas 栈里的隐式 KeyError。fail-closed 语义不变（该红仍红，
-    run_all.py 逐步骤 subprocess 跑、非零退出码仍会 sys.exit(1) 终止整条流水线），
-    只是把不可行动的 KeyError 换成可行动的诊断信息。"""
+# ── 空输入 / 无重叠日期 → 优雅降级续跑（2026-07-03 用户拍板，不再 fail-closed）──
+def test_empty_daily_signals_degrades_gracefully(tmp_path, monkeypatch):
+    """daily={} 时 records=[] → backtest.py 不再 raise，而是打印 warning 并返回
+    与 test_tiny_nonzero_sample_no_crash 同形状的降级结构（by_tier=[]、
+    calibration_20d=[]、tier4_strategy 全 NaN），外加 degraded=True 标记供
+    下游（build_signals 透传→signals.json→前端）感知并展示诚实占位，
+    而不是让 run_all.py 因非零退出码中止整条流水线。"""
     idx = pd.bdate_range("2015-01-01", periods=400)
     prices = [100.0 + i * 0.1 for i in range(400)]
     monkeypatch.setattr(bt, "RAW_DIR", tmp_path)
     _write_price_csv(tmp_path / "TEST_long.csv", idx, prices)
-    with pytest.raises(ValueError, match="无重叠日期"):
-        bt.run_backtest({}, "TEST_long.csv", "TEST")
+
+    res = bt.run_backtest({}, "TEST_long.csv", "TEST")          # 不应抛异常
+    assert res["degraded"] is True
+    assert res["by_tier"] == []
+    assert res["calibration_20d"] == []
+    assert res["tier4_strategy"]["n_days"] == 0
+    assert math.isnan(res["tier4_strategy"]["win_rate_20d"])
+    assert math.isnan(res["tier4_strategy"]["p_value"])
+    for h in bt.HORIZONS:
+        assert math.isnan(res["baseline"][f"{h}d"]["win_rate"])
+        assert res["baseline"][f"{h}d"]["n"] == 0
 
 
-def test_no_overlapping_dates_also_raises_valueerror(tmp_path, monkeypatch):
-    """同一诊断的第二条触发路径：daily 非空，但没有一天落在价格历史的日期范围内
-    （ts not in sp_dates → continue，records 同样变成 []）——同样抛出
-    ValueError("无重叠日期"...)。真实场景类比：长历史 CSV 更新滞后/格式错乱，
-    导致其日期范围与当天 daily_signals 完全脱节。"""
+def test_no_overlapping_dates_also_degrades_gracefully(tmp_path, monkeypatch):
+    """同一降级路径的第二条触发方式：daily 非空，但没有一天落在价格历史的日期范围内
+    （ts not in sp_dates → continue，records 同样变成 []）——同样降级续跑而非崩溃。
+    真实场景类比：长历史 CSV 更新滞后/格式错乱，导致其日期范围与当天 daily_signals
+    完全脱节。"""
     idx = pd.bdate_range("2015-01-01", periods=400)
     prices = [100.0 + i * 0.1 for i in range(400)]
     monkeypatch.setattr(bt, "RAW_DIR", tmp_path)
     _write_price_csv(tmp_path / "TEST_long.csv", idx, prices)
     daily = {"1990-01-01": {"prob": 0.5, "tier": 3, "month": 1}}   # 早于价格历史起点
-    with pytest.raises(ValueError, match="无重叠日期"):
-        bt.run_backtest(daily, "TEST_long.csv", "TEST")
+
+    res = bt.run_backtest(daily, "TEST_long.csv", "TEST")          # 不应抛异常
+    assert res["degraded"] is True
+    assert res["by_tier"] == []
+    assert res["calibration_20d"] == []
+    assert math.isnan(res["tier4_strategy"]["win_rate_20d"])

@@ -149,9 +149,26 @@ function renderPredictionAccuracy() {
 function renderBacktestCharts() {
   // 新格式按指数分组（NASDAQ/SP500），旧格式平铺；面板展示纳指回测
   const bt = SIGNALS?.backtest?.NASDAQ || SIGNALS?.backtest;
-  if (!bt || !bt.by_tier) return;
+  if (!bt) return;
 
-  const tiers   = bt.by_tier || [];
+  const tiers = bt.by_tier || [];
+
+  // 2026-07-03：backtest.py 由 fail-closed 改为优雅降级续跑——信号与价格历史
+  // 无重叠日期（或前向窗口数据缺失）时不再让整条流水线中止，而是返回
+  // degraded=true 的空结构（by_tier=[]、calibration_20d=[]、tier4_strategy 全 NaN）。
+  // 这里必须显式识别并给出诚实占位，否则 [] 是 truthy、会静默往下走空数组画图、
+  // 渲染出一堆 "?" 和硬编码兜底基准（63.1%），看起来像"分析结果"实则是垃圾。
+  if (bt.degraded || tiers.length === 0) {
+    const msg = "⚠ 回测数据本轮不可用（信号与价格历史无重叠，或前向窗口数据缺失，疑似上游数据源异常）——" +
+      "本次未产出可评估的统计结果，不代表模型失效，请等待下次数据刷新或核查数据源。";
+    const tierEl = document.getElementById("chart-backtest-tier");
+    const calEl  = document.getElementById("chart-backtest-cal");
+    const insightEl = document.getElementById("backtest-insight");
+    if (tierEl) tierEl.innerHTML = `<div style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">${msg}</div>`;
+    if (calEl)  calEl.innerHTML  = "";
+    if (insightEl) insightEl.innerHTML = `<span style="color:#e67e22">${msg}</span>`;
+    return;
+  }
   const base20  = bt.baseline?.["20d"]?.win_rate || 63.1;
   const TIER_COLOR = { 1:"#e74c3c", 2:"#e74c3c", 3:"#f1c40f", 4:"#2ecc71", 5:"#27ae60" };
   const TIER_LABEL = { 1:"第1档", 2:"第2档", 3:"第3档", 4:"第4档", 5:"第5档" };

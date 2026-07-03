@@ -68,10 +68,25 @@ def run_backtest(daily, long_csv, label):
 
         records.append(row)
 
-    if not records:
-        raise ValueError(f"信号与 {long_csv} 无重叠日期(0 条可回测记录)——上游数据损坏或错位,fail-closed 中止")
+    if records:
+        df = pd.DataFrame(records)
+    else:
+        # 降级续跑（2026-07-03 用户拍板，替代此前的 fail-closed raise）：
+        # 显式构造与正常路径同 dtype 的空表，让下面完全相同的聚合代码
+        # （baseline/by_tier/calibration/tier4_strategy）自然产出 NaN/空结构，
+        # 而不是让下游在隐式 object-dtype 空表上崩（scipy ttest_ind 对
+        # object dtype 的双空数组会抛 AttributeError，numeric dtype 则安全返回 NaN）。
+        empty_dtypes = {"date": "object", "prob": "float64", "tier": "int64", "month": "int64"}
+        for h in HORIZONS:
+            empty_dtypes[f"ret_{h}d"] = "float64"
+            empty_dtypes[f"up_{h}d"] = "int64"
+        df = pd.DataFrame({c: pd.Series(dtype=t) for c, t in empty_dtypes.items()})
 
-    df = pd.DataFrame(records).dropna(subset=[f"ret_{h}d" for h in HORIZONS])
+    df = df.dropna(subset=[f"ret_{h}d" for h in HORIZONS])
+    if df.empty:
+        print(f"⚠️ [WARN] {label}: 0 条可回测记录(信号与 {long_csv} 无重叠日期，"
+              f"或前向窗口数据在 dropna 后归零)——上游数据损坏或错位；"
+              f"降级返回空结构续跑（不再 fail-closed 中止，2026-07-03 用户拍板）")
     print(f"  可回测记录：{len(df)} 天（含完整前向数据）\n")
 
     results = {
@@ -81,6 +96,7 @@ def run_backtest(daily, long_csv, label):
         # 真实样本外表现以 walk_forward 结果为准。
         "index": label,
         "method_note": "样本内验证；重叠窗口t检验p值偏乐观，样本外表现见walk_forward",
+        "degraded": bool(df.empty),   # True＝本轮 0 条可回测记录，以下字段为降级空结构
     }
 
     # ── 1. 全样本基准 ──────────────────────────────────────────────
