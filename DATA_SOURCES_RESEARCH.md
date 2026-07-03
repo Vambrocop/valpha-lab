@@ -1,0 +1,40 @@
+# 新数据源可行性调研(#7·2026-07-03 实测存档)
+
+> 全部候选**当天真实 curl 实测**(✅=200 拿到真数据)。senate 教训前置:免费源先验活再谈。
+> 硬门槛:①历史≥5年(理想10+) ②免费/近免费 ③CI 服务端稳定可抓 ④澳洲可达。
+> 任何接入都必须:先验写死(文献先验·非看数据编)→ 预注册 candidate_registry → placebo/FDR/OOS 门。
+
+## 🏆 Top 3(历史长度 × 可靠性 × 接入成本)
+
+### ① CFTC COT 期货持仓(仓位族 `positioning`)
+- **Legacy 1986+(40年) / TFF 金融期货细分 2006+**;美国政府源=可靠性天花板;零 key 零反爬。
+- 端点(实测✅):`cftc.gov/files/dea/history/deacot{年}.zip`、`fut_fin_txt_{年}.zip`、回填包 `deacot1986_2016.zip`。周五 15:30 ET 发布周二数据。
+- 候选形态:`{legacy非商业|TFF杠杆基金} × {3年分位<10|>90} × {持有10/20/60日}` ≈12 个;先验=COT 文献(Wang 2003 等):大投机者持仓极端后反转。
+- **点时间纪律(命门)**:as-of 周二、周五发布 → 回测统一 lag ≥3 交易日,否则前视。
+
+### ② CBOE Put/Call 比(期权情绪)
+- **2006-11→今 ~20 年可无缝拼接**(本次调研最大发现):冻结 CSV(2006→2019-10-04·实测在线)+ 每日 JSON 归档(2019-10-07→今·实测边界)。与项目现有 CBOE CDN(VIX)同源同姿势=接入成本最低。
+- 端点(实测✅):`cdn.cboe.com/resources/options/volume_and_call_put_ratios/totalpc.csv`(+equitypc);`cdn.cboe.com/data/us/options/market_statistics/daily/{YYYY-MM-DD}_daily_options`(今日 total P/C=0.90)。
+- 候选:`{total|equity-only} × {1年滚动z>2|<-2} × {未来10/20日}` ≈8 个;先验=期权情绪经典文献(P/C 极高=恐慌对冲极值→反向偏多;equity-only 更纯)。
+- 口径:2012-06 变更+市占漂移 → **只用滚动 z,绝不用绝对阈值**。回填≈1700 个 JSON 请求(1req/s 一次性)。
+
+### ③ NAAIM 仓位指数(与 COT 同族·主动管理人视角)
+- **2006-07→今(实测解析 xlsx:1045 周·最新 2026-07-01 mean=84.69)**;官方免费;周四发周三数据。
+- 端点(实测✅):`naaim.org/programs/naaim-exposure-index/` 页面→当期 `USE_Data-since-Inception_*.xlsx`(文件名带日期须每次刮页面)。
+- 候选:`{mean<30投降|mean>95亢奋|8周变化<-40} × {未来20/40日}` ≈6 个;先验=仓位/情绪极值反向(Baker & Wurgler 谱系)。AAII 免费通道已死,NAAIM 正好补位。
+
+## 第 4 名(顺手项·非主推)
+**CNN Fear & Greed**:2020-09-21→今仅 5.8 年;非官方 API(`production.dataviz.cnn.io/.../graphdata/{date}`·一把拉全量 1MB);裸 curl=418 需浏览器头;**CI 机房 IP 未实测**;与现有 VIX/动量部分冗余。若接:第一件事把全量 JSON commit 进仓库当不可变备份。
+
+## 其它可用但低优先
+- **EPU 政策不确定性**(1985+·41年·直链CSV✅):先验是"预测波动强、方向弱"→风险预测族。
+- **UMich 消费者信心**(1952+·FRED 已接零新基建✅):月频喂不动 N 日 FDR 池,适合当体制调节变量。
+- **Wikipedia 金融词条浏览**(2015+✅):噪声大,娱乐性候选。
+- **FINRA 融资余额**(1997+·月):页面活但取数管道未走通(Query API 需免费注册),待验证。
+
+## 🚫 别碰名单(实测死/墙/灰)
+AAII(会员墙+Incapsula 403·第三方镜像=ToS 灰) · StockTwits(API 暂停注册+CF 403) · Google Trends/pytrends(库 2025-04 归档·裸请求秒 429·官方 API alpha 限邀且仅 1800 天) · Reddit WSB 历史(Pushshift 已死·存档 ToS 灰+NLP 工程大) · Nasdaq Data Link AAII 镜像(403) · Baker Hughes(两域名连不通+先验弱)。
+
+## 遗留待验证
+1. CNN API 在 GitHub Actions 机房 IP 是否被拦(接入前 CI 探活)。
+2. FINRA Query API(需免费注册)未走通。
