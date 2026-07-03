@@ -11,6 +11,9 @@ __pycache__/
 # 实盘预测日志必须保留（CI 依赖历史记录回填）
 !market-analysis/data/processed/prediction_log.csv
 # 极端下跌→次日反弹 公开计分账本（append-only·须 git 持久化跨 CI 累积战绩）
+# ⚠ git 陷阱(2026-07-03 发现·勿再踩)：父目录被整体忽略时,`!` 负模式对【尚未跟踪】的文件不生效
+#   (git 根本不进被忽略目录评估子规则)——此行从写下起就是死的,本文件靠 actions/cache 假活了数月。
+#   2026-07-03 已 `git add -f` 建立跟踪(创世=当时状态·不伪造历史);跟踪后 .gitignore 不再适用,此行留作意图文档。
 !market-analysis/data/processed/overreaction_signal_log.csv
 
 # 临时交接文档（如 Codex/Claude 的 handoff），不入库

@@ -53,11 +53,12 @@ jobs:
           key: market-data-${{ github.run_id }}
           restore-keys: market-data-
 
-      - name: Re-assert candidate_registry.csv from git (cache can't override append-only ledger)
-        # 实证隐患(06-30)：restore-keys 命中旧缓存时，会把陈旧版 candidate_registry.csv 整个
-        # 灌回 market-analysis/data、盖掉之后才提交的锚点行。git 已提交(HEAD)的版本才是真相——
-        # 缓存回灌后立刻用它压一遍，管道再往上 append 新候选(sync 幂等，不丢数据)。
-        run: git checkout -- market-analysis/data/candidate_registry.csv
+      - name: Re-assert append-only ledgers from git (cache can't override them)
+        # 实证隐患(06-30)：restore-keys 命中旧缓存时，会把陈旧版账本整个灌回 market-analysis/data、
+        # 盖掉之后才提交的行。git 已提交(HEAD)的版本才是真相——缓存回灌后立刻用它压一遍，
+        # 管道再往上 append 新行(sync/alert 幂等，不丢数据)。
+        # overreaction_signal_log 2026-07-03 起 git 跟踪(此前 .gitignore 负模式失效、只靠缓存假活)——同险同保。
+        run: git checkout -- market-analysis/data/candidate_registry.csv market-analysis/data/processed/overreaction_signal_log.csv
 
       - name: Run pipeline (intraday 30-min = light, pre-open/post-close = full)
         env:

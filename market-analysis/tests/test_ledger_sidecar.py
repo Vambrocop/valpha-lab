@@ -159,17 +159,55 @@ def test_missing_ledger_or_record_skipped(tmp_path):
 
 def test_real_specs_core_fields_match_writers():
     """SPECS 里结算型账本的身份字段必须真是建行即定的列(与各写手 HEADER 前缀一致)。"""
+    from pathlib import Path
     import insider_signal
     import llm_prediction
+    import overreaction_alert
     import pick_ledger
     headers = {"llm_prediction_log.csv": llm_prediction.HEADER,
                "pick_ledger.csv": pick_ledger.HEADER,
-               "insider_signal_log.csv": insider_signal.HEADER}
+               "insider_signal_log.csv": insider_signal.HEADER,
+               "overreaction_signal_log.csv": overreaction_alert.HEADER}
+    # 结算列按账本各记——overreaction 的身份列合法含 ret_pct(检测日收益·建行即定),
+    # 它结算填的是 next_ret_pct;不能拿全局黑名单一刀切
+    _std = {"entry_date", "entry_px", "exit_date", "exit_px", "ret_pct", "hit", "settled", "dropped"}
+    settle_cols = {"llm_prediction_log.csv": _std, "pick_ledger.csv": _std,
+                   "insider_signal_log.csv": _std,
+                   "overreaction_signal_log.csv": {"next_date", "next_ret_pct", "hit", "settled"}}
     for fname, core in ls.SPECS:
         if core is None:
             continue
-        h = headers[fname]
+        base = Path(fname).name
+        h = headers[base]
         assert core == h[:len(core)], f"{fname} 身份字段应是 HEADER 前缀(建行即定列)"
         # 结算列(settle 会填)绝不能混进身份字段
-        assert not (set(core) & {"entry_date", "entry_px", "exit_date", "exit_px",
-                                 "ret_pct", "hit", "settled", "dropped"})
+        assert not (set(core) & settle_cols[base]), f"{fname} 身份字段混入结算列"
+
+
+def test_subdir_spec_verify_before_seal_engages(tmp_path):
+    """回归锁(2026-07-03 实弹演练抓到的真 bug):SPECS 里带子目录的 fname(如
+    'processed/overreaction_signal_log.csv')——manifest 键=basename,seal_all/verify_all
+    若用完整 fname 查会永远 miss → verify-before-seal 与校验双双静默跳过,篡改被封成新链头。
+    本测锁死:子目录条目篡改身份列后 seal 必须拒、verify 必须报。"""
+    sub = tmp_path / "processed"; sub.mkdir()
+    spec = [("processed/mini_ovr.csv", ["date", "ret_pct"])]
+    p = sub / "mini_ovr.csv"
+    _write_csv(p, ["date", "ret_pct", "hit", "settled"],
+               [{"date": "2026-07-01", "ret_pct": "-3.5", "hit": "", "settled": "False"}])
+    n, ref = _seal(tmp_path, spec)
+    assert n == 1 and not ref                                   # 首封成功
+    # 篡改身份列 ret_pct
+    _write_csv(p, ["date", "ret_pct", "hit", "settled"],
+               [{"date": "2026-07-01", "ret_pct": "-1.1", "hit": "", "settled": "False"}])
+    n2, ref2 = _seal(tmp_path, spec)
+    assert n2 == 0 and ref2 and "身份" in ref2[0]               # 拒封(修复前:错误地封成新头)
+    errs = dict(_verify(tmp_path, spec))["processed/mini_ovr.csv"]
+    assert errs and "身份" in errs[0]                           # verify 也报(修复前:静默跳过)
+
+
+def test_specs_basename_collision_asserts(tmp_path):
+    """manifest 按 basename 记账 → SPECS 两条同名不同目录必须被断言拦住(防血统互相污染)。"""
+    import pytest
+    bad = [("a/x.csv", None), ("b/x.csv", None)]
+    with pytest.raises(AssertionError, match="basename"):
+        ls.seal_all(data_dir=tmp_path, manifest=tmp_path / "chain.csv", specs=bad)

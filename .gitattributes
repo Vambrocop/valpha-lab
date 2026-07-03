@@ -1,5 +1,8 @@
 # append-only 账本：冲突时取并集而不是二选一（脚本加载时会排序+去重）
 market-analysis/data/processed/*.csv merge=union
+# overreaction_signal_log 已收编 sidecar 前缀链(P2-9 补遗·2026-07-03)——union 并集可合法重排/插行、
+# 与前缀链语义冲突 → 显式改回默认 text 合并(极低频写·宁可响亮冲突,不要静默重排破坏链)
+market-analysis/data/processed/overreaction_signal_log.csv merge=text
 # sidecar 哈希链 manifest（P2-9）本身 append-only：并集合并后 verify_all 取
 # sealed_at 最新记录；若与合并后账本不符，下次 seal（run_all）会追加新记录收敛
 market-analysis/data/ledger_hashchain.csv merge=union
