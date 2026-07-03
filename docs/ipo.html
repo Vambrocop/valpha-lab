@@ -12,6 +12,7 @@
   h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
   #lang{float:right;background:#161b22;border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
   .note{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
+  .stale-warn{background:rgba(227,160,8,.12);border:1px solid var(--amber);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0 0;color:#f0c975}
   h2.tier{font-size:1.02rem;margin:22px 0 4px;display:flex;align-items:center;gap:8px}
   h2.tier .tag{font-size:.66rem;font-weight:600;border-radius:99px;padding:2px 9px;letter-spacing:.02em}
   .sub{color:var(--mut);font-size:.78rem;margin:0 0 8px}
@@ -92,8 +93,26 @@ const I18N={
   autoPricedSub:{zh:"已递交 424B 定价招股书，更接近真正挂牌。",en:"A 424B priced prospectus is filed — closer to an actual listing."},
   autoStamp:{zh:"数据抓取于",en:"Fetched"},
   autoNone:{zh:"暂无数据（SEC 抓取未配置或近 30 天无申报）。",en:"No data yet (SEC fetch not configured, or no filings in the last 30 days)."},
-  autoNoTk:{zh:"无代码",en:"no ticker"}
+  autoNoTk:{zh:"无代码",en:"no ticker"},
+  // ---- curated-snapshot staleness banner (>2 months since CURATED_ASOF) ----
+  staleWarn:{zh:"⚠ 策展快照 {ASOF}，距今 {N} 个月，个别条目可能已过时；下方「📡 SEC 近期申报」为最新事实。",
+             en:"⚠ Curated snapshot from {ASOF}, {N} month(s) old — some entries may be stale. The “Recent SEC filings” feed below reflects current facts."}
 };
+
+// 策展三档快照月份（人工维护，随策展内容更新时同步改）；>2 个月自动提醒渐旧，≤2 个月不打扰。
+const CURATED_ASOF="2026-06";
+function monthsSinceAsof(asof){
+  const m=/^(\d{4})-(\d{2})$/.exec(asof); if(!m) return 0;
+  const y=+m[1], mo=+m[2];
+  const now=new Date();
+  return Math.max(0,(now.getFullYear()-y)*12+(now.getMonth()-(mo-1)));
+}
+function staleBanner(){
+  const n=monthsSinceAsof(CURATED_ASOF);
+  if(n<=2) return "";
+  const msg=t("staleWarn").replace("{ASOF}",CURATED_ASOF).replace("{N}",n);
+  return `<div class="stale-warn">${msg}</div>`;
+}
 
 // ---- Static snapshot data (2026-06). Each row carries bilingual sector + detail. ----
 const TIERS=[
@@ -159,7 +178,7 @@ function applyStatic(){
 function L(field){return (field && field[LANG]) || (field && field.zh) || "";}
 
 function render(){
-  let h="";
+  let h=staleBanner();
   TIERS.forEach(T=>{
     h+=`<section class="${T.cls}">`;
     h+=`<h2 class="tier">${esc(t(T.head))}<span class="tag">${esc(t(T.tag))}</span></h2>`;
