@@ -117,7 +117,7 @@
 5. **[大·排后] dashboard 深度面板双语**——app-js content-i18n 单独立项(20+ 容器跨 9 页共用);中文用户是主受众,排在中文可懂性之后。
 6. ✅ **运维两项(2026-07-03·56acb38)**:① overreaction 账本——调查揭出**从未被 git 跟踪**(.gitignore 负模式对未跟踪文件失效·靠 actions/cache 假活数月)→ git add -f 建跟踪(创世=当时态·不伪造历史)+merge=text 挪出 union+CI 缓存防护+收编 sidecar;**实弹又抓到 sidecar 键 bug**(manifest 存 basename、查用子目录 fname → verify-before-seal 静默跳过)→修+2回归锁。② IPO 策展快照渐旧横幅(>2月自动提醒·SEC 自动层兜底)。454 tests。
 7. **[探索型·用户方向] 新数据源**(社交情绪等):先验证"够长历史可回测+澳洲可达"再立项,照 candidate_space 双审纪律进 FDR 池。
-8. **[考虑项·用户 2026-07-02 定"后续再议做不做"] backtest 空输入第③层(优雅降级续跑)**:现状=②fail-closed 显式诊断(终态候选·该红仍红·停发布保旧好数据)。若将来要"数据坏也不中断流水线"(③返回 insufficient 结构+前端显示"回测本轮不可用"),**前置=先审三个下游消费者**(build_signals 嵌入/verify_output 拦空/app-3.js 渲染空),约半天+一轮审。Fable 判断:触发罕见(需长历史 CSV 灾难损坏·数月未发生)、真防线在上游取数,**默认不做**;用户到此项时再拍。
+8. ✅ **backtest 空输入③层(2026-07-03 用户拍板做③·a210d87·推翻早前默认)**:三下游审计后改优雅降级续跑(records=[]→warning+数值dtype空帧自然降级+degraded标记;app-3 诚实占位替代原"静默画空图+假63.1%基线";builder 主动纠正"显示最近成功结果"措辞——无 last-known-good 缓存,照实描述)。454 tests。
 - [x] ~~§1 评分卡补 2026-07-02 行~~(2026-07-02 已补·含"提升方向"节刷新——旧版还写 UX=3/建议已否决的置换缓存,已过期校正)。
 
 **🔭 backlog vs 代码现实 侦察核对(2026-07-02·Explore 子代理)：文档落后代码 1-2 周。** 大批"待做"其实早建好审好(块4/5/6·R1/R2/R3·坟场·分段透镜·insider/pick_ledger·自生长P-A~D·LLM系列·survivors/flicker·heatmap/risk 全已建·已上线)。**真·未做(核实无实现)仅**：① P-E(已 NO-GO·§4c) ② dashboard.html 主盘 LLM 三件套导航露出(小) ③ dashboard 全量双语(中·可选·工具页已有范例) ④ IPO 数据定期更新自动化(小-中·缓·用户需求再说)。**其余"下一步"多为文档债,非代码债。**
