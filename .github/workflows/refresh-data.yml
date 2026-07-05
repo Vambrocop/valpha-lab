@@ -96,6 +96,14 @@ jobs:
           python market-analysis/scripts/build_ndx.py || echo "::warning::纳指100成分追踪失败(非致命，下次重试)"
           python market-analysis/scripts/fetch_earnings.py || echo "::warning::财报日历失败(非致命，下次重试)"
 
+      - name: Refresh CFTC COT + CBOE Put/Call (#7 数据层，每交易日一次，仅盘后全量/手动)
+        # 首次跑=全量回填(COT 逐年 zip；P/C 断点续传逐日 JSON)；之后每天都是增量(各 1~2 个请求)。
+        # 两者都是可再生缓存(非账本)，失败不阻断主刷新。
+        if: github.event.schedule == '30 21 * * 1-5' || github.event_name == 'workflow_dispatch'
+        run: |
+          python market-analysis/scripts/fetch_cot.py || echo "::warning::CFTC COT 刷新失败(非致命，下次重试)"
+          python market-analysis/scripts/fetch_putcall.py || echo "::warning::CBOE Put/Call 刷新失败(非致命，下次重试)"
+
       - name: Strict-JSON check for Valpha150 family products (P1-6：拦截 NaN/Infinity 白屏)
         # 上一步 5 个产物在 run_all 的 verify_output 质量门之后单独生成，不过那道门。
         # Python json.load 默认放行 NaN/Infinity（悄悄转成 float('nan') 通过），
