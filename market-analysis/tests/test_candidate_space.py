@@ -5,8 +5,11 @@ candidate_id 稳定唯一；反弹参数只在预声明离散集内（防"扫到
 """
 from candidate_space import (
     enumerate_candidates, calendar_candidates, rebound_candidates, regime_candidates,
-    factor_candidates, N_DECLARED, N_CALENDAR, N_REBOUND, N_REGIME, N_FACTOR,
+    factor_candidates, positioning_candidates, optsent_candidates,
+    N_DECLARED, N_CALENDAR, N_REBOUND, N_REGIME, N_FACTOR, N_POSITIONING, N_OPTSENT,
     INDICES, _REB_PCTL, _REB_HOLD, _CAL_FOMC, _CAL_TWOSIDE,
+    _POS_MARKET, _POS_SERIES, _POS_EXTREME, _POS_HOLD,
+    _OPTSENT_SERIES, _OPTSENT_EXTREME, _OPTSENT_HOLD,
 )
 
 
@@ -20,6 +23,8 @@ def test_family_counts():
     assert len(rebound_candidates()) == N_REBOUND
     assert len(regime_candidates()) == N_REGIME
     assert len(factor_candidates()) == N_FACTOR
+    assert len(positioning_candidates()) == N_POSITIONING
+    assert len(optsent_candidates()) == N_OPTSENT
 
 
 def test_pre_fomc_declared_both_indices():
@@ -66,5 +71,37 @@ def test_twoside_priors_declared_both_indices():
 def test_every_candidate_has_shape():
     for c in enumerate_candidates():
         assert set(c) >= {"family", "key", "params", "candidate_id"}
-        assert c["family"] in {"calendar", "rebound", "regime", "factor"}
+        assert c["family"] in {"calendar", "rebound", "regime", "factor",
+                                "positioning", "options_sentiment"}
         assert isinstance(c["params"], dict) and c["params"]
+
+
+# ── 2026-07-04 扩声明(#7)：仓位族 positioning(COT·16) + 期权情绪族 options_sentiment(P/C·8) ──
+def test_positioning_params_bounded():
+    # 阈值/持有期/市场/序列只允许预声明离散集（无界扫描 = p-hacking）
+    pos = positioning_candidates()
+    assert len(pos) == 16
+    assert {c["params"]["market"] for c in pos} == set(_POS_MARKET)
+    assert {c["params"]["series"] for c in pos} == set(_POS_SERIES)
+    assert {c["params"]["extreme"] for c in pos} == set(_POS_EXTREME)
+    assert {c["params"]["hold"] for c in pos} == set(_POS_HOLD)
+    assert all(c["family"] == "positioning" for c in pos)
+
+
+def test_optsent_params_bounded():
+    opt = optsent_candidates()
+    assert len(opt) == 8
+    assert {c["params"]["series"] for c in opt} == set(_OPTSENT_SERIES)
+    assert {c["params"]["extreme"] for c in opt} == set(_OPTSENT_EXTREME)
+    assert {c["params"]["hold"] for c in opt} == set(_OPTSENT_HOLD)
+    assert all(c["family"] == "options_sentiment" for c in opt)
+
+
+def test_per_family_counts_sum_to_declared():
+    # 逐族计数相加必须等于总分母（防漏算/偷加）
+    cs_all = enumerate_candidates()
+    fam_counts = {"calendar": N_CALENDAR, "rebound": N_REBOUND, "regime": N_REGIME,
+                  "factor": N_FACTOR, "positioning": N_POSITIONING, "options_sentiment": N_OPTSENT}
+    for fam, n in fam_counts.items():
+        assert sum(1 for c in cs_all if c["family"] == fam) == n
+    assert sum(fam_counts.values()) == N_DECLARED == len(cs_all)

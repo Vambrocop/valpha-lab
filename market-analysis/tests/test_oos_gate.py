@@ -207,6 +207,67 @@ def test_oos_verdict_unregistered_is_pending():
 
 
 # ════════════════════════════════════════════════════════════════════════════
+# 3b. 仓位族(COT)/期权情绪族(P/C) OOS — #7 2026-07-04：H-1 反退化(显式路由,note 绝不落"因子族待接")
+# ════════════════════════════════════════════════════════════════════════════
+def _synth_cot_reports(n=300, start="2000-01-04", seed=0):
+    idx = pd.date_range(start, periods=n, freq="7D")
+    rng = np.random.default_rng(seed)
+    return pd.DataFrame({"report_date": idx, "usable_from": idx + pd.Timedelta(days=6),
+                         "value": rng.normal(0, 1, n)})
+
+
+def _synth_price(start="1998-01-01", end="2012-12-31", seed=1):
+    idx = pd.date_range(start, end, freq="B")
+    rng = np.random.default_rng(seed)
+    return pd.Series(100 * np.cumprod(1 + rng.normal(0.0003, 0.01, len(idx))), index=idx)
+
+
+def test_positioning_oos_dispatch_no_silent_factor_note(monkeypatch):
+    """H-1 BLOCKER 守门:positioning 必须显式路由到 _diff_oos(放大块)，绝不落 else→"因子族待接"错误 pending。"""
+    import autodiscovery as ad
+    monkeypatch.setattr(ad, "_cot_reports", lambda market, series: _synth_cot_reports())
+    monkeypatch.setattr(ad, "_daily_price", lambda index: _synth_price())
+    cand = {"candidate_id": "pos_oos_t", "key": "k", "family": "positioning",
+            "params": {"market": "sp500", "series": "legacy_noncomm_pct_oi", "extreme": "hi", "hold": 20}}
+    v = og.oos_verdict(cand, "2008-01-01")
+    assert "因子族" not in v["note"]                      # 绝不误落 factor 分支
+    assert v["oos_status"] in (og.CONFIRMED, og.OVERTURNED, og.NEUTRAL) or (
+        v["oos_status"] == og.PENDING and v["note"] in ("锚后触发组样本不足", "锚后自助不可算"))
+    assert v["full_sign"] is not None                     # _diff_oos 真跑了(全样本方向已算)
+
+
+def test_optsent_oos_dispatch_no_silent_factor_note(monkeypatch):
+    import autodiscovery as ad
+    idx_all = pd.date_range("2006-11-01", periods=1600, freq="B")
+    rng = np.random.default_rng(7)
+    vals = rng.normal(0.9, 0.15, len(idx_all))
+    vals[300:1500:25] = 2.5                              # 过去段尖峰→hi 极端日足量(>30·过检验力守卫)
+    monkeypatch.setattr(ad, "_putcall_daily",
+                        lambda: pd.DataFrame({"total_pc": vals, "equity_pc": vals}, index=idx_all))
+    monkeypatch.setattr(ad, "_daily_price", lambda index: _synth_price(start="2006-01-01", end="2015-12-31"))
+    cand = {"candidate_id": "opt_oos_t", "key": "k", "family": "options_sentiment",
+            "params": {"series": "total_pc", "extreme": "hi", "hold": 10}}
+    v = og.oos_verdict(cand, "2009-06-01")
+    assert "因子族" not in v["note"]
+    assert v["full_sign"] is not None
+
+
+def test_oos_verdict_unrouted_family_raises():
+    """H-1 反退化的防御端：未知 family 必须炸，不许静默 pending（防未来再漏接一族）。"""
+    with pytest.raises(ValueError):
+        og.oos_verdict(_cand(fam="totally_unknown"), anchor="2020-01-01")
+
+
+def test_positioning_oos_block_matches_discovery():
+    """§10 定稿:discovery 与 OOS 的 positioning block 必须同一放大公式(hold+episode p90)，两处不一致=
+    同一效应两套显著性口径。锚定实测常数:hold20→71、hold60→111（改 POSITIONING_BLOCK_EXTRA 必须重跑
+    块敏感性并过审,不许只改一处）。"""
+    import autodiscovery as ad
+    assert ad._positioning_block(20) == 20 + ad.POSITIONING_BLOCK_EXTRA == 71
+    assert ad._positioning_block(60) == 60 + ad.POSITIONING_BLOCK_EXTRA == 111
+
+
+# ════════════════════════════════════════════════════════════════════════════
 # 4. knowledge_base：晋升门 / 降级 / 单调 / append-only 回放
 # ════════════════════════════════════════════════════════════════════════════
 def _v(cid, status, full_sign=1, oos_sign=1, key=None):

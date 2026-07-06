@@ -5,12 +5,18 @@
    N_DECLARED=80 候选(日历51 含九月/元月/月末月初/机器逐月扫24/预FOMC漂移2/期权到期周·季末两侧4 + 反弹12 + 价格体制2金叉 + 因子15；
    2026-06-30 期权到期周/季末 append-only 扩声明)：约 12 跨族存活、7 已淡、其余死/检验力不足——诚实。
    门4 OOS(oos_gate.py) 与晋升/降级(knowledge_base.py) 已建+审，待接 run_all 写 kb_ledger。
+   2026-07-04 append-only 扩声明(#7·Opus 审规格定稿)：N_DECLARED 80→104，新增仓位族 positioning(COT·16)
+   + 期权情绪族 options_sentiment(P/C·8)。两族均为"状态型 sel"(最近一份 usable 报告/滚动z 落极端区)，
+   走同一 _diff_windows + block_bootstrap_diff 机器；positioning 因状态多周持续 → block 放大(见
+   POSITIONING_BLOCK_EXTRA)，optsent 尖峰短 block=hold 不变。
 
 
 复用现有原语（不重写统计）：
   · 日历族 → placebo_test 的 perm_test + make_ssb_stat / make_dir_diff_stat（SP500/纳指 日收益）
   · 反弹族 → walk_forward.block_bootstrap_diff（跌破第 N 百分位日后持有 M 日的前向收益 vs 基率）
   · 因子族 → factor_pruning._segment_lens（全段 full_p + 现代段 recent_p，同口径）
+  · 仓位族(COT)/期权情绪族(P/C) → 同 walk_forward.block_bootstrap_diff（状态型 sel：最近一份 usable 报告/
+    滚动z 落极端区 vs 基率），数据源 data/cot.csv / data/cboe_putcall.csv（fetch_cot.py / fetch_putcall.py）。
 每候选 → {p(全段), recent_p(现代段), recent_powered}；交 quality_gate.adjudicate（双栏 BY-FDR + 三态）。
 固定种子、**全部候选进分母（禁预筛）** = 防 p-hacking。Phase 1b 不接门4 OOS（留后续）、不进账本。
 """
@@ -368,6 +374,221 @@ def _regime(signal, index, cid, hold=20):
             "effect": "信号成立时未来20日上涨率 vs 基率"}
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# ── 仓位族 positioning（2026-07-04·#7·CFTC COT 期货持仓·状态型 sel）──
+#   命门(H-2)：merge_asof 是 direction="backward"，早于该 series/market 首份 usable 报告(以及暖机段，
+#   见下 _rolling_pctrank)的交易日一律 NaN → dropna 整段剔除 = "数组裁到该 series 首个 usable 报告日"，
+#   绝不把"无报告可用"悄悄当成"不极端"(False)，否则会拿现代极端日对未纳入 COT 覆盖前的年代基率作差
+#   （年代错配污染 discovery p）。
+# ══════════════════════════════════════════════════════════════════════════
+COT_CSV = SCRIPTS.parent / "data" / "cot.csv"
+_POS_WINDOW = 156        # 3 年周频报告(命门:156份"周频报告"滚动分位，绝非156个日历天)
+
+# H-3(块敏感性·2026-07-04 建造者实测)：positioning 是多周状态，block=hold 会漏掉状态持续段(重叠序列相关
+# 被低估) → p 系统性偏低。实测 8 个(market×series×extreme)sel 状态的"连续极端段"长度分布：
+#   sp500/legacy   hi p90=43.0d lo p90=50.6d ；sp500/tff    hi p90=42.2d lo p90=49.8d
+#   nasdaq100/legacy hi p90=33.0d lo p90=37.4d；nasdaq100/tff hi p90=31.5d lo p90=33.0d
+# 取全族**最保守**(最大)值 ceil(50.6)=51，discovery 与 OOS 两处同用(§10 定稿要求)，不按候选各自调参
+# (否则"挑对自己有利的 block"本身就是新的researcher-degree-of-freedom)。
+POSITIONING_BLOCK_EXTRA = 51
+_COT_CACHE = {}
+
+
+def _positioning_block(hold):
+    return hold + POSITIONING_BLOCK_EXTRA
+
+
+def _cot_reports(market, series):
+    """加载+过滤 COT 报告级数据 → 单一 (report_date, usable_from, value) DataFrame，report_date 升序。
+    series="legacy_noncomm_pct_oi"：source=legacy，用已算好的 noncomm_net_pct_oi。
+    series="tff_lev_net_pct_oi"：source=tff，载入时算 lev_funds_net/open_interest*100(scale-free 跨年代可比)。
+    """
+    key = (market, series)
+    if key in _COT_CACHE:
+        return _COT_CACHE[key]
+    if not COT_CSV.exists():
+        _COT_CACHE[key] = None
+        return None
+    df = pd.read_csv(COT_CSV, parse_dates=["report_date", "usable_from"])
+    df = df[df["market"] == market].copy()
+    if series == "legacy_noncomm_pct_oi":
+        df = df[df["source"] == "legacy"].copy()
+        df["value"] = pd.to_numeric(df["noncomm_net_pct_oi"], errors="coerce")
+    elif series == "tff_lev_net_pct_oi":
+        df = df[df["source"] == "tff"].copy()
+        oi = pd.to_numeric(df["open_interest"], errors="coerce")
+        lev = pd.to_numeric(df["lev_funds_net"], errors="coerce")
+        df["value"] = np.where(oi > 0, 100.0 * lev / oi, np.nan)
+    else:
+        _COT_CACHE[key] = None
+        return None
+    df = df.dropna(subset=["value", "usable_from"]).sort_values("report_date").reset_index(drop=True)
+    out = df[["report_date", "usable_from", "value"]] if len(df) else None
+    _COT_CACHE[key] = out
+    return out
+
+
+def _rolling_pctrank(vals, window=_POS_WINDOW):
+    """纯回看滚动分位(含当期报告)：窗口内 <= 当前值 的比例*100。暖机不足(< window 份报告)→NaN
+    （命门:window 单位是**报告篇数**，不是日历天——156 份周频报告≈3年，与日频族的 252 日z窗不是同一时间刻度）。
+    """
+    vals = np.asarray(vals, dtype=float)
+    n = len(vals)
+    out = np.full(n, np.nan)
+    for i in range(window - 1, n):
+        w = vals[i - window + 1: i + 1]
+        out[i] = 100.0 * np.sum(w <= w[-1]) / window
+    return out
+
+
+def _positioning_arrays(market, series, extreme, hold):
+    """提取仓位族 (idx, sel, y)：156 份周频报告滚动分位(纯回看)判极端状态 → merge_asof backward 把
+    状态铺到每个交易日(状态持续到下一份报告生效，照 regime 金叉先例的"状态型" sel) → 前向严格
+    t+1..t+hold 上涨率。market="nasdaq100" 时前向目标映射到 "nasdaq"（NASDAQ_COMP，声明为代理）。
+    命门(H-2)：merge_asof 前先把暖机段/无报告段的 state 置 NaN，随后 dropna → 数组裁到该 series
+    首个"可判定"状态生效的交易日，绝不拿早年（COT 未覆盖或滚动窗未暖机）当"不极端"凑基率。
+    """
+    rep = _cot_reports(market, series)
+    if rep is None or len(rep) < _POS_WINDOW:
+        return None
+    rep = rep.copy()
+    rep["pctrank"] = _rolling_pctrank(rep["value"].values)
+    if extreme == "hi":
+        state = rep["pctrank"] >= 90
+    elif extreme == "lo":
+        state = rep["pctrank"] <= 10
+    else:
+        return None
+    state = state.where(rep["pctrank"].notna())     # 暖机段(pctrank NaN)→ state 也 NaN(未定义,非 False)
+
+    price_idx = {"sp500": "sp500", "nasdaq100": "nasdaq"}.get(market)   # 命门:market 映射 nasdaq100→"nasdaq"
+    px = _daily_price(price_idx)
+    if px is None or len(px) < 300:
+        return None
+    daily = pd.DataFrame({"date": pd.DatetimeIndex(px.index)}).sort_values("date")
+    rep_asof = pd.DataFrame({"date": rep["usable_from"], "state": state}).sort_values("date")
+    merged = pd.merge_asof(daily, rep_asof, on="date", direction="backward")   # 点时间铁律:只准用 usable_from
+    merged = merged.dropna(subset=["state"])         # H-2:早于首个可判定状态的交易日整段剔除(不当 False)
+    if len(merged) < 300:
+        return None
+    keep_dates = pd.DatetimeIndex(merged["date"])
+    px2 = px.reindex(keep_dates)
+    fwd = px2.shift(-hold) / px2 - 1                 # 严格 t+1..t+hold（收盘 t 到收盘 t+hold 的realize收益）
+    sel = merged["state"].astype(bool).values
+    # 审④阻断修:必须在 (>0) 强转**之前**从 fwd 取 valid——(NaN>0)→False 会把尾部"无已实现前向窗"
+    # 的日子捏造成 y=0(下跌),系统性压制"当前正处极端态"的活信号(修正即翻转 legacy_lo_h60_nasdaq100 头条)。
+    valid = ~np.isnan(fwd.values)
+    keep_dates, sel = keep_dates[valid], sel[valid]
+    y = (fwd.values[valid] > 0).astype(float)
+    if int(sel.sum()) < 30 or int((~sel).sum()) < 30:
+        return None
+    return keep_dates, sel, y
+
+
+def _positioning(market, series, extreme, hold, cid):
+    arr = _positioning_arrays(market, series, extreme, hold)
+    if arr is None:
+        return None
+    idx, sel, y = arr
+    block = _positioning_block(hold)                  # H-3:状态多周持续 → block 放大(hold+episode p90)
+    bb = block_bootstrap_diff(sel, y, block=block)
+    if bb is None:
+        return None
+    rmask = np.asarray(idx >= RECENT_CUT)
+    recent_p, powered = None, False
+    if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=block)
+        if rbb is not None:
+            recent_p, powered = rbb["p_boot"], True
+    return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
+            "recent_powered": bool(powered),
+            "windows": _diff_windows(idx, sel, y, block),
+            "decades": _decade_rows(idx, sel, y > 0),
+            "effect": "仓位极端状态下未来持有期上涨率 vs 基率"}
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── 期权情绪族 options_sentiment（2026-07-04·#7·CBOE Put/Call 比·状态型 sel）──
+#   命门：滚动252日z(纯回看含当日t)判极端；口径纪律绝不用绝对阈值(2012-06 CBOE 口径变更+市占漂移，
+#   滚动z天然吸收)；block=hold 保留(尖峰型 sel，持续中位仅1天，不像 positioning 需要放大块)。
+# ══════════════════════════════════════════════════════════════════════════
+PUTCALL_CSV = SCRIPTS.parent / "data" / "cboe_putcall.csv"
+_OPT_ZWIN = 252          # 日频滚动z窗(含当日t，与 positioning 的156"份报告"不是同一时间刻度)
+_PUTCALL_CACHE = None
+
+
+def _putcall_daily():
+    global _PUTCALL_CACHE
+    if _PUTCALL_CACHE is None:
+        if not PUTCALL_CSV.exists():
+            _PUTCALL_CACHE = False
+        else:
+            df = pd.read_csv(PUTCALL_CSV, parse_dates=["date"]).sort_values("date").set_index("date")
+            _PUTCALL_CACHE = df
+    return _PUTCALL_CACHE if _PUTCALL_CACHE is not False else None
+
+
+def _optsent_arrays(series, extreme, hold):
+    """提取期权情绪族 (idx, sel, y)：滚动252日z(纯回看窗含当日t·收盘已知，暖机不足252日不判)判极端 →
+    与 SP500 daily 对齐(inner join 同交易日) → 前向严格 t+1..t+hold 上涨率。目标固定 SP500_long
+    (P/C 是全市场情绪·标普为市场代理·声明)。"""
+    df = _putcall_daily()
+    if df is None or series not in df.columns:
+        return None
+    s = pd.to_numeric(df[series], errors="coerce").dropna()
+    if len(s) < _OPT_ZWIN:
+        return None
+    roll_mean = s.rolling(_OPT_ZWIN, min_periods=_OPT_ZWIN).mean()
+    roll_std = s.rolling(_OPT_ZWIN, min_periods=_OPT_ZWIN).std(ddof=0)
+    z = (s - roll_mean) / roll_std
+    z = z.replace([np.inf, -np.inf], np.nan).dropna()
+    if extreme == "hi":
+        sel_s = z > 2.0
+    elif extreme == "lo":
+        sel_s = z < -2.0
+    else:
+        return None
+    px = _daily_price("sp500")
+    if px is None or len(px) < 300:
+        return None
+    common = sel_s.index.intersection(px.index)
+    if len(common) < 300:
+        return None
+    common = pd.DatetimeIndex(sorted(common))
+    sel_s = sel_s.reindex(common)
+    px2 = px.reindex(common)
+    fwd = px2.shift(-hold) / px2 - 1                  # 严格 t+1..t+hold
+    # 审④阻断修:fwd(float 含 NaN)先进 df 再 dropna,之后才派生 y——先 (fwd>0) 转 bool 会把尾部
+    # NaN 变 False、dropna 形同虚设(同 positioning 侧同款 bug·捏造 y=0)。
+    df2 = pd.DataFrame({"sel": sel_s, "fwd": fwd}).dropna()
+    sel = df2["sel"].values.astype(bool)
+    y = (df2["fwd"].values > 0).astype(float)
+    if int(sel.sum()) < 30 or int((~sel).sum()) < 30:
+        return None
+    return df2.index, sel, y
+
+
+def _optsent(series, extreme, hold, cid):
+    arr = _optsent_arrays(series, extreme, hold)
+    if arr is None:
+        return None
+    idx, sel, y = arr
+    bb = block_bootstrap_diff(sel, y, block=hold)      # 尖峰型 sel → block=hold 不放大(与 positioning 不同)
+    if bb is None:
+        return None
+    rmask = np.asarray(idx >= RECENT_CUT)
+    recent_p, powered = None, False
+    if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
+        if rbb is not None:
+            recent_p, powered = rbb["p_boot"], True
+    return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
+            "recent_powered": bool(powered),
+            "windows": _diff_windows(idx, sel, y, hold),
+            "decades": _decade_rows(idx, sel, y > 0),
+            "effect": "期权情绪极端状态下未来持有期上涨率 vs 基率"}
+
+
 # ── 因子族：复用 _segment_lens 的 全段 full_p + 现代段 recent_p ──
 def _factor_map(factor_cands):
     df = build_feature_df()
@@ -402,8 +623,17 @@ def compute_results(candidates):
             r = _rebound(c["params"]["pctl"], c["params"]["hold"], c["params"]["index"], c["candidate_id"])
         elif fam == "regime":
             r = _regime(c["params"]["signal"], c["params"]["index"], c["candidate_id"])
-        else:
+        elif fam == "positioning":                       # H-1 BLOCKER:必须显式路由，绝不落 else→p=1.0
+            p = c["params"]
+            r = _positioning(p["market"], p["series"], p["extreme"], p["hold"], c["candidate_id"])
+        elif fam == "options_sentiment":                  # H-1 BLOCKER:同上
+            p = c["params"]
+            r = _optsent(p["series"], p["extreme"], p["hold"], c["candidate_id"])
+        elif fam == "factor":
             r = fac.get(c["candidate_id"])
+        else:
+            raise ValueError(f"compute_results: 未路由的 family={fam!r}"
+                              "(H-1 反退化:新族必须显式接线，不许静默落 p=1.0)")
         if r is None:                       # 数据不足 → 进分母但永不存活(检验力不足)
             r = {"p": 1.0, "recent_p": None, "recent_powered": False}
         results.append({"candidate_id": c["candidate_id"], "family": fam, "key": c["key"], **r})

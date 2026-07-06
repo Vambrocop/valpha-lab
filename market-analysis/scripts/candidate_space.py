@@ -52,6 +52,29 @@ _REGIME = ("golden_cross",)   # × 2 指数 = 2
 # ── 因子族：BINARY_FEATURES（单一来源，晚 import）。每因子 1 个候选，
 #    全段 p 与现代段 recent_p 是同一候选的两个字段(由 _segment_lens 给)，不拆成两个候选 ──
 
+# ── 仓位族 positioning（2026-07-04 扩声明·#7·先验先于数据·Opus 审规格定稿）：CFTC COT 期货持仓。
+#   网格：{market: sp500, nasdaq100} × {series: legacy 非商业净头寸/OI, TFF 杠杆基金净头寸/OI}
+#         × {extreme: 高(>90分位)/低(<10分位)，纯回看滚动156份周频报告} × {hold: 20, 60 交易日} = 16。
+#   先验(Wang 2003·Sanders et al. COT 文献)：大投机者/杠杆基金净头寸极端偏多→未来偏弱；极端偏空→未来偏强
+#   (反向)。方向只作解释性先验，p 按 diff 族既有标准=双侧块自助(block 见 autodiscovery.py，因状态多周持续，
+#   实测放大 block=hold+episode p90，非单纯 hold)。
+#   ⚠ 诚实关联：本族与 rebound 族同属"极端分位→反转"母假设(极端回归)，FDR 跨族栏会自然处理相关性，
+#   但在此明记(JP6·Opus 审规格·2026-07-04)。
+_POS_MARKET = ("sp500", "nasdaq100")
+_POS_SERIES = ("legacy_noncomm_pct_oi", "tff_lev_net_pct_oi")
+_POS_EXTREME = ("hi", "lo")
+_POS_HOLD = (20, 60)
+
+# ── 期权情绪族 options_sentiment（2026-07-04 扩声明·#7·同上定稿）：CBOE Put/Call 比。
+#   网格：{series: total_pc 全市场, equity_pc 个股} × {extreme: z>+2 恐慌 / z<-2 自满，纯回看滚动252日z}
+#         × {hold: 10, 20 交易日} = 8。目标固定 SP500_long(P/C 是全市场情绪·标普为市场代理·声明)。
+#   先验(期权情绪经典文献)：P/C 极高=恐慌对冲极值→反向偏多；极低=自满→偏弱。方向只作解释性先验，p 双侧。
+#   口径纪律：绝不用绝对阈值(2012-06 CBOE 口径变更+市占漂移)——只用滚动 z。
+#   ⚠ 诚实关联：与 positioning 族同属"极端→反转"母假设(见上)。
+_OPTSENT_SERIES = ("total_pc", "equity_pc")
+_OPTSENT_EXTREME = ("hi", "lo")
+_OPTSENT_HOLD = (10, 20)
+
 
 def _cid(family, params):
     """稳定 candidate_id：family + 排序后 params 的短哈希（可复现、可作账本主键）。"""
@@ -85,9 +108,23 @@ def factor_candidates():
     return [_cand("factor", col, factor=col) for col, _name in BINARY_FEATURES]
 
 
+def positioning_candidates():
+    return [_cand("positioning", f"{series}_{extreme}_h{hold}_{market}",
+                  market=market, series=series, extreme=extreme, hold=hold)
+            for market in _POS_MARKET for series in _POS_SERIES
+            for extreme in _POS_EXTREME for hold in _POS_HOLD]
+
+
+def optsent_candidates():
+    return [_cand("options_sentiment", f"{series}_{extreme}_h{hold}",
+                  series=series, extreme=extreme, hold=hold)
+            for series in _OPTSENT_SERIES for extreme in _OPTSENT_EXTREME for hold in _OPTSENT_HOLD]
+
+
 def enumerate_candidates():
     """全部预注册候选（无序拼接）。Phase 1 全部进 FDR 分母，禁预筛。"""
-    return calendar_candidates() + rebound_candidates() + regime_candidates() + factor_candidates()
+    return (calendar_candidates() + rebound_candidates() + regime_candidates() + factor_candidates()
+            + positioning_candidates() + optsent_candidates())
 
 
 # 预声明总数（写死；test 对账，漂移即失败 → 强制有意识更新分母）
@@ -96,12 +133,16 @@ N_CALENDAR = ((len(_CAL_DUAL) + len(_CAL_DUAL2) + len(_CAL_DUAL3) + len(_CAL_FOM
 N_REBOUND = len(_REB_PCTL) * len(_REB_HOLD) * len(INDICES)           # 3*2*2 = 12
 N_REGIME = len(_REGIME) * len(INDICES)                               # 1*2 = 2（金叉 × 2 指数）
 N_FACTOR = 15                                                        # = len(BINARY_FEATURES)，test 核对(每因子1候选)
-N_DECLARED = N_CALENDAR + N_REBOUND + N_REGIME + N_FACTOR            # 51+12+2+15 = 80
+# 2026-07-04 扩声明（append-only·#7·Opus 审规格定稿）：仓位族(COT) + 期权情绪族(P/C) 两新族进 FDR 池。
+N_POSITIONING = len(_POS_MARKET) * len(_POS_SERIES) * len(_POS_EXTREME) * len(_POS_HOLD)   # 2*2*2*2 = 16
+N_OPTSENT = len(_OPTSENT_SERIES) * len(_OPTSENT_EXTREME) * len(_OPTSENT_HOLD)              # 2*2*2 = 8
+N_DECLARED = N_CALENDAR + N_REBOUND + N_REGIME + N_FACTOR + N_POSITIONING + N_OPTSENT      # 51+12+2+15+16+8 = 104
 
 
 if __name__ == "__main__":
     cs = enumerate_candidates()
-    print(f"N_DECLARED={N_DECLARED} 候选空间：日历{N_CALENDAR} + 反弹{N_REBOUND} + 体制{N_REGIME} + 因子{N_FACTOR}")
+    print(f"N_DECLARED={N_DECLARED} 候选空间：日历{N_CALENDAR} + 反弹{N_REBOUND} + 体制{N_REGIME} + "
+          f"因子{N_FACTOR} + 仓位{N_POSITIONING} + 期权情绪{N_OPTSENT}")
     print(f"实枚举 {len(cs)}；唯一 candidate_id {len({c['candidate_id'] for c in cs})}")
-    for fam in ("calendar", "rebound", "regime", "factor"):
+    for fam in ("calendar", "rebound", "regime", "factor", "positioning", "options_sentiment"):
         print(f"  {fam}: {sum(c['family'] == fam for c in cs)}")

@@ -132,6 +132,22 @@ def _regime_oos(cand, anchor):
     return _diff_oos(cand, anchor, ad._regime_arrays(p["signal"], p["index"], 20), block=20)
 
 
+# ── 仓位族(COT)/期权情绪族(P/C) OOS：阈值(滚动分位/滚动z)本身就是纯回看统计=天然点时间，
+#   比 rebound 的"全样本阈值"更干净——只把 (idx,sel,y) 滤到锚后，**绝不**在锚后重算阈值/滚动窗。
+#   命门(§10 定稿)：positioning block 与 discovery(autodiscovery._positioning_block)同一放大公式，
+#   两处必须一致，否则 discovery 与 OOS 用不同块长=同一效应两套显著性口径，自相矛盾。
+def _positioning_oos(cand, anchor):
+    p = cand["params"]
+    arr = ad._positioning_arrays(p["market"], p["series"], p["extreme"], p["hold"])
+    return _diff_oos(cand, anchor, arr, block=ad._positioning_block(p["hold"]))
+
+
+def _optsent_oos(cand, anchor):
+    p = cand["params"]
+    arr = ad._optsent_arrays(p["series"], p["extreme"], p["hold"])
+    return _diff_oos(cand, anchor, arr, block=p["hold"])         # 尖峰型 sel → block=hold 不放大
+
+
 def oos_verdict(cand, anchor):
     """单候选 OOS 门4 裁决 → dict(oos_status/oos_n/oos_p/oos_sign/full_sign/...)。"""
     if anchor is None:
@@ -143,7 +159,14 @@ def oos_verdict(cand, anchor):
         return _rebound_oos(cand, anchor)
     if fam == "regime":
         return _regime_oos(cand, anchor)
-    return _result(cand, anchor, PENDING, note="因子族 OOS 待接(§10)")
+    if fam == "positioning":                 # H-1 BLOCKER:必须显式路由，绝不落 else→"因子族待接"误导 note
+        return _positioning_oos(cand, anchor)
+    if fam == "options_sentiment":           # H-1 BLOCKER:同上
+        return _optsent_oos(cand, anchor)
+    if fam == "factor":
+        return _result(cand, anchor, PENDING, note="因子族 OOS 待接(§10)")
+    raise ValueError(f"oos_verdict: 未路由的 family={fam!r}"
+                      "(H-1 反退化:新族必须显式接线，不许静默落 pending)")
 
 
 def run_gate(candidates=None, anchors=None):
