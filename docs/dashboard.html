@@ -1132,6 +1132,11 @@
     // vpL() 内联调用负责，读同一个 localStorage 键。渲染器均幂等覆盖（"🔄 刷新"已验证的
     // 假设），重跑 renderAll() 即可让已可见的面板/懒图（app-5 lazyRender 注册表按 offsetParent
     // 可见性直接重画，不可见的重新挂 IntersectionObserver）用新语言重画，无需整页刷新。
+    // W2b 审出的缺口:cal/mv/main 子标签渲染缓存不清 → 切语言后已打开过的子标签留旧语言。
+    // 照 refreshData(app-5)同款清三个 Set——已打开子标签下次点击即按新语言重画(与🔄刷新同 UX 口径)。
+    try{ if(typeof _calTabRendered!=="undefined") _calTabRendered.clear(); }catch(e){}
+    try{ if(typeof _mainTabRendered!=="undefined") _mainTabRendered.clear(); }catch(e){}
+    try{ if(typeof _mvTabRendered!=="undefined") _mvTabRendered.clear(); }catch(e){}
     try{ if(typeof renderAll==="function") renderAll(); }catch(e){ console.warn("lang toggle renderAll failed", e); }
     // W1b 审出的集成缺口：renderAll() 不覆盖「今日」信号面板与档位图例——
     // updateSignal 会重填被 apply() 踩掉的 #signal-label(带遗留 data-i18n="loading" 属性)，

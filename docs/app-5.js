@@ -237,18 +237,16 @@ function renderAll() {
   // ⑥ 登记簿页：把诚实统计面板从"研究"运行时搬到"登记簿"。这些 id 上面已 lazyRender 观察过；
   // appendChild 搬的是同一活节点(IntersectionObserver 跟随节点、id 不变 → 懒渲染键照常)，勿改成 clone。
   const _regHost = document.getElementById("registry-panels");
-  // ⚠ i18n 判断点(#5 W2a·未改逻辑，按协议报告)：此分组标题构建靠 reg-group-0 幂等门只跑一次；
-  // 若用户在"登记簿"视图已渲染过之后才切语言，这 5 个标题不会重新读取 vpL——与切语言重渲染的假设冲突
-  // （同规格 §4 判断点3类）。当前只翻译文案、不动幂等 guard，本次已知限制，留给主脑判断是否要补一次刷新。
-  if (_regHost && !document.getElementById("reg-group-0")) {   // 只在首次构建分组布局(幂等:reg-group-0 在则跳过)
-    // 把面板按"用途"分 5 组,各组前插一个分组标题 —— 降信息过载、让人不迷路
-    const _groups = [
-      [vpL("🔬 规律真伪 · 防伪（真规律 vs 幻觉）","🔬 Real vs. fake patterns · placebo checks (real edge vs. illusion)"), ["placebo-overview", "cpcv", "fdr-crossfamily", "calibration-drift", "cycles-spectral"]],
-      [vpL("🌡️ 风险与不确定性（描述当前环境，非预测）","🌡️ Risk & uncertainty (describes the current environment, not a prediction)"), ["market-regime", "risk-dashboard", "conformal"]],
-      [vpL("🩺 个股 · 因子","🩺 Stocks · factors"), ["stock-checkup", "factor-audit"]],
-      [vpL("🎯 事件因果","🎯 Event causality"), ["event-causal"]],
-      [vpL("🔭 探索中 vs 已死（未验证/被套利，别拿来交易）","🔭 Exploratory vs. dead (unverified/arbitraged — don't trade on these)"), ["exploratory", "overreaction", "honest-graveyard"]],
-    ];
+  // 分组标题:结构(搬 DOM)只在首次构建(幂等门 reg-group-0);标题**文本**每次 renderAll 都按当前语言
+  // 重设——W2a 报告的"已建后切语言标题不重译"缺口的最小修(Fable:只刷文本·不重搬 DOM·不动顺序)。
+  const _groups = [
+    [vpL("🔬 规律真伪 · 防伪（真规律 vs 幻觉）","🔬 Real vs. fake patterns · placebo checks (real edge vs. illusion)"), ["placebo-overview", "cpcv", "fdr-crossfamily", "calibration-drift", "cycles-spectral"]],
+    [vpL("🌡️ 风险与不确定性（描述当前环境，非预测）","🌡️ Risk & uncertainty (describes the current environment, not a prediction)"), ["market-regime", "risk-dashboard", "conformal"]],
+    [vpL("🩺 个股 · 因子","🩺 Stocks · factors"), ["stock-checkup", "factor-audit"]],
+    [vpL("🎯 事件因果","🎯 Event causality"), ["event-causal"]],
+    [vpL("🔭 探索中 vs 已死（未验证/被套利，别拿来交易）","🔭 Exploratory vs. dead (unverified/arbitraged — don't trade on these)"), ["exploratory", "overreaction", "honest-graveyard"]],
+  ];
+  if (_regHost && !document.getElementById("reg-group-0")) {   // 首次:建标题节点 + 按组搬面板
     _groups.forEach(([title, ids], gi) => {
       const h = document.createElement("div");
       h.id = "reg-group-" + gi;
@@ -259,6 +257,11 @@ function renderAll() {
         const w = document.getElementById(id)?.closest(".chart-wrap");
         if (w) _regHost.appendChild(w);   // 按组顺序搬入(首次构建,顺序即定)
       });
+    });
+  } else if (_regHost) {                                       // 已建:只刷标题文本(切语言重译)
+    _groups.forEach(([title], gi) => {
+      const h = document.getElementById("reg-group-" + gi);
+      if (h) h.textContent = title;
     });
   }
   lazyRender("honest-registry", loadHonestRegistry, "Registry");   // 🧾 诚实总览自动汇总
