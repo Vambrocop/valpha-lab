@@ -120,6 +120,8 @@
 8. ✅ **backtest 空输入③层(2026-07-03 用户拍板做③·a210d87·推翻早前默认)**:三下游审计后改优雅降级续跑(records=[]→warning+数值dtype空帧自然降级+degraded标记;app-3 诚实占位替代原"静默画空图+假63.1%基线";builder 主动纠正"显示最近成功结果"措辞——无 last-known-good 缓存,照实描述)。454 tests。
 - [x] ~~§1 评分卡补 2026-07-02 行~~(2026-07-02 已补·含"提升方向"节刷新——旧版还写 UX=3/建议已否决的置换缓存,已过期校正)。
 
+**🎯 #7 命门相收官(2026-07-05·六步全走·84afac0+a1adcf7)**:positioning(COT 16)+options_sentiment(P/C 8) 进 FDR 池,N 80→104。**双审各抓真问题**:审②Opus 实测状态持续期裁 block 必须放大(hold+p90=71/111·块敏感性1翻转验证=旧块假阳被压)+2 BLOCKER(dispatch静默退化/年代错配);审④Opus 抓阻断bug——尾部无已实现前向窗被捏造 y=0 压制活信号,修正翻转公开头条(**🆕纳指仓位极空信号 legacy_lo_h60_nq 首度存活** p=0.000·+18.6pp)。全量507 tests。**follow-up 两条**:① `_regime_arrays` 同款尾窗bug(既有代码·会影响 golden_cross 已发布p·需单独审后修) ② 新存活者 survivors_live 描述符待接(现以"未接入"中性兜底·接入需 usable_from 感知的当前态计算)。老survivor 8→6(world_cup/p5边界者被刷·上轮已标易闪)。
+
 **🔭 backlog vs 代码现实 侦察核对(2026-07-02·Explore 子代理)：文档落后代码 1-2 周。** 大批"待做"其实早建好审好(块4/5/6·R1/R2/R3·坟场·分段透镜·insider/pick_ledger·自生长P-A~D·LLM系列·survivors/flicker·heatmap/risk 全已建·已上线)。**真·未做(核实无实现)仅**：① P-E(已 NO-GO·§4c) ② dashboard.html 主盘 LLM 三件套导航露出(小) ③ dashboard 全量双语(中·可选·工具页已有范例) ④ IPO 数据定期更新自动化(小-中·缓·用户需求再说)。**其余"下一步"多为文档债,非代码债。**
 
 **个股体检 loop(STOCK_CHECKUP_SPEC.md)——✅ 6 块全部完成(2026-06-16·4轮独立 Opus 审·本 TODO 曾过期,2026-07-02 校正)：**
