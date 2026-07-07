@@ -38,13 +38,13 @@
 
 ## 3. 任务队列(2026-07-07 快照;做完一项更新一项)
 
-**T1 [判断·双审] `_regime_arrays` 尾窗 y=0 同款 bug** — 优先
-- 现象:`autodiscovery._regime_arrays` 对尾部未实现前向窗 `(NaN>0)→False` 捏造 y=0
-  (与 #7 审④抓的 positioning/optsent 同类;那两处是新代码当场修了,这处是**既有代码**,
-  会移动已发布的 golden_cross 等 regime 族 p → 属公开统计口径变更)
-- 流程:写 spec(改法+影响面+新旧 p 对比表)→ 独立审 spec → 修 → 双审 → 提交附对比
-- 顺手做 §5-R2 全库尾窗清扫,一次审干净
-- **停机条件:若 p 变动翻转任何已发布 verdict → 停下报用户**
+**T1 [判断·双审] `_regime_arrays` 尾窗 y=0 同款 bug** — ✅ 完成(2026-07-07·Fable 建·Opus 审·Opus 主脑收尾)
+- 修:`_regime_arrays` 暖机段(前199天200日均线未定义)`.where(ma200.notna())`→NaN 被 dropna;
+  fwd 以 float 先进 df 再 dropna 后派生 y。factor_model.build_features 尾月同款一并修。
+- 结果:真数据裁剪精确 −219(199暖机+20尾窗);全104池新旧复算**零 verdict 翻转·新旧同存活集**
+  (golden_cross_sp500 p 0.001→0.000 更显著仍 survive);新增合成回归锁(突变测试证可杀旧码)。
+- R2 全库清扫连带做完:其余前向窗构造点已合规;fomc_study 同日 up-rate(非前向·池外)非同类。
+- 提交:995a051(代码)+1cb6734(数据);全新 Opus 独立审 APPROVE 零 blocker。
 **T2 [中·单审] 新存活者 survivors_live 描述符**
 - `legacy_noncomm_pct_oi_lo_h60_nasdaq100`(COT 纳指仓位极空)现在观察台是"未接入"中性兜底
 - 要 usable_from 感知的当前状态计算(点时间纪律:可用日=report_date+4 交易日,别用 report_date)
@@ -61,7 +61,11 @@
 **T6 [机械·小] IPO 数据定期更新自动化**
 **T7 [大工程] v1.5 自生长自动发现闭环 — 单独立项+重审,不要顺手做**(用户定过调;Fable 在场时做)
 
-**CI 观察哨**:07-07 已修 #100–104 测试红(见 §4);下一班 schedule 确认转绿;
+**下一个该做(建议顺序)**:T3(机械·Sonnet 独立可做,无判断)最省主脑;T2(单审·中等,点时间纪律
+是唯一坑)Opus 或 Fable 皆可;T4/T5 等日历(~8月初)。**T7 大工程留 Fable 在场时立项**。
+
+**CI 观察哨**:07-07 已修 #100–104 测试红(见 §4);Refresh 只在 schedule(13:00/21:30 UTC)跑,
+**不随 push 触发**——下一班 schedule 才会验证测试门禁转绿(门禁已 CI 同构,置信度高)。
 COT/P·C fetch 步骤(每交易日盘后一次)CI 尚未首跑——fail-soft 只出 warning,跑后查 warning。
 
 ## 4. CI 红处置手册(2026-07-07 教训固化)

@@ -19,16 +19,23 @@
   (T1 _regime_arrays 双审 → T2 描述符 → T3 app-4 双语 → T4 KB 验收 ~8月初)、CI 红处置手册、
   架构升级路线 R1–R7(R1 docs 镜像漂移自动门 / R2 尾窗全库清扫并入 T1 / R4 web 微工具克制收敛)。
   CLAUDE.md 执行协议首行加指针。
+- **T1 硬骨头收官(995a051 代码 + 1cb6734 数据)**:`_regime_arrays` 既有发布链的暖机段+尾窗
+  y=0 双 bug(与 #7 审④同类)修掉,factor_model 尾月同款连带修,R2 全库尾窗清扫一次做完。
+  真数据裁剪精确 −219;**全104池零 verdict 翻转·新旧同存活集**(golden_cross_sp500 更显著仍 survive)。
+  流程:Fable 建造+写规格 → 全新 Opus 独立审(APPROVE 零 blocker,逐条核到真数据/突变测试)→
+  **模型切 Opus 4.8 接主脑**收尾提交。新增合成回归锁。账本全纯追加、零历史行改。
 
 ### ② 对照计划
 | 项 | 状态 |
 |---|---|
 | #7 命门相收官(昨) | ✅ 已推(6eda2b5);今日 CI 红即其首批 CI 暴露的测试数据依赖,已修 |
-| CI 观察哨(fetch_cot/putcall 首跑) | ⏳ 测试红挡在前面从未跑到;转绿后下一班盘后 schedule 首跑(fail-soft) |
+| T1 _regime_arrays 尾窗 bug | ✅ 完成(HANDOVER §3 已勾);双审 APPROVE |
+| CI 观察哨(fetch_cot/putcall 首跑) | ⏳ Refresh 不随 push 触发;下一班 schedule(13:00 UTC)验证门禁转绿 |
 
 ### ③ 待办 / 未决
-- [ ] 下一班 Refresh schedule 确认转绿 + COT/P·C fetch 步首跑 warning 检查
-- [ ] 后续任务队列全部移交 `HANDOVER.md` §3(T1–T7),以那边为准
+- [ ] 下一班 Refresh schedule 确认测试门禁转绿 + COT/P·C fetch 步首跑 warning 检查
+- [ ] 后续任务队列全部移交 `HANDOVER.md` §3;下一个建议 **T3(机械·Sonnet 可做)** 或 **T2(单审)**
+- [ ] **主脑现为 Opus 4.8**(Fable 缺席);T7 大工程留 Fable 在场时立项
 
 ## 2026-06-20
 
