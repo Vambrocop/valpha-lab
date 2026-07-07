@@ -49,11 +49,14 @@
 - `legacy_noncomm_pct_oi_lo_h60_nasdaq100`(COT 纳指仓位极空)现在观察台是"未接入"中性兜底
 - 要 usable_from 感知的当前状态计算(点时间纪律:可用日=report_date+4 交易日,别用 report_date)
 - 参考:survivors_live 现有描述符写法 + `_positioning_arrays` 的状态定义
-**T3 [机械·Sonnet 可做] #5 W3:app-4.js 全量双语**
-- 模式已定型(参照 d571f76 的 app-5/app-2):`vpL(zh,en)` 双写、模块级常量 getter 化、
-  Plotly `%{x}` 占位符保留、语言切换后清 tab 缓存再 renderAll
-- 完后:en-mode-note 重写 + playwright 实测切换 + `py tools/audit_frontend.py`
-- 后端自由散文 i18n **不在本任务**(用户单独决定)
+**T3 [机械·Sonnet 建·Opus 审] #5 W3:app-4.js 全量双语** — ✅ 完成(2026-07-07)
+- Sonnet 建(~223 vpL·SPCX/CGT/恐贪/指数/个股/时钟/小游戏·Plotly 占位符保留·里程碑 label
+  渲染时 vpL·`_CLOCK_CN_DOW`/`CGT_CURRENCIES` 消费处包 vpL);Opus 审 APPROVE(插值两侧齐·
+  免责语忠实·零逻辑/存储改动·reRenderAppTools 幂等)。
+- **集成缺口(主脑亲接)**:renderAll 覆盖 SPCX追踪/指数/实时/个股/恐贪/时钟;CGT计算器+SPCX明细/
+  计算+小游戏不在 renderAll → 新增幂等 `reRenderAppTools()`(app-4)+dashboard.html toggle 加一行调用。
+- **实测**:playwright 切换 → SPCX 零残留中文·CGT 完整变英文(含 AUD 税务免责语)·html lang=en·零报错。
+- 后端自由散文 i18n **不在本任务**(用户单独决定);#5 五文件(app-1/2/3/4/5)双语**全完成**。
 **T4 [判断·日历 ~2026-08 初] #2 KB 首批晋升验收**
 - 锚 2026-06-26 + 2026-07-05;min_oos_n=30 攒够后 kb_ledger 首批晋升
 - 验收=亲验 oos_gate 裁决合理性(逐条看数字),不是看它跑完

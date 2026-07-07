@@ -24,6 +24,12 @@
   真数据裁剪精确 −219;**全104池零 verdict 翻转·新旧同存活集**(golden_cross_sp500 更显著仍 survive)。
   流程:Fable 建造+写规格 → 全新 Opus 独立审(APPROVE 零 blocker,逐条核到真数据/突变测试)→
   **模型切 Opus 4.8 接主脑**收尾提交。新增合成回归锁。账本全纯追加、零历史行改。
+- **R1 镜像守卫补缺口(e3d57a5)**:先查后动发现 R1 自动门已存在,但守卫漏了 `vp_i18n.js`
+  (显式点名式)→ 泛化成 `vp_*.js` 前缀 + 补 test_docs_mirror.py(10测)。pytest 509→519。
+- **T3 app-4.js 全量双语(Opus 主脑编排)**:Sonnet 建(~223 vpL·SPCX/CGT/恐贪/个股/时钟/小游戏·
+  Plotly 占位符保留)→ Opus 审 APPROVE(插值两侧齐·免责语忠实·零逻辑改·reRenderAppTools 幂等)→
+  主脑亲接 dashboard.html toggle(集成缺口:CGT/SPCX明细/小游戏不在 renderAll)→ playwright 实测切换
+  (SPCX 零残留中文·CGT 含 AUD 税务免责语全变英文·零报错)。**#5 五文件双语全完成**。
 
 ### ② 对照计划
 | 项 | 状态 |

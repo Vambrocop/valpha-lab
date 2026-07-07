@@ -1143,6 +1143,9 @@
     // renderTierLegend 让 TIER_META 的 vpL getter 用新语言重画图例。
     try{ if(typeof renderTierLegend==="function") renderTierLegend(); }catch(e){ console.warn("lang toggle renderTierLegend failed", e); }
     try{ if(typeof updateSignal==="function" && typeof selectedDate!=="undefined" && selectedDate) updateSignal(selectedDate); }catch(e){ console.warn("lang toggle updateSignal failed", e); }
+    // #5 W3 集成缺口(app-4 工具页):renderAll 不覆盖 CGT 计算器/SPCX 明细·计算/小游戏(非 renderAll 链、
+    // DOMContentLoaded/点击驱动)。reRenderAppTools 幂等重画这些持久面板(不毁用户输入:CGT 结果仅在已显示时重跑)。
+    try{ if(typeof reRenderAppTools==="function") reRenderAppTools(); }catch(e){ console.warn("lang toggle reRenderAppTools failed", e); }
   });
   apply();
 })();
