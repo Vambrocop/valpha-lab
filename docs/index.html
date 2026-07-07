@@ -479,6 +479,17 @@ function renderOVR(){
     :(OVR.caveat||"非保证 · 约46%仍跌 · 非荐股 · 出格区 · 信号公开计分");
 }
 
+// ── 数据陈旧可见性助手（诚实：陈旧了要喊出来，别让访客自己反推）──────────
+function _isoWeekStr(dt){
+  const d=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));
+  const day=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-day);
+  const yStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  const wk=Math.ceil((((d-yStart)/86400000)+1)/7);
+  return d.getUTCFullYear()+"-W"+String(wk).padStart(2,"0");
+}
+function _daysAgo(iso){ const t=Date.parse(iso); return isNaN(t)?null:Math.floor((Date.now()-t)/86400000); }
+function _curMonthStr(){ const n=new Date(); return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0"); }
+
 // ── 本周回顾 card（llm_weekly — grounded · 诚实 · 每周 append 计分）────────
 let WEEKLY=null;
 function renderWeekly(){
@@ -494,9 +505,16 @@ function renderWeekly(){
   if(txt) txt.textContent=WEEKLY.text;  // LLM text — 已 esc 在服务端；不二次转义避免破坏中文
   const nd=WEEKLY.n_days!=null?`${WEEKLY.n_days}天数据`:"";
   const cov=WEEKLY.coverage?`（覆盖：${esc(WEEKLY.coverage)}）`:"";
-  if(meta) meta.textContent=LANG==="en"
+  const curW=_isoWeekStr(new Date());
+  const wStale=WEEKLY.week_of && WEEKLY.week_of!==curW;   // 不是当前 ISO 周 = 本周尚未更新
+  const wAgo=_daysAgo(WEEKLY.generated);
+  let wMeta=LANG==="en"
     ?`Generated ${esc(WEEKLY.generated||"")} · ${nd}${cov}`
     :`生成时间 ${esc(WEEKLY.generated||"")} · ${nd}${cov}`;
+  if(wStale) wMeta+=LANG==="en"
+    ?` · <b style="color:#f0883e">⚠ ${wAgo}d ago · this week (${curW}) not yet updated</b>`
+    :` · <b style="color:#f0883e">⚠ ${wAgo} 天前 · 本周(${curW})尚未更新</b>`;
+  if(meta) meta.innerHTML=wMeta;   // generated/nd/cov 均 esc 或受控数值，无注入
   if(cav) cav.textContent=LANG==="en"
     ?"LLM plain-language summary grounded in real computed data. Not a prediction. We can be wrong. Past ≠ future. Appended to public weekly log."
     :(WEEKLY.caveat||"LLM 据本周真实算出因子生成；非预测、非荐股、会错，过去≠未来。已追加到公开周报计分。");
@@ -511,12 +529,19 @@ function renderMonthly(){
   card.style.display="";
   const title=$("monthly-title"),txt=$("monthly-text"),meta=$("monthly-meta"),cav=$("monthly-caveat");
   const mlabel=esc(MONTHLY.month_label||MONTHLY.month||"");
-  if(title) title.textContent=LANG==="en"?`🗓️ Monthly review · ${mlabel||"this month"}`:`🗓️ 本月回顾 · ${mlabel}`;
+  const mPrior=MONTHLY.month && MONTHLY.month<_curMonthStr();   // 报告月早于当前月=上月报告(月末生成的正常态)
+  if(title) title.textContent=LANG==="en"
+    ?`🗓️ ${mPrior?"Last month's review":"Monthly review"} · ${mlabel||"this month"}`
+    :`🗓️ ${mPrior?"上月回顾":"本月回顾"} · ${mlabel}`;
   if(txt) txt.textContent=MONTHLY.text;  // LLM text — 已 esc 在服务端；不二次转义避免破坏中文
   const nd=MONTHLY.n_days!=null?`${MONTHLY.n_days}天数据`:"";
-  if(meta) meta.textContent=LANG==="en"
+  let mMeta=LANG==="en"
     ?`Generated ${esc(MONTHLY.generated||"")} · ${nd}`
     :`生成时间 ${esc(MONTHLY.generated||"")} · ${nd}`;
+  if(mPrior) mMeta+=LANG==="en"
+    ?` · <span style="color:var(--muted)">monthly report is generated at month-end; ${_curMonthStr()} updates then</span>`
+    :` · <span style="color:var(--muted)">月报月末生成，${_curMonthStr()} 报告将于月末更新</span>`;
+  if(meta) meta.innerHTML=mMeta;   // generated/nd 均 esc 或受控，无注入
   if(cav) cav.textContent=LANG==="en"
     ?"LLM plain-language monthly summary grounded in real computed data. Not a prediction. We can be wrong. Past ≠ future. Appended to public monthly log."
     :(MONTHLY.caveat||"LLM 据本月真实算出因子生成；非预测、非荐股、会错，过去≠未来。已追加到公开月报计分。");
