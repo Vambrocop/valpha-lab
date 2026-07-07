@@ -252,6 +252,27 @@ def test_arrays_exclude_days_without_realized_forward_window(monkeypatch):
     assert not np.isnan(y).any()
 
 
+def test_regime_arrays_exclude_warmup_and_unrealized_tail(monkeypatch):
+    """T1(2026-07-07):_regime_arrays 既有代码的同款双bug修回归锁(合成·CI恒跑)。
+    ①暖机段(前199天,200日均线未定义)绝不当 sel=False 混进基率(H-2 纪律);
+    ②尾部 hold 天(前向窗未实现)绝不以 (NaN>0)→False 捏造 y=0。
+    修正前:idx 从第1个价格日排到最后价格日(n=全长);修正后精确 n=全长-199-hold。"""
+    import autodiscovery as ad
+    idx_all = pd.date_range("2000-01-03", "2009-12-31", freq="B")
+    rng = np.random.default_rng(11)
+    px = pd.Series(100 * np.cumprod(1 + rng.normal(0.0, 0.01, len(idx_all))), index=idx_all)
+    monkeypatch.setattr(ad, "_daily_price", lambda index: px)
+    hold = 20
+    arr = ad._regime_arrays("golden_cross", "sp500", hold)
+    assert arr is not None
+    idx, sel, y = arr
+    assert idx.min() >= px.index[199], "暖机段(均线未定义)混进了数组"
+    pos = px.index.get_indexer([idx.max()])[0]
+    assert pos + hold <= len(px.index) - 1, "尾部未实现前向窗混进了数组"
+    assert not np.isnan(y).any()
+    assert len(idx) == len(px.index) - 199 - hold   # 精确:恰好剔 199 暖机 + hold 尾窗
+
+
 def test_arrays_exclude_days_without_realized_forward_window_real_data():
     """同一锁的真数据集成版。CI 干净检出无 data/raw/ 价格(gitignore 生成数据) → skip——
     门禁测试不依赖 gitignore 数据是铁律(2026-07-07 CI #100-104 连挂教训),合成版已恒跑同一性质。"""

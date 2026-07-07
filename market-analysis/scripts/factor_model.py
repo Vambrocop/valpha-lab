@@ -105,7 +105,10 @@ def build_features(df):
 
     # ── 目标变量：SP500下个月涨跌 ────────────────────────────────
     sp = m["SP500"] if "SP500" in m.columns else m["NASDAQ"]
-    feat["target"] = (sp.shift(-1) > sp).astype(int)
+    # 末月无下月数据:NaN>x→False 会捏造成「下跌」且 dropna 删不掉 → 先剔未实现行(T1 清扫 2026-07-07)
+    nxt = sp.shift(-1)
+    feat = feat[nxt.notna()].copy()
+    feat["target"] = (nxt[nxt.notna()] > sp[nxt.notna()]).astype(int)
 
     return feat.dropna()
 

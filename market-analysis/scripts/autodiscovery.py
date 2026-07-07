@@ -341,13 +341,17 @@ def _regime_arrays(signal, index, hold=20):
     if px is None or len(px) < 300:
         return None
     if signal == "golden_cross":                       # 50 日均线 > 200 日均线（先验：趋势向上）
-        cond = px.rolling(50).mean() > px.rolling(200).mean()
+        ma50, ma200 = px.rolling(50).mean(), px.rolling(200).mean()
+        # 暖机段(前199天)均线未定义:必须是 NaN 被 dropna 剔除,不是 False 混进基率(H-2 同款纪律)
+        cond = (ma50 > ma200).astype(float).where(ma200.notna())
     else:
         return None
     fwd = px.shift(-hold) / px - 1
-    df = pd.DataFrame({"sel": cond.astype(float), "up": (fwd > 0).astype(float)}).dropna()
+    # 审④同款修(T1·2026-07-07):fwd(float 含 NaN)先进 df 再 dropna,之后才派生 y——
+    # 先 (fwd>0) 转 float 会把尾部"前向窗未实现"的日子捏造成 y=0(下跌),且 dropna 删不掉
+    df = pd.DataFrame({"sel": cond, "fwd": fwd}).dropna()
     sel = df["sel"].values == 1
-    y = df["up"].values
+    y = (df["fwd"].values > 0).astype(float)
     if int(sel.sum()) < 100 or int((~sel).sum()) < 100:
         return None
     return df.index, sel, y
