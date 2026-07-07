@@ -267,12 +267,35 @@ def _append_log(week_key: str, stance_trend: list, text: str) -> bool:
 
 # ── 主入口 ───────────────────────────────────────────────────────────────────
 
-def run():
+def _already_logged_this_week(today):
+    """本 ISO 周是否已在 llm_weekly_log(首列=week 键)记过。节流:每周只调一次 LLM。"""
+    if not LOG.exists():
+        return False
+    key = _iso_week(today)
+    try:
+        with open(LOG, encoding="utf-8") as f:
+            return any(r and r[0] == key for r in csv.reader(f))
+    except Exception:
+        return False
+
+
+def run(force=False, today=None):
     if not _llm_key():
         print("[LLM周报] 未配置 LLM key（GEMINI_API_KEY 或 LLM_API_KEY），跳过")
         return None
 
-    today = datetime.date.today()
+    if today is None:
+        today = datetime.date.today()
+    # 节流(run_all 每交易日多次跑)：只在周五及以后生成(攒满整个 Mon-Fri 交易周,镜像月读"月末生成"),
+    # 且本 ISO 周只调一次 LLM(已记则跳)。force=True 供测试/手动补跑绕过。无 key/LLM 失败均静默不阻断。
+    if not force:
+        if today.weekday() < 4:      # 0=周一…4=周五；周五前不生成,等交易周攒满(避免周一只有1天数据)
+            print(f"[LLM周报] 未到周五(攒满交易周,weekday={today.weekday()})，跳过")
+            return None
+        if _already_logged_this_week(today):
+            print("[LLM周报] 本周已生成，跳过")
+            return None
+
     summary = build_weekly_summary(today)
 
     # 构建 prompt

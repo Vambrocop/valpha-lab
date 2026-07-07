@@ -383,7 +383,7 @@ def test_run_llm_exception_no_crash(fake_repo, monkeypatch, capsys):
     _write_regime(fake_repo["web"])
     _write_scorecard(fake_repo["web"])
 
-    result = lwr.run()
+    result = lwr.run(force=True)   # force 绕过周五节流门,真正走到 LLM 异常路径
     assert result is None
     out = capsys.readouterr().out
     assert "失败" in out or "跳过" in out
@@ -406,7 +406,7 @@ def test_run_writes_json_on_success(fake_repo, monkeypatch):
     monkeypatch.setattr(util_io, "DOCS", fake_repo["tmp"] / "docs")  # docs 不存在 → 跳过
     (fake_repo["tmp"] / "docs").mkdir()  # 创建让它也写进去
 
-    result = lwr.run()
+    result = lwr.run(force=True)   # force 绕过周五节流门,测生成/写文件路径
     assert result is not None
     assert result["text"] != ""
     assert "caveat" in result
@@ -420,3 +420,53 @@ def test_run_writes_json_on_success(fake_repo, monkeypatch):
     # 日志已追加
     log_path = fake_repo["data"] / "llm_weekly_log.csv"
     assert log_path.exists()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 10. 节流门(2026-07-07 接入 run_all)：周五前跳过 / 本周已记跳过 / 周五生成
+#     —— 周读此前漏接 run_all,靠此门在流水线里"每交易日多跑不烧 API、周五才生成完整交易周"
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _mock_gen(monkeypatch):
+    monkeypatch.setattr(lwr, "_llm_key", lambda: "fake-key")
+    monkeypatch.setattr(lwr, "_active_model", lambda: "gemini-test")
+    monkeypatch.setattr(lwr, "_llm", lambda _: "本周市场偏积极。（这是数据读数不是预测，会错，过去不代表未来）")
+
+
+def test_run_skips_before_friday(fake_repo, monkeypatch, capsys):
+    """周五前(weekday<4)不生成(等交易周攒满)——避免周一只有1天数据的低质周报。"""
+    _mock_gen(monkeypatch)
+    _write_composite_log(fake_repo["data"], [("2026-06-23", "偏积极", "0.14")])
+    tuesday = datetime.date(2026, 6, 23)   # 周二
+    assert tuesday.weekday() == 1
+    result = lwr.run(today=tuesday)
+    assert result is None
+    assert "未到周五" in capsys.readouterr().out
+    assert not (fake_repo["web"] / "llm_weekly.json").exists()
+
+
+def test_run_skips_if_week_already_logged(fake_repo, monkeypatch, capsys):
+    """本 ISO 周已在日志 → 跳过(每周只调一次 LLM,防 run_all 每次跑都烧 API)。"""
+    _mock_gen(monkeypatch)
+    friday = datetime.date(2026, 6, 26)    # 周五, W26
+    lwr._append_log(lwr._iso_week(friday), ["偏积极"], "本周已记")
+    result = lwr.run(today=friday)
+    assert result is None
+    assert "本周已生成" in capsys.readouterr().out
+
+
+def test_run_generates_on_friday_fresh_week(fake_repo, monkeypatch):
+    """周五 + 本周未记 → 正常生成(节流门放行的唯一路径)。"""
+    _mock_gen(monkeypatch)
+    _write_composite_log(fake_repo["data"], [("2026-06-26", "偏积极", "0.14")])
+    _write_regime(fake_repo["web"])
+    _write_scorecard(fake_repo["web"])
+    import util_io
+    monkeypatch.setattr(util_io, "WEB", fake_repo["web"])
+    monkeypatch.setattr(util_io, "DOCS", fake_repo["tmp"] / "docs")
+    (fake_repo["tmp"] / "docs").mkdir()
+    friday = datetime.date(2026, 6, 26)    # 周五
+    assert friday.weekday() == 4
+    result = lwr.run(today=friday)          # 不传 force,靠真门放行
+    assert result is not None
+    assert (fake_repo["web"] / "llm_weekly.json").exists()

@@ -1215,14 +1215,13 @@
   function gj(f){return fetch(f,{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}
   function snip(t,n){t=String(t==null?"":t);return t.length>n?t.slice(0,n)+"…":t;}
   var _lang="zh"; try{_lang=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
-  function _isoW(dt){var d=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));var day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);var ys=new Date(Date.UTC(d.getUTCFullYear(),0,1));var wk=Math.ceil((((d-ys)/86400000)+1)/7);return d.getUTCFullYear()+"-W"+String(wk).padStart(2,"0");}
   function _dAgo(iso){var t=Date.parse(iso);return isNaN(t)?null:Math.floor((Date.now()-t)/86400000);}
   function _curM(){var n=new Date();return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0");}
   Promise.all([gj("llm_weekly.json"),gj("llm_monthly.json"),gj("prediction.json")]).then(function(a){
     var W=a[0],M=a[1],P=a[2],any=false,wrap=g("vp-llm-more");
     if(W&&W.text){any=true;var wl=W.week_label||W.week_of||"";
-      var wSt=W.week_of&&W.week_of!==_isoW(new Date());
-      var wTag=wSt?(_lang==="en"?" ⚠"+_dAgo(W.generated)+"d ago":" ⚠"+_dAgo(W.generated)+"天前·本周待更新"):"";
+      var wAgo=_dAgo(W.generated),wSt=wAgo!=null&&wAgo>7;   // >7天=超一周=错过周期=疑似卡住
+      var wTag=wSt?(_lang==="en"?" ⚠"+wAgo+"d ago":" ⚠"+wAgo+"天前·疑似卡住"):"";
       g("vp-weekly-t").textContent=(_lang==="en"?"📅 Weekly review":"📅 本周回顾")+(wl?" · "+wl:"")+wTag;
       g("vp-weekly-x").textContent=snip(W.text,90);g("vp-weekly").style.display="";}
     if(M&&M.text){any=true;var ml=M.month_label||M.month||"";

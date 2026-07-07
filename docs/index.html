@@ -480,13 +480,8 @@ function renderOVR(){
 }
 
 // ── 数据陈旧可见性助手（诚实：陈旧了要喊出来，别让访客自己反推）──────────
-function _isoWeekStr(dt){
-  const d=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));
-  const day=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-day);
-  const yStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
-  const wk=Math.ceil((((d-yStart)/86400000)+1)/7);
-  return d.getUTCFullYear()+"-W"+String(wk).padStart(2,"0");
-}
+// 阈值按各卡的正常更新周期:周报每周更新→>9天=错过一周期=真卡住(不用 ISO 周对比,否则
+// 周一~周四正常显示上一完整周会天天误报);月报月末生成→>40天=错过一整月。
 function _daysAgo(iso){ const t=Date.parse(iso); return isNaN(t)?null:Math.floor((Date.now()-t)/86400000); }
 function _curMonthStr(){ const n=new Date(); return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0"); }
 
@@ -505,15 +500,14 @@ function renderWeekly(){
   if(txt) txt.textContent=WEEKLY.text;  // LLM text — 已 esc 在服务端；不二次转义避免破坏中文
   const nd=WEEKLY.n_days!=null?`${WEEKLY.n_days}天数据`:"";
   const cov=WEEKLY.coverage?`（覆盖：${esc(WEEKLY.coverage)}）`:"";
-  const curW=_isoWeekStr(new Date());
-  const wStale=WEEKLY.week_of && WEEKLY.week_of!==curW;   // 不是当前 ISO 周 = 本周尚未更新
   const wAgo=_daysAgo(WEEKLY.generated);
+  const wStale=wAgo!=null && wAgo>7;   // 周报每周更新(正常≤7天:周五生成、下周五刷新);>7天=超一周=错过周期=疑似卡住
   let wMeta=LANG==="en"
     ?`Generated ${esc(WEEKLY.generated||"")} · ${nd}${cov}`
     :`生成时间 ${esc(WEEKLY.generated||"")} · ${nd}${cov}`;
   if(wStale) wMeta+=LANG==="en"
-    ?` · <b style="color:#f0883e">⚠ ${wAgo}d ago · this week (${curW}) not yet updated</b>`
-    :` · <b style="color:#f0883e">⚠ ${wAgo} 天前 · 本周(${curW})尚未更新</b>`;
+    ?` · <b style="color:#f0883e">⚠ ${wAgo}d ago · weekly should update weekly (possibly stuck)</b>`
+    :` · <b style="color:#f0883e">⚠ ${wAgo} 天前 · 周报应每周更新(疑似卡住)</b>`;
   if(meta) meta.innerHTML=wMeta;   // generated/nd/cov 均 esc 或受控数值，无注入
   if(cav) cav.textContent=LANG==="en"
     ?"LLM plain-language summary grounded in real computed data. Not a prediction. We can be wrong. Past ≠ future. Appended to public weekly log."
