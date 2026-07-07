@@ -44,14 +44,19 @@ def _sha256(path: Path) -> str:
 
 
 def _is_handwritten_js(name: str) -> bool:
-    """True for hand-authored JS we want to guard; False for third-party bundles."""
-    # Keep: vp_gloss.js and app-<N>.js
-    # Drop: plotly-*.min.js and any other vendored files
-    if name == "vp_gloss.js":
+    """True for hand-authored JS we want to guard; False for third-party bundles.
+
+    规则(白名单式,自解释)：手写核心一律 `vp_*.js`（vp_gloss / vp_i18n / 未来新增 vp_ 核心
+    自动纳入，不再靠显式点名——2026-07-07 补 vp_i18n.js 漏网的教训）与 `app-<N>.js`；
+    厂商打包(plotly-*.min.js 等)按命名前缀天然排除。
+    """
+    if not name.endswith(".js"):
+        return False
+    if name.startswith("vp_"):        # vp_gloss.js / vp_i18n.js / 未来 vp_ 核心
         return True
-    if name.startswith("app-") and name.endswith(".js"):
+    if name.startswith("app-"):       # app-1.js … app-N.js
         return True
-    return False
+    return False                       # plotly-cartesian-*.min.js 等厂商包
 
 
 def _should_compare(path: Path) -> bool:
