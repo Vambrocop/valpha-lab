@@ -7,6 +7,29 @@
 
 ---
 
+## 2026-07-07
+
+### ① 今天做了什么
+- **CI 红 #100–104 修复(e9276b6)**：根因=#7 新增 H-1 路由测试被 `_factor_map` 无条件
+  `build_feature_df()`(读 gitignore 的 combined_prices.csv)拖挂 + 尾窗守门测试直吃真数据。
+  修:`_factor_map` 空列表短路;守门锁拆"合成版恒跑 + 真数据版缺则 skip"。干净检出彩排 504 绿。
+- **防复发护栏(同提交)**:`tools/pre_commit_gate.py` 升级为 **git archive 干净检出跑 pytest**(CI 同构)——
+  活演练:修复前索引被 deny(4 failed),修复后放行。"本地绿 CI 红"这类问题以后提交那刻即拦。
+- **接力手册 `HANDOVER.md` 新建**:Fable 缺席时 Opus 当主脑/Sonnet 建造的角色表、任务队列
+  (T1 _regime_arrays 双审 → T2 描述符 → T3 app-4 双语 → T4 KB 验收 ~8月初)、CI 红处置手册、
+  架构升级路线 R1–R7(R1 docs 镜像漂移自动门 / R2 尾窗全库清扫并入 T1 / R4 web 微工具克制收敛)。
+  CLAUDE.md 执行协议首行加指针。
+
+### ② 对照计划
+| 项 | 状态 |
+|---|---|
+| #7 命门相收官(昨) | ✅ 已推(6eda2b5);今日 CI 红即其首批 CI 暴露的测试数据依赖,已修 |
+| CI 观察哨(fetch_cot/putcall 首跑) | ⏳ 测试红挡在前面从未跑到;转绿后下一班盘后 schedule 首跑(fail-soft) |
+
+### ③ 待办 / 未决
+- [ ] 下一班 Refresh schedule 确认转绿 + COT/P·C fetch 步首跑 warning 检查
+- [ ] 后续任务队列全部移交 `HANDOVER.md` §3(T1–T7),以那边为准
+
 ## 2026-06-20
 
 ### ① 今天做了什么（全部已推）
