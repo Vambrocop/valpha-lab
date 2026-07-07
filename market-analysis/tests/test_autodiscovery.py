@@ -216,11 +216,48 @@ def test_compute_results_unrouted_family_raises():
         ad.compute_results([cand])
 
 
-def test_arrays_exclude_days_without_realized_forward_window():
-    """审④阻断修回归锁:数组最后一天必须早于最后价格日至少 hold 个交易日——
+def test_arrays_exclude_days_without_realized_forward_window(monkeypatch):
+    """审④阻断修回归锁(合成版·CI 恒跑):数组最后一天必须早于最后价格日至少 hold 个交易日——
     尾部"前向窗未实现"的日子绝不许以 y=0(捏造下跌)进数组(修正前正是这样,
-    系统性压制'当前正处极端态'的活信号,翻转过 legacy_lo_h60_nasdaq100 公开头条)。"""
+    系统性压制'当前正处极端态'的活信号,翻转过 legacy_lo_h60_nasdaq100 公开头条)。
+    价格序列刻意在最后报告后不足 hold 日就截止 → 不裁剪的话尾部必混入未实现窗。"""
     import autodiscovery as ad
+    hold = 20
+    # positioning:最后 usable_from≈2004-12-27,价格 2005-01-08 截止(仅 ~8 交易日 < hold)
+    reports = _synthetic_reports(n=260)
+    px_short = _synthetic_price(start="1998-01-01", end="2005-01-08")
+    monkeypatch.setattr(ad, "_cot_reports", lambda market, series: reports)
+    monkeypatch.setattr(ad, "_daily_price", lambda index: px_short)
+    arr = ad._positioning_arrays("sp500", "legacy_noncomm_pct_oi", "hi", hold)
+    assert arr is not None
+    idx, sel, y = arr
+    pos = px_short.index.get_indexer([idx.max()])[0]
+    assert pos + hold <= len(px_short.index) - 1, (
+        f"positioning: idx.max()={idx.max().date()} 距最后价格日不足 {hold} 交易日——尾部未实现前向窗混入")
+    assert not np.isnan(y).any()
+
+    # optsent:P/C 与价格同索引同截止 → 最后 hold 天必须被裁掉
+    idx_all, vals = _optsent_base_with_spikes(seed=7)
+    df = pd.DataFrame({"total_pc": vals, "equity_pc": vals}, index=idx_all)
+    rng = np.random.default_rng(8)
+    px = pd.Series(100 * np.cumprod(1 + rng.normal(0.0003, 0.008, len(idx_all))), index=idx_all)
+    monkeypatch.setattr(ad, "_putcall_daily", lambda: df)
+    monkeypatch.setattr(ad, "_daily_price", lambda index: px)
+    arr = ad._optsent_arrays("total_pc", "hi", hold)
+    assert arr is not None
+    idx, sel, y = arr
+    pos = px.index.get_indexer([idx.max()])[0]
+    assert pos + hold <= len(px.index) - 1, (
+        f"optsent: idx.max()={idx.max().date()} 距最后价格日不足 {hold} 交易日——尾部未实现前向窗混入")
+    assert not np.isnan(y).any()
+
+
+def test_arrays_exclude_days_without_realized_forward_window_real_data():
+    """同一锁的真数据集成版。CI 干净检出无 data/raw/ 价格(gitignore 生成数据) → skip——
+    门禁测试不依赖 gitignore 数据是铁律(2026-07-07 CI #100-104 连挂教训),合成版已恒跑同一性质。"""
+    import autodiscovery as ad
+    if ad._daily_price("sp500") is None or ad._daily_price("nasdaq") is None:
+        pytest.skip("data/raw/ 价格缺失(CI 干净检出)——合成版已覆盖本锁")
     for maker, args, hold in [
         (ad._positioning_arrays, ("sp500", "legacy_noncomm_pct_oi", "lo", 60), 60),
         (ad._positioning_arrays, ("nasdaq100", "legacy_noncomm_pct_oi", "lo", 20), 20),

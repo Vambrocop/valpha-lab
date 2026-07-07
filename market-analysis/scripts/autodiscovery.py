@@ -591,6 +591,8 @@ def _optsent(series, extreme, hold, cid):
 
 # ── 因子族：复用 _segment_lens 的 全段 full_p + 现代段 recent_p ──
 def _factor_map(factor_cands):
+    if not factor_cands:        # 无因子候选不碰特征数据集(CI 干净检出无 data/raw/,#104 连挂根因)
+        return {}
     df = build_feature_df()
     cutoff = df["date"].max() - pd.DateOffset(years=fp.RECENT_YEARS)
     out = {}
