@@ -69,6 +69,17 @@
   SEC 无此数据(见 fetch_ipo 诚实边界)。已自标"2026-06 快照"。留人工定期更新,别硬凑自动化。
 **T7 [大工程] v1.5 自生长自动发现闭环 — 单独立项+重审,不要顺手做**(用户定过调;Fable 在场时做)
 
+**⏳ 待续(2026-07-07·token 耗尽前记档,下次做)**:
+- **R5** run_all 阶段 DAG 注释显式化(纯文档·几分钟·用户已批)——未做。
+- **Telegram 卡住推送**(用户要):日读/周读超期自动发消息。**设计要点**:必须放在**独立于主流水线**的
+  workflow(如 quick-quotes.yml,每30分跑、CI 红时仍绿),读已提交的 llm_read/llm_weekly generated 时间戳,
+  超期(日读>4天/周读>9天)则 notify_telegram.send;**需按天 dedup**(state 文件或日期 key)防每30分刷屏。
+  主流水线内的检查无用(流水线卡住时它也不跑)。notify_telegram.send(text,tag) 已 fail-soft 可直接用。
+- **周读 07-04 未更新之谜**:weekly-review.yml(周六 cron·有 GEMINI_API_KEY)#2(07-04)"成功"却没提交 W27
+  (log 当时只有 W26)。已手动 force 补 W27。**下周六(07-11)盯它是否正常出 W28**;若又没出,查 commit 步/
+  composite 数据就绪时点/rebase 冲突。周读【不在】run_all(见该文件注释),唯一生成器=weekly-review.yml。
+- **陈旧可见性已上线**:周/月/日读卡片超期自曝(index/dashboard),月读七月起 relabel"上月回顾"。
+
 **下一个该做(建议顺序)**:T3(机械·Sonnet 独立可做,无判断)最省主脑;T2(单审·中等,点时间纪律
 是唯一坑)Opus 或 Fable 皆可;T4/T5 等日历(~8月初)。**T7 大工程留 Fable 在场时立项**。
 
