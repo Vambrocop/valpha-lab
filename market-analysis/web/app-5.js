@@ -132,8 +132,8 @@ function bindStaticControls() {
   ["spcx-shares-input", "spcx-price-input"].forEach(id => on(id, "input", updateSPCXCalc));
 
   document.addEventListener("click", e => {
-    const forecast = e.target.closest("[data-forecast-date]");
-    if (forecast) { selectForecastDay(forecast.dataset.forecastDate); return; }
+    // data-forecast-date(40日热力横带)的 click/hover/键盘交互自成一套(见 app-3.js
+    // _fcCellActivate 等)，不在这里委托 —— 避免"tap先peek再确认"逻辑被这里的无条件单击抢先触发。
     const cost = e.target.closest("[data-cost-index]");
     if (cost) { setPortfolioCost(Number(cost.dataset.costIndex)); return; }
     const scrollTarget = e.target.closest("[data-scroll-target]");
@@ -144,7 +144,11 @@ function bindStaticControls() {
     }
     if (e.target.closest("[data-fear-greed-retry]")) { fetchFearAndGreed(); return; }
     const stock = e.target.closest("[data-stock-symbol]");
-    if (stock) { renderStockChart(stock.dataset.stockSymbol); return; }
+    if (stock) {
+      renderStockChart(stock.dataset.stockSymbol);
+      if (typeof toggleStockRowExpand === "function") toggleStockRowExpand(stock.dataset.stockSymbol);
+      return;
+    }
     const sell = e.target.closest("[data-game-sell]");
     if (sell) { gameSell(sell.dataset.gameSell); return; }
     if (e.target.closest("[data-game-buy]")) { gameBuy(); return; }
@@ -159,16 +163,19 @@ function bindStaticControls() {
   });
   document.addEventListener("keydown", e => {
     if (e.key !== "Enter" && e.key !== " ") return;
-    const forecast = e.target.closest("[data-forecast-date]");
-    if (forecast) {
+    // data-forecast-date 键盘交互见 app-3.js（同一套 Enter/Esc 逻辑，不在此重复委托）
+    const cost = e.target.closest("[data-cost-index]");
+    if (cost) {
       e.preventDefault();
-      selectForecastDay(forecast.dataset.forecastDate);
+      setPortfolioCost(Number(cost.dataset.costIndex));
       return;
     }
-    const cost = e.target.closest("[data-cost-index]");
-    if (!cost) return;
-    e.preventDefault();
-    setPortfolioCost(Number(cost.dataset.costIndex));
+    const stock = e.target.closest("[data-stock-symbol]");
+    if (stock) {
+      e.preventDefault();
+      renderStockChart(stock.dataset.stockSymbol);
+      if (typeof toggleStockRowExpand === "function") toggleStockRowExpand(stock.dataset.stockSymbol);
+    }
   });
 }
 

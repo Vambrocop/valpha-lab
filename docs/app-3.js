@@ -386,7 +386,129 @@ function renderTodayRec(adjustedProb) {
     </div>`;
 }
 
-// ── 未来60天信号日历 ──
+// ── 未来40天信号热力横带（D3任务1：原40格大网格 → 单行紧凑热带）──────
+// 数据/交互状态：按 date 索引缓存最新一次 all_forecast，供 tooltip/键盘/点击复用。
+let _fcDataByDate = {};
+let _fcTipOpenDate = null;   // 当前打开 tooltip 的日期；null=未打开
+let _fcTipEl = null;         // 单例 tooltip div（复用，不每次新建）
+
+function _fcTooltip() {
+  if (_fcTipEl && document.body.contains(_fcTipEl)) return _fcTipEl;
+  _fcTipEl = document.createElement("div");
+  _fcTipEl.id = "fc-tooltip";
+  _fcTipEl.setAttribute("role", "tooltip");
+  _fcTipEl.style.cssText = "position:fixed;z-index:400;display:none;background:var(--surface2);"
+    + "border:1px solid var(--border);border-radius:7px;padding:.5rem .75rem;font-size:0.76rem;"
+    + "line-height:1.5;max-width:260px;box-shadow:0 4px 16px rgba(0,0,0,.4);color:var(--text);pointer-events:none;";
+  document.body.appendChild(_fcTipEl);
+  return _fcTipEl;
+}
+
+// 宏观事件/入场理由字符串 → 英文。数据来自 build_signals.py 固定的几类模式（正则匹配日期/月份变量，
+// 不是硬编码某一天）；未识别的新事件类型诚实展示原文，好过瞎译。
+const _FC_DOW_EN = { "周一":"Mon","周二":"Tue","周三":"Wed","周四":"Thu","周五":"Fri","周六":"Sat","周日":"Sun" };
+function _fcMacroEN(zh) {
+  if (!zh) return zh;
+  let m;
+  if ((m = zh.match(/^CPI发布\((\d+)月\)$/)))     return `CPI release (month ${m[1]})`;
+  if ((m = zh.match(/^非农就业\((\d+)月\)$/)))     return `Non-farm payrolls (month ${m[1]})`;
+  if ((m = zh.match(/^FOMC决议(\(含SEP\))?$/)))    return m[1] ? "FOMC decision (with SEP)" : "FOMC decision";
+  return zh;
+}
+function _fcReasonEN(zh) {
+  let m;
+  if ((m = zh.match(/^(周[一二三四五六日])效应$/)))  return `${_FC_DOW_EN[m[1]] || m[1]} effect`;
+  if ((m = zh.match(/^月内第(\d)周最强$/)))          return `Week ${m[1]} of month historically strongest`;
+  if ((m = zh.match(/^月内第(\d)周偏弱$/)))          return `Week ${m[1]} of month tends weak`;
+  if (zh === "假日效应")                              return "Holiday effect";
+  if (zh === "税季/季初建仓")                         return "Tax season / quarter-start positioning";
+  if (zh === "税损收割期")                            return "Tax-loss harvesting period";
+  if ((m = zh.match(/^(\d+)月胜率高$/)))             return `Month ${m[1]} historically high win rate`;
+  if ((m = zh.match(/^(\d+)月胜率低$/)))             return `Month ${m[1]} historically low win rate`;
+  if ((m = zh.match(/^⚠ (.+?)·波动放大$/)))          return `⚠ ${_fcMacroEN(m[1])} · volatility likely elevated`;
+  return zh;
+}
+function _fcTooltipText(d) {
+  const [y, mo, day] = d.date.split("-").map(Number);
+  const dow = new Date(y, mo - 1, day).getDay();
+  const DOW = vpL(["周日","周一","周二","周三","周四","周五","周六"], ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]);
+  const TIER_NAME = vpL({5:"第5档",4:"第4档",3:"第3档",2:"第2档",1:"第1档"}, {5:"Tier 5",4:"Tier 4",3:"Tier 3",2:"Tier 2",1:"Tier 1"});
+  const isEN = vpLang() === "en";
+  let line1 = `${d.date} ${DOW[dow]} · ${vpL("概率","Prob")} ${Math.round(d.prob*100)}% · ${TIER_NAME[d.tier]}`;
+  if (d.macro) line1 += ` · ${isEN ? _fcMacroEN(d.macro) : d.macro}`;
+  let line2 = "";
+  if (d.reasons && d.reasons.length) {
+    const joined = d.reasons.map(r => isEN ? _fcReasonEN(r) : r).join(isEN ? ", " : "、");
+    line2 = joined.length > 60 ? joined.slice(0, 60) + "…" : joined;
+  }
+  return { line1, line2 };
+}
+
+function _fcTipShow(cellEl, d) {
+  if (!d) return;
+  const tip = _fcTooltip();
+  const { line1, line2 } = _fcTooltipText(d);
+  tip.innerHTML = `<div>${esc(line1)}</div>${line2 ? `<div style="color:var(--muted);margin-top:.2rem;">${esc(line2)}</div>` : ""}`;
+  tip.style.visibility = "hidden";
+  tip.style.display = "block";
+  const r = cellEl.getBoundingClientRect();
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = r.left + r.width / 2 - tw / 2;
+  left = Math.max(6, Math.min(left, window.innerWidth - tw - 6));
+  let top = r.top - th - 8;
+  if (top < 4) top = r.bottom + 8;   // 上方放不下(靠近视口顶部)→翻到下方，防溢出
+  tip.style.left = `${left}px`;
+  tip.style.top = `${top}px`;
+  tip.style.visibility = "visible";
+  _fcTipOpenDate = d.date;
+  cellEl.setAttribute("aria-expanded", "true");
+}
+function _fcTipHide() {
+  if (_fcTipEl) _fcTipEl.style.display = "none";
+  if (_fcTipOpenDate) {
+    document.querySelector(`.fc-cell[data-fc-date="${_fcTipOpenDate}"]`)?.removeAttribute("aria-expanded");
+  }
+  _fcTipOpenDate = null;
+}
+// 点击/回车激活一个热带 cell：
+//   首次激活 → 只显示 tooltip 预览(不跳转，桌面 hover 已先显示过，此时视为"已打开")
+//   已打开时再次激活(桌面：hover 后单击一次即触发；移动：再 tap 一次) → 收起 tooltip + 复用原
+//   "选中该日→今日建议面板并滚动" 功能(原 data-forecast-date 单击行为，保留不丢)
+function _fcCellActivate(cellEl) {
+  const date = cellEl.dataset.fcDate;
+  if (_fcTipOpenDate === date) {
+    _fcTipHide();
+    if (typeof selectForecastDay === "function") selectForecastDay(date);
+  } else {
+    _fcTipShow(cellEl, _fcDataByDate[date]);
+  }
+}
+// 用 Pointer Events(按 pointerType 过滤) 而非 mouseover/mouseout：触屏 tap 时浏览器会在真正
+// 派发 click 之前合成一次 mouseover 做兼容("鬼影 hover")，若监听 mouseover 会导致 tap 还没
+// 落地 tooltip 就已"预打开"——第一下 tap 的 click 因此误判成"已打开"，直接收起+跳转，
+// 出现"tap一下tooltip一闪就没了"。pointerType==="mouse" 只让真鼠标触发预览，触屏交互交给
+// click 委托的 _fcCellActivate(首tap开·再tap关)独立处理，互不干扰。
+document.addEventListener("pointerover", e => {
+  if (e.pointerType !== "mouse") return;
+  const cell = e.target.closest(".fc-cell");
+  if (cell) _fcTipShow(cell, _fcDataByDate[cell.dataset.fcDate]);
+});
+document.addEventListener("pointerout", e => {
+  if (e.pointerType !== "mouse") return;
+  if (e.target.closest(".fc-cell")) _fcTipHide();
+});
+document.addEventListener("click", e => {
+  const cell = e.target.closest(".fc-cell");
+  if (cell) { _fcCellActivate(cell); return; }
+  if (_fcTipOpenDate) _fcTipHide();   // 点击热带外部 → 收起(不 return，不影响其它委托点击逻辑)
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { if (_fcTipOpenDate) _fcTipHide(); return; }
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const cell = e.target.closest(".fc-cell");
+  if (cell) { e.preventDefault(); _fcCellActivate(cell); }
+});
+
 function renderForecastCalendar() {
   const el = document.getElementById("forecast-calendar");
   if (!el || !SIGNALS) return;
@@ -394,25 +516,15 @@ function renderForecastCalendar() {
   if (!allFc.length) { el.innerHTML = `<span style="color:var(--muted);font-size:0.82rem">${vpL("暂无预测数据","No forecast data yet")}</span>`; return; }
 
   const TC = { 5:"#27ae60", 4:"#2ecc71", 3:"#f1c40f", 2:"#e67e22", 1:"#e74c3c" };
-  const TB = { 5:"rgba(39,174,96,.22)", 4:"rgba(46,204,113,.18)", 3:"rgba(241,196,15,.18)", 2:"rgba(230,126,34,.18)", 1:"rgba(231,76,60,.18)" };
 
   // 档位分布（顶部结论 + 底部统计条共用，别算两遍）
   const strong = allFc.filter(d => d.tier >= 4).length;
   const weak   = allFc.filter(d => d.tier <= 2).length;
   const neut   = allFc.length - strong - weak;
 
-  // Group by ISO week (Monday-based) — parse date string directly to avoid UTC/local timezone issues
-  const weeks = {};
-  allFc.forEach(d => {
-    const [y, m, day] = d.date.split('-').map(Number);
-    const dt = new Date(y, m - 1, day); // local date, no timezone shift
-    const dow = dt.getDay(); // 0=Sun
-    const diff = dow === 0 ? -6 : 1 - dow;
-    const mon = new Date(y, m - 1, day + diff);
-    const key = `${mon.getFullYear()}-${String(mon.getMonth()+1).padStart(2,'0')}-${String(mon.getDate()).padStart(2,'0')}`;
-    if (!weeks[key]) weeks[key] = [];
-    weeks[key].push(d);
-  });
+  const sorted = [...allFc].sort((a, b) => a.date.localeCompare(b.date));
+  _fcDataByDate = {};
+  sorted.forEach(d => { _fcDataByDate[d.date] = d; });
 
   const today = localDateStr();
   let html = "";
@@ -434,33 +546,21 @@ function renderForecastCalendar() {
     <span><span style="color:#2ecc71">■</span> ${vpL("偏强信号(T4-5)","Strong-leaning (T4-5)")}</span>
     <span><span style="color:#f1c40f">■</span> ${vpL("中性观望(T3)","Neutral (T3)")}</span>
     <span><span style="color:#e74c3c">■</span> ${vpL("偏弱谨慎(T1-2)","Weak-leaning (T1-2)")}</span>
-    <span style="color:var(--muted)">${vpL("· 今日有发光边框","· Today has a glowing border")}</span>
+    <span style="color:var(--muted)">${vpL("· 今日有发光边框 · 悬停/点按查看详情","· Today has a glowing border · hover/tap for details")}</span>
   </div>`;
-  html += `<div style="display:flex;flex-direction:column;gap:5px;">`;
-  Object.keys(weeks).sort().forEach(wk => {
-    const days = weeks[wk].sort((a,b) => a.date.localeCompare(b.date));
-    const [, wm, wd] = wk.split('-');
-    const wkLabel = `${wm}/${wd}`;
-    html += `<div style="display:flex;align-items:center;gap:4px;">
-      <span style="font-size:0.68rem;color:var(--muted);width:38px;flex-shrink:0">${wkLabel}</span>`;
-    days.forEach(d => {
-      const dom = parseInt(d.date.slice(8, 10)); // parse directly — timezone-safe
-      const isToday = d.date === today;
-      const border = isToday ? `2px solid ${TC[d.tier]}` : `1px solid ${TC[d.tier]}44`;
-      const titleAttr = vpL(
-        `${d.date}  概率${Math.round(d.prob*100)}%  第${d.tier}档${d.macro ? "  ⚠"+d.macro : ""}（点击查看信号解读）`,
-        `${d.date}  prob ${Math.round(d.prob*100)}%  Tier ${d.tier}${d.macro ? "  ⚠"+d.macro : ""} (click to see signal read)`
-      );
-      html += `<div title="${titleAttr}"
-        role="button" tabindex="0" data-forecast-date="${d.date}"
-        style="width:36px;height:36px;border-radius:5px;background:${TB[d.tier]};border:${border};cursor:pointer;
-               display:flex;flex-direction:column;align-items:center;justify-content:center;
-               ${isToday ? "box-shadow:0 0 0 3px "+TC[d.tier]+"66;" : ""}">
-        <span style="font-size:0.65rem;color:var(--muted);line-height:1">${dom}${vpL("日","")}</span>
-        <span style="font-size:0.7rem;font-weight:700;color:${TC[d.tier]};line-height:1.3">${Math.round(d.prob*100)}%</span>
-      </div>`;
-    });
-    html += `</div>`;
+
+  // 热力横带：40 个 cell 等分一行，不放文字(拥挤放不下)，靠 tooltip 传递细节
+  html += `<div class="fc-band" style="display:flex;gap:2px;width:100%;">`;
+  sorted.forEach(d => {
+    const isToday = d.date === today;
+    const color = TC[d.tier] || "#8b949e";
+    const border = isToday ? `2px solid ${color}` : `1px solid ${color}66`;
+    const { line1, line2 } = _fcTooltipText(d);
+    const ariaLabel = line2 ? `${line1} · ${line2}` : line1;
+    html += `<div class="fc-cell" role="button" tabindex="0" data-fc-date="${d.date}"
+      aria-label="${esc(ariaLabel)}"
+      style="flex:1;min-width:0;height:26px;border-radius:3px;background:${color};border:${border};cursor:pointer;
+             ${isToday ? `box-shadow:0 0 0 3px ${color}66;` : ""}"></div>`;
   });
   html += `</div>`;
 
@@ -472,6 +572,7 @@ function renderForecastCalendar() {
   </div>`;
 
   el.innerHTML = html;
+  if (_fcTipOpenDate) _fcTipHide();   // 重渲染(如切语言/刷新)时旧 tooltip 引用的 DOM 节点已失效，先收起防悬空
 }
 
 // ── 今日页前瞻小条（紧凑条，指向📅买卖时机页完整日历）──

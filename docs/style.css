@@ -346,3 +346,12 @@ header > * { position: relative; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+/* ── D3任务1：40日预测热力横带(app-3.js renderForecastCalendar) ── */
+.fc-cell { transition: filter .12s, outline-color .12s; }
+.fc-cell:hover, .fc-cell:focus-visible { filter: brightness(1.3); outline: 2px solid var(--blue); outline-offset: 1px; }
+
+/* ── D3任务2：个股表行 → 展开体检摘要(app-4.js renderStocksTable) ── */
+tr[data-stock-symbol]:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.stx-caret { display: inline-block; width: .9em; color: var(--muted); transition: color .15s; }
+tr[data-stock-symbol]:hover .stx-caret, tr[data-stock-symbol][aria-expanded="true"] .stx-caret { color: var(--text); }

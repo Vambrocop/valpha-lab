@@ -829,9 +829,97 @@ async function loadStocksPanel() {
   if (typeof renderHorizonStocks === "function") renderHorizonStocks();  // 长期页质量表
 }
 
+// ═══════════════════════════════════════════════════════
+//  个股表行 → 展开体检摘要（D3任务2：手风琴，同源消费 stock_checkup.json）
+// ═══════════════════════════════════════════════════════
+// STOCK_CHECKUP 是全局共享变量（app-2.js 已声明，供"🩺个股诚实体检"登记簿面板用）——
+// 这里复用同一个缓存，谁先请求谁写入，避免同一份 stock_checkup.json 被拉两次。
+let _expandedStockSym = null;   // 当前展开的股票代码；null=全部收起（手风琴，同时只展开一行）
+
+async function ensureStockCheckup() {
+  if (STOCK_CHECKUP) return STOCK_CHECKUP;
+  try {
+    const r = await fetch("stock_checkup.json?_=" + Date.now());
+    if (r.ok) STOCK_CHECKUP = await r.json();
+  } catch (e) { /* 尚未生成/网络失败 —— 保持 null，展开卡诚实显示"暂无体检数据" */ }
+  return STOCK_CHECKUP;
+}
+
+// 展开/收起某一行；数据未就绪时先渲染占位再补渲染，不让用户觉得卡住。
+async function toggleStockRowExpand(sym) {
+  _expandedStockSym = _expandedStockSym === sym ? null : sym;
+  renderStocksTable();
+  if (_expandedStockSym === sym && !STOCK_CHECKUP) {
+    await ensureStockCheckup();
+    if (_expandedStockSym === sym) renderStocksTable();   // 异步返回时用户可能已切到别行/收起，别强行拉回
+  }
+}
+
+// 规律真伪判定 → 双语文案（措辞与"🩺个股诚实体检"面板一致，见 app-2.js renderStockCheckup 的 patMap）
+function _patVerdictLabel(v) {
+  const map = vpL(
+    { has_real:"出现疑似持续规律(待验证)", faded:"曾有、近年已消失(被套利)", hist_robust:"历史稳健但近期样本不足", data_snoop:"疑似数据窥探", no_pattern:"未检出", inconclusive:"无定论(检验力不足)" },
+    { has_real:"suspected persistent pattern (unverified)", faded:"once real, now faded (arbitraged away)", hist_robust:"historically robust, recent sample too small", data_snoop:"suspected data snooping", no_pattern:"none detected", inconclusive:"inconclusive (low power)" }
+  );
+  return map[v] || v;
+}
+
+// 跳到本页"🩺个股诚实体检"完整面板并选中该票（同一批 19 只观察池股票，比 ticker.html 的
+// 第三方"任意代码快查"更权威——ticker.html 不接受 ?t= 参数、也非同一数据源，故不链去那里）。
+async function goToStockCheckup(sym) {
+  const scEl = document.getElementById("stock-checkup");
+  if (!scEl) return;
+  // 该面板挂在"📋登记簿"视图里（切视图前是 display:none，直接 scrollIntoView 不生效）——先切视图
+  const registryBtn = document.querySelector('.view-btn[data-view="registry"]');
+  if (typeof switchView === "function") switchView("registry", registryBtn || undefined);
+  if (!document.getElementById("sc-select") && typeof loadStockCheckup === "function") {
+    await loadStockCheckup();   // 面板首次尚未渲染（懒渲染门未触发）：主动补一次，fetch 已缓存不重复拉网络
+  }
+  const sel = document.getElementById("sc-select");
+  if (sel && [...sel.options].some(o => o.value === sym)) {
+    sel.value = sym;
+    if (typeof renderStockCheckup === "function") renderStockCheckup(sym);
+  }
+  (scEl.closest(".chart-wrap") || scEl).scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// 展开卡内容：诚实分支——status!=ok 或缺失都直说"暂无体检数据"，不硬凑
+function renderStockCheckupExpandRow(sym, colspan) {
+  let body;
+  if (!STOCK_CHECKUP) {
+    body = `<span style="color:var(--muted);font-size:0.8rem">${vpL("加载中…","Loading…")}</span>`;
+  } else {
+    const t = STOCK_CHECKUP.tickers?.[sym];
+    if (!t || t.status !== "ok") {
+      body = `<span style="color:var(--muted);font-size:0.8rem">${vpL("暂无体检数据","No check-up data available")}</span>`;
+    } else {
+      const an = t.anomaly || {};
+      const highVolTag   = an.high_vol   ? vpL(" ⚠高波动区"," ⚠ elevated-volatility zone") : "";
+      const decoupledTag = an.decoupled  ? vpL(" · ⚠与大盘异常脱钩"," · ⚠ unusually decoupled from the market") : "";
+      const patTxt = (t.patterns && t.patterns.status === "ok") ? _patVerdictLabel(t.patterns.overall) : vpL("数据不足","insufficient data");
+      body = `
+        <div style="font-size:0.82rem;line-height:1.7;">
+          ${vpL("年化波动","Ann. volatility")} <b>${t.ann_vol_pct}%</b> ·
+          ${vpL("最大回撤","Max drawdown")} <b>${t.max_drawdown_pct}%</b> ·
+          β(${vpL("纳指","Nasdaq")}) <b>${t.beta_nasdaq ?? "—"}</b> ·
+          ${vpL("当前波动分位","Current vol percentile")} <b>${an.vol_percentile != null ? an.vol_percentile + "%" : "—"}</b>${highVolTag}${decoupledTag} ·
+          ${vpL("规律真伪","Pattern verdict")}: ${esc(patTxt)}
+          <button type="button" onclick="goToStockCheckup('${sym}')"
+            style="margin-left:.5rem;background:none;border:none;padding:0;color:var(--blue);cursor:pointer;
+                   font:inherit;text-decoration:underline;">${vpL("完整体检 →","Full check-up →")}</button>
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:.35rem;">${vpL("风险画像·非荐股非预测","Risk profile · not a recommendation, not a forecast")}</div>`;
+    }
+  }
+  return `<tr class="stx-expand-row" data-stock-expand="${sym}">
+    <td colspan="${colspan}" style="padding:.6rem .8rem;background:var(--surface2);border-bottom:1px solid var(--border-faint);">${body}</td>
+  </tr>`;
+}
+
 function renderStocksTable() {
   const el = document.getElementById("stocks-table");
   if (!el || !STOCKS) return;
+  const COLSPAN = 9;   // 股票/现价/1日/20日/YTD/距52周高/RSI14/>MA200/β —— 与表头列数对齐
   const fmt = (v, suffix="%") => v == null ? "—"
     : `<span style="color:${v >= 0 ? "#2ecc71" : "#e74c3c"}">${v > 0 ? "+" : ""}${v}${suffix}</span>`;
   const rows = Object.entries(STOCKS.stocks).map(([sym, s]) => {
@@ -840,8 +928,11 @@ function renderStocksTable() {
       ? `<span style="color:#2ecc71">✓</span>` : `<span style="color:#e74c3c">✗</span>`;
     const rsiColor = st.rsi14 > 70 ? "#e74c3c" : st.rsi14 < 30 ? "#2ecc71" : "var(--text)";
     const tag = s.is_mag7 ? `<span style="font-size:0.6rem;background:#9b59b633;color:#9b59b6;border-radius:3px;padding:0 3px;margin-left:3px;">M7</span>` : "";
-    return `<tr data-stock-symbol="${sym}" style="cursor:pointer;border-bottom:1px solid var(--border-faint);">
-      <td style="padding:.35rem .5rem;font-weight:600;">${sym}${tag}<br><span style="font-size:0.68rem;color:var(--muted);">${s.label}</span></td>
+    const expanded = _expandedStockSym === sym;
+    const caret = `<span class="stx-caret" aria-hidden="true">${expanded ? "▾" : "▸"}</span>`;
+    const rowHtml = `<tr data-stock-symbol="${sym}" tabindex="0" aria-expanded="${expanded}"
+        style="cursor:pointer;border-bottom:1px solid var(--border-faint);">
+      <td style="padding:.35rem .5rem;font-weight:600;">${caret}${sym}${tag}<br><span style="font-size:0.68rem;color:var(--muted);margin-left:1.1em;">${s.label}</span></td>
       <td style="padding:.35rem .5rem;text-align:right;">$${st.last}</td>
       <td style="padding:.35rem .5rem;text-align:right;">${fmt(st.chg_1d)}</td>
       <td style="padding:.35rem .5rem;text-align:right;">${fmt(st.chg_20d)}</td>
@@ -851,6 +942,7 @@ function renderStocksTable() {
       <td style="padding:.35rem .5rem;text-align:center;">${ma}</td>
       <td style="padding:.35rem .5rem;text-align:center;">${st.beta_nasdaq_1y ?? "—"}</td>
     </tr>`;
+    return rowHtml + (expanded ? renderStockCheckupExpandRow(sym, COLSPAN) : "");
   }).join("");
   el.innerHTML = `<table style="width:100%;font-size:0.78rem;border-collapse:collapse;min-width:640px;">
     <tr style="color:var(--muted);font-size:0.72rem;">
