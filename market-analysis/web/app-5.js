@@ -190,6 +190,7 @@ function renderAll() {
   safeRender(renderIndicesCompare,  "IndicesCompare");
   safeRender(renderLiveTracking,    "LiveTracking");
   safeRender(renderMarketClock,     "MarketClock");
+  safeRender(renderTodayLine,       "TodayLine");
   loadStocksPanel();
   lazyRender("chart-overnight",     loadOvernightPanel, "Overnight");
   loadNewsPanel();

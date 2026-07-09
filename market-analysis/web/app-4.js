@@ -1355,6 +1355,40 @@ setInterval(renderMarketClock, 30000);
 setInterval(_marketClockTick, 1000);
 
 // ═══════════════════════════════════════════════════════
+//  今日时间线（页头醒目位置）：今日日期(访客本地·完整含星期) ·
+//  美东精确时间(自动含夏令时+开/休市) · 阿德莱德精确时间。
+//  复用上面的 _clockState/_CLOCK_CN_DOW/_LOCAL_TZ——不重造第二套时区换算，每分钟自刷新。
+// ═══════════════════════════════════════════════════════
+function _isoDate(tz, now) {
+  // en-CA 的日期格式恰好是 YYYY-MM-DD，借用它免去手拼补零
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+function _mdhm(tz, now) {   // 美式 MM/DD HH:MM（Intl 自动处理夏令时）
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: tz, month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(now).reduce((a, x) => (a[x.type] = x.value, a), {});
+  return `${p.month}/${p.day} ${p.hour}:${p.minute}`;
+}
+function _dmhm(tz, now) {   // 澳式 DD/MM HH:MM
+  const p = new Intl.DateTimeFormat("en-GB", { timeZone: tz, day: "2-digit", month: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(now).reduce((a, x) => (a[x.type] = x.value, a), {});
+  return `${p.day}/${p.month} ${p.hour}:${p.minute}`;
+}
+function renderTodayLine() {
+  const el = document.getElementById("vp-todayline");
+  if (!el) return;
+  const now = new Date();
+  const wdKey = new Intl.DateTimeFormat("en-US", { timeZone: _LOCAL_TZ, weekday: "short" }).format(now);
+  const wd = vpLang() === "en" ? wdKey : (_CLOCK_CN_DOW[wdKey] || wdKey);
+  const etOpen = _clockState(now).isOpen;
+  const etStatus = vpL(etOpen ? "开盘中" : "休市", etOpen ? "open" : "closed");
+  el.innerHTML = vpL(
+    `📅 ${_isoDate(_LOCAL_TZ, now)} ${wd} · 美东 ${_mdhm("America/New_York", now)} ET(${etStatus}) · 阿德莱德 ${_dmhm("Australia/Adelaide", now)}`,
+    `📅 ${_isoDate(_LOCAL_TZ, now)} ${wd} · ET ${_mdhm("America/New_York", now)} (${etStatus}) · Adelaide ${_dmhm("Australia/Adelaide", now)}`
+  );
+}
+setInterval(renderTodayLine, 60000);
+
+// ═══════════════════════════════════════════════════════
 //  隔夜 vs 日内收益分解
 // ═══════════════════════════════════════════════════════
 let OVERNIGHT = null, _ovCur = null;

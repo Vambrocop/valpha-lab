@@ -80,6 +80,7 @@
   <button id="ob-guide-btn" aria-label="新手指南 / Guide" title="新手指南 / Guide">?</button>
   <button id="lang" aria-label="切换语言 / switch language"></button>
 </header>
+<div id="todayline" style="font-size:.8rem;color:var(--mut);margin:3px 0 0;font-variant-numeric:tabular-nums"></div>
 
 <!-- Onboarding overlay -->
 <div id="ob-backdrop" class="ob-hidden" role="dialog" aria-modal="true" aria-labelledby="ob-title">
@@ -230,6 +231,32 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+// ── 今日时间线（页头）：今日(访客本地·完整含星期) · 美东精确(自动含夏令时+开/休市) · 阿德莱德精确 ──
+// 命名空间 vpTL_ 隔离，独立于本页其余全局（this page is self-contained, no app-*.js dependency）。
+// 语言：renderTodayLine() 从 paint() 调用（不改 #lang 的 onclick 处理器本身），每次读当前 LANG。
+const vpTL_CN_DOW={Mon:"周一",Tue:"周二",Wed:"周三",Thu:"周四",Fri:"周五",Sat:"周六",Sun:"周日"};
+const vpTL_LOCAL_TZ=Intl.DateTimeFormat().resolvedOptions().timeZone||"";
+function vpTL_iso(tz,now){return new Intl.DateTimeFormat("en-CA",{timeZone:tz,year:"numeric",month:"2-digit",day:"2-digit"}).format(now);}
+function vpTL_mdhm(tz,now){const p=new Intl.DateTimeFormat("en-US",{timeZone:tz,month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(now).reduce((a,x)=>(a[x.type]=x.value,a),{});return `${p.month}/${p.day} ${p.hour}:${p.minute}`;}
+function vpTL_dmhm(tz,now){const p=new Intl.DateTimeFormat("en-GB",{timeZone:tz,day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(now).reduce((a,x)=>(a[x.type]=x.value,a),{});return `${p.day}/${p.month} ${p.hour}:${p.minute}`;}
+function vpTL_etOpen(now){
+  const p=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hour:"numeric",minute:"numeric",weekday:"short",hour12:false}).formatToParts(now).reduce((a,x)=>(a[x.type]=x.value,a),{});
+  const isWeekday=!["Sat","Sun"].includes(p.weekday);
+  const mins=(parseInt(p.hour)%24)*60+parseInt(p.minute);
+  return isWeekday&&mins>=570&&mins<960;   // 美东 9:30–16:00（不含假日）
+}
+function renderTodayLine(){
+  const el=$("todayline"); if(!el) return;
+  const now=new Date();
+  const wdKey=new Intl.DateTimeFormat("en-US",{timeZone:vpTL_LOCAL_TZ,weekday:"short"}).format(now);
+  const wd=LANG==="en"?wdKey:(vpTL_CN_DOW[wdKey]||wdKey);
+  const open=vpTL_etOpen(now);
+  const st=LANG==="en"?(open?"open":"closed"):(open?"开盘中":"休市");
+  el.innerHTML=LANG==="en"
+    ?`📅 ${vpTL_iso(vpTL_LOCAL_TZ,now)} ${wd} · ET ${vpTL_mdhm("America/New_York",now)} (${st}) · Adelaide ${vpTL_dmhm("Australia/Adelaide",now)}`
+    :`📅 ${vpTL_iso(vpTL_LOCAL_TZ,now)} ${wd} · 美东 ${vpTL_mdhm("America/New_York",now)} ET(${st}) · 阿德莱德 ${vpTL_dmhm("Australia/Adelaide",now)}`;
+}
+setInterval(renderTodayLine,60000);
 let SIG=null,REG=null,DIG=null,PAPER=null,V150=null,CR=null,OUT=null,LLM=null,OVR=null;
 const STANCE_EN={"强防御":"Strong defense","偏防御":"Lean defensive","中性":"Neutral","偏积极":"Lean bullish","强积极":"Strong bullish","数据不足":"Insufficient data"};
 const CALL_EN={"看涨":"Bullish","看跌":"Bearish","中性":"Neutral","偏多":"Lean long"};
@@ -330,6 +357,7 @@ function paint(){
   applyStatic();tools();renderHero();
   obRender(); // re-render onboarding text if overlay is open
   renderFreshness(); // 行情数据新鲜度小标
+  renderTodayLine(); // 📅 今日时间线（今日/美东/阿德莱德）——语言随 paint() 重跑即时刷新
   if(SIG){$("sig").innerHTML=`tier ${esc(String(SIG.latest_tier??"—"))} · <span class="mut" style="font-size:1rem">prob</span> ${(SIG.latest_prob??0).toFixed(2)}`;$("signote").textContent=t("signote");}
   if(REG){
     // 🌡️ 市场环境：展示各分项 label + composite 一句话（描述性，无预测）
