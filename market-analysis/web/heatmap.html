@@ -49,7 +49,10 @@
 </details>
 <div class="bar">
   <span data-i18n="colorby"></span>
-  <button id="btn6" class="on" data-k="c6" data-i18n="lbl6"></button>
+  <button id="btnD" class="on" data-k="d1" data-i18n="lblD"></button>
+  <button id="btnW" data-k="w1" data-i18n="lblW"></button>
+  <button id="btnM" data-k="m1" data-i18n="lblM"></button>
+  <button id="btn6" data-k="c6" data-i18n="lbl6"></button>
   <button id="btn1" data-k="c1" data-i18n="lbl1"></button>
   <span id="src"></span>
 </div>
@@ -69,16 +72,19 @@ const SEC_EN={"半导体":"Semis","科技":"Tech","通信服务":"Comms","可选
 
 const I18N={
   title:{zh:"🔳 板块热力图",en:"🔳 Sector Heatmap"},
-  takeaway:{zh:"🔳 <b>一图看全 150 只股近 6 月/1 年涨跌分布</b>——绿格涨幅大、红格跌幅大。颜色只说明历史表现，<b>非预测、非买卖建议</b>。",
-            en:"🔳 <b>See all 150 stocks' 6-month/1-year return distribution at a glance</b> — green = bigger gain, red = bigger loss. Colors describe historical returns only, <b>not a forecast or buy signal</b>."},
+  takeaway:{zh:"🔳 <b>一图看全 150 只股的涨跌分布，可切换日/周/月/6月/1年</b>——绿格涨幅大、红格跌幅大。颜色只说明历史表现，<b>非预测、非买卖建议</b>。",
+            en:"🔳 <b>See all 150 stocks' return distribution — switch between day/week/month/6-month/1-year</b> — green = bigger gain, red = bigger loss. Colors describe historical returns only, <b>not a forecast or buy signal</b>."},
   more_note:{zh:"展开看：颜色含义 + 幸存者偏差说明（专业细节）",en:"Expand: colour scale + survivorship bias note (expert detail)"},
-  note:{zh:"<b>历史涨跌幅结构快照，非预测、非买卖信号。</b>红绿只表示涨跌幅大小——绿=涨幅较大，红=跌幅较大；仅为描述性对比，与「该不该买」无关。幸存者偏差：仅含当前在册的 150 只。",
-        en:"<b>A descriptive snapshot of historical returns — not a forecast, not a buy/sell signal.</b> Green = larger gain, Red = larger loss; purely descriptive comparison, not investment advice. Survivorship bias: only current 150 names included."},
+  note:{zh:"<b>历史涨跌幅结构快照，非预测、非买卖信号。</b>红绿只表示涨跌幅大小——绿=涨幅较大，红=跌幅较大；仅为描述性对比，与「该不该买」无关。日/周/月/6月/1年各自用不同截断阈值上色，避免短周期波动被长周期尺度压平。幸存者偏差：仅含当前在册的 150 只。",
+        en:"<b>A descriptive snapshot of historical returns — not a forecast, not a buy/sell signal.</b> Green = larger gain, Red = larger loss; purely descriptive comparison, not investment advice. Day/week/month/6-month/1-year each use their own clamp threshold so short-period moves aren't flattened by a long-period scale. Survivorship bias: only current 150 names included."},
   colorby:{zh:"颜色依据：",en:"Color by: "},
+  lblD:{zh:"日%",en:"1D%"},
+  lblW:{zh:"周%",en:"1W%"},
+  lblM:{zh:"月%",en:"1M%"},
   lbl6:{zh:"6月%",en:"6M%"},
   lbl1:{zh:"1年%",en:"1Y%"},
-  foot:{zh:"等权格（无市值字段，故每格等大）。颜色阶：全部股票的涨跌幅线性映射，端点截断在 ±50% 避免极值吃光色阶。hover 查看详情。数据：实时 valpha150.json，描述性历史、非预测。",
-        en:"Equal-weight tiles (no market-cap field; all tiles same size). Color scale: returns linearly mapped across all stocks; clamped at ±50% to prevent extremes collapsing the gradient. Hover for details. Data: live valpha150.json — descriptive history, not a forecast."},
+  foot:{zh:"等权格（无市值字段，故每格等大）。颜色阶：按所选周期各自线性映射，端点截断阈值：日±10%、周±20%、月±30%、6月/1年±50%，避免极值吃光色阶。hover 查看详情。数据：实时 valpha150.json，描述性历史、非预测。",
+        en:"Equal-weight tiles (no market-cap field; all tiles same size). Color scale: returns linearly mapped per selected period; clamped at ±10% (1D) / ±20% (1W) / ±30% (1M) / ±50% (6M, 1Y) to prevent extremes collapsing the gradient. Hover for details. Data: live valpha150.json — descriptive history, not a forecast."},
   live:{zh:"实时 ✓",en:"Live ✓"},
   err:{zh:"暂不可用 — 拉不到 valpha150.json，确认 Pages 已部署。",en:"Unavailable — can't load valpha150.json; check Pages deployment."},
   asof:{zh:"数据日",en:"as of"},
@@ -91,14 +97,17 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 
-let DATA=[], colorKey="c6";
+let DATA=[], colorKey="d1";
 
-/* ── colour maths ── */
-const CLAMP=50;  /* outlier cap ± in % points */
-function pct2rgb(v){
-  /* v is already clamped to [-CLAMP, CLAMP] */
-  /* centre=0 → neutral #888; +CLAMP → green #27ae60-ish; -CLAMP → red #c0392b-ish */
-  const ratio=v/CLAMP; /* -1..1 */
+/* ── colour maths ──
+   Each period has its own typical volatility, so each gets its own clamp
+   (outlier cap ± in % points) — a daily ±50 clamp would flatten every tile
+   to near-neutral since daily moves rarely exceed ~8-10%. */
+const CLAMP_BY_KEY={d1:10, w1:20, m1:30, c6:50, c1:50};
+function pct2rgb(v,clamp){
+  /* v is already clamped to [-clamp, clamp] */
+  /* centre=0 → neutral #888; +clamp → green #27ae60-ish; -clamp → red #c0392b-ish */
+  const ratio=v/clamp; /* -1..1 */
   if(ratio>=0){
     /* 0→neutral, 1→green */
     const r=Math.round(40 + (0-40)*ratio);   /* 40→0 */
@@ -114,17 +123,19 @@ function pct2rgb(v){
     return `rgb(${r},${g},${b})`;
   }
 }
-function tileColor(v){
+function tileColor(v,clamp){
   if(v==null)return "#2a2a2a";
-  const clamped=Math.max(-CLAMP,Math.min(CLAMP,v));
-  return pct2rgb(clamped);
+  const clamped=Math.max(-clamp,Math.min(clamp,v));
+  return pct2rgb(clamped,clamp);
 }
 
 /* ── text colour: always dark for legibility on mid-to-bright backgrounds ── */
-function textCol(v){
-  /* For very dark neutral tiles (near 0 with dark bg), use lighter text */
+function textCol(v,clamp){
+  /* For very dark neutral tiles (near 0 with dark bg), use lighter text.
+     Threshold scales with the period's clamp so "near zero" means the same
+     relative shade (~6% of the way to full colour) across all periods. */
   if(v==null)return "#6e7681";
-  if(Math.abs(v)<3)return "#c9d1d9";  /* near-zero → light grey on dark bg */
+  if(Math.abs(v)<clamp*0.06)return "#c9d1d9";  /* near-zero → light grey on dark bg */
   return "rgba(0,0,0,.72)";
 }
 
@@ -136,12 +147,13 @@ function fmt(v,signed){
 function secLabel(s){return LANG==="en"?(SEC_EN[s]||s):s;}
 
 function buildTooltip(d){
+  const nd=fmt(d.d1,true), nw=fmt(d.w1,true), nm=fmt(d.m1,true);
   const n6=fmt(d.c6,true), n1=fmt(d.c1,true), nv=fmt(d.v,false), nfh=fmt(d.fh,true);
   const vol=t("vol"), fhL=t("fh");
   if(LANG==="en"){
-    return `${d.t} · ${d.n}\nSector: ${SEC_EN[d.sec]||d.sec}\n6M: ${n6}  1Y: ${n1}\n${vol}: ${nv}  ${fhL}: ${nfh}`;
+    return `${d.t} · ${d.n}\nSector: ${SEC_EN[d.sec]||d.sec}\n1D: ${nd}  1W: ${nw}  1M: ${nm}\n6M: ${n6}  1Y: ${n1}\n${vol}: ${nv}  ${fhL}: ${nfh}`;
   }
-  return `${d.t} · ${d.n}\n板块：${d.sec}\n6月: ${n6}  1年: ${n1}\n${vol}: ${nv}  ${fhL}: ${nfh}`;
+  return `${d.t} · ${d.n}\n板块：${d.sec}\n日: ${nd}  周: ${nw}  月: ${nm}\n6月: ${n6}  1年: ${n1}\n${vol}: ${nv}  ${fhL}: ${nfh}`;
 }
 
 function render(){
@@ -158,6 +170,7 @@ function render(){
     return bv-av;
   }));
 
+  const clamp=CLAMP_BY_KEY[colorKey]||50;
   let html="";
   Object.keys(SEC).forEach(sec=>{
     const grp=groups[sec];
@@ -169,8 +182,8 @@ function render(){
   <div class="tile-grid">`;
     grp.forEach(d=>{
       const v=d[colorKey];
-      const bg=tileColor(v);
-      const tc=textCol(v);
+      const bg=tileColor(v,clamp);
+      const tc=textCol(v,clamp);
       const valStr=fmt(v,true);
       const tip=buildTooltip(d);
       html+=`<div class="tile" style="background:${bg};color:${tc}" title="${esc(tip)}"><span class="tk" style="color:${tc}">${esc(d.t)}</span><span class="val" style="color:${tc}">${esc(valStr)}</span></div>`;
@@ -200,10 +213,11 @@ $("lang").onclick=()=>{
 };
 
 /* colour-key toggle */
-[$("btn6"),$("btn1")].forEach(btn=>{
+const LENS_BTNS=[$("btnD"),$("btnW"),$("btnM"),$("btn6"),$("btn1")];
+LENS_BTNS.forEach(btn=>{
   btn.onclick=()=>{
     colorKey=btn.dataset.k;
-    [$("btn6"),$("btn1")].forEach(b=>b.classList.toggle("on",b===btn));
+    LENS_BTNS.forEach(b=>b.classList.toggle("on",b===btn));
     render();
   };
 });
