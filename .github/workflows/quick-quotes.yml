@@ -35,11 +35,22 @@ jobs:
       - name: Fetch quotes
         run: python market-analysis/scripts/quick_quotes.py
 
+      - name: Staleness watchdog (卡住主动敲门：日读/周读/流水线超期 → Telegram，按日去重)
+        # 刻意放在这里而非 refresh-data：流水线卡住时它自己不会跑，独立班次才看得见事故
+        # (#100-104 时它就沉默了 5 班)。读已提交产物时间戳(=访客所见)；未配置 Telegram
+        # 或发送失败均不阻断报价任务，前端"⚠疑似卡住"徽章仍兜底。
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python market-analysis/scripts/staleness_watchdog.py || echo "::warning::watchdog 异常(非致命)"
+
       - name: Commit & push (rebase-retry, races with refresh-data are expected)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/quotes.json market-analysis/web/quotes.json
+          # watchdog 按日去重的状态 + 推送留痕(可能不存在/无变化，失败不阻断)
+          git add market-analysis/data/watchdog_state.json market-analysis/web/telegram_status.json docs/telegram_status.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "quotes unchanged, skip commit"
             exit 0

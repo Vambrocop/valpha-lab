@@ -1,14 +1,31 @@
 """
 run_all.py — 一键运行完整流水线并同步部署目录
 
-顺序很重要：
-  1. 抓数据（fetch_data / long_history）
-  2. 基础统计 + 时机分析 + 事件研究（build_signals 的输入）
-  3. build_signals 第一遍（生成 daily_signals，供回测读取）
-  4. backtest / walk_forward（写 data/processed/*.json）
-  5. build_signals 第二遍（把最新回测/滚动验证结果嵌入 signals.json）
-  6. export_chart_data（prices.json / charts_extra.json）
-  7. 把 web/ 镜像到仓库根 docs/（GitHub Pages 部署目录）
+═══ 阶段 DAG 地图（R5·2026-07-07：哪步产出→谁消费；接手前先读这张图）═══════════
+【A 取数】fetch_data(combined_prices/vix…) · long_history(SP500_long/NASDAQ_COMP_long)
+    └→ 几乎所有下游；raw/ 全目录 gitignore(再生数据)——CI 干净检出没有它们,
+       测试绝不许依赖(见 tools/pre_commit_gate.py 的 CI 同构门,#100-104 教训)
+【B 独立统计族】placebo(日历防伪)→seasonality(原始计数) · event_causal · overreaction
+    →overreaction_alert(计分账本) · risk_dashboard · market_regime · conformal · cycles
+    · overnight_analysis(隔夜因子→walk_forward 特征) · fomc_study
+    └→ 各写自己的 web/*.json;market_regime+overreaction 另被 stock_checkup/日读吃
+【C 信号主链】analyze/timing_analysis/event_study/horizon_stats → build_signals①(daily_signals)
+    → backtest → walk_forward(walk_forward_results·MODEL_VERSION 所在)
+    → factor_pruning → fdr_crossfamily(全站显著性收口)
+    → candidate_registry(锚·append-only)→ autodiscovery(104候选·BY-FDR·喂④) → cpcv(PBO)
+    → vol_model/market_structure → track_predictions(prediction_log·append-only) → benchmark
+    → build_signals②(把回测/验证/追踪嵌回 signals.json——「两遍」是刻意的,别合并)
+【D 展示/出格层】export_chart_data/fx/stocks → stock_checkup → fetch_news → paper_trading
+    → daily_brief/weekly_report/daily_digest → tipjar/outlook/composite_read(计分账本)
+    → survivors_live(读 autodiscovery 存活→喂日读) → llm_daily_read → llm_monthly_read
+    (周读【不在】此处:weekly-review.yml 周六生成完整周,勿再接回——07-07 撤重复的教训)
+    → llm_prediction → btc_nasdaq_backtest/regime_forward → fetch_insider/fetch_ipo(fail-soft)
+    → insider_signal/pick_ledger → scorecard → evidence_ledger → knowledge_base(kb_ledger·OOS门4)
+    → flicker
+【E 封存/门禁/部署】ledger_sidecar(13账本哈希链) → verify_output(不绿不发布)
+    → web/ 镜像 docs/(Pages 部署目录;check_docs_mirror 守漂移)
+依赖铁则:改 C 链任何统计 → 全量跑通+pytest 绿+新旧指标对比;账本(append-only)绝不改历史行。
+═══════════════════════════════════════════════════════════════════════════════
 
 加 --full 参数会额外跑重型 ML 分析（advanced_analysis / multivariate）。
 加 --light 参数只刷数据和信号（盘中小时级 CI 用）：跳过长历史/回测/walk-forward/
