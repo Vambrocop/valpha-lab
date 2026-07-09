@@ -81,10 +81,15 @@
 - 两个 §3 边角(EVT to_datetime 防御/脱钩边界测试)核实**均已存在**,§3 已改标——不是待办。
 - **陈旧可见性已上线**:周/月/日读卡片超期自曝(index/dashboard),月读七月起 relabel"上月回顾"。
 
-**🎨 设计冲刺提案(2026-07-09·Fable 起草·待用户拍板后开工)**:用户嫌"不够高级/图和互动少"。
-诊断+分层方案在 `market-analysis/docs_internal/DESIGN_SPRINT_SPEC.md`(D1视觉系统→D2 sparkline
-微图层→D3探索式交互→D4克制动效→D5首页IA[需线框确认])。建议首轮 D1+D2。硬约束:零CDN/零外部
-字体/诚实红线(装饰不造信号感)/零新框架。**用户批了才动**。
+**🎨 设计冲刺(SPEC 见 docs_internal/DESIGN_SPRINT_SPEC.md;Fable=设计总监,实现才外包)**:
+- ✅ **D1 视觉系统**(7d9cce7·Opus建):双CSS令牌并轨(dashboard绿红黄并到正典)/数字tabular-nums/
+  卡片三级重量类/--font-sys 统一。
+- ✅ **D2 微图表**(f7bee6c·Sonnet建):vp_spark.js 零依赖;倾向分30日(hero双页·composite_read
+  加history纯聚合)/模型概率60日(0.5参考线)/体制成分分位条(3根,诚实只画有percentile的)/恐贪7点。
+  配色纪律=走势线一律中性,绝不按涨跌染线。pytest 540。
+- ⏳ **D3 探索式交互 / D4 克制动效 / D5 首页IA(要线框)**:待用户拍板再开。
+- 设计遗留(下轮候选):JS内联色清理·hero卡片全站铺开(D5)·两套品牌紫并轨(#9b59b6 vs #a371f7,
+  品牌决策要用户/Fable定)·观察台应期带(需后端导出历史)·style.css 已无使用者的 .fg-spark* 规则清理。
 
 **下一个该做(建议顺序)**:T3(机械·Sonnet 独立可做,无判断)最省主脑;T2(单审·中等,点时间纪律
 是唯一坑)Opus 或 Fable 皆可;T4/T5 等日历(~8月初)。**T7 大工程留 Fable 在场时立项**。
