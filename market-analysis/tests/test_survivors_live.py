@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 import survivors_live as sl
+import autodiscovery
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -179,6 +180,106 @@ def test_september_dormant_other_months(monkeypatch):
     _freeze_month(monkeypatch, 2024, 7, 1)
     active, state = sl._september_state()
     assert active is False and "非 9 月" in state
+
+
+# ── _cot_nq_extreme_short_state：COT 纳指仓位极空(2026-07-08 新增，全合成、不碰真 data/cot.csv)──
+#   monkeypatch 打在 autodiscovery 模块本身(函数内部是 `import autodiscovery as ad` 后调 `ad._cot_reports`，
+#   两个引用名指向 sys.modules 里同一个模块对象，打哪个名字都生效)。_POS_WINDOW/_rolling_pctrank 用真的。
+def _cot_reports_df(n, start="2015-01-06", values=None, usable_overrides=None):
+    """合成 COT 报告级数据：report_date 每 7 天一份(远早于真实"今天"→天然可用，除非显式覆盖)。"""
+    dates = pd.date_range(start, periods=n, freq="7D")
+    usable = list(dates + pd.Timedelta(days=6))
+    if usable_overrides:
+        for i, v in usable_overrides.items():
+            usable[i] = v
+    if values is None:
+        values = np.random.default_rng(0).normal(0, 1, n)
+    return pd.DataFrame({"report_date": dates, "usable_from": pd.to_datetime(usable), "value": values})
+
+
+def test_cot_future_report_excluded_from_active_and_text(monkeypatch):
+    """点时间命门(最重要)：最后一份报告 usable_from=明天(未来)且 value=全序列最小值
+    (若被计入，末份窗口分位≈1/156*100<10 必判极空)——正确实现必须排除它：
+    active 不受污染、state 文本里的"最新可用"报告日=倒数第二份，未来那份完全不出现在文案里。"""
+    n = 200
+    values = np.full(n, 50.0)                     # 常数序列：一旦正确排除未来份，末份分位=100(不极端)
+    values[-1] = 0.0                               # 未来那份人为设成全序列最小(若计入必成极空)
+    today = pd.Timestamp(datetime.date.today())
+    tomorrow = today + pd.Timedelta(days=1)
+    reports = _cot_reports_df(n, values=values, usable_overrides={n - 1: tomorrow})
+    monkeypatch.setattr(autodiscovery, "_cot_reports", lambda market, series: reports)
+    active, state = sl._cot_nq_extreme_short_state()
+    assert active is False                                          # 未被未来极空值污染
+    assert str(reports["report_date"].iloc[-2].date()) in state     # 报告日=倒数第二份
+    assert str(reports["report_date"].iloc[-1].date()) not in state  # 未来那份不出现在文案里
+
+
+def test_cot_report_included_once_usable_from_is_yesterday(monkeypatch):
+    """对照组：同一份报告(全序列最小值) usable_from 改成昨天(已公布)后必须被计入——
+    证明上一条测试排除的是"点时间"而非其他原因(如巧合排序)。"""
+    n = 200
+    values = np.full(n, 50.0)
+    values[-1] = 0.0
+    today = pd.Timestamp(datetime.date.today())
+    yesterday = today - pd.Timedelta(days=1)
+    reports = _cot_reports_df(n, values=values, usable_overrides={n - 1: yesterday})
+    monkeypatch.setattr(autodiscovery, "_cot_reports", lambda market, series: reports)
+    active, state = sl._cot_nq_extreme_short_state()
+    assert active is True
+    assert str(reports["report_date"].iloc[-1].date()) in state     # 报告日=最后一份(已计入)
+    assert "极空档·应期" in state
+
+
+def test_cot_extreme_short_active_when_at_3yr_low(monkeypatch):
+    """极空判定：157 份可用报告，末份 value 为 156 窗口内最小 → 分位 ≤10 → active True + "应期"文案。"""
+    n = 157
+    rng = np.random.default_rng(0)
+    values = rng.normal(0, 1, n)
+    values[-1] = values.min() - 10.0               # 强制末份严格小于窗口(index1..156)内其余所有值
+    reports = _cot_reports_df(n, values=values)
+    monkeypatch.setattr(autodiscovery, "_cot_reports", lambda market, series: reports)
+    active, state = sl._cot_nq_extreme_short_state()
+    assert active is True
+    assert "极空档·应期" in state
+
+
+def test_cot_extreme_short_inactive_at_median_level(monkeypatch):
+    """极空判定对照：末份 value 落在窗口中位水平 → 分位≈50，远高于 10 → active False，文案不含"应期"。"""
+    n = 157
+    rng = np.random.default_rng(0)
+    values = rng.normal(0, 1, n)
+    values[-1] = np.median(values[1:156])           # 与 _rolling_pctrank 实际窗口(index1..156)对齐取中位
+    reports = _cot_reports_df(n, values=values)
+    monkeypatch.setattr(autodiscovery, "_cot_reports", lambda market, series: reports)
+    active, state = sl._cot_nq_extreme_short_state()
+    assert active is False
+    assert "未到 ≤10 极空档" in state
+    assert "应期" not in state
+
+
+def test_cot_insufficient_reports_returns_none(monkeypatch):
+    """可用报告 <156 份(暖机中)→ (None, 含"不足"的说明)，不装极端判定。"""
+    n = 100
+    reports = _cot_reports_df(n)
+    monkeypatch.setattr(autodiscovery, "_cot_reports", lambda market, series: reports)
+    active, state = sl._cot_nq_extreme_short_state()
+    assert active is None
+    assert "不足" in state
+
+
+def test_cot_reports_none_returns_none_gracefully(monkeypatch):
+    """`_cot_reports` 返回 None(如 data/cot.csv 缺失)→ 优雅降级，不崩。"""
+    monkeypatch.setattr(autodiscovery, "_cot_reports", lambda market, series: None)
+    active, state = sl._cot_nq_extreme_short_state()
+    assert active is None and "缺失" in state
+
+
+def test_cot_reports_empty_returns_none_gracefully(monkeypatch):
+    """`_cot_reports` 返回空 DataFrame → 优雅降级，不崩(len==0 与 None 同路径)。"""
+    empty = pd.DataFrame({"report_date": pd.to_datetime([]), "usable_from": pd.to_datetime([]), "value": []})
+    monkeypatch.setattr(autodiscovery, "_cot_reports", lambda market, series: empty)
+    active, state = sl._cot_nq_extreme_short_state()
+    assert active is None and "缺失" in state
 
 
 # ════════════════════════════════════════════════════════════════════════════

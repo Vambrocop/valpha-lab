@@ -111,6 +111,32 @@ def _september_state():
     return active, f"当前 {m} 月（{'正是 9 月·应期' if active else '非 9 月'}）"
 
 
+def _cot_nq_extreme_short_state():
+    """COT 纳指投机净仓位是否处 3 年(156 份周报)最低 10% 档(极空)。
+    点时间命门(T2·2026-07-08)：只用 usable_from <= 今天 的报告——CFTC 周二快照周五才发布
+    (usable_from≈report_date+4 交易日)，绝不偷看"已统计但还没公布"的报告。
+    窗口(156)/阈值(≤10)/分位函数 全部复用 autodiscovery 原定义(单一真相源,改上游自动传导)。"""
+    try:
+        import autodiscovery as ad
+        rep = ad._cot_reports("nasdaq100", "legacy_noncomm_pct_oi")
+    except Exception as e:
+        return None, f"COT 数据不可用({type(e).__name__})"
+    if rep is None or len(rep) == 0:
+        return None, "COT 数据缺失"
+    today = pd.Timestamp(datetime.date.today())
+    usable = rep[rep["usable_from"] <= today]
+    if len(usable) < ad._POS_WINDOW:
+        return None, f"可用 COT 报告不足 {ad._POS_WINDOW} 份(暖机中)"
+    pct = float(ad._rolling_pctrank(usable["value"].values)[-1])
+    if np.isnan(pct):
+        return None, "COT 分位未算出"
+    active = bool(pct <= 10)
+    last = usable.iloc[-1]
+    return active, (f"最新可用 COT 报告(报告日 {pd.Timestamp(last['report_date']).date()}·"
+                    f"{pd.Timestamp(last['usable_from']).date()} 起可用)：纳指投机净仓位处 3 年第 {pct:.0f} 分位"
+                    f"（{'≤10 极空档·应期' if active else '未到 ≤10 极空档'}）")
+
+
 def _world_cup_state():
     """触发组=非杯年夏季(label==1)。应期 = 夏季(6-8月) 且 今年非世界杯年——杯年夏季触发组不成立。"""
     today = datetime.date.today()
@@ -162,6 +188,9 @@ _DESCRIPTORS = {
     ("calendar", "world_cup_year_nasdaq"): dict(  # _cal_windows·先验:杯年夏季偏弱 → label==1=非杯年夏季;base=补集杯年夏季
         name="纳指世界杯年夏季效应（分心先验）", trigger="非世界杯年的夏季", rest="世界杯年夏季",
         horizon="当日", state=_world_cup_state),
+    ("positioning", "legacy_noncomm_pct_oi_lo_h60_nasdaq100"): dict(  # _diff_windows → base=全样本基率(#7 新存活·T2 接入)
+        name="COT 纳指投机仓位极空（逆向拥挤指标）", trigger="投机净仓位处 3 年最低 10% 档时", rest="全样本基率",
+        horizon="纳指未来 60 日", state=_cot_nq_extreme_short_state),
 }
 
 
