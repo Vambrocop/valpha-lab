@@ -182,6 +182,7 @@ function renderAll() {
   safeRender(renderForecastChart,   "Forecast");
   safeRender(renderTodayRec,        "TodayRec");
   safeRender(renderForecastCalendar,"ForecastCal");
+  safeRender(renderForecastStrip,   "ForecastStrip");
   safeRender(renderSentimentPanel,  "Sentiment");
   safeRender(renderEconCalendar,    "EconCal");
   lazyRender("chart-dip-recovery",  renderDipGuide, "DipGuide");

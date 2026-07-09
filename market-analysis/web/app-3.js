@@ -396,6 +396,11 @@ function renderForecastCalendar() {
   const TC = { 5:"#27ae60", 4:"#2ecc71", 3:"#f1c40f", 2:"#e67e22", 1:"#e74c3c" };
   const TB = { 5:"rgba(39,174,96,.22)", 4:"rgba(46,204,113,.18)", 3:"rgba(241,196,15,.18)", 2:"rgba(230,126,34,.18)", 1:"rgba(231,76,60,.18)" };
 
+  // 档位分布（顶部结论 + 底部统计条共用，别算两遍）
+  const strong = allFc.filter(d => d.tier >= 4).length;
+  const weak   = allFc.filter(d => d.tier <= 2).length;
+  const neut   = allFc.length - strong - weak;
+
   // Group by ISO week (Monday-based) — parse date string directly to avoid UTC/local timezone issues
   const weeks = {};
   allFc.forEach(d => {
@@ -410,8 +415,21 @@ function renderForecastCalendar() {
   });
 
   const today = localDateStr();
+  let html = "";
+  // 结论抬头：仅当 40 天全落中性档（无强/弱分化，即 calibration_flat 的数据表现）才加——
+  // 区间从 min/max prob 四舍五入算出，不硬编码，档位有分化时不写这句（别写死判断）
+  if (strong === 0 && weak === 0) {
+    const probs = allFc.map(d => d.prob);
+    const lo = Math.round(Math.min(...probs) * 100);
+    const hi = Math.round(Math.max(...probs) * 100);
+    html += `<div class="insight" style="margin-bottom:.75rem;">
+      <strong>${vpL("结论：","Conclusion: ")}</strong>${vpL(
+        `未来 ${allFc.length} 天没有统计上更该买的某一天——概率全挤在 ${lo}–${hi}%（样本外校准平坦，无择时优势）。这本身就是结果：别靠"挑日子"。`,
+        `None of the next ${allFc.length} trading days is statistically more worth buying — probabilities all cluster in ${lo}–${hi}% (out-of-sample calibration is flat, no timing edge). That itself is the finding: don't try to "pick the day."`
+      )}</div>`;
+  }
   // Legend
-  let html = `<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.5rem;font-size:0.72rem;">
+  html += `<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.5rem;font-size:0.72rem;">
     <span style="color:var(--muted)">${vpL("颜色说明：","Color key:")}</span>
     <span><span style="color:#2ecc71">■</span> ${vpL("偏强信号(T4-5)","Strong-leaning (T4-5)")}</span>
     <span><span style="color:#f1c40f">■</span> ${vpL("中性观望(T3)","Neutral (T3)")}</span>
@@ -446,9 +464,6 @@ function renderForecastCalendar() {
   });
   html += `</div>`;
 
-  const strong = allFc.filter(d => d.tier >= 4).length;
-  const weak   = allFc.filter(d => d.tier <= 2).length;
-  const neut   = allFc.length - strong - weak;
   html += `<div style="font-size:0.75rem;color:var(--muted);margin-top:.6rem;display:flex;gap:1rem;flex-wrap:wrap;">
     <span>${vpL(`共 ${allFc.length} 个交易日`, `${allFc.length} trading days total`)}</span>
     <span style="color:#2ecc71">${vpL(`强势: ${strong}天`, `Strong: ${strong}d`)}</span>
@@ -457,6 +472,49 @@ function renderForecastCalendar() {
   </div>`;
 
   el.innerHTML = html;
+}
+
+// ── 今日页前瞻小条（紧凑条，指向📅计划页完整日历）──
+// 数据同源 renderForecastCalendar：SIGNALS.next_opportunities.all_forecast。
+// 缺数据→整条隐藏，不显示空壳；全中性(calibration_flat 的数据表现)时不装作有档位差异。
+function renderForecastStrip() {
+  const el = document.getElementById("forecast-strip");
+  if (!el) return;
+  const allFc = SIGNALS?.next_opportunities?.all_forecast || [];
+  if (!SIGNALS || !allFc.length) { el.style.display = "none"; return; }
+
+  const strong = allFc.filter(d => d.tier >= 4).length;
+  const weak   = allFc.filter(d => d.tier <= 2).length;
+  const neut   = allFc.length - strong - weak;
+
+  let msg;
+  if (strong === 0 && weak === 0) {
+    // 区间从 min/max prob 四舍五入算出，别硬编码
+    const probs = allFc.map(d => d.prob);
+    const lo = Math.round(Math.min(...probs) * 100);
+    const hi = Math.round(Math.max(...probs) * 100);
+    msg = vpL(
+      `未来${allFc.length}个交易日买入概率全在中性档（${lo}–${hi}%）——没有统计上更该买的某一天`,
+      `All ${allFc.length} upcoming trading days sit in the neutral tier (${lo}–${hi}%) — no single day is statistically more worth buying`
+    );
+  } else {
+    const best = SIGNALS.next_opportunities?.top_entry?.[0] ||
+                 allFc.reduce((b, d) => d.prob > b.prob ? d : b, allFc[0]);
+    msg = vpL(
+      `未来${allFc.length}个交易日：${strong}天强势 / ${neut}天中性 / ${weak}天偏弱 · 最高 ${best.date} ${Math.round(best.prob*100)}%`,
+      `Next ${allFc.length} trading days: ${strong}d strong / ${neut}d neutral / ${weak}d weak · peak ${best.date} ${Math.round(best.prob*100)}%`
+    );
+  }
+
+  el.style.display = "";
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;">
+      <div style="font-size:0.82rem;color:var(--text);">📅 ${msg}</div>
+      <button type="button" onclick="switchView('plan')"
+        style="background:var(--surface2);border:1px solid var(--border);color:var(--blue);
+               padding:.35rem .85rem;border-radius:16px;font-size:0.78rem;cursor:pointer;
+               white-space:nowrap;font-family:inherit;">${vpL("看完整日历 →","See full calendar →")}</button>
+    </div>`;
 }
 
 // ── 重要经济日历 ──
