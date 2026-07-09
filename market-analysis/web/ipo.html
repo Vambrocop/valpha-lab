@@ -62,12 +62,12 @@ let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 
 const I18N={
-  title:{zh:"🛫 IPO 雷达 · 2026-06 快照",en:"🛫 IPO radar · 2026-06 snapshot"},
-  takeaway:{zh:"🛫 <b>三档清晰分开</b>：已上市（可买）· 已递交 S-1（递交≠确定上市）· 传闻预期（未证实·可能根本不来）。<b>非投资建议，数据为快照，IPO 计划常变。</b>",
-            en:"🛫 <b>Three tiers, clearly separated</b>: Listed (tradable) · Filed S-1 (filed ≠ guaranteed listing) · Rumor / expected (unconfirmed · may never happen). <b>Not investment advice; data is a snapshot and IPO plans change often.</b>"},
+  title:{zh:"🛫 IPO 雷达",en:"🛫 IPO radar"},
+  takeaway:{zh:"🛫 <b>三档清晰分开</b>：已上市（可买）· 已递交 S-1（递交≠确定上市）· 传闻预期（未证实·可能根本不来）。<b>非投资建议。上方三档为 2026-06 人工策展快照；下方「SEC 近期申报」每交易日自动刷新。IPO 计划常变。</b>",
+            en:"🛫 <b>Three tiers, clearly separated</b>: Listed (tradable) · Filed S-1 (filed ≠ guaranteed listing) · Rumor / expected (unconfirmed · may never happen). <b>Not investment advice. The three tiers are a manually-curated 2026-06 snapshot; the “Recent SEC filings” feed below auto-refreshes every trading day. IPO plans change often.</b>"},
   more_note:{zh:"展开看：三档定义 + 注意事项",en:"Expand: tier definitions + caveats"},
-  note:{zh:"<b>数据为 2026-06 快照、IPO 计划常变、可能延期或取消。「已申报」= 已递交 S-1（公开或保密）；「传闻/预期」= 未证实、可能根本不上市。非投资建议。</b>",
-        en:"<b>Data is a 2026-06 snapshot. IPO plans change often and may be delayed or cancelled. “Filed” = an S-1 has been submitted (public or confidential); “Rumor / expected” = unconfirmed and may never list at all. Not investment advice.</b>"},
+  note:{zh:"<b>上方三档为 2026-06 人工策展快照（IPO 计划常变，可能延期或取消）；下方「SEC 近期申报」读 SEC EDGAR、每交易日自动刷新。「已申报」= 已递交 S-1（公开或保密）；「传闻/预期」= 未证实、可能根本不上市。非投资建议。</b>",
+        en:"<b>The three tiers above are a 2026-06 manually-curated snapshot (IPO plans change often and may be delayed or cancelled); the “Recent SEC filings” feed below reads SEC EDGAR and auto-refreshes every trading day. “Filed” = an S-1 has been submitted (public or confidential); “Rumor / expected” = unconfirmed and may never list at all. Not investment advice.</b>"},
   foot:{zh:"分三档：已上市 / 已申报 S-1 / 传闻预期。三档视觉刻意分开——「传闻」更灰、虚线、带「?」，不代表确认。描述性快照、非预测、非荐股。",
         en:"Three tiers: Listed / Filed S-1 / Rumor or expected. Tiers are deliberately styled apart — “rumor” is dimmer, dashed and marked “?”, never shown as confirmed. Descriptive snapshot, not a forecast, not stock advice."},
   // tier headers
@@ -91,12 +91,15 @@ const I18N={
   autoPriced:{zh:"已定价 / 生效 424B",en:"Priced / effective (424B)"},
   autoFiledSub:{zh:"已向 SEC 递交 S-1（或 S-1/A 修订）。递交 ≠ 一定上市。",en:"S-1 (or S-1/A amendment) filed with the SEC. Filing ≠ guaranteed listing."},
   autoPricedSub:{zh:"已递交 424B 定价招股书，更接近真正挂牌。",en:"A 424B priced prospectus is filed — closer to an actual listing."},
-  autoStamp:{zh:"数据抓取于",en:"Fetched"},
+  autoStamp:{zh:"每日自动更新 · 最后抓取",en:"Auto-updated daily · last fetch"},
   autoNone:{zh:"暂无数据（SEC 抓取未配置或近 30 天无申报）。",en:"No data yet (SEC fetch not configured, or no filings in the last 30 days)."},
   autoNoTk:{zh:"无代码",en:"no ticker"},
   // ---- curated-snapshot staleness banner (>2 months since CURATED_ASOF) ----
   staleWarn:{zh:"⚠ 策展快照 {ASOF}，距今 {N} 个月，个别条目可能已过时；下方「📡 SEC 近期申报」为最新事实。",
-             en:"⚠ Curated snapshot from {ASOF}, {N} month(s) old — some entries may be stale. The “Recent SEC filings” feed below reflects current facts."}
+             en:"⚠ Curated snapshot from {ASOF}, {N} month(s) old — some entries may be stale. The “Recent SEC filings” feed below reflects current facts."},
+  // ---- always-visible curated-layer cadence stamp ----
+  curatedStamp:{zh:"策展快照 2026-06 · 人工维护 · 下方 SEC 申报每日自动更新",
+                en:"Curated snapshot 2026-06 · manually maintained · SEC filings below auto-update daily"}
 };
 
 // 策展三档快照月份（人工维护，随策展内容更新时同步改）；>2 个月自动提醒渐旧，≤2 个月不打扰。
@@ -121,8 +124,8 @@ const TIERS=[
     rows:[
       {co:"SpaceX", tk:"SPCX",
        sec:{zh:"航天",en:"Aerospace"},
-       det:{zh:"2026-05 申报、6 月上市，已在本站观察池。",
-            en:"Filed 2026-05, listed in June; already in this site's watch pool."}}
+       det:{zh:"2026-06-12 挂牌（发行价 $135），已纳入本站观察池；实时价见个股页。",
+            en:"Listed 2026-06-12 (IPO price $135); in this site's watch pool — live price on the stock page."}}
     ]
   },
   {
@@ -178,7 +181,7 @@ function applyStatic(){
 function L(field){return (field && field[LANG]) || (field && field.zh) || "";}
 
 function render(){
-  let h=staleBanner();
+  let h=staleBanner()+`<p class="sub" style="margin:8px 0 0">${esc(t("curatedStamp"))}</p>`;
   TIERS.forEach(T=>{
     h+=`<section class="${T.cls}">`;
     h+=`<h2 class="tier">${esc(t(T.head))}<span class="tag">${esc(t(T.tag))}</span></h2>`;
