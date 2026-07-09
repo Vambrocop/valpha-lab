@@ -474,7 +474,7 @@ function renderForecastCalendar() {
   el.innerHTML = html;
 }
 
-// ── 今日页前瞻小条（紧凑条，指向📅计划页完整日历）──
+// ── 今日页前瞻小条（紧凑条，指向📅买卖时机页完整日历）──
 // 数据同源 renderForecastCalendar：SIGNALS.next_opportunities.all_forecast。
 // 缺数据→整条隐藏，不显示空壳；全中性(calibration_flat 的数据表现)时不装作有档位差异。
 function renderForecastStrip() {

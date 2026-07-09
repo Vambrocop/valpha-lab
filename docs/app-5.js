@@ -606,7 +606,7 @@ function initOnboarding() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  顶层视图切换（今日/计划/实验/研究/我的）
+//  顶层视图切换（今日/买卖时机/实验/研究/我的）
 // ═══════════════════════════════════════════════════════
 const VIEWS = ["today", "outlook", "plan", "longterm", "lab", "research", "registry", "quant", "mine"];
 function switchView(name, btn) {

@@ -52,7 +52,7 @@
   <button class="view-btn active" role="tab" aria-selected="true"  data-view="today">📊 今日</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="outlook">📈 观点</button>
   <span aria-hidden="true" style="width:1px;height:1.2em;align-self:center;flex:0 0 auto;background:var(--border,#30363d);opacity:.45;margin:0 .12rem;"></span>
-  <button class="view-btn" role="tab" aria-selected="false" data-view="plan">🗓 计划</button>
+  <button class="view-btn" role="tab" aria-selected="false" data-view="plan">🗓 买卖时机</button>
   <button class="view-btn" role="tab" aria-selected="false" data-view="longterm">⏳ 长期</button>
   <span aria-hidden="true" style="width:1px;height:1.2em;align-self:center;flex:0 0 auto;background:var(--border,#30363d);opacity:.45;margin:0 .12rem;"></span>
   <button class="view-btn" role="tab" aria-selected="false" data-view="research">🔬 研究</button>
@@ -111,7 +111,7 @@
     </div>
   </div>
 
-  <!-- 每日买入概率前瞻小条：紧跟今日结论，一眼看到未来40天档位分布，点击跳完整日历(🗓计划页) -->
+  <!-- 每日买入概率前瞻小条：紧跟今日结论，一眼看到未来40天档位分布，点击跳完整日历(🗓买卖时机页) -->
   <div id="forecast-strip" style="display:none;max-width:760px;margin:0 auto 1.3rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.7rem 1rem;"></div>
 
   <!-- 更多 AI 解读（周报/月报/前瞻预测）teaser —— 自包含·命名空间隔离·有内容才显示 -->
@@ -218,9 +218,9 @@
   </div>
 </section>
 
-<!-- ════════ 计划：未来的操作窗口 ════════ -->
+<!-- ════════ 买卖时机：未来的操作窗口 ════════ -->
 <section id="view-plan" style="display:none">
-  <div class="view-intro" data-i18n="vi-plan">🗓 <b>计划：未来的操作窗口。</b>日历概率、最佳/最弱时点、经济事件——提前知道哪几天值得留意。日历效应样本内成立，样本外仅供参考。</div>
+  <div class="view-intro" data-i18n="vi-plan">🗓 <b>买卖时机：未来的操作窗口。</b>日历概率、最佳/最弱时点、经济事件——提前知道哪几天值得留意。日历效应样本内成立，样本外仅供参考。</div>
   <div class="view-stack">
     <!-- 未来40个交易日信号日历 -->
     <div class="chart-wrap" style="padding:1.25rem;">
@@ -912,7 +912,7 @@
   ⚠ <b>The out-of-bounds zone (home page's headline call / Outlook / Wild) does give direction, but every call is publicly scored</b>; other panels are mostly descriptive. No guarantees — investing carries risk, losses are your own.`,
     "vi-outlook": `📈 <b>Outlook / forecast: direction stated, bull or bear.</b> This zone <b>deliberately steps outside</b> the site's "measure risk, not direction" rule — giving an outright Nasdaq direction and per-stock views. ⚠ Reference only, <b>not investment advice</b>; the real hit-rate of these direction calls is in the 🎲 Tip-jar (hint: ≈ a coin flip).`,
     "vi-today": `📊 <b>Today: should you act now?</b> Signal, daily brief, risk traffic-light, sell-side check — the current state on one screen. ⚠ The signal is experimental; direction is not reliably predictable — reference only.`,
-    "vi-plan": `🗓 <b>Plan: upcoming action windows.</b> Calendar odds, best/weakest timing, economic events — know in advance which days are worth watching. Calendar effects hold in-sample; out-of-sample they are reference only.`,
+    "vi-plan": `🗓 <b>Timing: upcoming action windows.</b> Calendar odds, best/weakest timing, economic events — know in advance which days are worth watching. Calendar effects hold in-sample; out-of-sample they are reference only.`,
     "vi-longterm": `⏳ <b>Long-term view: the historical outcome distribution of holding N years.</b> It doesn't predict tomorrow (our own experiments falsified that) — it answers one verifiable question: across history, buying on any given day and holding 6mo / 1 / 3 / 5 / 10 years, what does the outcome distribution look like? The longer you hold, the higher the probability of being up — the most robust statistical regularity on the whole site.`,
     "vi-lab": `🧪 <b>Lab: model accountability.</b> Every model vs its honest baseline, a simulated forward contest, an append-only scorecard that can't be prettified after the fact — here we only discuss "what was said, and whether it was right".`,
     "vi-registry": `📋 <b>Registry: what we tried · how it turned out.</b> Start with the 🧾 auto-summary on top, then five groups by purpose: <b>🔬 real vs fake patterns</b> · <b>🌡️ risk & uncertainty</b> · <b>🩺 single-stock factors</b> · <b>🎯 event causality</b> · <b>🔭 exploratory vs dead</b> (unverified / arbitraged — don't trade). ⚠ The whole site tests "real patterns vs illusions" and "when risk runs deeper" — it does <b>not predict direction or recommend stocks</b>.`,
@@ -1106,7 +1106,7 @@
     "note-portfolio-src": "Prices from CoinGecko · stock prices maintained manually",
     "footer-note": "Data source: Yahoo Finance &nbsp;·&nbsp; for personal learning only, not investment advice",
   };
-  const NAV_VIEW = {today:"📊 Today", outlook:"📈 Outlook", plan:"🗓 Plan", longterm:"⏳ Long-term",
+  const NAV_VIEW = {today:"📊 Today", outlook:"📈 Outlook", plan:"🗓 Timing", longterm:"⏳ Long-term",
                     research:"🔬 Research", lab:"🧪 Lab", registry:"📋 Registry", quant:"🎓 Quant", mine:"💼 Mine"};
   const NAV_HREF = {"index.html":"🏠 Home","valpha150.html":"🛰️ Board","sectors.html":"📊 Sectors",
                     "radar.html":"📡 Radar","advisor.html":"🎲 Allocate","wild.html":"🔥 Wild",
