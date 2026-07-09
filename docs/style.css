@@ -1,8 +1,11 @@
 :root {
+  /* D1 令牌并轨：颜色对齐 vp.css 正典。绿/红/muted/黄(琥珀)/橙统一色相；
+     蓝(#3498db)/紫(#9b59b6)是本盘既有强调色(nav/insight/品牌光晕)，语义不变，保留。 */
   --bg: #0d1117; --surface: #161b22; --surface2: #1c2230;
-  --border: #30363d; --border-faint: rgba(255,255,255,.08); --text: #e6edf3; --muted: #8b949e;
-  --green: #2ecc71; --yellow: #f1c40f; --orange: #e67e22;
-  --red: #e74c3c; --blue: #3498db; --purple: #9b59b6;
+  --border: #30363d; --border-faint: rgba(255,255,255,.08); --text: #e6edf3;
+  --muted: #9da7b3;                                        /* was #8b949e → 对齐 vp.css --mut(对比度更高) */
+  --green: #3fb950; --yellow: #d29922; --orange: #e67e22;  /* 绿→--grn · 黄→--amb 琥珀 · 橙=--org */
+  --red: #f85149; --blue: #3498db; --purple: #9b59b6;      /* 红→--red · 蓝/紫本盘既有，保留 */
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
@@ -10,7 +13,7 @@ html { scroll-behavior: smooth; }
 ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 8px; border: 2px solid var(--bg); }
 ::-webkit-scrollbar-thumb:hover { background: var(--border); }
 ::-webkit-scrollbar-track { background: transparent; }
-body { background: radial-gradient(1100px 460px at 50% -150px, rgba(155,89,182,.10), transparent), var(--bg); color: var(--text); font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; -webkit-font-smoothing: antialiased; }
+body { background: radial-gradient(1100px 460px at 50% -150px, rgba(155,89,182,.10), transparent), var(--bg); color: var(--text); font-family: var(--font-sys); -webkit-font-smoothing: antialiased; }
 
 /* ── 工具类（约定：仅"整条 style 完全相同"的高频模式抽到此；一次性布局样式保留内联，别强抽） ── */
 .u-cap { color: var(--muted); font-size: 0.7rem; }   /* 表头/标签的 muted 小字（原 12 处重复内联） */
@@ -65,13 +68,13 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 /* Tier colors */
 .tier-5 { border-color: #27ae60 !important; background: rgba(39,174,96,.08) !important; }
 .tier-5 .signal-pct { color: #27ae60; }
-.tier-4 { border-color: var(--green) !important; background: rgba(46,204,113,.06) !important; }
+.tier-4 { border-color: var(--green) !important; background: rgba(63,185,80,.06) !important; }
 .tier-4 .signal-pct { color: var(--green); }
-.tier-3 { border-color: var(--yellow) !important; background: rgba(241,196,15,.06) !important; }
+.tier-3 { border-color: var(--yellow) !important; background: rgba(210,153,34,.06) !important; }
 .tier-3 .signal-pct { color: var(--yellow); }
 .tier-2 { border-color: var(--orange) !important; background: rgba(230,126,34,.06) !important; }
 .tier-2 .signal-pct { color: var(--orange); }
-.tier-1 { border-color: var(--red) !important; background: rgba(231,76,60,.06) !important; }
+.tier-1 { border-color: var(--red) !important; background: rgba(248,81,73,.06) !important; }
 .tier-1 .signal-pct { color: var(--red); }
 
 /* ── Date Picker ── */
@@ -147,8 +150,8 @@ footer a { color: var(--green); text-decoration: none; }
 /* ── Window cards ── */
 .window-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem; }
 .window-card { border-radius: 8px; padding: .85rem; font-size: 0.82rem; }
-.window-buy  { background: rgba(46,204,113,.08); border: 1px solid rgba(46,204,113,.3); }
-.window-sell { background: rgba(231,76,60,.08);  border: 1px solid rgba(231,76,60,.3); }
+.window-buy  { background: rgba(63,185,80,.08); border: 1px solid rgba(63,185,80,.3); }
+.window-sell { background: rgba(248,81,73,.08);  border: 1px solid rgba(248,81,73,.3); }
 .window-title { font-weight: 700; margin-bottom: .4rem; }
 .window-buy .window-title  { color: var(--green); }
 .window-sell .window-title { color: var(--red); }
@@ -158,7 +161,7 @@ footer a { color: var(--green); text-decoration: none; }
 .opp-list { display: flex; flex-direction: column; gap: .45rem; margin-top: .6rem; }
 .opp-item { display: flex; align-items: center; gap: .65rem; background: var(--surface2); border-radius: 7px; padding: .5rem .75rem; border-left: 3px solid transparent; }
 .opp-item.entry { border-left-color: var(--green); }
-.opp-item.exit  { border-left-color: #e74c3c; }
+.opp-item.exit  { border-left-color: var(--red); }
 .opp-date  { font-size: 0.9rem; font-weight: 700; min-width: 82px; }
 .opp-dow   { font-size: 0.75rem; color: var(--muted); min-width: 28px; }
 .opp-prob  { font-size: 0.88rem; font-weight: 700; min-width: 42px; }
@@ -168,8 +171,8 @@ footer a { color: var(--green); text-decoration: none; }
 
 /* Better signal ring with glow */
 .signal-ring { box-shadow: 0 0 20px rgba(0,0,0,.4); }
-.tier-4 .signal-ring, .tier-5 .signal-ring { box-shadow: 0 0 24px rgba(46,204,113,.2); }
-.tier-1 .signal-ring, .tier-2 .signal-ring { box-shadow: 0 0 24px rgba(231,76,60,.15); }
+.tier-4 .signal-ring, .tier-5 .signal-ring { box-shadow: 0 0 24px rgba(63,185,80,.2); }
+.tier-1 .signal-ring, .tier-2 .signal-ring { box-shadow: 0 0 24px rgba(248,81,73,.15); }
 
 /* Panel hover：与 chart-wrap 一致的轻微浮起阴影 */
 .panel { transition: box-shadow .3s; }
@@ -188,7 +191,7 @@ footer a { color: var(--green); text-decoration: none; }
 .chart-wrap:hover { box-shadow: 0 2px 16px rgba(0,0,0,.3); }
 
 /* Year stats highlight */
-.digit-highlight { background: rgba(241,196,15,.12); border: 1px solid rgba(241,196,15,.3); border-radius: 6px; padding: .4rem .75rem; font-size: 0.8rem; margin-bottom: .75rem; }
+.digit-highlight { background: rgba(210,153,34,.12); border: 1px solid rgba(210,153,34,.3); border-radius: 6px; padding: .4rem .75rem; font-size: 0.8rem; margin-bottom: .75rem; }
 /* Placeholder shown while lazy tab charts haven't loaded yet */
 .chart-ph { display:flex; align-items:center; justify-content:center; height:340px; color:var(--muted); font-size:0.85rem; }
 
@@ -219,8 +222,8 @@ footer a { color: var(--green); text-decoration: none; }
 #spcx-detail-wrap .chart-header > span { min-width:0; overflow-wrap:anywhere; }
 
 /* ── Portfolio P&L ── */
-.pl-up { color:#2ecc71; font-size:0.72rem; }
-.pl-dn { color:#e74c3c; font-size:0.72rem; }
+.pl-up { color:var(--green); font-size:0.72rem; }
+.pl-dn { color:var(--red); font-size:0.72rem; }
 .cost-link { color:var(--muted); font-size:0.68rem; cursor:pointer; text-decoration:underline dashed; }
 .cost-link:hover { color:var(--text); }
 
@@ -251,7 +254,7 @@ footer a { color: var(--green); text-decoration: none; }
 
 /* ── Fear & Greed ── */
 .fg-gauge-track { height:8px; border-radius:4px; position:relative; margin:.5rem 0;
-  background:linear-gradient(to right,#e74c3c 0%,#e67e22 25%,#f1c40f 50%,#2ecc71 75%,#27ae60 100%); }
+  background:linear-gradient(to right,#f85149 0%,#e67e22 25%,#d29922 50%,#3fb950 75%,#27ae60 100%); }
 .fg-needle { position:absolute; top:-4px; width:16px; height:16px; border-radius:50%;
   transform:translateX(-50%); border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.4); transition:left .4s; }
 .fg-sparkline { display:flex; align-items:flex-end; gap:2px; height:28px; }
@@ -295,6 +298,16 @@ footer a { color: var(--green); text-decoration: none; }
 .cgt-btn:focus-visible, button:focus-visible {
   outline: 2px solid var(--blue); outline-offset: 2px;
 }
+/* ── D1 数字排版：大数字统一 tabular-nums（等宽·跳动不错位），大号加紧字距增质感 ──
+   （只改这些 CSS 规则，不逐个改 HTML 加类；JS 内联生成的数字排版本轮不追） */
+.signal-pct, .spcx-big-num, .acc-card-num, .dow-wr, .cgt-highlight,
+.sell-metric-val, .opp-prob, .opp-date, .factor-val {
+  font-variant-numeric: tabular-nums;
+}
+.signal-pct, .spcx-big-num, .acc-card-num, .dow-wr, .cgt-highlight {
+  letter-spacing: -.01em;
+}
+
 /* ════════════════════════════════════════════════════════════════════
    视觉协调层（2026-06-19）：把主仪表盘观感对齐到新着陆页（index/valpha150）
    的「干净现代风」。纯增量、可逆、不改布局结构 / 不动 JS / 复用既有 token。

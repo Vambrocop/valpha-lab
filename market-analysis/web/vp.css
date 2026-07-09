@@ -2,7 +2,9 @@
    只放【8 页逐字节一致】的部分：灰底调色板 + box-sizing + a11y(focus/reduced-motion) + 语言按钮。
    页面特有的 --amber/--warn、body/h1/table/.card 等仍各自内联（口径不同，留各自）。
    同源自托管（随 web/→docs/ 镜像部署），不引境外 CDN——中国访客可达不受影响。 */
-:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#c678dd}
+:root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--acc:#c678dd;--amb:#d29922;--org:#e67e22}
+/* --amb 琥珀(告警/中档) / --org 橙(次低档)：D1 令牌并轨新增的正典信号色，取 index/style 现值中对比度更好的
+   (琥珀 #d29922 AA-safe，比旧 #f1c40f 更沉稳；橙 #e67e22 沿用)。信号档位语义不变(绿黄橙红=tier4..1)。 */
 
 /* ── 设计 token (ADDITIVE — 不改上方任何已有变量) ─────────────────────
    间距阶梯: --sp-1 6px / --sp-2 10px / --sp-3 14px / --sp-4 20px
@@ -31,6 +33,10 @@
   /* type ramp (system fonts only — same stack as pages) */
   --fs-micro:.72rem;--fs-cap:.82rem;--fs-body:.94rem;
   --fs-h3:1.05rem;--fs-h2:1.35rem;--fs-h1:1.7rem;
+  /* number display ramp (D1 — 与 .vp-num 搭配用于大数字展示) */
+  --fs-num:1.55rem;--fs-num-lg:1.95rem;
+  /* canonical system font stack (D1 — 零外部字体；index/dashboard 各自内联栈的超集) */
+  --font-sys:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
   --lh-tight:1.25;--lh-body:1.6;
   /* spacing extensions (existing --sp-1..4 untouched) */
   --sp-0:3px;--sp-5:28px;--sp-6:40px;
@@ -61,11 +67,25 @@
 .vp-link:hover,.vp-link:focus{text-decoration:underline}
 .vp-focus-ring:focus-visible{box-shadow:var(--ring)}
 
+/* ── .vp-num — 数字排版系统 (D1) ──────────────────────────────────
+   tabular-nums=等宽数字(跳动的分数/概率不左右错位)，紧字距增"贵"感。
+   配 --fs-num/--fs-num-lg 用于大数字展示；现有大数字元素直接在其规则里套 tabular-nums。 */
+.vp-num{font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:-.01em}
+
 /* ── .vp-card — 通用卡片骨架 ────────────────────────────────────────
    panel 背景 + border + radius(--rad) + padding(--sp-3 --sp-4)。
    各页只需 class="vp-card" 即可，不必手写四条属性。
    宽度由父容器（grid/flex/block）控制，卡片本身不定宽。 */
 .vp-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--rad);padding:var(--sp-3) var(--sp-4);box-shadow:var(--shadow)}
+/* ── 卡片三级重量 (D1) — hero 渐变边+微光 / 常规(.vp-card) / quiet 减淡边 ──
+   与 .vp-card 叠加使用: class="vp-card vp-card--hero"。参照 index 现范式:
+   --hero  ← index .hero / .tool-feat: accent 边 + 紫→蓝渐变 wash + 柔和紫光晕
+   --quiet ← index .cards .card: 边框透明度降到 .65, 让卡片退到背景层
+   本轮只定义 + dashboard vp-hero 套 --hero 作示范；全站铺开留 D5。 */
+.vp-card--hero{border-color:var(--acc);
+  background:linear-gradient(135deg,rgba(163,113,247,.13),rgba(88,166,255,.06));
+  box-shadow:0 0 24px rgba(163,113,247,.10),var(--shadow)}
+.vp-card--quiet{border-color:rgba(48,54,61,.65)}
 *{box-sizing:border-box}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
