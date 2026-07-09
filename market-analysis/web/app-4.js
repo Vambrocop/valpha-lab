@@ -423,16 +423,9 @@ function renderFearGreed(data) {
   const score = parseInt(cur.value);
   const m = fgMeta(score);
 
-  // 7-day sparkline (oldest first)
-  const spark = data.slice(0,7).reverse();
-  const maxS = Math.max(...spark.map(d=>+d.value));
-  const sparkHtml = spark.map(d => {
-    const s = parseInt(d.value);
-    const h = Math.max(3, Math.round(s / 100 * 26));
-    const c = fgMeta(s).color;
-    const dt = new Date(+d.timestamp*1000).toLocaleDateString("zh-CN",{month:"numeric",day:"numeric"});
-    return `<div class="fg-spark-bar" style="height:${h}px;background:${c}" title="${dt} ${s}"></div>`;
-  }).join("");
+  // D2 微图表:7点走势(oldest first)改用 vpSpark 折线——语义纪律:趋势线中性 --mut,
+  // 不按恐贪档位染色(装饰不造信号感);50=中性参考线。档位色仅留给大数字/游标(自带现状 label)。
+  const spark = data.slice(0,7).reverse().map(d => parseInt(d.value)).filter(v => isFinite(v));
 
   const nextUpdate = cur.time_until_update
     ? vpL(`· ${Math.round(+cur.time_until_update/3600)}h后更新`, `· updates in ${Math.round(+cur.time_until_update/3600)}h`)
@@ -451,7 +444,7 @@ function renderFearGreed(data) {
       </div>
       <div style="text-align:right;min-width:70px;">
         <div style="font-size:0.68rem;color:var(--muted);margin-bottom:.3rem;">${vpL("7天走势","7-day trend")}</div>
-        <div class="fg-sparkline">${sparkHtml}</div>
+        <div id="fg-spark" title="${spark.join(" → ")}"></div>
       </div>
     </div>
     <div class="fg-gauge-track">
@@ -462,6 +455,10 @@ function renderFearGreed(data) {
     </div>
     <div style="font-size:0.78rem;color:${m.color};line-height:1.4">${m.advice}</div>
   `;
+  const fgSp = document.getElementById("fg-spark");
+  if (fgSp && typeof vpSpark === "function") {
+    vpSpark(fgSp, spark, { color: "var(--mut)", fill: true, w: 96, h: 26, refLine: 50 });
+  }
 }
 
 // ═══════════════════════════════════════════════════════

@@ -105,6 +105,8 @@
     <div class="hero-call" id="h-call"></div>
     <div class="hero-read" id="h-read"></div>
     <div class="hero-tilt" id="h-tilt"></div>
+    <!-- D2 微图表:倾向分30日走势(composite_read.json history·纯历史读数·中性色不造信号感) -->
+    <div style="margin-top:7px"><div class="mut" id="h-trendlbl" style="font-size:.68rem;margin-bottom:2px"></div><div id="h-trend" style="display:inline-block;max-width:100%"></div></div>
     <a class="hero-acct" href="scorecard.html" id="h-acct"></a>
   </div>
 </div>
@@ -164,6 +166,7 @@
 
 <footer data-i18n="foot"></footer>
 
+<script src="vp_spark.js"></script>
 <script>
 const B="https://vambrocop.github.io/valpha-lab/";
 const I18N={
@@ -307,6 +310,12 @@ function renderHero(){
   $("h-read").innerHTML=(LLM&&LLM.text)?((typeof vpAnnotate==="function"?vpAnnotate(LLM.text):"")+_readStamp(LLM.generated)):"";
   $("h-tilt").textContent=CR.usable_tilt||"";
   $("h-acct").textContent=t("hAcct");
+  // D2 微图表:倾向分30日走势——纯历史读数;语义纪律:中性 --mut,不因近期涨跌染红绿;0=中性参考线
+  const hv=(CR.history||[]).map(p=>p&&p.s);
+  if(typeof vpSpark==="function"&&hv.filter(v=>v!=null&&isFinite(v)).length>1){
+    $("h-trendlbl").textContent=LANG==="en"?"30-day trend":"30日走势";
+    vpSpark($("h-trend"),hv,{color:"var(--mut)",fill:true,w:130,h:26,refLine:0});
+  }else{$("h-trendlbl").textContent="";$("h-trend").innerHTML="";}
 }
 
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}

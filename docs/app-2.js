@@ -1129,7 +1129,7 @@ async function loadMarketRegime() {
     const lc = (c.inverted || c.backwardation) ? "#e67e22" : "var(--muted)";   // 倒挂=橙仅引起注意,非红绿灯
     return `<tr style="border-top:1px solid var(--border-faint)">
       <td style="padding:.35rem .4rem;color:var(--muted)">${esc(c.name)}</td>
-      <td style="padding:.35rem .4rem;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${c.value}${c.percentile != null ? `<span style="color:var(--muted);font-size:.72rem"> ${vpL(`(第${c.percentile}分位${c.history_start ? "·" + c.history_start.slice(0, 4) + "+起" : ""})`, `(${c.percentile}th pct${c.history_start ? " · since " + c.history_start.slice(0, 4) : ""})`)}</span>` : ""}${c.asof ? `<span style="color:var(--muted);font-size:.68rem;display:block;font-weight:400">${vpL(`截至 ${esc(c.asof)}`, `as of ${esc(c.asof)}`)}</span>` : ""}</td>
+      <td style="padding:.35rem .4rem;text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${c.value}${c.percentile != null ? `<span style="color:var(--muted);font-size:.72rem"> ${vpL(`(第${c.percentile}分位${c.history_start ? "·" + c.history_start.slice(0, 4) + "+起" : ""})`, `(${c.percentile}th pct${c.history_start ? " · since " + c.history_start.slice(0, 4) : ""})`)}</span>` : ""}${c.asof ? `<span style="color:var(--muted);font-size:.68rem;display:block;font-weight:400">${vpL(`截至 ${esc(c.asof)}`, `as of ${esc(c.asof)}`)}</span>` : ""}${c.percentile != null ? `<span class="vp-posbar" data-pct="${+c.percentile}" style="display:block;margin-top:3px;font-weight:400"></span>` : ""}</td>
       <td style="padding:.35rem .4rem;text-align:center;color:${lc};font-size:.8rem">${esc(c.label)}</td>
       <td style="padding:.35rem .4rem;color:var(--muted);font-size:.72rem">${esc(c.note)}</td></tr>`;
   }).join("");
@@ -1139,7 +1139,17 @@ async function loadMarketRegime() {
       <tr class="u-cap"><td style="padding:.2rem .4rem">${vpL("指标","Indicator")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("现值","Current")}</td><td style="text-align:center;padding:.2rem .4rem">${vpL("体制","Regime")}</td><td style="padding:.2rem .4rem">${vpL("含义","Meaning")}</td></tr>
       ${rows}
     </table>
+    <div style="font-size:0.7rem;color:var(--muted);margin-top:.3rem">${vpL("● 位置=历史分位", "● position = historical pct (0–100)")}</div>
     <div style="font-size:0.74rem;color:var(--muted);line-height:1.6;margin-top:.6rem">${esc(MR.caveat || "")}</div>`;
+  // D2 微图表:每成分"现值落在自家历史哪个分位"的位置条(0-100 位置,非时间序列)。
+  // 极端分位(≥90/≤10)游标用 --amb 引起注意——与上面"倒挂=橙"同款语义(注意≠红绿灯),其余中性 --acc。
+  if (typeof vpPosBar === "function") {
+    el.querySelectorAll(".vp-posbar").forEach(sp => {
+      const p = parseFloat(sp.dataset.pct);
+      vpPosBar(sp, p, { color: (p >= 90 || p <= 10) ? "var(--amb)" : "var(--acc)", w: 84,
+                        label: vpL(`历史分位 ${Math.round(p)}/100`, `historical percentile ${Math.round(p)}/100`) });
+    });
+  }
 }
 
 // ── 🔁 短期反转(过度反应 R3)：大跌次日是否系统性反弹——描述历史规律,非抄底建议、不可交易 ──

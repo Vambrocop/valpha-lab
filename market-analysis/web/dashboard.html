@@ -107,6 +107,8 @@
       <div class="vp-hero-act" id="vp-act">—</div>
       <div class="vp-hero-sub" id="vp-sub"></div>
       <div class="vp-hero-read" id="vp-read"></div>
+      <!-- D2 微图表:倾向分30日走势(composite_read.json history·纯历史·中性色不造信号感) -->
+      <div style="margin-top:7px"><div id="vp-trendlbl" style="font-size:.68rem;color:var(--muted);margin-bottom:2px"></div><div id="vp-trend" style="display:inline-block;max-width:100%"></div></div>
       <a class="vp-hero-acct" href="scorecard.html" data-i18n="vp-hero-acct">敢说也敢认账 · 公开战绩卡 →</a>
     </div>
   </div>
@@ -155,6 +157,8 @@
         </div>
         <div class="signal-stars" id="signal-stars">☆☆☆☆☆</div>
         <div class="signal-desc" id="signal-desc"></div>
+        <!-- D2 微图表:模型概率近60日走势(daily_signals·仅历史非预测) -->
+        <div id="signal-spark" style="margin-top:.55rem;"></div>
         <div id="signal-percentile" style="margin-top:.6rem;font-size:0.8rem;"></div>
       </div>
 
@@ -887,6 +891,8 @@
 <!-- 深度面板双语化(#5 W1a起)：vp_i18n.js 提供 vpL(zh,en) 内联 helper，供 app-1..5.js 调用；
      必须先于它们加载。与工具页共用同一份脚手架、同一个 localStorage "valpha_lang" 键。 -->
 <script src="vp_i18n.js"></script>
+<!-- D2 微图表:vpSpark/vpPosBar 零依赖 SVG 微图,app-1/2/4 与下方 hero 内联脚本都要用 → 先加载。 -->
+<script src="vp_spark.js"></script>
 <!-- app.js 已按模块拆成 5 个有序经典脚本（共享全局作用域，onclick 处理器照常可用）。
      顺序至关重要，不可重排：app-5 含 init().then 引导，依赖前 4 个已加载。
      拼回 app-1..5 === 原 app.js（逐字节）。改代码后跑 tools/audit_frontend.py 校验。 -->
@@ -1212,6 +1218,20 @@
     var _rg=LLM&&LLM.generated,_ra=_rg?Math.floor((Date.now()-Date.parse(_rg))/86400000):null;
     var _rw=(_ra!=null&&_ra>4)?('<div style="font-size:.72rem;margin-top:.35rem"><b style="color:#f0883e">'+(_lang==="en"?"⚠ daily read "+_ra+"d ago (should update each trading day · possibly stuck)":"⚠ 日读 "+_ra+"天前(应每交易日更新·疑似卡住)")+'</b></div>'):"";
     g("vp-read").innerHTML=(LLM&&LLM.text)?((typeof vpAnnotate==="function"?vpAnnotate(LLM.text):"")+_rw):"";  /* vp_gloss.js + 日读卡住告警 */
+    /* D2 微图表:倾向分30日走势——纯历史读数;中性 --mut 不因涨跌染红绿;0=中性参考线 */
+    var _hv=(CR.history||[]).map(function(p){return p&&p.s;});
+    if(typeof vpSpark==="function"&&_hv.filter(function(v){return v!=null&&isFinite(v);}).length>1){
+      var _tl=g("vp-trendlbl");
+      var _tlbl=function(L){return L==="en"?"30-day trend":"30日走势";};
+      if(_tl)_tl.textContent=_tlbl(_lang);
+      vpSpark(g("vp-trend"),_hv,{color:"var(--mut)",fill:true,w:130,h:26,refLine:0});
+      /* hero IIFE 只在加载时读一次语言(既有限制)——标签补挂 lang-toggle 后置监听,切语言即时跟随 */
+      var _lt=document.getElementById("lang-toggle");
+      if(_lt)_lt.addEventListener("click",function(){
+        var L2="zh";try{L2=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+        if(_tl)_tl.textContent=_tlbl(L2);
+      });
+    }
   });
   window.addEventListener("resize",function(){gauge(_score);});
 })();

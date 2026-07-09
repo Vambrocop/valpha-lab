@@ -376,6 +376,28 @@ function renderSignalMeterTail(prob, rec, opts) {
       ? `<span style="font-size:0.7rem;color:var(--muted);">${statusNote}</span>`
       : "";
   }
+
+  renderProbSpark();   // D2 微图表:概率60日走势(与所选日期无关,幂等重画;lang toggle 的 updateSignal 重跑会带上)
+}
+
+// D2 微图表:模型概率近60日走势(SIGNALS.daily_signals 末60个交易日的 prob 原始输出)。
+// 语义纪律:中性 --mut 单色——概率高低绝不染红绿(样本外无区分度,装饰不造信号感);0.5 参考线=抛硬币。
+function renderProbSpark() {
+  const el = document.getElementById("signal-spark");
+  if (!el) return;
+  el.innerHTML = "";
+  if (typeof vpSpark !== "function" || !SIGNALS?.daily_signals) return;
+  const dates = Object.keys(SIGNALS.daily_signals).sort().slice(-60);
+  const vals = dates.map(d => SIGNALS.daily_signals[d]?.prob);
+  if (vals.filter(v => v != null && isFinite(v)).length <= 1) return;   // ≤1 有效点 → 留空不装样子
+  const lbl = document.createElement("div");
+  lbl.style.cssText = "font-size:0.68rem;color:var(--muted);margin-bottom:2px";
+  lbl.textContent = vpL("模型概率·近60日·仅历史非预测", "Model prob · last 60d · history, not a forecast");
+  const box = document.createElement("div");
+  box.style.display = "inline-block";   // .signal-meter 整体居中(text-align:center),spark 跟标签一起居中
+  el.appendChild(lbl);
+  el.appendChild(box);
+  vpSpark(box, vals, { color: "var(--mut)", fill: true, w: 150, h: 26, refLine: 0.5 });
 }
 
 function renderFactors(rec, finalProb) {

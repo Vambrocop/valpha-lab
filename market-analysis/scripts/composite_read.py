@@ -7,6 +7,7 @@
 红线：方向信号 walk-forward 无样本外 edge → 权重压到最低 + 明标；主权重给"真可用"的体制/风险因子。
 倾向 ≠ 预测，是"条件加权读数"——给你一个有理有据、分级置信、可追责的当下参考，自己拍。
 """
+import csv
 import json
 import datetime
 from pathlib import Path
@@ -130,6 +131,25 @@ def _append_log(today, out):
                      [[today, out["stance"], out["score"]]], date=today)
 
 
+def _read_history(n=30):
+    """近 n 日倾向分走势（D2 微图表用）——**纯聚合**自家 composite_log.csv 末 n 行 → [{d, s}]。
+
+    只读不写、不碰任何统计口径；score 缺失/非数的行（如"数据不足"日）跳过该点。"""
+    try:
+        with open(LOG, encoding="utf-8") as f:
+            rows = list(csv.reader(f))
+    except OSError:
+        return []
+    hist = []
+    for r in rows[1:]:                                 # 跳过 header 行
+        if len(r) >= 3 and r[0]:
+            try:
+                hist.append({"d": r[0], "s": float(r[2])})
+            except (TypeError, ValueError):
+                pass                                   # score 为空/非数 → 该日无有效读数，跳过
+    return hist[-n:]
+
+
 def run_all(write=True):
     F = build_factors()
     syn = synthesize(F)
@@ -148,9 +168,12 @@ def run_all(write=True):
     }
     if write:
         from util_io import write_json
+        _append_log(today, out)              # 先记账（append-only·同日幂等），今天的读数才进走势
+        out["history"] = _read_history()     # 30日走势 = 纯聚合自家日志末30行（D2 微图表）
         write_json("composite_read.json", out, proc=True, allow_nan=False)
-        _append_log(today, out)
         print(f"[OK] composite_read.json — {out['action']}（{out['stance']} score {out['score']} · 置信{out['confidence_level']}）· {len(F)} 因子")
+    else:
+        out["history"] = _read_history()
     return out
 
 
