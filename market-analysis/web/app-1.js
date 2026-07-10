@@ -603,26 +603,11 @@ async function renderPriceChart() {
 
   Plotly.newPlot("chart-price", traces, {...DARK, hovermode:"x unified",
     yaxis:{...DARK.yaxis, title: vpL("归一化指数（起点=100）","Normalized index (start=100)")},
-    xaxis:{...DARK.xaxis, rangeselector: RANGE_SEL},
     legend:{orientation:"h", y:1.08}, height:400}, {responsive:true});
+  // D3：外部零依赖切换条替代旧的 Plotly 原生 rangeselector（同图叠两套按钮会重复/不统一，
+  // 已下线原生版——见本批交付说明"判断点①"）；纯前端 relayout，不重拉数据。
+  if (typeof vpRangeBar === "function") vpRangeBar("chart-price", { dates });
 }
-
-// 时间范围快捷按钮（周线数据最小到1月粒度）
-// label 用 getter：RANGE_SEL 是模块级 const，只构造一次；getter 让每次 Plotly 读取
-// button.label 时都重新求值 vpL()，语言切换后重渲染该图能拿到新语言（同 TIER_META 手法）。
-const RANGE_SEL = {
-  buttons: [
-    {count:1,  get label(){ return vpL("1月","1M"); }, step:"month", stepmode:"backward"},
-    {count:6,  get label(){ return vpL("6月","6M"); }, step:"month", stepmode:"backward"},
-    {count:1,  get label(){ return vpL("1年","1Y"); }, step:"year",  stepmode:"backward"},
-    {count:5,  get label(){ return vpL("5年","5Y"); }, step:"year",  stepmode:"backward"},
-    {count:10, get label(){ return vpL("10年","10Y"); }, step:"year", stepmode:"backward"},
-    {step:"all", get label(){ return vpL("全部","All"); }},
-  ],
-  bgcolor: "rgba(255,255,255,0.10)", activecolor: "#3498db",
-  bordercolor: "rgba(255,255,255,0.18)", borderwidth: 1,
-  font: { color: "#e6edf3", size: 11 }, y: 1.18,
-};
 
 async function renderCorrChart() {
   const extra = await loadChartsExtra();
@@ -743,6 +728,8 @@ async function renderSignalHistory() {
      line:{color:"#27ae60",dash:"dot",width:1},name: vpL("强势线(80%)","Strong-signal line (80%)"),showlegend:true},
   ],{...DARK,yaxis:{...DARK.yaxis,range:[0,100],title: vpL("信号概率%","Signal probability %")},
     hovermode:"x unified",legend:{orientation:"h",y:1.05}},{responsive:true});
+  // D3：时间范围切换条（纯前端 relayout，y轴固定[0,100]不受影响）
+  if (typeof vpRangeBar === "function") vpRangeBar("chart-signal-history", { dates });
 }
 
 // ── 标签切换（主图区，仅影响 id="tab-*" 的内容）──

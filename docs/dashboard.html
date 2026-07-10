@@ -1263,6 +1263,8 @@
   });
 })();
 </script>
-<script src="vp_gloss.js"></script>
+<!-- D3：开启全站自动扫描模式（此前只手动 vpAnnotate() 了日读一处，仪表盘其余32个面板
+     裸奔零注解）——data-autoscan 复用其余32页已验证的同一套机制(载入+2000ms 双扫，幂等)。 -->
+<script src="vp_gloss.js" data-autoscan></script>
 </body>
 </html>

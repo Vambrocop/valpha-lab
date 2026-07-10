@@ -112,6 +112,19 @@
 /* mobile tap: :focus-within handles touch after tap */
 @media(hover:none){.vp-term:active .vp-tip{display:block}}
 
+/* ── vpRangeBar(D3) — Plotly 图表时间范围切换条 ─────────────────────
+   零依赖按钮行（vp_spark.js window.vpRangeBar 注入）。样式复用 --acc-weak/--acc-line/
+   --acc-strong（与 .vp-badge 同一套 D1 正典高亮 token）表示当前档；未选中态复用
+   --surface2(缺省时退回 --panel)/--border/--mut，与全站既有 .period-btn 视觉语言一致。 */
+.vp-rangebar{display:flex;gap:6px;flex-wrap:wrap;margin:.4rem 0 .6rem}
+.vp-rangebar-btn{font:inherit;font-size:.72rem;padding:.28rem .65rem;border-radius:6px;
+  cursor:pointer;background:var(--surface2,var(--panel));border:1px solid var(--border);
+  color:var(--mut);transition:all .15s}
+.vp-rangebar-btn:hover:not(:disabled){border-color:var(--mut);color:var(--fg)}
+.vp-rangebar-btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.vp-rangebar-btn.active{background:var(--acc-weak);border-color:var(--acc-line);color:var(--acc-strong);font-weight:600}
+.vp-rangebar-btn:disabled{opacity:.4;cursor:not-allowed}
+
 /* ── 两层呈现：顶一行大白话结论 + 折叠专业细节（v1.5「又专业又能看懂」）──────
    .vp-takeaway  默认显示的一句话结论（新手看这层就够）
    .vp-more      原生 <details>：默认收起，点 summary「展开看专业细节」（老手要的全套）

@@ -77,6 +77,17 @@ function safeRender(fn, name) {
 // 之前靠切视图后 Plots.resize 补救。懒渲染让隐藏视图的图表在首次可见时才画，一次画对，
 // 顺带省掉首屏 10+ 张看不见的图的渲染时间。
 const _lazyJobs = new Map();   // containerId -> {fn, name}
+
+// D3 术语注解补扫：懒面板常在 vp_gloss.js 固定双扫(载入 + 2000ms)窗口之后才首次渲染，
+// 里面的术语(EVT/保形/β/分位…)注解不到。渲染函数多为 async fetch→填 innerHTML，无统一
+// 完成信号 → 触发后延时对该容器补扫一次（vpGlossScan 幂等：全页每词只注首次、已注解
+// 子树自动跳过，重复调用零副作用；单容器子树扫描开销可忽略）。1.5s 是本地/CI 实测够
+// fetch+渲染完成的缓冲；慢网下偶尔漏注不是错误（注解是增强，非功能依赖）。
+function _glossRescan(el) {
+  if (typeof vpGlossScan !== "function" || !el) return;
+  setTimeout(() => { try { vpGlossScan(el); } catch (e) { /* 注解失败不影响面板 */ } }, 1500);
+}
+
 const _lazyObserver = new IntersectionObserver(entries => {
   const fired = new Set();     // 同一批回调里多个容器共用一个渲染函数时只跑一次
   for (const en of entries) {
@@ -85,6 +96,7 @@ const _lazyObserver = new IntersectionObserver(entries => {
     if (!job) continue;
     _lazyJobs.delete(en.target.id);
     _lazyObserver.unobserve(en.target);
+    _glossRescan(en.target);
     if (fired.has(job.fn)) continue;
     fired.add(job.fn);
     safeRender(job.fn, job.name);
@@ -95,7 +107,7 @@ function lazyRender(containerId, fn, name) {
   const el = document.getElementById(containerId);
   if (!el) return;
   // offsetParent 为 null = 自己或祖先 display:none（隐藏视图）→ 挂观察器等可见
-  if (el.offsetParent !== null) { safeRender(fn, name); return; }
+  if (el.offsetParent !== null) { safeRender(fn, name); _glossRescan(el); return; }
   _lazyJobs.set(containerId, { fn, name });
   _lazyObserver.observe(el);
 }

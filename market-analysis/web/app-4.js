@@ -951,6 +951,10 @@ function renderStocksTable() {
       <th style="text-align:right;">YTD</th><th style="text-align:right;">${vpL("距52周高","From 52w high")}</th>
       <th>RSI14</th><th>&gt;MA200</th><th>${vpL("β(纳指)","β(Nasdaq)")}</th>
     </tr>${rows}</table>`;
+  // D3：手风琴展开卡（β/年化波动/分位等术语）在页面自动双扫窗口(载入+2000ms)之后才可能
+  // 首次出现在 DOM 里——vp_gloss.js 的固定双扫不会回头再扫，这里在每次重画表格后主动补扫
+  // 一次（vpGlossScan 幂等，全页每词只注一次，重复调用零副作用，开销也只在这一个子树内）。
+  if (typeof vpGlossScan === "function") vpGlossScan(el);
 }
 
 // ── 个股分析卡（可复用模板：趋势/动量/波动/回撤/系统性，描述性非预测）──
@@ -1000,6 +1004,9 @@ function renderStockScorecard(sym) {
       `⚠ This is a <b>descriptive</b> scorecard (current trend/momentum/volatility/drawdown/systematic exposure) — it does not predict direction.
       Consistent with this site's conclusions elsewhere: individual-stock direction is just as unreliable to predict. Use it as a quick <b>current-state and risk-profile</b> check on a stock, not a buy/sell signal.`)}
     </div>`;
+  // D3 术语注解补扫：分析卡(β/年化波动/百分位等术语密集)由 stocks.json fetch 后直渲，
+  // 常错过 vp_gloss 固定双扫窗口；每次重画后补扫本容器（vpGlossScan 幂等，零副作用）。
+  if (typeof vpGlossScan === "function") vpGlossScan(el);
 }
 
 function renderStockChart(sym) {
@@ -1018,9 +1025,11 @@ function renderStockChart(sym) {
     });
   }
   Plotly.newPlot("chart-stock", traces, {...DARK, hovermode: "x unified",
-    xaxis: {...DARK.xaxis, rangeselector: RANGE_SEL},
     title: { text: vpL(`${sym}（${s.label}）vs 指数 · 归一化=100`, `${sym} (${s.label}) vs. indices · normalized=100`), font: { size: 13 } }},
     {displayModeBar: false, responsive: true});
+  // D3：外部零依赖切换条替代旧的 Plotly 原生 rangeselector（见判断点①）；每次换股都会
+  // Plotly.newPlot 到同一个 div，vpRangeBar 在兄弟节点上"保活"，这里调用即原地刷新。
+  if (typeof vpRangeBar === "function") vpRangeBar("chart-stock", { dates: s.series.dates });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1221,11 +1230,15 @@ async function loadPaperPanel() {
   const eqEl = document.getElementById("chart-equity");
   if (!eqEl) return;
   if (strats.some(s => (s.curve?.dates || []).length > 1)) {
+    // 各策略 curve 起跑日相同但长度可能因当日是否已结算略有差异——取最长的一条作为
+    // vpRangeBar 的数据末日/首日来源（最能代表"实验至今覆盖了多久"）。
+    const eqDates = strats.map(s => s.curve?.dates || []).sort((a, b) => b.length - a.length)[0] || [];
     Plotly.newPlot("chart-equity", strats.map(s => ({
       x: s.curve.dates, y: s.curve.equity, type: "scatter", mode: "lines",
       name: s.label,
     })), {...DARK, yaxis:{...DARK.yaxis, title: vpL("净值 $","Equity $")}, hovermode:"x unified",
       legend:{orientation:"h", y:1.1}}, {responsive:true});
+    if (typeof vpRangeBar === "function") vpRangeBar("chart-equity", { dates: eqDates });
   } else {
     eqEl.innerHTML = `<div style="color:var(--muted);font-size:0.78rem;display:flex;align-items:center;justify-content:center;height:100%;">${vpL("📈 净值曲线将在实验积累几个交易日后出现","📈 The equity curve will appear once the experiment accumulates a few trading days")}</div>`;
   }

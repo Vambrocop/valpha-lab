@@ -16,6 +16,10 @@ global.localStorage = {
   setItem(){}
 };
 global.window = global;
+/* v1.1 起 vp_gloss.js 模块级读 document.currentScript（autoscan 探测）——
+   最小 shim 让 Node 能加载；currentScript=null → 自动扫描分支不触发，
+   本 harness 只测纯函数 vpAnnotate（不碰 DOM）。 */
+global.document = { currentScript: null };
 
 /* ── load the module ──────────────────────────────────────────── */
 require("../market-analysis/web/vp_gloss.js");
@@ -92,6 +96,42 @@ _lang="zh";
 {
   const out = vpAnnotate("今日波动率明显上升，短期风险加大。");
   assert("波动率 annotated", out.includes('class="vp-term"') && out.includes("波动率"));
+}
+
+/* ── D3 双语词条 + ASCII 词边界（新增行为） ── */
+console.log("\n── (h) en mode annotates bilingual term with English explanation ──");
+_lang="en";
+{
+  const out = vpAnnotate("The OOS hit-rate is public.");
+  assert("OOS annotated in en mode",      out.includes('class="vp-term"'));
+  assert("English explanation used",      out.includes("Out-of-sample"));
+  assert("no Chinese explanation leaked", !out.includes("样本外"));
+}
+
+console.log("\n── (h2) en mode still ignores zh-only legacy terms ──");
+_lang="en";
+{
+  const out = vpAnnotate("VIX is high; 波动率 rose.");
+  assert("legacy zh-only terms not annotated in en", !out.includes('class="vp-term"'));
+}
+
+console.log("\n── (i) ASCII word boundary guard ──");
+_lang="zh";
+{
+  const out = vpAnnotate("持有 BetaShares 与 VIX3M 相关产品。");
+  // "Beta" 不是词条；"VIX" 在 VIX3M 里是前缀 → 不得注解
+  assert("VIX inside VIX3M not annotated", !out.includes('class="vp-term"'));
+  const out2 = vpAnnotate("OOS 表现如何?LOOSE 一词无关。");
+  assert("standalone OOS annotated",  out2.includes('class="vp-term"'));
+  assert("OOS inside LOOSE untouched", !out2.includes('LOOSE<span') && (out2.match(/class="vp-term"/g)||[]).length === 1);
+}
+
+console.log("\n── (j) zh mode annotates new bilingual term with Chinese explanation ──");
+_lang="zh";
+{
+  const out = vpAnnotate("当前处于第90百分位附近。");
+  assert("百分位 annotated in zh", out.includes('class="vp-term"'));
+  assert("Chinese explanation used", out.includes("历史所有取值"));
 }
 
 /* ════════════════════════════════════════════════════════════════ */
