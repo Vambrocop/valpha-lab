@@ -42,6 +42,7 @@
 <h1 data-i18n="title"></h1>
 <div class="vp-takeaway" data-i18n="takeaway"></div>
 <p class="sub" data-i18n="intro"></p>
+<p class="sub" id="rawstamp"></p>
 <div class="verdict" id="verdict"></div>
 <div class="stats" id="stats"></div>
 <div class="launchbox" id="launch" style="display:none"></div>
@@ -92,7 +93,11 @@ const I18N={
   cStat:{zh:"状态",en:"Status"},cEx:{zh:"超额 vs SPY",en:"Excess vs SPY"},
   stSettled:{zh:"已结算",en:"settled"},stPending:{zh:"挂账",en:"pending"},stDropped:{zh:"已丢弃",en:"dropped"},
   accum:{zh:"攒战绩中(约1个月后出首批)",en:"accumulating (~1 mo to first batch)"},
-  err:{zh:"拉不到 insider_signal.json——确认已部署 / 稍后再试。",en:"Can't load insider_signal.json — check deployment / try later."}
+  err:{zh:"拉不到 insider_signal.json——确认已部署 / 稍后再试。",en:"Can't load insider_signal.json — check deployment / try later."},
+  // ---- raw insider.json fetch-recency stamp (honest: scoring reruns daily, but new SEC buys only land when the local pipeline runs) ----
+  rawStamp:{zh:"内部人买入快照 · 截至",en:"Insider-buy snapshot · as of"},
+  rawStampWhy:{zh:"SEC 限制自动化 CI 抓取，新买入数据随本地流水线运行补充，非固定周期",
+               en:"SEC blocks automated CI fetches; new buys are topped up whenever the local pipeline runs, not on a fixed schedule"}
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -183,14 +188,35 @@ function render(d){
     :`数据：${esc(d.source||"SEC EDGAR Form 4")} · 生成 ${gen} · 持有 ${hold} 日 vs ${bm}`;
 }
 
+// raw insider.json (SEC Form 4 scrape) fetch-recency stamp — deliberately separate from
+// insider_signal.json's own "generated" (that one reflects the forward-scoring rerun,
+// which can happen daily via yfinance even when no *new* SEC buy has been fetched,
+// since SEC blocks CI's IP; only the local-pipeline run can add new buys).
+const RAW="insider.json";
+let RAWGEN=null;
+function renderRawStamp(){
+  const el=$("rawstamp"); if(!el) return;
+  if(!RAWGEN){el.textContent="";return;}
+  el.innerHTML=`${esc(t("rawStamp"))} ${esc(RAWGEN)} <span style="opacity:.75">(${esc(t("rawStampWhy"))})</span>`;
+}
+async function loadRaw(){
+  try{
+    const r=await fetch(RAW,{cache:"no-store"});
+    if(r.ok){const j=await r.json();RAWGEN=(j&&j.generated||"").slice(0,10)||null;}
+  }catch(e){}
+  renderRawStamp();
+}
+
 $("lang").onclick=()=>{
   LANG=LANG==="zh"?"en":"zh";
   try{localStorage.setItem("valpha_lang",LANG);}catch(e){}
   if(window._d) render(window._d); else applyStatic();
+  renderRawStamp();
 };
 
 (async()=>{
   applyStatic();
+  loadRaw();   // best-effort, independent of the main insider_signal.json fetch
   let d=null;
   for(const u of [REL,LIVE]){
     try{const r=await fetch(u,{cache:"no-store"});if(r.ok){d=await r.json();break;}}catch(e){}

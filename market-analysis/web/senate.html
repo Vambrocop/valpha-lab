@@ -30,6 +30,7 @@
 <h1 data-i18n="title"></h1>
 <div class="vp-takeaway" data-i18n="takeaway"></div>
 <p class="sub" data-i18n="intro"></p>
+<p class="sub" id="statictag"></p>
 <div class="verdict" id="decision" style="border-color:var(--grn);background:rgba(63,185,80,.1)"></div>
 <div class="verdict" id="verdict"></div>
 <div class="stats" id="stats"></div>
@@ -55,7 +56,12 @@ const I18N={
         en:"~half positive is the coin-flip expectation — no multiple-testing (FDR) correction, individual positives are indistinguishable from noise; the ranking is for transparency, not 'senators with edge'."},
   cSen:{zh:"议员",en:"Senator"},cEx:{zh:"~3月超额%",en:"~3M excess%"},cWin:{zh:"跑赢SPY%",en:"beat SPY%"},cN:{zh:"笔数",en:"n"},
   err:{zh:"拉不到 senate_signal.json——确认已部署。",en:"Can't load senate_signal.json — check deployment."},
-  sExcess:{zh:"整体超额%",en:"overall excess%"},sBeat:{zh:"跑赢SPY%",en:"beat SPY%"},sN:{zh:"可测买入",en:"tested buys"},sDrop:{zh:"丢弃%(退市)",en:"dropped%"},asof:{zh:"数据",en:"data"}
+  sExcess:{zh:"整体超额%",en:"overall excess%"},sBeat:{zh:"跑赢SPY%",en:"beat SPY%"},sN:{zh:"可测买入",en:"tested buys"},sDrop:{zh:"丢弃%(退市)",en:"dropped%"},asof:{zh:"数据",en:"data"},
+  // ---- static-snapshot honesty stamp: this test is settled by design, not a live feed ----
+  staticTag:{zh:"跟议员买入 · 诚实检验结论已定（披露延迟致跟买≈打平）· 静态历史快照，截至",
+             en:"Follow-senator-trades honest test — conclusion settled (disclosure lag makes following ≈ break-even) · static historical snapshot through"},
+  staticTagWhy:{zh:"按设计不追加新数据；只有方法论修订才会重新计算，并非实时/持续更新",
+                en:"not appended with new data by design; recomputed only if the methodology changes — not a live or continuously updated feed"}
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -65,6 +71,10 @@ const sv=(v,c)=>`<span class="${(c&&v>=0)?'pos':(c?'neg':'')}">${v==null?'—':(
 function applyStatic(){document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));$("lang").textContent=LANG==="zh"?"EN":"中";document.documentElement.lang=LANG==="zh"?"zh-CN":"en";}
 function render(d){
   applyStatic();
+  const rangeEnd=esc(((d.data_range||[])[1])||"");
+  $("statictag").innerHTML=rangeEnd
+    ? `${esc(t("staticTag"))} ${rangeEnd} <span style="opacity:.75">(${esc(t("staticTagWhy"))})</span>`
+    : "";
   $("decision").innerHTML="💡 <b>"+esc(d.decision||"")+"</b>";
   $("verdict").innerHTML="🧭 "+esc(d.verdict||"");
   const o=d.overall||{};
