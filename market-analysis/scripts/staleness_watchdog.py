@@ -32,11 +32,18 @@ SCRIPTS = Path(__file__).parent
 WEB = SCRIPTS.parent / "web"
 STATE = SCRIPTS.parent / "data" / "watchdog_state.json"
 
-# (键, 文件, 时间戳字段, 超期天数阈值, 人话名)
+# (键, 文件, 时间戳字段, 超期天数阈值, 人话名, 类型)
+#   kind="live"          时敏产物,紧阈值,超期=真卡住该报警(流水线断了)。
+#   kind="known-limited" SEC 源(insider/ipo):SEC 封 CI 数据中心 IP,只随本地跑 run_all 补充。
+#     前端标注扛日常诚实披露;watchdog 只做**松阈值兜底**(连本地补充都断了这么久才响),措辞是"该本地补"非"卡住"。
+#     (2026-07-10 军师定案:accept+label+本地兜底,不花钱绕封锁;详见 HANDOVER 陈旧数据条。)
 CHECKS = [
-    ("signals",    WEB / "signals.json",    "generated", 3, "信号流水线 signals.json"),
-    ("llm_daily",  WEB / "llm_read.json",   "generated", 4, "大白话日读 llm_read.json"),
-    ("llm_weekly", WEB / "llm_weekly.json", "generated", 9, "本周回顾 llm_weekly.json"),
+    ("signals",    WEB / "signals.json",     "generated", 3,  "信号流水线 signals.json", "live"),
+    ("llm_daily",  WEB / "llm_read.json",    "generated", 4,  "大白话日读 llm_read.json", "live"),
+    ("llm_weekly", WEB / "llm_weekly.json",  "generated", 9,  "本周回顾 llm_weekly.json", "live"),
+    ("insider",    WEB / "insider.json",     "generated", 21, "内部人买入 insider.json", "known-limited"),
+    ("ipo",        WEB / "ipo_filings.json", "generated", 21, "IPO申报 ipo_filings.json", "known-limited"),
+    ("ndx",        WEB / "ndx.json",         "generated", 14, "纳指100成分 ndx.json", "live"),  # 解析器坏=可修bug,该催
 ]
 
 
@@ -56,10 +63,10 @@ def _age_days(ts, now):
 
 
 def find_stale(now=None):
-    """返回超期产物列表 [(key, 人话名, age_days|None, ts|None)];缺文件/坏时间戳视同卡住(age=None)。"""
+    """返回超期产物 [(key, 人话名, age_days|None, ts|None, kind)];缺文件/坏时间戳视同卡住(age=None)。"""
     now = now or datetime.datetime.now(datetime.timezone.utc)
     stale = []
-    for key, path, field, limit, label in CHECKS:
+    for key, path, field, limit, label, kind in CHECKS:
         ts = None
         try:
             ts = json.loads(path.read_text(encoding="utf-8")).get(field)
@@ -67,7 +74,7 @@ def find_stale(now=None):
             pass
         age = _age_days(ts, now)
         if age is None or age > limit:
-            stale.append((key, label, age, ts))
+            stale.append((key, label, age, ts, kind))
     return stale
 
 
@@ -93,14 +100,18 @@ def run(now=None, state_path=STATE):
         print(f"[看门狗] {len(stale)} 项超期但今天已告警过,去重跳过")
         return []
 
-    lines = ["🐶 Valpha 看门狗:数据卡住了"]
-    for _, label, age, ts in fresh_alerts:
+    # 只有 known-limited 源超期 → 是"该本地补"的提醒而非事故;有 live 源超期 → 真卡住
+    any_live = any(s[4] != "known-limited" for s in fresh_alerts)
+    lines = ["🐶 Valpha 看门狗:数据卡住了" if any_live else "🐶 Valpha 看门狗:SEC 源该本地补了"]
+    for _, label, age, ts, kind in fresh_alerts:
         if age is None:
             lines.append(f"· {label}:缺失或时间戳不可读(视同卡住)")
+        elif kind == "known-limited":
+            lines.append(f"· {label}:已 {age} 天未刷新 · SEC 限 CI 抓取,本地跑 run_all 即补(最后 {ts})")
         else:
             lines.append(f"· {label}:已 {age} 天未更新(最后 {ts})")
     lines.append("")
-    lines.append("排查:Actions 页看 Refresh market data 是否红;红则按 HANDOVER §4 处置手册来。")
+    lines.append("排查:live 类看 Actions 是否红(HANDOVER §4);known-limited 类=本地跑 run_all 补齐。")
 
     sent = False
     try:

@@ -22,10 +22,12 @@ def fake_web(tmp_path, monkeypatch):
     web = tmp_path / "web"; web.mkdir()
     files = {"signals": "signals.json", "llm_daily": "llm_read.json", "llm_weekly": "llm_weekly.json"}
     checks = [
-        ("signals",    web / "signals.json",    "generated", 3, "信号流水线 signals.json"),
-        ("llm_daily",  web / "llm_read.json",   "generated", 4, "大白话日读 llm_read.json"),
-        ("llm_weekly", web / "llm_weekly.json", "generated", 9, "本周回顾 llm_weekly.json"),
+        ("signals",    web / "signals.json",    "generated", 3, "信号流水线 signals.json", "live"),
+        ("llm_daily",  web / "llm_read.json",   "generated", 4, "大白话日读 llm_read.json", "live"),
+        ("llm_weekly", web / "llm_weekly.json", "generated", 9, "本周回顾 llm_weekly.json", "live"),
+        ("insider",    web / "insider.json",    "generated", 21, "内部人买入 insider.json", "known-limited"),
     ]
+    files["insider"] = "insider.json"
     monkeypatch.setattr(wd, "CHECKS", checks)
     state = tmp_path / "watchdog_state.json"
     monkeypatch.setattr(wd, "STATE", state)
@@ -36,6 +38,7 @@ def fake_web(tmp_path, monkeypatch):
     write("signals", "2026-07-07")                    # 0 天
     write("llm_daily", "2026-07-07T03:52:34Z")        # 0 天
     write("llm_weekly", "2026-07-05T04:34:54Z")       # 2 天
+    write("insider", "2026-07-07T00:00:00Z")          # 0 天(known-limited·默认新鲜,免污染既有断言)
     return {"write": write, "state": state, "web": web}
 
 
