@@ -401,9 +401,12 @@ function paint(){
   const _act=CR?(LANG==="en"?actionEN(CR.score):(CR.action||CR.stance)):null;
   const _call=(OUT&&OUT.index_call)?OUT.index_call.call:null;
   const _ct=_call?(LANG==="en"?` · Nasdaq ${esc(CALL_EN[_call]||_call)}`:` · 纳指${esc(_call)}`):"";
+  // 「今日底线」断言了 CR 的当日读数，须挂具体 as-of（读真字段，不硬编码）——同 renderHero() 的 _d 口径
+  const _bd=CR?(CR.asof||CR.date||""):"";
+  const _bdTxt=_bd?(LANG==="en"?` (as of ${esc(_bd)})`:`（数据截至 ${esc(_bd)}）`):"";
   $("bottom").innerHTML = LANG==="en"
-    ? `Today: <b>${_act?esc(_act):"—"}</b>${_ct}${hotSec?`; heat in <b>${esc(hotSec)}</b>`:''}. <span class="mut">Every call is scored — not a guarantee, we can be wrong.</span>`
-    : `今日：<b>${_act?esc(_act):"—"}</b>${_ct}${hotSec?`；热度在<b>${esc(hotSec)}</b>`:''}。<span class="mut">每条判断都进了公开计分——非保证、会错,自己拍。</span>`;
+    ? `Today: <b>${_act?esc(_act):"—"}</b>${_ct}${hotSec?`; heat in <b>${esc(hotSec)}</b>`:''}${_bdTxt}. <span class="mut">Every call is scored — not a guarantee, we can be wrong.</span>`
+    : `今日：<b>${_act?esc(_act):"—"}</b>${_ct}${hotSec?`；热度在<b>${esc(hotSec)}</b>`:''}${_bdTxt}。<span class="mut">每条判断都进了公开计分——非保证、会错,自己拍。</span>`;
 }
 
 // ── Onboarding logic ──
@@ -494,6 +497,9 @@ function renderOVR(){
         +` <span style="color:var(--mut)">（标普 ${esc(String(ret))}% vs 阈值 ${esc(String(thr))}%）</span>`;
     }
   }
+  // 「今日极端下跌/未触发」断言了 td（该交易日读数）的状态，须挂具体 as-of（读真字段，不硬编码）
+  const _od=td.date||(OVR.generated?String(OVR.generated).slice(0,10):"");
+  if(_od){mainHtml+=`<div class="mut" style="font-size:.72rem;margin-top:5px">${en?"as of "+esc(_od):"数据截至 "+esc(_od)}</div>`;}
   $("ovr-main").innerHTML=mainHtml;
   // ── 公开战绩 ──
   let scoreHtml="";

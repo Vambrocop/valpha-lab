@@ -269,9 +269,12 @@ function loadSurvivors(){
     .then(function(j){
       if(!j||!j.survivors||!j.survivors.length)return;
       var el=$('survivorsLive');
+      // 「今日应期 N/N」断言了 j（各规律的当日 active 状态），须挂具体 as-of（读真字段 j.as_of，不硬编码）
+      var asofTxt=j.as_of?(' · '+(LANG==='en'?('as of '+esc(j.as_of)):('数据截至 '+esc(j.as_of)))):'';
       var head='<div style="font-size:.8rem;color:var(--grn);margin-bottom:6px">🔬 '
         +(LANG==='en'?'Survivor watchlist':'存活规律观察台')
         +' · '+(LANG==='en'?('active '+j.n_active+'/'+j.n_survivors):('今日应期 '+j.n_active+'/'+j.n_survivors))
+        +asofTxt
         +'</div>';
       var rows=j.survivors.map(function(s){
         var on=s.active===true;
