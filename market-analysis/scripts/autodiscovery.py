@@ -752,6 +752,46 @@ def _trailing_extreme(n, hold, side, index, cid):
             "effect": f"{side_lab}后持有期上涨率 vs 基率"}
 
 
+# ── 当前态快照（展示层·B2「你问·我测」问答卡数据源，2026-07-11）────────────────
+#   截至最新 bar 的：今日连跌天数(down_streak) + 长跨度 trailing-N 的 PIT 分位位置。
+#   纯描述当下状态——历史检验说这些状态对后市【无预测力】(streak/trailing 全族 0 存活)。
+#   只读最新 bar、分位用 PIT expanding(与 _trailing_extreme_arrays 同口径)、零前瞻;缺数据静默略过。
+#   诚实铁律(三锁·同句锁)：前端渲染这些数字时，必须与"此状态历史上无预测力"标签同句同视觉单元，
+#   muted 灰、永不红绿着色，且【只】活在"测过·无优势"问答卡内部，绝不进 composite/雷达/任何信号聚合。
+def _context_states():
+    out = {}
+    asof = None
+    for index in ("nasdaq", "sp500"):
+        px = _daily_price(index)
+        if px is None or len(px) < 300:
+            continue
+        if asof is None or px.index[-1] > asof:
+            asof = px.index[-1]
+        ret = px.pct_change()
+        down_i = (ret < 0).astype(int)
+        runlen = down_i.groupby((down_i == 0).cumsum()).cumsum()   # 与 _streak_arrays 同款向量化游程
+        cur_streak = int(runlen.iloc[-1])                          # 今日为止连跌天数(0=最新日未收跌)
+        trailing = {}
+        for n in (63, 126, 252):
+            trailing_ret = px / px.shift(n) - 1
+            if int(trailing_ret.notna().sum()) < _TRAILING_WARMUP + 10:
+                continue
+            cur = float(trailing_ret.iloc[-1])
+            hist = trailing_ret.dropna()                           # 序列末=今日 → 天然 PIT,不含未来
+            pctile = round(float((hist <= cur).mean()) * 100, 1)   # 今日 trailing_ret 在历史里的百分位秩
+            p10 = _trailing_pit_quantile(trailing_ret, 0.10).iloc[-1]
+            p90 = _trailing_pit_quantile(trailing_ret, 0.90).iloc[-1]
+            zone = "low" if cur <= p10 else ("high" if cur >= p90 else "mid")
+            trailing[f"{n}d"] = {"ret": round(cur, 4), "pctile": pctile, "zone": zone}
+        out[index] = {"down_streak": cur_streak, "trailing": trailing}
+    if not out:
+        return None
+    return {"asof": (str(asof.date()) if hasattr(asof, "date") else str(asof)),
+            "note": ("当前态·纯描述——历史检验说这些状态对后市无预测力"
+                     "(连跌族/长跨度族全 0 存活);列出仅供核对,不是买卖信号。"),
+            "indices": out}
+
+
 # ── 因子族：复用 _segment_lens 的 全段 full_p + 现代段 recent_p ──
 def _factor_map(factor_cands):
     if not factor_cands:        # 无因子候选不碰特征数据集(CI 干净检出无 data/raw/,#104 连挂根因)
@@ -847,6 +887,7 @@ def run_all(write=True, q=0.10):
                   "检验力不足=样本太小不下结论。因子族 FDR 为**无向双侧**(只问'有无可测边际'、不含方向判断，"
                   "与 factor_pruning 的方向门控透镜口径不同)。门4样本外待接入。探索性，非预测、非荐股。",
         "q": q, "n_declared": cs.N_DECLARED, "days_tracked": _log_days(), "summary": s,
+        "context_states": _context_states(),   # B2:当前态快照(喂问答卡·三锁·纯描述无预测力)
         "candidates": sorted(results, key=lambda r: r["p"]),
     }
     if write:

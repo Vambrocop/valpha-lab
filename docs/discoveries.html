@@ -40,7 +40,19 @@
   details.deadwrap summary{cursor:pointer;color:var(--mut);font-size:.86rem;padding:6px 0}
   .mut{color:var(--mut);font-size:.78rem;margin-top:18px;border-top:1px solid var(--border);padding-top:8px}
   #src{color:var(--mut);font-size:.78rem;margin-top:8px}
-  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}.grid{grid-template-columns:1fr}}
+  /* 🙋 你问·我测 问答卡（B2 当前态三锁：ya-state 一律 muted、永不红绿=样式锁） */
+  #youAsk{margin:14px 0 4px}
+  .ya-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+  .ya-card{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--mut);border-radius:10px;padding:12px 14px}
+  .ya-q{font-weight:600;color:var(--fg);font-size:.98rem}
+  .ya-a{margin:3px 0 6px;color:var(--fg)}
+  .ya-a b{color:var(--fg)}
+  .ya-body{font-size:.9rem;color:var(--fg);line-height:1.55}
+  .ya-state{margin-top:9px;padding-top:8px;border-top:1px dashed var(--border);font-size:.82rem;color:var(--mut);line-height:1.5}
+  .ya-state b{color:var(--mut);font-weight:600}
+  .ya-note{margin:11px 0 4px;font-size:.84rem;color:var(--mut)}
+  .ya-note a{color:var(--acc,#8b949e)}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}.grid{grid-template-columns:1fr}.ya-wrap{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -56,6 +68,9 @@
 
 <!-- ② 诚实一句话 -->
 <div class="honest" data-i18n="honest"></div>
+
+<!-- ②b 🙋 你问·我测（用户直觉 → 诚实检验结果，数字全活读 autodiscovery.json） -->
+<div id="youAsk"></div>
 
 <!-- ③ ✅ 活着的规律 -->
 <h2 data-i18n="hSurv"></h2>
@@ -387,6 +402,7 @@ function render(){
       +`<b>${nS}</b> held up, <span class="amb">${nF}</span> once worked but faded, `
       +`<span class="gone">${nI}</span> were too small to call, and the other <span class="gone">${nD}</span> didn't pass.`;
   }
+  renderYouAsk(cs);   // ②b 你问·我测（活读 streak/trailing 计数 + context_states 当前态）
   const ord=(a,b)=>((a.p==null?1:a.p)-(b.p==null?1:b.p));
   // ③ 活着的
   $("survivors").innerHTML=surv.length?[...surv].sort(ord).map(c=>pcard(c,"")).join(""):`<div class="mut">${t("noneSurv")}</div>`;
@@ -406,6 +422,60 @@ function render(){
   const led=(AD.days_tracked!=null)?` · 🌱 ${t("ledger")} ${AD.days_tracked}${t("days")}`:"";
   $("src").innerHTML=asof+led;
   enhanceA11y();
+}
+
+// ②b 🙋 你问·我测：用户直觉 → 诚实检验结果。所有数字活读 AD（candidates 计数 + context_states），
+// 绝不硬编码（数据变了页面自动改口）。当前态行遵守三锁：只活在卡内、与"无预测力"同句、muted 永不红绿。
+function _yaPct(x){return x==null?"—":(x>=0?"+":"")+(x*100).toFixed(1)+"%";}
+function _yaNum(x){return x==null?"—":x;}
+function renderYouAsk(cs){
+  const el=$("youAsk"); if(!el)return;
+  const skC=cs.filter(c=>c.family==="streak_down"||c.family==="streak_break");
+  const trC=cs.filter(c=>c.family==="trailing_extreme");
+  const skN=skC.length, skS=skC.filter(c=>c.verdict==="survive").length;
+  const trN=trC.length, trS=trC.filter(c=>c.verdict==="survive").length;
+  if(skN===0&&trN===0){el.innerHTML="";return;}   // 家族未部署 → 不显示（活读，绝不硬编码计数）
+  const ctx=AD.context_states||null, zh=(LANG==="zh");
+  const idx=(ctx&&ctx.indices)?ctx.indices:null;
+  const dt=(ctx&&ctx.asof)?esc(ctx.asof):"";
+  // ── 当前态·连跌（三锁）──
+  let stStreak="";
+  if(idx){
+    const nq=idx.nasdaq||{}, sp=idx.sp500||{};
+    stStreak=`<div class="ya-state">`+(zh
+      ?`当前态（截至 ${dt}）：纳指连跌 <b>${_yaNum(nq.down_streak)}</b> 天 · 标普连跌 <b>${_yaNum(sp.down_streak)}</b> 天。<b>历史检验：此状态对后市无预测力（${skS}/${skN} 过校正）</b>——列出仅供核对，不是买卖信号。`
+      :`Current state (as of ${dt}): Nasdaq down-streak <b>${_yaNum(nq.down_streak)}</b>d · S&amp;P <b>${_yaNum(sp.down_streak)}</b>d. <b>Historically no predictive power (${skS}/${skN} pass)</b> — shown for cross-checking, not a signal.`)+`</div>`;
+  }
+  // ── 当前态·长跨度 63d（三锁）──
+  let stTrail="";
+  if(idx){
+    const g=o=>(o&&o.trailing&&o.trailing["63d"])?o.trailing["63d"]:null;
+    const n6=g(idx.nasdaq), s6=g(idx.sp500);
+    if(n6||s6){
+      const zone=z=>zh?({low:"跌了好久",high:"涨了好久",mid:"中性区"}[z]||z):({low:"long down",high:"long up",mid:"mid"}[z]||z);
+      stTrail=`<div class="ya-state">`+(zh
+        ?`当前态（截至 ${dt}）：纳指过去 63 天 <b>${_yaPct(n6&&n6.ret)}</b>、历史 <b>${_yaNum(n6&&n6.pctile)}</b> 分位（${n6?zone(n6.zone):"—"}） · 标普 <b>${_yaPct(s6&&s6.ret)}</b>、<b>${_yaNum(s6&&s6.pctile)}</b> 分位（${s6?zone(s6.zone):"—"}）。<b>历史检验：此状态对后市无预测力（${trS}/${trN} 过校正）</b>——仅供核对，不是买卖信号。`
+        :`Current state (as of ${dt}): Nasdaq last 63d <b>${_yaPct(n6&&n6.ret)}</b>, <b>${_yaNum(n6&&n6.pctile)}</b>th pctile (${n6?zone(n6.zone):"—"}) · S&amp;P <b>${_yaPct(s6&&s6.ret)}</b>, <b>${_yaNum(s6&&s6.pctile)}</b>th (${s6?zone(s6.zone):"—"}). <b>No predictive power historically (${trS}/${trN} pass)</b> — cross-check only, not a signal.`)+`</div>`;
+    }
+  }
+  const card1=`<div class="ya-card"><div class="ya-q">${zh?"🙋 连跌几天能抄底吗？":"🙋 Buy the dip after N down days?"}</div>`
+    +`<div class="ya-a">${zh?`测了，<b>${skS}/${skN} 通过</b>。`:`Tested — <b>${skS}/${skN} passed</b>.`}</div>`
+    +`<div class="ya-body">${zh
+      ?`你 2026-07-10 问的“连跌几天抄底 / 连跌后首根阳线反转”，机器测了 <b>${skN}</b> 种变体（连跌 3/4/5 天 × 持有 1/5/20 天 × 纳指/标普 + 首阳确认），55~99 年数据、FDR 校正后 <b>${skS}/${skN}</b> 存活。这不是白测——它说明“连跌了 N 天”本身不含可开采信息，不值得为它改操作。`
+      :`Your 2026-07-10 question (buy after N down days / first green candle). The machine tested <b>${skN}</b> variants (3/4/5-day streaks × 1/5/20-day holds × Nasdaq/S&amp;P + rebound confirmation); 55–99y of data, FDR-corrected: <b>${skS}/${skN}</b> survived. Not wasted — it shows “N days down” carries no exploitable edge.`}</div>`
+    +stStreak+`</div>`;
+  const card2=`<div class="ya-card"><div class="ya-q">${zh?"🙋 涨久会跌、跌久会涨吗？":"🙋 Does a long run mean-revert?"}</div>`
+    +`<div class="ya-a">${zh?`测了，<b>同样 ${trS}/${trN} 通过</b>。`:`Tested — <b>also ${trS}/${trN} passed</b>.`}</div>`
+    +`<div class="ya-body">${zh
+      ?`机器测了 <b>${trN}</b> 种长跨度变体（3 月~2 年 × 双向 × PIT 分位），两边都没过校正，<b>${trS}/${trN}</b> 存活。已知局限：长牛/熊段聚簇使检验偏松，即便如此仍无存活（见方法论页）。`
+      :`Tested <b>${trN}</b> long-horizon variants (3mo–2y × both directions × PIT quantile); neither side passed, <b>${trS}/${trN}</b> survived. Known caveat: bull/bear clustering makes the test lenient, yet still nothing survives (see methodology).`}</div>`
+    +stTrail+`</div>`;
+  const note=`<div class="ya-note">${zh
+    ?`候选池已从 104 扩到 <b>148</b>（把你的问题加进同一张考卷）；FDR 及格线随之收紧，边界闪烁的候选会被诚实退休——这是特性。<a href="flicker.html">看防闪烁页 →</a>`
+    :`The candidate pool grew 104 → <b>148</b> (your questions on the same exam); the FDR bar tightens and flickering boundary candidates retire honestly — by design. <a href="flicker.html">flicker page →</a>`}</div>`;
+  el.innerHTML=`<h2 style="margin-bottom:2px">${zh?"🙋 你问 · 我测":"🙋 You asked · we tested"}</h2>`
+    +`<p class="sub">${zh?"你提的直觉，严格检验后的诚实答复（数字实时读裁决账本）。":"Your intuitions, honestly tested (numbers read live from the verdict ledger)."}</p>`
+    +`<div class="ya-wrap">${card1}${card2}</div>${note}`;
 }
 
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};render();};

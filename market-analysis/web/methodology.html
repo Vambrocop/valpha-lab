@@ -93,8 +93,8 @@ const I18N={
 
   c2t:{zh:"🧮 FDR 错误发现率",en:"🧮 FDR (false discovery rate)"},
   c2g:{zh:"防：测得越多，假阳性越多",en:"Guards against: test many, get a pile of false positives"},
-  c2h:{zh:"测 100 个东西，光看 p<0.05 的门槛，平均会有约 5 个纯靠运气「显著」。Benjamini–Hochberg / Yekutieli 控制的是「入选的里面有多大比例是假货」，比单看一个 p 值诚实得多。",
-       en:"Test 100 things and a flat p<0.05 cutoff will, on average, flag about 5 by luck alone. Benjamini–Hochberg / Yekutieli control the share of fakes among everything you accept — far more honest than eyeballing a single p-value."},
+  c2h:{zh:"测 100 个东西，光看 p<0.05 的门槛，平均会有约 5 个纯靠运气「显著」。Benjamini–Hochberg / Yekutieli 控制的是「入选的里面有多大比例是假货」，比单看一个 p 值诚实得多。<br><br>候选池已从 <b>104 扩到 148</b>（2026-07 把用户提问的「连跌抄底 / 涨久跌久」直觉也加进同一张考卷）——<b>池子越大、及格线越严</b>，对全部候选一视同仁。<b>已知局限（诚实披露）</b>：长跨度「状态族」（涨了好久 / 跌了好久）用块自助控自相关，块长取全族段长 p90（=77 天缓冲），但最长的单个牛/熊段（268~343 天）仍超过块长，检验对这一族仍<b>偏乐观</b>（偏向让它「存活」）——即便在这个对存活有利的偏差下，该族 14 个变体仍全部没通过。",
+       en:"Test 100 things and a flat p<0.05 cutoff will, on average, flag about 5 by luck alone. Benjamini–Hochberg / Yekutieli control the share of fakes among everything you accept — far more honest than eyeballing a single p-value.<br><br>The candidate pool grew from <b>104 to 148</b> (in 2026-07 the user's 'buy-the-dip after a streak / long-run mean-reversion' intuitions joined the same exam) — <b>the bigger the pool, the stricter the bar</b>, applied to all candidates alike. <b>Known limitation (disclosed)</b>: the long-horizon 'state' family (long-up / long-down) uses block bootstrap for autocorrelation with block = family-wide p90 segment length (a 77-day buffer), but the single longest bull/bear episode (268–343 days) still exceeds the block, so the test stays <b>optimistic</b> for this family (biased toward 'survive') — yet even under that survival-favoring bias, all 14 variants failed."},
 
   c3t:{zh:"⏳ walk-forward 滚动样本外",en:"⏳ Walk-forward (rolling out-of-sample)"},
   c3g:{zh:"防：用未来数据回测、自己骗自己",en:"Guards against: backtesting with future data you wouldn't have had"},
