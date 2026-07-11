@@ -9,6 +9,11 @@
    + 期权情绪族 options_sentiment(P/C·8)。两族均为"状态型 sel"(最近一份 usable 报告/滚动z 落极端区)，
    走同一 _diff_windows + block_bootstrap_diff 机器；positioning 因状态多周持续 → block 放大(见
    POSITIONING_BLOCK_EXTRA)，optsent 尖峰短 block=hold 不变。
+   2026-07-10 append-only 扩声明(SPEC_STREAK_FAMILY.md·Fable 定规格·Opus 审规格通过)：N_DECLARED
+   104→148，新增连跌族 streak_down/streak_break(事件型 sel·==N/首涨确认·30)，stage2 即接真统计；
+   + 长跨度对称反转/延续族 trailing_extreme(状态型 sel·PIT expanding 分位·14)，stage2 先枚举占位、
+   2026-07-11 stage4 补真统计(PIT 分位 + block=hold+TRAILING_BLOCK_EXTRA 状态族放大)，H-1 显式路由
+   全程未变、绝非静默落 else。
 
 
 复用现有原语（不重写统计）：
@@ -593,6 +598,160 @@ def _optsent(series, extreme, hold, cid):
             "effect": "期权情绪极端状态下未来持有期上涨率 vs 基率"}
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# ── 连跌族 streak（2026-07-10·SPEC_STREAK_FAMILY.md·事件型 sel，==N 单日触发）──
+#   streak_down: sel[t] = (到 t 收盘为止恰好连跌 N 天，runlen==N)。
+#   streak_break: sel[t] = (ret[t]>0 且到 t-1 为止连跌>=N 天，即连跌后首个上涨日)。
+#   "跌"口径写死 down = ret < 0(严格；平盘/零收益断连跌)——建造期已用实测计数核对无口径漂移(见
+#   candidate_space.py streak 族声明注释)。sel 游程恒为 1 天(事件日非状态)→ block=hold 即可，
+#   无需 #7 式 block 放大(状态族才需要，此处与 trailing_extreme 的差异是故意的，见 SPEC §1/§5.1 命门2)。
+# ══════════════════════════════════════════════════════════════════════════
+def _streak_arrays(kind, n, hold, index):
+    """提取连跌族 (idx, sel, y)；全样本、runlen 向量化、不算 p。
+    命门(§1)：暖机无(runlen 从第2天可判)——首日 ret=NaN → down=(NaN<0)=False(非缺失游程的一部分，
+    自然计 0，不需要额外裁剪)；尾窗纪律(T1)：fwd 以 float 含 NaN 先进 df 再 dropna 后派生 y，
+    绝不 (NaN>0)→0(不许把'前向窗未实现'的尾部日子捏造成下跌)。"""
+    px = _daily_price(index)
+    if px is None or len(px) < 300:
+        return None
+    ret = px.pct_change()
+    down = (ret < 0)                                        # S2:严格小于零，平盘/零收益断连跌
+    down_i = down.astype(int)
+    runlen = down_i.groupby((down_i == 0).cumsum()).cumsum()  # 向量化游程长度(见测试:与朴素循环版等价)
+    if kind == "streak_down":
+        sel_raw = (runlen == n)                              # ==N 事件日(非 >=N 状态)：每段连跌各深度只触发一次
+    elif kind == "streak_break":
+        sel_raw = (ret > 0) & (runlen.shift(1) >= n)          # 严格上涨 且 昨日游程已达 n（首根阳线确认）
+    else:
+        return None
+    fwd = px.shift(-hold) / px - 1
+    # T1 纪律：fwd(float 含 NaN)先进 df 再 dropna，之后才派生 y——先 (fwd>0) 转 float 会把尾部
+    # "前向窗未实现"的日子捏造成 y=0(下跌)，systematically 压制近端信号(同 regime/positioning 侧同款修)。
+    df = pd.DataFrame({"sel": sel_raw, "fwd": fwd}).dropna()
+    sel = df["sel"].values.astype(bool)
+    y = (df["fwd"].values > 0).astype(float)
+    if int(sel.sum()) < 30:
+        return None
+    return df.index, sel, y
+
+
+def _streak(kind, n, hold, index, cid):
+    arr = _streak_arrays(kind, n, hold, index)
+    if arr is None:
+        return None
+    idx, sel, y = arr
+    bb = block_bootstrap_diff(sel, y, block=hold)             # 事件日 → block=hold 即可(无需状态族放大)
+    if bb is None:
+        return None
+    rmask = np.asarray(idx >= RECENT_CUT)
+    recent_p, powered = None, False
+    if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
+        if rbb is not None:
+            recent_p, powered = rbb["p_boot"], True
+    effect = ("连跌N天后持有期上涨率 vs 基率" if kind == "streak_down"
+              else "连跌后首个上涨日(反转确认)持有期上涨率 vs 基率")
+    return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
+            "recent_powered": bool(powered),
+            "windows": _diff_windows(idx, sel, y, hold),
+            "decades": _decade_rows(idx, sel, y > 0),
+            "effect": effect}
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── 长跨度对称反转/延续族 trailing_extreme（2026-07-10·SPEC_STREAK_FAMILY.md §5·stage4 真统计）──
+#   sel[t] = trailing-N 累计收益处于历史 PIT expanding 分位极端(low:<=p10(t) / high:>=p90(t))。
+#   命门1(PIT，§5.1)：p10(t)/p90(t) 只用 t(含当期)及之前观测到的 trailing_ret_N 历史算(expanding
+#   经验分位，对齐 _rolling_pctrank 口径)，严禁全样本 np.percentile(全序列)——本设计头号
+#   look-ahead 陷阱。暖机常量写死 _TRAILING_WARMUP=2520(≈10y trailing_ret_N 观测)。用 pandas
+#   expanding(min_periods=) 天然实现：min_periods 按**非 NaN 观测数**计数——trailing_ret 本身前 n
+#   天(formation 暖机)就是 NaN，与"分位暖机 2520 个 trailing_ret_N 观测"的边界天然叠加成一道判定，
+#   不需要额外裁剪逻辑（已用 np.percentile(手算窗口) 逐点核对完全一致，见建造期验证脚本）。
+#   命门2(状态族 block 放大，§5.3)：trailing-N 落进尾部会连续多天为真(状态族，非 streak 的 ==N
+#   单日事件)→ block = hold + TRAILING_BLOCK_EXTRA，discovery(本函数)与 OOS(oos_gate._trailing_extreme_oos)
+#   两处同一公式、同一常量，绝不 block=hold。
+#   TRAILING_BLOCK_EXTRA 实测来源(建造顺序①-④写死，见 SPEC §5.3；只测状态持续、绝不看前向收益)：
+#   14 个 (n×side×index) combo 的 sel 连续为真段长度分布 p90(scratch measure_block.py)：
+#     n=63  hold=21  nasdaq low/high p90=23.7/19.0d   sp500 low/high p90=19.9/19.5d
+#     n=126 hold=63  nasdaq low/high p90=34.6/46.0d   sp500 low/high p90=25.0/18.0d
+#     n=252 hold=126 nasdaq low/high p90=76.0/37.2d   sp500 low/high p90=55.0/20.1d
+#     n=504 hold=126 sp500  low/high p90=59.4/27.0d   (S4:504 不设 nasdaq)
+#   全族最大 = n=252/nasdaq/low p90=76.0d → ceil=77，写死为模块级常量，discovery/OOS 两处同用，
+#   不按候选各自调(否则=新增 researcher-DoF)。
+# ══════════════════════════════════════════════════════════════════════════
+_TRAILING_WARMUP = 2520          # S1：≈10y trailing_ret_N 观测；expanding min_periods 天然实现暖机
+TRAILING_BLOCK_EXTRA = 77        # B1：实测全族(n×side×index) sel 段长 p90 的最大值 ceil(76.0)=77
+
+
+def _trailing_pit_quantile(trailing_ret, q, warmup=_TRAILING_WARMUP):
+    """PIT expanding 经验分位(命门1)：t 处分位只用 t(含当期)及之前观测算，暖机前 NaN。
+    绝不可换成 trailing_ret.quantile(q)（全样本分位=look-ahead，命门1 明令禁止）——
+    expanding(min_periods=warmup).quantile(q) 与逐点 np.percentile(trailing_ret[:t+1], q*100)
+    数值完全一致(建造期已核对)，且是 O(n log n) 而非手写循环的 O(n²)。"""
+    return trailing_ret.expanding(min_periods=warmup).quantile(q)
+
+
+def _trailing_extreme_arrays(n, hold, index, side):
+    """提取长跨度族 (idx, sel, y)；PIT expanding 分位定 sel。三个"未成熟"来源一律 sel=NaN
+    且从整数组 dropna(S3·堵 H-2 基率污染，绝不 (NaN)→False 当"未触发正常日"污染基率)：
+    (a) formation 暖机(前 n 天无 trailing_ret_N)、(b) 分位暖机(前 _TRAILING_WARMUP 个 trailing_ret_N
+    观测内，这是最长的那道边界)、(c) forward-hold(末 hold 天无前向)。(a)(b) 均只在数组**前缀**、
+    (c) 只在**后缀**，不产生中段缺口——不破坏后续状态段连续性(与 block 常量实测同一前提)。
+    fwd 照 T1 以 float 含 NaN 先进 df 再 dropna 派生 y。"""
+    px = _daily_price(index)
+    if px is None or len(px) < n + _TRAILING_WARMUP + hold:
+        return None
+    trailing_ret = px / px.shift(n) - 1                        # (a) 前 n 天 NaN(formation 暖机)
+    p10 = _trailing_pit_quantile(trailing_ret, 0.10)
+    p90 = _trailing_pit_quantile(trailing_ret, 0.90)
+    if side == "low":
+        sel_raw = (trailing_ret <= p10)
+    elif side == "high":
+        sel_raw = (trailing_ret >= p90)
+    else:
+        return None
+    # (a)+(b) 合一掩码：p10/p90 同一 min_periods → NaN 位置恒同，immature 覆盖两道前缀边界
+    immature = trailing_ret.isna() | p10.isna()
+    sel_raw = sel_raw.where(~immature)                          # S3:未成熟 → NaN(不是 False)，防基率污染
+    fwd = px.shift(-hold) / px - 1                              # (c) 末 hold 天 NaN(forward-hold)
+    df = pd.DataFrame({"sel": sel_raw, "fwd": fwd}).dropna()    # T1:sel/fwd 均 float 含 NaN 先进 df 再 dropna
+    sel = df["sel"].astype(bool).values
+    y = (df["fwd"].values > 0).astype(float)
+    if int(sel.sum()) < 30 or int((~sel).sum()) < 30:
+        return None
+    return df.index, sel, y
+
+
+def _trailing_extreme_block(hold):
+    return hold + TRAILING_BLOCK_EXTRA                          # B1:discovery/OOS 两处同用同一公式
+
+
+def _trailing_extreme(n, hold, side, index, cid):
+    """长跨度族真统计(stage4)：状态族 block=hold+TRAILING_BLOCK_EXTRA(命门2·绝不 block=hold)
+    块自助 + 现代段(recent_p)。数据/暖机不足 → _trailing_extreme_arrays 返回 None →
+    compute_results 既有"数据不足→p=1.0"兜底接住(H-1 显式路由已就绪，非静默落 else)。"""
+    arr = _trailing_extreme_arrays(n, hold, index, side)
+    if arr is None:
+        return None
+    idx, sel, y = arr
+    block = _trailing_extreme_block(hold)                       # 命门2:绝不 block=hold
+    bb = block_bootstrap_diff(sel, y, block=block)
+    if bb is None:
+        return None
+    rmask = np.asarray(idx >= RECENT_CUT)
+    recent_p, powered = None, False
+    if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=block)
+        if rbb is not None:
+            recent_p, powered = rbb["p_boot"], True
+    side_lab = "跌了好久(trailing 低分位)" if side == "low" else "涨了好久(trailing 高分位)"
+    return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
+            "recent_powered": bool(powered),
+            "windows": _diff_windows(idx, sel, y, block),
+            "decades": _decade_rows(idx, sel, y > 0),
+            "effect": f"{side_lab}后持有期上涨率 vs 基率"}
+
+
 # ── 因子族：复用 _segment_lens 的 全段 full_p + 现代段 recent_p ──
 def _factor_map(factor_cands):
     if not factor_cands:        # 无因子候选不碰特征数据集(CI 干净检出无 data/raw/,#104 连挂根因)
@@ -635,6 +794,12 @@ def compute_results(candidates):
         elif fam == "options_sentiment":                  # H-1 BLOCKER:同上
             p = c["params"]
             r = _optsent(p["series"], p["extreme"], p["hold"], c["candidate_id"])
+        elif fam in ("streak_down", "streak_break"):      # H-1 BLOCKER:同上(2026-07-10 stage2)
+            p = c["params"]
+            r = _streak(fam, p["n"], p["hold"], p["index"], c["candidate_id"])
+        elif fam == "trailing_extreme":                   # H-1 BLOCKER:同上(2026-07-11 stage4 真统计)
+            p = c["params"]
+            r = _trailing_extreme(p["n"], p["hold"], p["side"], p["index"], c["candidate_id"])
         elif fam == "factor":
             r = fac.get(c["candidate_id"])
         else:

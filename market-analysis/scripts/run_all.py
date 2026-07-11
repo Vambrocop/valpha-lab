@@ -12,7 +12,7 @@ run_all.py — 一键运行完整流水线并同步部署目录
 【C 信号主链】analyze/timing_analysis/event_study/horizon_stats → build_signals①(daily_signals)
     → backtest → walk_forward(walk_forward_results·MODEL_VERSION 所在)
     → factor_pruning → fdr_crossfamily(全站显著性收口)
-    → candidate_registry(锚·append-only)→ autodiscovery(104候选·BY-FDR·喂④) → cpcv(PBO)
+    → candidate_registry(锚·append-only)→ autodiscovery(148候选·BY-FDR·喂④) → cpcv(PBO)
     → vol_model/market_structure → track_predictions(prediction_log·append-only) → benchmark
     → build_signals②(把回测/验证/追踪嵌回 signals.json——「两遍」是刻意的,别合并)
 【D 展示/出格层】export_chart_data/fx/stocks → stock_checkup → fetch_news → paper_trading

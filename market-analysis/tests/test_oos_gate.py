@@ -258,6 +258,113 @@ def test_oos_verdict_unrouted_family_raises():
         og.oos_verdict(_cand(fam="totally_unknown"), anchor="2020-01-01")
 
 
+# ════════════════════════════════════════════════════════════════════════════
+# 3c. 连跌族(streak) OOS — 2026-07-10：H-1 显式路由(_diff_oos 复用，floor 只滤锚后不重启游程)
+# ════════════════════════════════════════════════════════════════════════════
+def _synth_streak_price(seed=0, n=2000, start="2000-01-03"):
+    idx = pd.date_range(start, periods=n, freq="B")
+    rng = np.random.default_rng(seed)
+    rets = np.zeros(n)
+    i = 0
+    while i < n:
+        run = rng.integers(1, 8)
+        sign = rng.choice([-1.0, 1.0])
+        mag = rng.uniform(0.003, 0.02, size=min(run, n - i))
+        rets[i:i + len(mag)] = sign * mag
+        i += len(mag)
+    return pd.Series(100 * np.cumprod(1 + rets), index=idx)
+
+
+def test_streak_oos_dispatch_no_silent_factor_note(monkeypatch):
+    """H-1 BLOCKER 守门:streak_down/streak_break 必须显式路由到 _diff_oos，绝不落 else→"因子族待接"。"""
+    import autodiscovery as ad
+    px = _synth_streak_price(seed=1)
+    monkeypatch.setattr(ad, "_daily_price", lambda index: px)
+    for fam in ("streak_down", "streak_break"):
+        cand = {"candidate_id": f"{fam}_oos_t", "key": "k", "family": fam,
+                "params": {"n": 3, "hold": 1, "index": "sp500"}}
+        v = og.oos_verdict(cand, "2005-01-01")
+        assert "因子族" not in v["note"]
+        assert v["full_sign"] is not None                    # _diff_oos 真跑了(全样本方向已算)
+
+
+def test_streak_oos_floor_only_masks_not_recompute(monkeypatch):
+    """floor 语义:锚后触发数必须等于"全样本 sel 在锚后的计数"，不是按锚后数据重新起算游程。"""
+    import autodiscovery as ad
+    px = _synth_streak_price(seed=2)
+    monkeypatch.setattr(ad, "_daily_price", lambda index: px)
+    anchor = "2005-06-01"
+    cand = {"candidate_id": "sd_floor_t", "key": "k", "family": "streak_down",
+            "params": {"n": 3, "hold": 1, "index": "sp500"}}
+    full_arr = ad._streak_arrays("streak_down", 3, 1, "sp500")
+    idx, sel, y = full_arr
+    mask = np.asarray(idx > pd.Timestamp(anchor))
+    v = og.oos_verdict(cand, anchor)
+    assert v["oos_n"] == int(sel[mask].sum())
+
+
+def test_streak_oos_unregistered_is_pending():
+    v = og.oos_verdict(_cand(fam="streak_down"), anchor=None)
+    assert v["oos_status"] == og.PENDING
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 3d. trailing_extreme OOS — 2026-07-11·stage4 真统计：H-1 显式路由到 _diff_oos（PIT 分位本身即
+# 纯回看=天然点时间，只 floor 到锚后不重算分位；block 与 discovery 同一 hold+TRAILING_BLOCK_EXTRA）
+# ════════════════════════════════════════════════════════════════════════════
+def _synth_trailing_price(seed=1, n_days=2900, decline_start=2820, decline_len=50, decline_mag=-0.006):
+    idx = pd.date_range("2000-01-03", periods=n_days, freq="B")
+    rng = np.random.default_rng(seed)
+    rets = rng.normal(0, 0.01, n_days)
+    rets[decline_start:decline_start + decline_len] = decline_mag + rng.normal(0, 0.002, decline_len)
+    return pd.Series(100 * np.cumprod(1 + rets), index=idx)
+
+
+def test_trailing_extreme_oos_dispatch_no_silent_factor_note(monkeypatch):
+    """H-1 BLOCKER 守门:trailing_extreme 必须显式路由到 _diff_oos(真统计)，绝不落 else→"因子族待接"，
+    也不再是 stage2 桩的恒 pending "trailing_extreme OOS 待接"措辞。"""
+    import autodiscovery as ad
+    px = _synth_trailing_price()
+    monkeypatch.setattr(ad, "_daily_price", lambda index: px)
+    cand = {"candidate_id": "tr_oos_t", "key": "k", "family": "trailing_extreme",
+            "params": {"n": 63, "hold": 5, "side": "low", "index": "sp500"}}
+    v = og.oos_verdict(cand, "2000-06-01")            # 锚早，锚后覆盖暖机后的成熟段+下跌段
+    assert "因子族" not in v["note"]
+    assert "OOS 待接" not in v["note"]                 # stage2 桩措辞不应再出现
+    assert v["full_sign"] is not None                 # _diff_oos 真跑了(全样本方向已算)
+
+
+def test_trailing_extreme_oos_floor_only_masks_not_recompute(monkeypatch):
+    """floor 语义(命门1 天然点时间的推论):锚后触发数必须等于"全样本 sel 在锚后的计数"，
+    不是按锚后数据重新起算 PIT 分位(§5.4 命门)。"""
+    import autodiscovery as ad
+    px = _synth_trailing_price(seed=2)
+    monkeypatch.setattr(ad, "_daily_price", lambda index: px)
+    anchor = "2000-06-01"
+    cand = {"candidate_id": "tr_floor_t", "key": "k", "family": "trailing_extreme",
+            "params": {"n": 63, "hold": 5, "side": "low", "index": "sp500"}}
+    full_arr = ad._trailing_extreme_arrays(63, 5, "sp500", "low")
+    assert full_arr is not None
+    idx, sel, y = full_arr
+    mask = np.asarray(idx > pd.Timestamp(anchor))
+    v = og.oos_verdict(cand, anchor)
+    assert v["oos_n"] == int(sel[mask].sum())
+
+
+def test_trailing_extreme_oos_unregistered_is_pending():
+    v = og.oos_verdict(_cand(fam="trailing_extreme"), anchor=None)
+    assert v["oos_status"] == og.PENDING
+
+
+def test_trailing_extreme_oos_block_matches_discovery():
+    """B1:discovery(autodiscovery._trailing_extreme_block)与 OOS 两处必须同一 hold+TRAILING_BLOCK_EXTRA
+    公式/常量，不一致=同一效应两套显著性口径。"""
+    import autodiscovery as ad
+    for hold in (21, 63, 126):
+        assert ad._trailing_extreme_block(hold) == hold + ad.TRAILING_BLOCK_EXTRA
+    assert ad.TRAILING_BLOCK_EXTRA == 77
+
+
 def test_positioning_oos_block_matches_discovery():
     """§10 定稿:discovery 与 OOS 的 positioning block 必须同一放大公式(hold+episode p90)，两处不一致=
     同一效应两套显著性口径。锚定实测常数:hold20→71、hold60→111（改 POSITIONING_BLOCK_EXTRA 必须重跑

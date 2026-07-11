@@ -75,6 +75,40 @@ _OPTSENT_SERIES = ("total_pc", "equity_pc")
 _OPTSENT_EXTREME = ("hi", "lo")
 _OPTSENT_HOLD = (10, 20)
 
+# ── 连跌族 streak（2026-07-10 用户原案·Fable 军师定规格 SPEC_STREAK_FAMILY.md·Opus 审规格通过）：
+#   streak_down=连跌事件日(runlen==N 严格)，streak_break=连跌后首个上涨日(确认式反转)。
+#   先验(§2·文献先于数据)：streak_down=短期反转(Lehmann 1990/Jegadeesh 1990；De Bondt-Thaler 过度反应
+#   的日频形式)，连跌后偏反弹(up>base)，预期现代段衰减(被套利，同日历族命运)。streak_break=从业者启发式
+#   "等首根阳线"，文献支撑弱于 streak_down，先验方向弱偏正、置信低——明写此子族更可能被打回，打回也是
+#   有价值的公开答案。**p 值双侧，方向先验仅作解释性，不许事后按结果挑边**。
+#   ⚠ 诚实关联：与 rebound 族、trailing_extreme 族同属"极端回归"母假设(尾部收益 vs 连跌是同一过度反应
+#   现象的不同跨度切面)——跨族 FDR 栏自然处理相关性，此处明记(SPEC_STREAK_FAMILY.md §0/§2)。
+#   口径命门(§1 S2)："跌"写死 down = ret < 0(严格小于零；平盘/零收益断连跌，不算跌也不续)——
+#   建造期已用实际数据核对触发计数与规格预注册数字(纳指758/363/190·标普1423/646/307，
+#   break纳指756/189·标普1402/304)逐一相符，无口径漂移。
+_STREAK_DOWN_N = (3, 4, 5)
+_STREAK_BREAK_N = (3, 5)
+_STREAK_HOLD = (1, 5, 20)
+
+# ── 长跨度对称反转/延续族 trailing_extreme（2026-07-10 用户扩范围·同一规格 §5）：
+#   trailing-N 累计收益处于历史极端分位(PIT expanding 分位，见 autodiscovery._TRAILING_WARMUP)，
+#   low(跌了好久)/high(涨了好久) 对称双向。**方向绝不预设为"涨久必跌"**——按跨度分段先验(§5.2)：
+#   中跨度(63/126/252d)先验=动量/延续(Jegadeesh-Titman 1993)，长跨度(504d)先验=弱反转
+#   (De Bondt-Thaler 1985，置信低、大概率 inconclusive，预注册接受的诚实结果)。p 双侧，先验仅解释性。
+#   网格纪律(§5.3)：hold 与 lookback 一一匹配(去 hold 维·最大且最可辩护的裁剪)；504d 只枚举 sp500
+#   (纳指史短、2年成形+持有的不重叠周期天然稀少·S4 设计取舍)；756d 3年成形期永不枚举(同理·文献常识)。
+#   stage2 先枚举占位(_trailing_extreme() 恒返回 None→p=1.0，H-1 已就绪的显式路由，不是静默 else)，
+#   2026-07-11 stage4 补真统计(PIT expanding 分位 + block=hold+TRAILING_BLOCK_EXTRA 状态族放大，
+#   见 autodiscovery.py 声明注释)。数据仍不足的候选(如暖机后有效样本太少)照旧返回 None→p=1.0。
+#   ⚠ 诚实关联：与 streak 族、rebound 族同属"极端回归"母假设，此处明记(SPEC_STREAK_FAMILY.md §0/§5.2)。
+_TRAILING_GRID = (                       # (lookback N, 匹配 hold, 覆盖指数)
+    (63, 21, INDICES),
+    (126, 63, INDICES),
+    (252, 126, INDICES),
+    (504, 126, ("sp500",)),              # S4:504d 不设 nasdaq(成形+持有周期在纳指史里天然稀少)
+)
+_TRAILING_SIDES = ("low", "high")
+
 
 def _cid(family, params):
     """稳定 candidate_id：family + 排序后 params 的短哈希（可复现、可作账本主键）。"""
@@ -121,10 +155,27 @@ def optsent_candidates():
             for series in _OPTSENT_SERIES for extreme in _OPTSENT_EXTREME for hold in _OPTSENT_HOLD]
 
 
+def streak_candidates():
+    down = [_cand("streak_down", f"down{n}_h{h}_{idx}", n=n, hold=h, index=idx)
+            for n in _STREAK_DOWN_N for h in _STREAK_HOLD for idx in INDICES]
+    brk = [_cand("streak_break", f"break{n}_h{h}_{idx}", n=n, hold=h, index=idx)
+           for n in _STREAK_BREAK_N for h in _STREAK_HOLD for idx in INDICES]
+    return down + brk
+
+
+def trailing_extreme_candidates():
+    return [_cand("trailing_extreme", f"n{n}_h{hold}_{side}_{idx}", n=n, hold=hold, side=side, index=idx)
+            for n, hold, idxs in _TRAILING_GRID for side in _TRAILING_SIDES for idx in idxs]
+
+
 def enumerate_candidates():
-    """全部预注册候选（无序拼接）。Phase 1 全部进 FDR 分母，禁预筛。"""
+    """全部预注册候选（无序拼接）。Phase 1 全部进 FDR 分母，禁预筛。
+    2026-07-10 扩声明(SPEC_STREAK_FAMILY.md·B2)：streak(30)与 trailing_extreme(14)
+    **同批**加入枚举——trailing 的真统计留 stage4 才建，但候选必须 stage2 就一次性声明进 148 分母
+    (不许分阶段扩分母，否则 BY 阈值随分母变化=违反 §0 预注册锁定)。"""
     return (calendar_candidates() + rebound_candidates() + regime_candidates() + factor_candidates()
-            + positioning_candidates() + optsent_candidates())
+            + positioning_candidates() + optsent_candidates()
+            + streak_candidates() + trailing_extreme_candidates())
 
 
 # 预声明总数（写死；test 对账，漂移即失败 → 强制有意识更新分母）
@@ -136,13 +187,21 @@ N_FACTOR = 15                                                        # = len(BIN
 # 2026-07-04 扩声明（append-only·#7·Opus 审规格定稿）：仓位族(COT) + 期权情绪族(P/C) 两新族进 FDR 池。
 N_POSITIONING = len(_POS_MARKET) * len(_POS_SERIES) * len(_POS_EXTREME) * len(_POS_HOLD)   # 2*2*2*2 = 16
 N_OPTSENT = len(_OPTSENT_SERIES) * len(_OPTSENT_EXTREME) * len(_OPTSENT_HOLD)              # 2*2*2 = 8
-N_DECLARED = N_CALENDAR + N_REBOUND + N_REGIME + N_FACTOR + N_POSITIONING + N_OPTSENT      # 51+12+2+15+16+8 = 104
+_N_BASELINE = (N_CALENDAR + N_REBOUND + N_REGIME + N_FACTOR + N_POSITIONING + N_OPTSENT)   # 原基线 104
+# 2026-07-10 扩声明(SPEC_STREAK_FAMILY.md·B2·§3·§6)：streak(18+12=30) + trailing_extreme(14)，
+# 一步到 148(不经 134 中转)——子算术常量 + 对账护栏(N3)，写成显式相加，不填魔数。
+N_STREAK = (len(_STREAK_DOWN_N) * len(_STREAK_HOLD) * len(INDICES)                         # 3*3*2 = 18
+            + len(_STREAK_BREAK_N) * len(_STREAK_HOLD) * len(INDICES))                     # 2*3*2 = 12 → 30
+N_TRAILING = sum(len(idxs) for _n, _h, idxs in _TRAILING_GRID) * len(_TRAILING_SIDES)       # (2+2+2+1)*2 = 14
+N_DECLARED = _N_BASELINE + N_STREAK + N_TRAILING                                            # 104+30+14 = 148
 
 
 if __name__ == "__main__":
     cs = enumerate_candidates()
     print(f"N_DECLARED={N_DECLARED} 候选空间：日历{N_CALENDAR} + 反弹{N_REBOUND} + 体制{N_REGIME} + "
-          f"因子{N_FACTOR} + 仓位{N_POSITIONING} + 期权情绪{N_OPTSENT}")
+          f"因子{N_FACTOR} + 仓位{N_POSITIONING} + 期权情绪{N_OPTSENT} + "
+          f"连跌{N_STREAK} + 长跨度反转{N_TRAILING}")
     print(f"实枚举 {len(cs)}；唯一 candidate_id {len({c['candidate_id'] for c in cs})}")
-    for fam in ("calendar", "rebound", "regime", "factor", "positioning", "options_sentiment"):
+    for fam in ("calendar", "rebound", "regime", "factor", "positioning", "options_sentiment",
+                "streak_down", "streak_break", "trailing_extreme"):
         print(f"  {fam}: {sum(c['family'] == fam for c in cs)}")

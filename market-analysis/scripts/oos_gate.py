@@ -7,6 +7,11 @@
   · rebound ：阈值=**全样本**百分位(规则定义于全数据) → 只把 (sel,y) 滤到锚后，**绝不**重算阈值。
   · regime  ：均线(50/200)用**全 px** 算 → 只把 (cond,fwd) 滤到锚后，**绝不**在锚后重启均线。
   · factor  ：OOS 待接(§10)，暂全记"未到可判"(不影响:今日全候选锚=注册日、锚后空)。
+  · streak  ：runlen(游程)本身是纯回看统计=天然点时间 → 只把 (idx,sel,y) 滤到锚后，
+    **绝不**在锚后重启游程计算(2026-07-10·SPEC_STREAK_FAMILY.md)。
+  · trailing_extreme：PIT expanding 分位本身即纯回看统计(命门1·t 处分位只用 t 及之前) = 天然点
+    时间，与 streak/positioning 同一模式 → 只把 (idx,sel,y) 滤到锚后，**绝不**在锚后重算分位；
+    block 用与 discovery 同一 hold+TRAILING_BLOCK_EXTRA 公式/常量(2026-07-11·stage4 真统计)。
 
 三态 + 滞回(防 chatter)：confirmed(方向同 ∧ oos_p<0.10) / overturned(方向反号 OR oos_p>0.20) /
 neutral(同向但 0.10–0.20·持中不动) / pending(锚后样本不足 = **未到可判**·一等公民，绝不凑结论)。
@@ -148,6 +153,23 @@ def _optsent_oos(cand, anchor):
     return _diff_oos(cand, anchor, arr, block=p["hold"])         # 尖峰型 sel → block=hold 不放大
 
 
+# ── 连跌族(streak) OOS：事件型 sel，阈值(runlen)本身就是纯回看统计=天然点时间，只把 (idx,sel,y)
+#   滤到锚后，**绝不**在锚后重启游程计算(与 rebound/regime 同一"§10 命门"模式)。block=hold(§1)。
+def _streak_oos(cand, anchor):
+    p = cand["params"]
+    arr = ad._streak_arrays(cand["family"], p["n"], p["hold"], p["index"])
+    return _diff_oos(cand, anchor, arr, block=p["hold"])
+
+
+# ── 长跨度反转/延续族(trailing_extreme) OOS：PIT expanding 分位天然点时间(命门1)，只把
+#   (idx,sel,y) 滤到锚后，绝不在锚后重算分位；block 与 discovery(autodiscovery._trailing_extreme_block)
+#   同一 hold+TRAILING_BLOCK_EXTRA 公式/常量(B1:两处必须一致，见 SPEC §5.4)。
+def _trailing_extreme_oos(cand, anchor):
+    p = cand["params"]
+    arr = ad._trailing_extreme_arrays(p["n"], p["hold"], p["index"], p["side"])
+    return _diff_oos(cand, anchor, arr, block=ad._trailing_extreme_block(p["hold"]))
+
+
 def oos_verdict(cand, anchor):
     """单候选 OOS 门4 裁决 → dict(oos_status/oos_n/oos_p/oos_sign/full_sign/...)。"""
     if anchor is None:
@@ -163,6 +185,10 @@ def oos_verdict(cand, anchor):
         return _positioning_oos(cand, anchor)
     if fam == "options_sentiment":           # H-1 BLOCKER:同上
         return _optsent_oos(cand, anchor)
+    if fam in ("streak_down", "streak_break"):   # H-1 BLOCKER:同上(2026-07-10 stage2)
+        return _streak_oos(cand, anchor)
+    if fam == "trailing_extreme":            # H-1 BLOCKER:同上(2026-07-11 stage4 真统计接线)
+        return _trailing_extreme_oos(cand, anchor)
     if fam == "factor":
         return _result(cand, anchor, PENDING, note="因子族 OOS 待接(§10)")
     raise ValueError(f"oos_verdict: 未路由的 family={fam!r}"

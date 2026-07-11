@@ -6,10 +6,13 @@ candidate_id 稳定唯一；反弹参数只在预声明离散集内（防"扫到
 from candidate_space import (
     enumerate_candidates, calendar_candidates, rebound_candidates, regime_candidates,
     factor_candidates, positioning_candidates, optsent_candidates,
+    streak_candidates, trailing_extreme_candidates,
     N_DECLARED, N_CALENDAR, N_REBOUND, N_REGIME, N_FACTOR, N_POSITIONING, N_OPTSENT,
+    N_STREAK, N_TRAILING,
     INDICES, _REB_PCTL, _REB_HOLD, _CAL_FOMC, _CAL_TWOSIDE,
     _POS_MARKET, _POS_SERIES, _POS_EXTREME, _POS_HOLD,
     _OPTSENT_SERIES, _OPTSENT_EXTREME, _OPTSENT_HOLD,
+    _STREAK_DOWN_N, _STREAK_BREAK_N, _STREAK_HOLD, _TRAILING_GRID, _TRAILING_SIDES,
 )
 
 
@@ -25,6 +28,8 @@ def test_family_counts():
     assert len(factor_candidates()) == N_FACTOR
     assert len(positioning_candidates()) == N_POSITIONING
     assert len(optsent_candidates()) == N_OPTSENT
+    assert len(streak_candidates()) == N_STREAK
+    assert len(trailing_extreme_candidates()) == N_TRAILING
 
 
 def test_pre_fomc_declared_both_indices():
@@ -72,7 +77,8 @@ def test_every_candidate_has_shape():
     for c in enumerate_candidates():
         assert set(c) >= {"family", "key", "params", "candidate_id"}
         assert c["family"] in {"calendar", "rebound", "regime", "factor",
-                                "positioning", "options_sentiment"}
+                                "positioning", "options_sentiment",
+                                "streak_down", "streak_break", "trailing_extreme"}
         assert isinstance(c["params"], dict) and c["params"]
 
 
@@ -98,10 +104,56 @@ def test_optsent_params_bounded():
 
 
 def test_per_family_counts_sum_to_declared():
-    # 逐族计数相加必须等于总分母（防漏算/偷加）
+    # 逐族计数相加必须等于总分母（防漏算/偷加）；streak 拆两个 family(down 18 + break 12 = N_STREAK)
     cs_all = enumerate_candidates()
     fam_counts = {"calendar": N_CALENDAR, "rebound": N_REBOUND, "regime": N_REGIME,
-                  "factor": N_FACTOR, "positioning": N_POSITIONING, "options_sentiment": N_OPTSENT}
+                  "factor": N_FACTOR, "positioning": N_POSITIONING, "options_sentiment": N_OPTSENT,
+                  "streak_down": 18, "streak_break": 12, "trailing_extreme": N_TRAILING}
     for fam, n in fam_counts.items():
         assert sum(1 for c in cs_all if c["family"] == fam) == n
+    assert fam_counts["streak_down"] + fam_counts["streak_break"] == N_STREAK
     assert sum(fam_counts.values()) == N_DECLARED == len(cs_all)
+
+
+# ── 2026-07-10 扩声明(SPEC_STREAK_FAMILY.md)：连跌族 streak(30) + 长跨度反转族 trailing_extreme(14) ──
+def test_streak_declared_totals():
+    # §1 网格：down N∈{3,4,5}×index{2}×hold{3} = 18；break N∈{3,5}×index{2}×hold{3} = 12 → 30
+    down = [c for c in streak_candidates() if c["family"] == "streak_down"]
+    brk = [c for c in streak_candidates() if c["family"] == "streak_break"]
+    assert len(down) == 18 and len(brk) == 12
+    assert N_STREAK == 30
+    assert {c["params"]["n"] for c in down} == set(_STREAK_DOWN_N)
+    assert {c["params"]["n"] for c in brk} == set(_STREAK_BREAK_N)
+    assert {c["params"]["hold"] for c in down} | {c["params"]["hold"] for c in brk} == set(_STREAK_HOLD)
+    assert {c["params"]["index"] for c in down} == set(INDICES)
+
+
+def test_trailing_declared_totals_and_grid():
+    # §5.3 网格：63/126/252d × low+high × sp500+nasdaq(各4) + 504d × low+high × sp500-only(2) = 14
+    tr = trailing_extreme_candidates()
+    assert len(tr) == 14 == N_TRAILING
+    assert all(c["family"] == "trailing_extreme" for c in tr)
+    by_n = {}
+    for c in tr:
+        by_n.setdefault(c["params"]["n"], []).append(c)
+    assert set(by_n) == {63, 126, 252, 504}
+    for n in (63, 126, 252):
+        assert len(by_n[n]) == 4
+        assert {c["params"]["index"] for c in by_n[n]} == set(INDICES)
+        assert {c["params"]["side"] for c in by_n[n]} == set(_TRAILING_SIDES)
+    assert len(by_n[504]) == 2
+    assert {c["params"]["index"] for c in by_n[504]} == {"sp500"}     # S4:504d 不设 nasdaq
+
+
+def test_trailing_hold_matches_lookback():
+    # §5.3 表：hold 与 lookback 一一匹配(63→21, 126→63, 252→126, 504→126)
+    expect = {63: 21, 126: 63, 252: 126, 504: 126}
+    for c in trailing_extreme_candidates():
+        assert c["params"]["hold"] == expect[c["params"]["n"]]
+
+
+def test_n_declared_is_148_explicit_sum():
+    # 分母对账(N3)：104(原基线) + 30(streak) + 14(trailing) = 148，一步到位(不经 134 中转)
+    assert N_STREAK == 30 and N_TRAILING == 14
+    assert N_DECLARED == 104 + N_STREAK + N_TRAILING == 148
+    assert len(list(enumerate_candidates())) == N_DECLARED
