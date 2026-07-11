@@ -1,9 +1,12 @@
 """fetch_ipo.py — SEC EDGAR 近期 IPO 相关申报（免费·CI 可达）→ ipo_filings.json。
 
 给 IPO 雷达页补一个【自动更新】的事实层：直接读 SEC EDGAR 全文搜索
-（efts.sec.gov/LATEST/search-index），拉最近 N 天的两类申报：
+（efts.sec.gov/LATEST/search-index），拉最近 N 天的四类申报：
   · S-1 / S-1/A       = 已递交招股书（"已申报"档的原始事实；递交≠一定上市）
-  · 424B4 / 424B1     = 已定价/生效招股书（≈"即将/刚上市"；比 S-1 更接近真上市）
+  · F-1 / F-1/A       = 外国发行人招股书（如海力士这类境外公司来美上市；同属"已递交"，行内 foreign=True）
+  · 424B4 / 424B1     = 已定价/生效招股书（≈"即将/刚上市"；比 S-1/F-1 更接近真上市）
+  · 8-A12B            = 已在交易所注册挂牌（IPO/直挂都必经，最干净的"确定要上"信号）
+  · F-6               = ADR 存托设施（常由存托行代递，多为程序性，独立隔离于 adr 档，不解析标的公司）
 只做取数 + 解析 + 形状守门，写 ipo_filings.json。**非荐股、非预测——就是一张 SEC 申报快照。**
 
 ═══ 数据源可行性（2026-07-02 实地核实·澳洲/CI 可达） ═══
@@ -113,6 +116,7 @@ def _fetch_forms(forms, start, end):
             "cik": cik,
             "form": form,
             "filed": date_,
+            "foreign": bool(form and str(form).upper().startswith("F-1")),  # F-1/F-1/A = 外国发行人招股书
         })
     rows.sort(key=lambda r: (r.get("filed") or ""), reverse=True)
     return rows[:MAX_ROWS]
@@ -121,17 +125,21 @@ def _fetch_forms(forms, start, end):
 def run():
     today = datetime.date.today()
     start = today - datetime.timedelta(days=LOOKBACK_DAYS)
-    filed, priced = [], []
+    filed, priced, listing, adr = [], [], [], []
     try:
-        # 已递交招股书（S-1 家族）——"已申报"事实档
-        filed = _fetch_forms(["S-1"], start, today)
+        # 已递交招股书（S-1 家族 + F-1 外国发行人家族）——"已申报"事实档
+        filed = _fetch_forms(["S-1", "F-1"], start, today)
         # 已定价/生效招股书（424B）——更接近"真上市"
         priced = _fetch_forms(["424B4", "424B1"], start, today)
+        # 已在交易所注册挂牌（8-A12B）——IPO/直挂都必经，最干净的"确定要上"信号
+        listing = _fetch_forms(["8-A12B"], start, today)
+        # ADR 存托设施（F-6）——常由存托行代递，多为程序性，独立隔离、不污染其他档
+        adr = _fetch_forms(["F-6"], start, today)
     except Exception as e:
         print(f"[IPO] SEC EDGAR 拉取失败（非致命，不阻断）: {e}")
         return None
 
-    if not filed and not priced:
+    if not filed and not priced and not listing and not adr:
         print("[IPO] 一条申报都没抓到——保留旧 ipo_filings.json（若有），不写坏数据")
         return None
 
@@ -142,18 +150,26 @@ def run():
         "lookback_days": LOOKBACK_DAYS,
         "disclaimer": (
             "SEC EDGAR 近期申报快照，含大量小盘/微盘/SPAC/空壳，非策展、非荐股、非预测。"
-            "S-1=已递交招股书(递交≠一定上市)；424B=已定价/生效招股书(更接近真上市)。"
+            "S-1=已递交招股书(递交≠一定上市)；424B=已定价/生效招股书(更接近真上市)；"
+            "F-1=外国发行人招股书(如海力士这类境外公司来美上市；递交≠一定上市)；"
+            "8-A12B=已在交易所注册挂牌(IPO/直挂都必经，更接近确定上市)；"
+            "F-6=ADR存托设施(常由存托行代递，多为程序性，与标的公司本身上市与否无必然关系)。"
             "不含未申报的市场传闻与估值/承销商等叙事字段（SEC 无记录）。"
         ),
         "n_filed": len(filed),
         "n_priced": len(priced),
-        "filed": filed,      # S-1 家族
+        "n_listing": len(listing),
+        "n_adr": len(adr),
+        "filed": filed,      # S-1 + F-1 家族（各行带 foreign 标记）
         "priced": priced,    # 424B 家族
+        "listing": listing,  # 8-A12B（交易所注册挂牌）
+        "adr": adr,          # F-6（ADR 存托设施，多为程序性）
     }
 
     from util_io import write_json
     written = write_json("ipo_filings.json", out, indent=1, allow_nan=False)
-    print(f"[OK] ipo_filings.json — S-1 {len(filed)} 条 / 424B {len(priced)} 条 "
+    print(f"[OK] ipo_filings.json — S-1/F-1 {len(filed)} 条 / 424B {len(priced)} 条 "
+          f"/ 8-A12B {len(listing)} 条 / F-6 {len(adr)} 条 "
           f"（近 {LOOKBACK_DAYS} 天）→ {len(written)} 处")
     return out
 
