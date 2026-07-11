@@ -16,7 +16,7 @@ MOBILE = "--mobile" in sys.argv
 CI = "--ci" in sys.argv or os.environ.get("CI") == "true"
 VP = {"width": 390, "height": 844} if MOBILE else {"width": 1440, "height": 1000}
 # 硬问题=真代码 bug(退非零拦 CI)；软=瞬时 live 部署 404 / 网络抖动(只警告)
-HARD_KW = ("溢出", "按钮", "加载失败", "pageerror")
+HARD_KW = ("溢出", "按钮", "加载失败", "pageerror", "循环动画未清", "reduced-motion违规")
 
 PAGES = ["dashboard.html", "index.html", "valpha150.html", "sectors.html", "radar.html",
          "advisor.html", "wild.html", "ipo.html", "methodology.html", "self_growing.html",
@@ -69,6 +69,48 @@ def click_visible_buttons(page, scope_js="document"):
     return results
 
 
+def infinite_animation_check(page):
+    """D4-3 检查②: 数据渲染完成后，容器内不应还有 iterations===Infinity 的动画在跑
+    (典型漏洞: 骨架 shimmer 的 innerHTML 没被真正替换掉，还在后台循环)。"""
+    try:
+        return page.evaluate("""() => {
+            const anims = document.documentElement.getAnimations({subtree: true});
+            return anims
+                .filter(a => { try { return a.effect.getTiming().iterations === Infinity; }
+                               catch (e) { return false; } })
+                .map(a => a.animationName || (a.effect && a.effect.target && a.effect.target.id) || '?');
+        }""")
+    except Exception as e:
+        return [f"getAnimations 检查抛错: {str(e)[:60]}"]
+
+
+def reduced_motion_check(browser, url):
+    """D4-3 检查①: prefers-reduced-motion:reduce 下重载页面，采样全部元素的
+    transition-duration / animation-duration，断言全部为 0s(全局 reduced-motion 规则须生效)。"""
+    page = browser.new_page(viewport=VP)
+    page.emulate_media(reduced_motion="reduce")
+    out = []
+    try:
+        page.goto(url, wait_until="domcontentloaded", timeout=15000)
+        page.wait_for_timeout(1200)
+        out = page.evaluate("""() => {
+            const nz = d => d.split(',').some(s => parseFloat(s) > 0);
+            const bad = [];
+            for (const el of document.querySelectorAll('*')) {
+                const cs = getComputedStyle(el);
+                if (nz(cs.transitionDuration) || nz(cs.animationDuration)) {
+                    bad.push(`${el.id || el.className || el.tagName} t=${cs.transitionDuration} a=${cs.animationDuration}`);
+                    if (bad.length >= 5) break;
+                }
+            }
+            return bad;
+        }""")
+    except Exception as e:
+        out = [f"reduced-motion 检查加载失败: {str(e)[:80]}"]
+    page.close()
+    return out
+
+
 def audit():
     handler = functools.partial(Quiet, directory=WEB)
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), handler)
@@ -101,6 +143,16 @@ def audit():
                 page.close(); continue
 
             issues += [f"溢出: {x}" for x in overflow_check(page)]
+
+            # D4-3 检查②: 数据已渲染，骨架 shimmer 等循环动画不该还挂着
+            inf_anims = infinite_animation_check(page)
+            if inf_anims:
+                issues.append("循环动画未清(渲染后仍有 infinite iterations): " + ", ".join(inf_anims[:5]))
+
+            # D4-3 检查①: prefers-reduced-motion:reduce 下重载，采样元素时长须全 0s
+            rm_bad = reduced_motion_check(b, f"http://127.0.0.1:{PORT}/{pg}")
+            if rm_bad:
+                issues.append("reduced-motion违规(时长未清零): " + " | ".join(rm_bad[:5]))
 
             if pg == "dashboard.html":
                 for v in DASH_VIEWS:

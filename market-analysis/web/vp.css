@@ -17,6 +17,12 @@
    --shadow → two-layer micro+ambient elevation (Kraken/Sentry dark pattern).
    See UI_POLISH_PROPOSAL.md → "⚠️ affects all pages". */
 
+/* ── Motion tokens（D4「克制动效」军师定案，Opus 终审）──────────────────
+   --dur-1 120ms：微交互(hover/focus/按下)　--dur-2 200ms：状态变化(值更新/切换)
+   250ms 为天花板，不再新增更慢档；白名单属性仅 opacity/transform/color/背景/边框/阴影，位移(translate)≤2px
+   原则：动效只确认状态已变化，不制造"正在发生"的假象——结论/裁决/数字首现一律零动效 */
+:root{--dur-1:120ms;--dur-2:200ms}
+
 /* ── Valpha polish tokens (ADDITIVE — opt-in; no existing var renamed/recolored) ──
    Mined from awesome-design-md → Kraken (purple-accented dark, data-dense) + Sentry
    (dark-surface elevation / focus ring). Brand purple #7132f5 fails AA on our dark bg
@@ -43,7 +49,7 @@
 }
 
 /* ── Additive utility components (no existing page references these yet) ──────────── */
-.vp-card--hover{transition:border-color .14s,transform .14s,box-shadow .14s}
+.vp-card--hover{transition:border-color var(--dur-1),transform var(--dur-1),box-shadow var(--dur-1)}
 .vp-card--hover:hover{border-color:var(--acc-line);transform:translateY(-2px);
   box-shadow:0 2px 4px rgba(0,0,0,.30),0 8px 24px rgba(0,0,0,.46)}
 
@@ -56,7 +62,7 @@
 
 .vp-btn{display:inline-flex;align-items:center;gap:6px;font-size:.88rem;font-weight:700;
   padding:8px 16px;border-radius:var(--rad);border:1px solid transparent;cursor:pointer;
-  text-decoration:none;transition:opacity .14s,background .14s,border-color .14s}
+  text-decoration:none;transition:opacity var(--dur-1),background var(--dur-1),border-color var(--dur-1)}
 .vp-btn--primary{background:var(--acc);color:#fff;border-color:var(--acc)}
 .vp-btn--primary:hover{opacity:.88}
 .vp-btn--ghost{background:transparent;color:var(--acc-strong);border-color:var(--acc-line)}
@@ -66,6 +72,13 @@
 .vp-link{color:var(--acc-strong);text-decoration:none}
 .vp-link:hover,.vp-link:focus{text-decoration:underline}
 .vp-focus-ring:focus-visible{box-shadow:var(--ring)}
+
+/* ── .vp-enter — 骨架→内容淡入 (D4「克制动效」C1) ──────────────────
+   仅 opacity(0→1)，无位移；渲染出内容时给容器套此 class 一次。
+   前提：骨架高度≈内容高度，否则会有 layout shift，此时不适用。
+   prefers-reduced-motion 已在上方全局覆盖(animation:none!important)。 */
+.vp-enter{animation:vp-enter var(--dur-2) ease-out}
+@keyframes vp-enter{from{opacity:0}}
 
 /* ── .vp-num — 数字排版系统 (D1) ──────────────────────────────────
    tabular-nums=等宽数字(跳动的分数/概率不左右错位)，紧字距增"贵"感。
@@ -88,7 +101,7 @@
 .vp-card--quiet{border-color:rgba(48,54,61,.65)}
 *{box-sizing:border-box}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}html{scroll-behavior:auto!important}}
 #lang{float:right;background:var(--panel);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:.82rem}
 
 /* ── vp_gloss.js 词汇 tooltip ──────────────────────────────────
@@ -119,7 +132,7 @@
 .vp-rangebar{display:flex;gap:6px;flex-wrap:wrap;margin:.4rem 0 .6rem}
 .vp-rangebar-btn{font:inherit;font-size:.72rem;padding:.28rem .65rem;border-radius:6px;
   cursor:pointer;background:var(--surface2,var(--panel));border:1px solid var(--border);
-  color:var(--mut);transition:all .15s}
+  color:var(--mut);transition:background var(--dur-1), border-color var(--dur-1), color var(--dur-1)}
 .vp-rangebar-btn:hover:not(:disabled){border-color:var(--mut);color:var(--fg)}
 .vp-rangebar-btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .vp-rangebar-btn.active{background:var(--acc-weak);border-color:var(--acc-line);color:var(--acc-strong);font-weight:600}

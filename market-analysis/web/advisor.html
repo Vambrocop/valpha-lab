@@ -18,7 +18,7 @@
   .seg button{background:transparent;color:var(--mut);border:0;padding:7px 14px;cursor:pointer;font-size:.9rem}
   .seg button.on{background:var(--acc);color:#fff}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:8px;margin-top:8px}
-  .stk{border:1px solid var(--border);border-radius:8px;padding:8px;cursor:pointer;background:#0d1117;transition:.12s}
+  .stk{border:1px solid var(--border);border-radius:8px;padding:8px;cursor:pointer;background:#0d1117;transition:border-color .12s, background .12s}
   .stk.sel{border-color:var(--acc);background:rgba(163,113,247,.1)}
   .stk b{font-size:.95rem}.stk .sub{font-size:.74rem;color:var(--mut);margin-top:2px}
   .chip{display:inline-block;font-size:.66rem;padding:1px 5px;border-radius:4px;margin-right:3px}
@@ -35,6 +35,7 @@
   .alert{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:10px 12px;margin:8px 0;font-size:.86rem;color:#ffb3ad}
   .mut{color:var(--mut);font-size:.8rem}.src{font-size:.74rem;color:var(--mut)}
   @media(max-width:560px){body{padding:12px}h1{font-size:1.18rem}.bill{grid-template-columns:1fr}.grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}input[type=number]{width:100%}}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>

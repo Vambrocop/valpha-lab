@@ -31,7 +31,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
   padding: .6rem 2rem; border-bottom: 1px solid var(--border); }
 .view-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted);
   padding: .45rem 1.1rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer;
-  white-space: nowrap; transition: all .15s; font-family: inherit; }
+  white-space: nowrap; transition: all var(--dur-1); font-family: inherit; }
 .view-btn:hover { color: var(--text); border-color: var(--muted); }
 .view-btn.active { color: var(--blue); border-color: var(--blue); background: rgba(52,152,219,.12); font-weight: 600; }
 /* 视图内布局：panel 自适应多列；宽图表单列堆叠 */
@@ -59,7 +59,7 @@ main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
 
 /* ── Signal Meter ── */
 .signal-meter { text-align: center; padding: 1.5rem 0; }
-.signal-ring { width: 160px; height: 160px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 1rem; border: 6px solid var(--border); transition: border-color .4s, background .4s; }
+.signal-ring { width: 160px; height: 160px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 1rem; border: 6px solid var(--border); transition: border-color var(--dur-2), background var(--dur-2); }
 .signal-pct { font-size: 2.8rem; font-weight: 800; line-height: 1; }
 .signal-label { font-size: 0.85rem; margin-top: 4px; font-weight: 600; }
 .signal-stars { font-size: 1.3rem; margin: .5rem 0; }
@@ -116,7 +116,7 @@ footer a { color: var(--green); text-decoration: none; }
 .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; flex-wrap: wrap; }
 .tab { padding: .5rem 1rem; font-size: 0.82rem; cursor: pointer; color: var(--muted);
   background: none; border: none; border-bottom: 2px solid transparent;
-  font-family: inherit; transition: color .2s; }
+  font-family: inherit; transition: color var(--dur-2); }
 .tab.active { color: var(--text); border-bottom-color: var(--green); }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
@@ -124,7 +124,7 @@ footer a { color: var(--green); text-decoration: none; }
 /* ── DOW Grid ── */
 /* auto-fit：面板窄时卡片换行而不是溢出裁切（PC 三列布局下 5 张卡挤不下） */
 .dow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: .5rem; }
-.dow-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: .75rem .5rem; text-align: center; transition: border-color .3s; }
+.dow-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: .75rem .5rem; text-align: center; transition: border-color var(--dur-2); }
 .dow-card.best { border-color: var(--green); }
 .dow-card.worst { border-color: var(--red); }
 .dow-card.today { border-color: var(--blue); background: rgba(52,152,219,.1); }
@@ -135,7 +135,7 @@ footer a { color: var(--green); text-decoration: none; }
 
 /* ── Sell Panel ── */
 .sell-bar-wrap { height: 12px; background: var(--border); border-radius: 6px; overflow: hidden; margin: .5rem 0; }
-.sell-bar { height: 100%; border-radius: 6px; transition: width .6s; }
+.sell-bar { height: 100%; border-radius: 6px; }
 .sell-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; font-size: 0.8rem; margin-top: .75rem; }
 .sell-metric { background: var(--surface2); border-radius: 6px; padding: .5rem .75rem; }
 .sell-metric-label { color: var(--muted); font-size: 0.72rem; }
@@ -143,7 +143,7 @@ footer a { color: var(--green); text-decoration: none; }
 
 /* ── Period buttons ── */
 .period-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px;
-  color: var(--muted); padding: .3rem .65rem; font-size: 0.75rem; cursor: pointer; transition: all .2s; }
+  color: var(--muted); padding: .3rem .65rem; font-size: 0.75rem; cursor: pointer; transition: color var(--dur-2), border-color var(--dur-2), background var(--dur-2); }
 .period-btn:hover { border-color: var(--muted); color: var(--text); }
 .period-btn.active { background: rgba(52,152,219,.15); border-color: var(--blue); color: var(--blue); }
 
@@ -175,19 +175,19 @@ footer a { color: var(--green); text-decoration: none; }
 .tier-1 .signal-ring, .tier-2 .signal-ring { box-shadow: 0 0 24px rgba(248,81,73,.15); }
 
 /* Panel hover：与 chart-wrap 一致的轻微浮起阴影 */
-.panel { transition: box-shadow .3s; }
+.panel { transition: box-shadow var(--dur-2); }
 .panel:hover { box-shadow: 0 2px 16px rgba(0,0,0,.3); }
 
 /* Smooth number transitions */
-.signal-pct { transition: color .4s; }
-.factor-val { transition: color .3s; }
+.signal-pct { transition: color var(--dur-2); }
+.factor-val { transition: color var(--dur-2); }
 
 /* Better opp-item hover */
-.opp-item { transition: background .2s; }
+.opp-item { transition: background var(--dur-2); }
 .opp-item:hover { background: var(--surface); }
 
 /* Chart wrap subtle glow on hover */
-.chart-wrap { transition: box-shadow .3s; }
+.chart-wrap { transition: box-shadow var(--dur-2); }
 .chart-wrap:hover { box-shadow: 0 2px 16px rgba(0,0,0,.3); }
 
 /* Year stats highlight */
@@ -200,7 +200,7 @@ footer a { color: var(--green); text-decoration: none; }
 .tip::after { content:attr(data-tip); position:absolute; bottom:130%; left:50%; transform:translateX(-50%);
   background:#1c2230; border:1px solid var(--border); border-radius:7px; padding:.5rem .8rem;
   font-size:0.75rem; white-space:normal; max-width:220px; z-index:300; color:var(--text);
-  pointer-events:none; opacity:0; transition:opacity .18s; line-height:1.5; text-align:left;
+  pointer-events:none; opacity:0; transition:opacity var(--dur-1); line-height:1.5; text-align:left;
   box-shadow:0 4px 16px rgba(0,0,0,.4); }
 .tip:hover::after, .tip.tip-show::after, .tip:focus-visible::after { opacity:1; }
 
@@ -235,7 +235,7 @@ footer a { color: var(--green); text-decoration: none; }
   color:var(--text); padding:.4rem .65rem; font-size:0.84rem; }
 .cgt-input:focus { outline:none; border-color:var(--green); }
 .cgt-btn { background:var(--green); color:#000; border:none; border-radius:6px; padding:.55rem 1.5rem;
-  font-size:0.88rem; font-weight:700; cursor:pointer; width:100%; margin-bottom:.75rem; transition:background .2s; }
+  font-size:0.88rem; font-weight:700; cursor:pointer; width:100%; margin-bottom:.75rem; transition:background var(--dur-2); }
 .cgt-btn:hover { background:#27ae60; }
 .cgt-result-row { display:flex; justify-content:space-between; padding:.3rem 0;
   border-bottom:1px solid var(--border-faint); font-size:0.82rem; }
@@ -256,9 +256,9 @@ footer a { color: var(--green); text-decoration: none; }
 .fg-gauge-track { height:8px; border-radius:4px; position:relative; margin:.5rem 0;
   background:linear-gradient(to right,#f85149 0%,#e67e22 25%,#d29922 50%,#3fb950 75%,#27ae60 100%); }
 .fg-needle { position:absolute; top:-4px; width:16px; height:16px; border-radius:50%;
-  transform:translateX(-50%); border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.4); transition:left .4s; }
+  transform:translateX(-50%); border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.4); transition:left var(--dur-2); }
 .fg-sparkline { display:flex; align-items:flex-end; gap:2px; height:28px; }
-.fg-spark-bar { flex:1; border-radius:2px 2px 0 0; min-height:3px; transition:height .3s; }
+.fg-spark-bar { flex:1; border-radius:2px 2px 0 0; min-height:3px; transition:height var(--dur-2); }
 
 /* ── Data staleness banner ── */
 .stale-banner { background:rgba(230,126,34,.12); border:1px solid rgba(230,126,34,.35);
@@ -322,12 +322,12 @@ header > * { position: relative; }
 
 /* 吸顶导航：胶囊按钮加轻微浮起 + 选中态柔光，向 index 卡片 hover 看齐 */
 .view-nav { box-shadow: 0 1px 0 var(--border-faint); }
-.view-btn { transition: color .15s, border-color .15s, background .15s, transform .15s, box-shadow .15s; }
+.view-btn { transition: color var(--dur-1), border-color var(--dur-1), background var(--dur-1), transform var(--dur-1), box-shadow var(--dur-1); }
 .view-btn:hover { transform: translateY(-1px); }
 .view-btn.active { box-shadow: 0 0 0 1px rgba(52,152,219,.18), 0 2px 10px rgba(52,152,219,.10); }
 
 /* Panel：与新页卡片一致的边框柔化 + hover 轻抬升（保留既有圆角/阴影规则） */
-.panel { border-color: var(--border-faint); transition: box-shadow .25s, border-color .25s, transform .25s; }
+.panel { border-color: var(--border-faint); transition: box-shadow var(--dur-2), border-color var(--dur-2), transform var(--dur-2); }
 .panel:hover { transform: translateY(-1px); border-color: var(--border); }
 
 /* Signal 环：在既有发光外补一层柔和径向底纹，质感更接近新页 */
@@ -340,7 +340,7 @@ header > * { position: relative; }
 .panel table tr:hover, .chart-wrap table tr:hover { background: rgba(155,89,182,.05); }
 
 /* dow / window 卡片：补统一的边框过渡，hover 不再突兀 */
-.dow-card, .window-card { transition: border-color .25s, box-shadow .25s; }
+.dow-card, .window-card { transition: border-color var(--dur-2), box-shadow var(--dur-2); }
 
 /* ── 尊重"减少动态效果"系统偏好（前庭敏感用户）── */
 @media (prefers-reduced-motion: reduce) {
@@ -348,10 +348,10 @@ header > * { position: relative; }
 }
 
 /* ── D3任务1：40日预测热力横带(app-3.js renderForecastCalendar) ── */
-.fc-cell { transition: filter .12s, outline-color .12s; }
+.fc-cell { transition: filter var(--dur-1), outline-color var(--dur-1); }
 .fc-cell:hover, .fc-cell:focus-visible { filter: brightness(1.3); outline: 2px solid var(--blue); outline-offset: 1px; }
 
 /* ── D3任务2：个股表行 → 展开体检摘要(app-4.js renderStocksTable) ── */
 tr[data-stock-symbol]:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
-.stx-caret { display: inline-block; width: .9em; color: var(--muted); transition: color .15s; }
+.stx-caret { display: inline-block; width: .9em; color: var(--muted); transition: color var(--dur-1); }
 tr[data-stock-symbol]:hover .stx-caret, tr[data-stock-symbol][aria-expanded="true"] .stx-caret { color: var(--text); }
