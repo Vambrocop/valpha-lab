@@ -1,0 +1,25 @@
+{
+  "_doc": "IPO 重大性富化的人工策展表（ipo_enrich.py Stage A 消费）。watchlist = 值得始终盯的高价值 IPO 名单：任一条名字在 SEC 申报流里以整词出现 → 该公司升 🔴 major（理由码 watchlist，「传闻/已知转已申报 = 最高价值」）。aliases = 母市场已上市的境外公司别名 → home 母代码，Stage D 取母市值换 USD 判 major。exclusions（F2 · 2026-07-12 军师亲审加）= 与 watchlist 词形碰撞、但确系无关公司的法定全名（如 Kraken Robotics/Energy ≠ 加密交易所 Kraken）：命中 watchlist 后若公司整名（normkey）与某条 exclusion 全等 → 视为未命中，防止单词名（如 'Kraken'）误伤同名他司。维护规约：① watchlist 只由主公/用户/Fable 加名（加名=公开打重大标签的编辑判断，建造者/子代理绝不自加）② watchlist 种子 = ipo.html 2026-06 策展快照三档名单，逐字搬来、未增删（2026-07-12 起两条例外见下）③ aliases 每条名字须 ≥5 字符独特串、整词匹配、命中≥2 条即弃权（歧义宁漏勿错）④ 改动同步 bump asof ⑤ 新增 watchlist 名优先用 SEC 法定名（多词更安全）；单词名须先核同名上市/申报公司，已知同名者进 exclusions ⑥ aliases 只收常识上明显 ≥$10B 的母公司；边缘案例不进——防行情源坏数造成假升档。",
+  "asof": "2026-07",
+  "changelog": [
+    {"date": "2026-07-12", "who": "Fable 军师亲审拍板（规约授权加名权）",
+     "change": "watchlist 加 Payward（Kraken 法定名·2025-11 保密递交，用整词匹配住真 Kraken 而不再仅靠子串 'Kraken'）、Space Exploration Technologies（SpaceX 法定名，补齐口径）；exclusions 新增 KRAKEN ROBOTICS / KRAKEN ENERGY（同名他司，此前被 watchlist 里的 'Kraken' 一词误伤升 major）"}
+  ],
+  "watchlist": [
+    "SpaceX",
+    "Space Exploration Technologies",
+    "Cerebras",
+    "Discord",
+    "Kraken",
+    "Payward",
+    "Anthropic",
+    "Strava",
+    "OpenAI",
+    "Databricks",
+    "Canva"
+  ],
+  "exclusions": ["KRAKEN ROBOTICS", "KRAKEN ENERGY"],
+  "aliases": [
+    {"names": ["SK HYNIX", "SK hynix"], "home": "000660.KS", "note": "韩交所母上市（KRX 000660）；母市值以 KRW 计，Stage D 须换 USD"}
+  ]
+}

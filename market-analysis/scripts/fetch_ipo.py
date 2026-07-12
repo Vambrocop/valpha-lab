@@ -110,6 +110,10 @@ def _fetch_forms(forms, start, end):
         if dedup_key in seen:
             continue
         seen.add(dedup_key)
+        # accession（供 ipo_enrich 富化定位费用来源）：efts 命中 _id 形如
+        # "0001234567-26-000123:file.htm"；_source.adsh 有时直接给。两路都试 + 格式验证兜底。
+        adsh = s.get("adsh") or (h.get("_id", "") or "").split(":")[0]
+        adsh = adsh if re.fullmatch(r"\d{10}-\d{2}-\d{6}", adsh or "") else None
         rows.append({
             "company": company,
             "ticker": ticker,        # 可能为 None（申报里没带交易代码）
@@ -117,6 +121,7 @@ def _fetch_forms(forms, start, end):
             "form": form,
             "filed": date_,
             "foreign": bool(form and str(form).upper().startswith("F-1")),  # F-1/F-1/A = 外国发行人招股书
+            "adsh": adsh,
         })
     rows.sort(key=lambda r: (r.get("filed") or ""), reverse=True)
     return rows[:MAX_ROWS]

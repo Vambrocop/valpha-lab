@@ -41,6 +41,22 @@
   /* adr (F-6) = low-key, procedural, dimmed */
   .t-adr .tag{background:rgba(139,148,158,.14);color:var(--mut);border:1px dashed var(--mut)}
   .t-adr .card{border-left:3px dashed var(--mut);opacity:.78}
+  /* ── A2 重大性分层：🔴 major / 🟡 notable 组 + 理由芯片 + 卡片徽章 ── */
+  .tier-major .card{border-left:4px solid var(--red);box-shadow:0 0 0 1px rgba(248,81,73,.12) inset}
+  .tier-major .tag{background:rgba(248,81,73,.16);color:var(--red);border:1px solid var(--red);font-weight:700}
+  .tier-notable .card{border-left:4px solid var(--amber)}
+  .tier-notable .tag{background:rgba(227,160,8,.16);color:var(--amber);border:1px solid var(--amber);font-weight:700}
+  .rc{display:inline-flex;align-items:center;gap:4px;font-size:.66rem;border-radius:99px;padding:1px 8px;margin:3px 4px 0 0;border:1px solid var(--border);color:var(--mut);background:rgba(139,148,158,.08)}
+  .rc.rc-amt{color:#58a6ff;border-color:#58a6ff;background:rgba(88,166,255,.1)}
+  .rc.rc-cap{color:var(--acc);border-color:var(--acc);background:rgba(163,113,247,.1)}
+  .rc.rc-watch{color:var(--red);border-color:var(--red);background:rgba(248,81,73,.1)}
+  .rc.rc-fgn{color:var(--amber);border-color:var(--amber);background:rgba(227,160,8,.1)}
+  .rc.rc-ph{color:var(--mut);border-style:dashed}
+  .badge{font-size:.64rem;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:auto}
+  .badge-major{background:rgba(248,81,73,.16);color:var(--red);border:1px solid var(--red)}
+  .badge-notable{background:rgba(227,160,8,.16);color:var(--amber);border:1px solid var(--amber)}
+  .badge-unlayered{color:var(--mut);border:1px dashed var(--border);font-weight:400;opacity:.7}
+  .rules-box{font-size:.8rem;color:var(--mut);line-height:1.6;margin-top:8px}
   .mut{color:var(--mut);font-size:.78rem;margin-top:20px;border-top:1px solid var(--border);padding-top:8px}
   @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}.grid{grid-template-columns:1fr}}
 </style>
@@ -112,6 +128,32 @@ const I18N={
                 en:"limited by SEC blocking automated CI fetches; topped up whenever the local pipeline runs, not on a fixed schedule"},
   autoNone:{zh:"暂无数据（SEC 抓取未配置、近 30 天无申报，或本次本地流水线尚未补充）。",en:"No data yet (SEC fetch not configured, no filings in the last 30 days, or the local pipeline hasn't topped it up yet)."},
   autoNoTk:{zh:"无代码",en:"no ticker"},
+  // ---- A2 重大性分层 ----
+  majorHead:{zh:"🔴 重大 (major)",en:"🔴 Major"},
+  majorSub:{zh:"机械规则从申报流升档：在策展名单、或母公司大盘、或拟募资额大。非荐股非预测——只是把「大事件」从噪音里挑出来。",
+            en:"Mechanically promoted from the filing stream: on the curated watchlist, a large-cap parent, or a large proposed raise. Not advice, not a forecast — just surfacing the big events from the noise."},
+  notableHead:{zh:"🟡 值得注意 (notable)",en:"🟡 Notable"},
+  notableSub:{zh:"中等拟募资额，或金额未知的外国发行人。够格留意，但未到「重大」。",
+              en:"A mid-size proposed raise, or a foreign issuer with an unknown amount. Worth a look, but below the “major” bar."},
+  tierNone:{zh:"（本次无升档条目——申报流以小盘/空壳/ETF 为主，均未过 🔴/🟡 门槛。）",
+            en:"(Nothing promoted this run — the stream is mostly small-cap / shell / ETF filings, none clearing the 🔴/🟡 bar.)"},
+  tierRulesToggle:{zh:"▸ 这套 🔴/🟡 分层怎么算的？（机械规则 + 阈值 + 未知不升档）",
+                   en:"▸ How is this 🔴/🟡 tiering computed? (mechanical rules + thresholds + unknown-never-promotes)"},
+  fullStreamHead:{zh:"完整申报流（🔴🟡 已在上方汇总；下方按档展示全部，含未分层）",
+                  en:"Full filing stream (🔴🟡 summarized above; all filings shown by tier below, incl. unlayered)"},
+  // reason-chip labels
+  rcWatch:{zh:"策展关注名单",en:"Curated watchlist"},
+  rcCap:{zh:"母公司大盘·市值过 $10B 档 ({TICKER} · yfinance 现取)",
+         en:"Large parent · mkt-cap over the $10B bar ({TICKER} · via yfinance)"},
+  rcAmt:{zh:"拟募资",en:"Proposed raise"},
+  rcFgn:{zh:"外国发行人·金额未知",en:"Foreign issuer · amount unknown"},
+  rcPh:{zh:"疑为 $100M 占位额",en:"suspected $100M placeholder"},
+  rcSpacSic:{zh:"SIC 6770 空壳",en:"SIC 6770 blank-check"},
+  rcSpacName:{zh:"疑似空壳（名称）",en:"suspected shell (by name)"},
+  badgeMajor:{zh:"🔴 重大",en:"🔴 major"},
+  badgeNotable:{zh:"🟡 注意",en:"🟡 notable"},
+  badgeUnlayered:{zh:"未分层",en:"unlayered"},
+  badgeDeferred:{zh:"未分层·富化延迟",en:"unlayered · enrich deferred"},
   // ---- curated-snapshot staleness banner (>2 months since CURATED_ASOF) ----
   staleWarn:{zh:"⚠ 策展快照 {ASOF}，距今 {N} 个月，个别条目可能已过时；下方「📡 SEC 近期申报」为最新事实。",
              en:"⚠ Curated snapshot from {ASOF}, {N} month(s) old — some entries may be stale. The “Recent SEC filings” feed below reflects current facts."},
@@ -224,16 +266,53 @@ function render(){
 // ---- auto section: read SEC EDGAR live filings (fetched by fetch_ipo.py) ----
 let AUTO=null;   // ipo_filings.json payload, or null if unavailable
 
+const BUCKETS=["listing","priced","filed","adr"];   // 显示优先级（越确定越靠前）
+
+// $M → "$1.2B" / "$913M"
+function fmtUsdM(m){return m>=1000?`$${(m/1000).toFixed(2)}B`:`$${Math.round(m)}M`;}
+
+function reasonChips(r){
+  const rs=r.tier_reasons||[]; let c="";
+  const chip=(cls,txt)=>`<span class="rc ${cls}">${esc(txt)}</span>`;
+  if(rs.includes("watchlist")) c+=chip("rc-watch",t("rcWatch"));
+  // 决定1：母市值只标档位（过 $10B 档），不亮精确数——精确数留在 JSON 的 home_mktcap_usd_b 字段供审计。
+  if(rs.includes("home_mktcap"))
+    c+=chip("rc-cap",t("rcCap").replace("{TICKER}",r.home_ticker||""));
+  // R1：金额芯片不再要求 tier_reasons 含 "amount"——major-by-mktcap/watchlist 的公司若也有
+  // parsed 的 SEC 费表金额（如 SK hynix）同样亮出来，不因短路省了 SEC 而丢掉可核数字。
+  if(r.amount_status==="parsed"&&r.amount_usd_m!=null)
+    c+=chip("rc-amt",`${t("rcAmt")} ${fmtUsdM(r.amount_usd_m)}`);
+  if(rs.includes("foreign_unknown")) c+=chip("rc-fgn",t("rcFgn"));
+  if(r.amount_status==="placeholder_suspect") c+=chip("rc-ph",t("rcPh"));
+  return c;
+}
+function tierBadge(r){
+  if(r.tier==="major") return `<span class="badge badge-major">${esc(t("badgeMajor"))}</span>`;
+  if(r.tier==="notable") return `<span class="badge badge-notable">${esc(t("badgeNotable"))}</span>`;
+  if(r.enrich==="deferred") return `<span class="badge badge-unlayered">${esc(t("badgeDeferred"))}</span>`;
+  return "";   // rest / adr_unlayered / 未富化 → 不打扰
+}
+// 跨档按 CIK 去重、取最靠前(最确定)那条，收集某 tier 的公司
+function collectTier(tierName){
+  const seen=new Set(), out=[];
+  BUCKETS.forEach(b=>(AUTO[b]||[]).forEach(r=>{
+    if(r.tier===tierName && r.cik && !seen.has(r.cik)){seen.add(r.cik);out.push(r);}
+  }));
+  return out;
+}
+
 function renderAuto(){
   const box=$("autoipo"); if(!box) return;
   if(!AUTO){ box.innerHTML=`<p class="sub">${esc(t("autoNone"))}</p>`; return; }
   const stamp=(AUTO.generated||"").slice(0,10);
+  const enriched = !!AUTO.tier_rules;   // 富化跑过才有分层字段
   const cardsHtml=rows=>{
     let h=`<div class="grid">`;
     rows.forEach(r=>{
       h+=`<div class="card"><div class="co">${esc(r.company||"")}`;
       h+= r.ticker ? `<span class="tk">${esc(r.ticker)}</span>` : `<span class="tk" style="opacity:.6">${esc(t("autoNoTk"))}</span>`;
       if(r.foreign===true) h+=`<span class="fg">${esc(t("foreignTag"))}</span>`;
+      if(enriched) h+=tierBadge(r);
       h+=`</div>`;
       h+=`<div class="det">${esc(r.form||"")} · ${esc(r.filed||"")}</div>`;
       h+=`</div>`;
@@ -249,7 +328,33 @@ function renderAuto(){
     h+=`</section>`;
     return h;
   };
+  const tierGroup=(name,headK,subK,cls)=>{
+    const rows=collectTier(name);
+    let h=`<section class="${cls}" style="margin-top:8px">`;
+    h+=`<h2 class="tier" style="font-size:1rem">${esc(t(headK))}<span class="tag">${esc(rows.length)}</span></h2>`;
+    h+=`<p class="sub">${esc(t(subK))}</p>`;
+    if(rows.length===0){ h+=`<p class="sub" style="opacity:.85">${esc(t("tierNone"))}</p>`; }
+    else{ h+=`<div class="grid">`; rows.forEach(r=>{
+      h+=`<div class="card"><div class="co">${esc(r.company||"")}`;
+      h+= r.ticker ? `<span class="tk">${esc(r.ticker)}</span>` : "";
+      if(r.foreign===true) h+=`<span class="fg">${esc(t("foreignTag"))}</span>`;
+      h+=`</div><div class="det">${esc(r.form||"")} · ${esc(r.filed||"")}</div>`;
+      h+=`<div>${reasonChips(r)}</div></div>`;
+    }); h+=`</div>`; }
+    h+=`</section>`;
+    return h;
+  };
+
   let h="";
+  // ── A2：先列 🔴 major / 🟡 notable 汇总组 + 分层规则公示 ──
+  if(enriched){
+    h+=tierGroup("major","majorHead","majorSub","tier-major");
+    h+=tierGroup("notable","notableHead","notableSub","tier-notable");
+    const rules=(AUTO.tier_rules&&AUTO.tier_rules[LANG])||AUTO.tier_rules.zh||"";
+    h+=`<details class="vp-more" style="margin-top:10px"><summary>${esc(t("tierRulesToggle"))}</summary>`;
+    h+=`<div class="rules-box">${esc(rules)}</div></details>`;
+    h+=`<h2 class="tier" style="font-size:.9rem;margin-top:26px;color:var(--mut)">${esc(t("fullStreamHead"))}</h2>`;
+  }
   // 已注册挂牌（8-A12B）——高信号，放在最显眼位置
   h+=block(AUTO.listing||[], "autoListing", "autoListingSub", "t-listing");
   h+=block(AUTO.priced||[], "autoPriced", "autoPricedSub", "t-listed");
