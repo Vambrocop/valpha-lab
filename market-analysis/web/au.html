@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🇦🇺 澳洲市场概览 · AU market overview</title>
+<link rel="stylesheet" href="vp.css">
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--border:#30363d;--fg:#e6edf3;--mut:#9da7b3;--grn:#3fb950;--red:#f85149;--amb:#d29922;--acc:#a371f7;--blu:#58a6ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:14px;max-width:1080px;margin:0 auto}
+  h1{font-size:1.3rem;margin:.2em 0;display:inline-block}
+  .tzbox{background:rgba(88,166,255,.08);border:1px solid var(--blu);border-radius:8px;padding:9px 12px;font-size:.82rem;margin:10px 0;color:#b7d4ff;line-height:1.5}
+  .note{background:rgba(248,81,73,.1);border:1px solid var(--red);border-radius:8px;padding:9px 12px;font-size:.84rem;margin:10px 0;color:#ffb3ad}
+  .ov-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0}
+  .ov-card h3{margin:0 0 6px;font-size:.82rem;color:var(--mut);font-weight:600}
+  .ov-card .big{font-size:1.55rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .ov-card .chg{font-size:.92rem;margin-top:4px}
+  .ov-card .sub{font-size:.76rem;color:var(--mut);margin-top:6px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:6px}
+  th,td{padding:5px 7px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+  th:nth-child(1),td:nth-child(1){text-align:left}
+  th{position:sticky;top:0;background:#161b22;cursor:pointer;user-select:none;color:var(--mut);font-weight:600}
+  th.s::after{content:" ▾"}
+  tr:hover{background:rgba(163,113,247,.06)}
+  .pos{color:var(--grn)} .neg{color:var(--red)}
+  .tag{font-size:.66rem;padding:1px 4px;border-radius:4px;margin-left:3px;cursor:help}
+  .shorth{background:rgba(210,153,34,.18);color:#e3b341}.idn{background:rgba(88,166,255,.18);color:#8ec3ff}
+  .mut{color:var(--mut);font-size:.78rem;margin-top:14px;border-top:1px solid var(--border);padding-top:8px}
+  #src{color:var(--mut);font-size:.78rem}
+  #excl{font-size:.78rem;color:var(--mut);margin:6px 0}
+  th:focus{outline:2px solid var(--acc);outline-offset:-2px}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}table{font-size:.8rem}.ov-card .big{font-size:1.3rem}}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<a href="#" onclick="if(history.length>1){history.back()}else{location.href='index.html'};return false" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:10px" title="返回上一页">↩ 返回</a>
+<a href="index.html" style="color:#8b949e;text-decoration:none;font-size:.82rem;margin-right:12px">← Valpha Lab</a>
+<button id="lang" aria-label="切换语言 / switch language"></button>
+<h1 data-i18n="title"></h1>
+<div class="tzbox" id="tzbox"></div>
+<div class="note" data-i18n="note"></div>
+
+<div class="ov-grid" id="ov"></div>
+
+<div style="overflow-x:auto"><table id="tbl"></table></div>
+<div id="excl"></div>
+<div id="src"></div>
+<div class="mut" data-i18n="foot"></div>
+
+<script>
+const LIVE="https://vambrocop.github.io/valpha-lab/au_market.json";
+const I18N={
+  title:{zh:"🇦🇺 澳洲市场概览 · MVP",en:"🇦🇺 Australian market overview · MVP"},
+  note:{zh:"<b>涨跌榜 = 已经发生的、只含当前在册的（幸存者偏差）。</b>此刻涨幅靠前的票是这一波的主题，<b>不代表未来</b>，历史涨幅不保证会继续。这是纯描述页面，不是荐股，看结构别照单追涨。",
+        en:"<b>The board shows what already happened, survivors only (survivorship bias).</b> Names near the top now are this cycle's theme, <b>not a forecast</b>, past gains don't guarantee more. This is a purely descriptive page, not a stock pick — read the structure, don't chase."},
+  foot:{zh:"点列头排序。数据：实时 au_market.json，描述性历史、非预测、非荐股。独立澳洲区，不与美股账本/基准混算。",
+        en:"Click a header to sort. Data: live au_market.json — descriptive history, not a forecast, not advice. Independent AU section — not mixed with the US-stock ledger/benchmark."},
+  secAxjo:{zh:"ASX200 (^AXJO)",en:"ASX200 (^AXJO)"},
+  secAord:{zh:"全市场 All Ordinaries (^AORD)",en:"All Ordinaries (^AORD)"},
+  secFx:{zh:"澳元/美元 AUD/USD",en:"AUD/USD"},
+  benchmark:{zh:"基准指数 · 33.6年史",en:"benchmark · 33.6y history"},
+  broadmkt:{zh:"全市场对照 · 41.9年史",en:"broad-market ref · 41.9y history"},
+  fxsub:{zh:"1 AUD 兑 USD",en:"1 AUD in USD"},
+  d1:{zh:"昨日",en:"1D"},w1:{zh:"近一周",en:"1W"},m1:{zh:"近一月",en:"1M"},
+  cn:{zh:"代码",en:"Ticker"},cp:{zh:"股价A$",en:"Price A$"},cd1:{zh:"昨日%",en:"1D%"},cw1:{zh:"近一周%",en:"1W%"},cm1:{zh:"近一月%",en:"1M%"},c6:{zh:"6月%",en:"6M%"},c1:{zh:"1年%",en:"1Y%"},cv:{zh:"波动%",en:"Vol%"},ctag:{zh:"标签",en:"Tags"},
+  live:{zh:"实时 ✓",en:"Live ✓"},err:{zh:"拉不到 au_market.json——确认已部署。",en:"Can't load au_market.json — check deployment."},asof:{zh:"数据日",en:"as of"},
+  excl:{zh:"已剔除",en:"Excluded"},
+  short_tag:{zh:"短史",en:"Short hist."},id_tag:{zh:"身份留痕",en:"Identity note"},
+  asx50:{zh:"ASX50 大盘涨跌榜 · 近期动量",en:"ASX50 board · recent momentum"}
+};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
+const t=k=>(I18N[k]&&I18N[k][LANG])||k;
+let DATA=null,sortCol="d1",dir=-1;
+
+function pn(v){if(v==null)return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}</span>`;}
+
+function applyStatic(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  $("lang").textContent=LANG==="zh"?"EN":"中";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
+  if(DATA&&DATA.note_tz){$("tzbox").innerHTML="🕒 "+esc(DATA.note_tz[LANG]||DATA.note_tz.zh||"");}
+}
+
+function ovCard(labelKey, subKey, d, priceRound){
+  if(!d) return `<div class="ov-card vp-card"><h3>${t(labelKey)}</h3><div class="big mut">—</div></div>`;
+  const chgv=d.d1;
+  const asofTxt=(LANG==="en"?"as of ":"数据日 ")+esc(d.as_of||"");
+  return `<div class="ov-card vp-card"><h3>${t(labelKey)}</h3>
+    <div class="big">${d.p}</div>
+    <div class="chg">${pn(chgv)}% <span class="mut" style="font-size:.78rem">${t("d1")}</span>
+      &nbsp;·&nbsp; ${pn(d.w1)}% <span class="mut" style="font-size:.78rem">${t("w1")}</span>
+      &nbsp;·&nbsp; ${pn(d.m1)}% <span class="mut" style="font-size:.78rem">${t("m1")}</span></div>
+    <div class="sub">${t(subKey)} · ${asofTxt}</div></div>`;
+}
+
+function renderOverview(){
+  if(!DATA){$("ov").innerHTML="";return;}
+  const axjo=DATA.index&&DATA.index.AXJO, aord=DATA.index&&DATA.index.AORD, fx=DATA.audusd;
+  $("ov").innerHTML =
+    ovCard("secAxjo","benchmark",axjo) +
+    ovCard("secAord","broadmkt",aord) +
+    ovCard("secFx","fxsub",fx);
+}
+
+function tagOf(d){
+  let x="";
+  if(d.short_history){const nt=d.short_history_note&&d.short_history_note[LANG]?d.short_history_note[LANG]:(d.short_history_note?d.short_history_note.zh:"");x+=`<span class="tag shorth" title="${esc(nt)}">${t("short_tag")}</span>`;}
+  if(d.identity_note){const nt=d.identity_note[LANG]||d.identity_note.zh;x+=`<span class="tag idn" title="${esc(nt)}">${t("id_tag")}</span>`;}
+  return x;
+}
+
+function renderTable(){
+  if(!DATA){return;}
+  const stocks=DATA.stocks||[];
+  const COLS=[["n","cn"],["p","cp"],["d1","cd1"],["w1","cw1"],["m1","cm1"],["c6","c6"],["c1","c1"],["v","cv"],["tag","ctag"]];
+  let rows=stocks.slice();
+  rows.sort((a,b)=>{const x=a[sortCol],y=b[sortCol];if(x==null)return 1;if(y==null)return -1;
+    return (typeof x==="number")?(y-x)*dir*-1:String(x).localeCompare(String(y),'zh')*dir*-1;});
+  let h=`<caption style="caption-side:top;text-align:left;color:var(--mut);font-size:.82rem;padding:4px 0 8px;font-weight:600">${t("asx50")}</caption><thead><tr>`;
+  COLS.forEach(([k,lk])=>{const on=k===sortCol;h+=`<th data-k="${k}" scope="col" tabindex="0" role="button" aria-sort="${on?(dir<0?'descending':'ascending'):'none'}" class="${on?'s':''}">${t(lk)}</th>`;});
+  h+="</tr></thead><tbody>";
+  rows.forEach(d=>{h+=`<tr><td>${esc(d.n)}</td>
+    <td>${d.p==null?'<span class="mut">—</span>':d.p}</td><td>${pn(d.d1)}</td><td>${pn(d.w1)}</td><td>${pn(d.m1)}</td>
+    <td>${pn(d.c6)}</td><td>${pn(d.c1)}</td><td>${d.v==null?'<span class="mut">—</span>':d.v}</td>
+    <td style="text-align:left">${tagOf(d)}</td></tr>`;});
+  h+="</tbody>";$("tbl").innerHTML=h;
+  $("tbl").querySelectorAll("th").forEach(th=>{const sort=()=>{const k=th.dataset.k;if(k===sortCol)dir*=-1;else{sortCol=k;dir=-1;}renderTable();};th.onclick=sort;th.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();sort();}};});
+}
+
+function renderExcl(){
+  if(!DATA||!DATA.excluded||!DATA.excluded.length){$("excl").textContent="";return;}
+  const items=DATA.excluded.map(x=>`${esc(x.name)} (${esc(x.ticker)}) — ${esc(x[LANG==="en"?"reason_en":"reason_zh"]||"")}`).join("; ");
+  $("excl").textContent=`${t("excl")}: ${items}`;
+}
+
+function redraw(){applyStatic();renderOverview();renderTable();renderExcl();
+  $("src").textContent=(DATA?`${t("live")} ${(DATA.stocks||[]).length} · ${t("asof")} ${DATA.as_of||""}`:"");}
+$("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};redraw();};
+
+async function load(){
+  applyStatic();
+  try{
+    const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;
+    DATA=await r.json();
+    if(!DATA.stocks||!DATA.stocks.length){
+      const msg=LANG==="en"?"No data yet — check back soon":"暂无数据，稍后再试";
+      $("tbl").innerHTML=`<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--mut)">${msg}</td></tr>`;
+      $("src").textContent="";
+    }else{redraw();}
+  }catch(e){
+    $("src").textContent=t("err");
+    const msg=LANG==="en"?"Failed to load — refresh later":"加载失败，请稍后刷新";
+    $("tbl").innerHTML=`<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--mut)">${msg}</td></tr>`;
+  }
+}
+load();
+</script>
+<script src="vp_gloss.js" data-autoscan></script>
+</body>
+</html>

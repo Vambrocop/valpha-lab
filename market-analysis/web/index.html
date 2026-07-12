@@ -185,6 +185,7 @@ const I18N={
   foot:{zh:"数据实时拉自流水线 · 描述性历史、非预测 · 仅供学习研究。这是优化版着陆原型，正式站见「完整仪表盘」。",
         en:"Data pulled live from the pipeline · descriptive history, not forecasts · for study only. This is an optimized landing prototype; see 'Full dashboard' for the live site."},
   t_board:{zh:"大盘",en:"Board"},t_board_d:{zh:"152 只·按板块·可排序",en:"152 names · by sector · sortable"},
+  t_au:{zh:"澳洲市场",en:"Australian market"},t_au_d:{zh:"ASX200/AUDUSD/ASX50 榜·纯描述·独立区",en:"ASX200/AUDUSD/ASX50 board · descriptive · independent section"},
   t_sec:{zh:"板块",en:"Sectors"},t_sec_d:{zh:"12 板块均值·可排序",en:"12 sectors · averages · sortable"},
   t_radar:{zh:"雷达",en:"Radar"},t_radar_d:{zh:"个股六维体检",en:"6-axis stock checkup"},
   t_adv:{zh:"配置",en:"Allocator"},t_adv_d:{zh:"出格区·配置建议",en:"out-of-bounds · allocation"},
@@ -226,6 +227,7 @@ const I18N={
   sec_tools:{zh:"🧰 工具",en:"🧰 Tools"},
   // tool-grid group headers (bilingual)
   grp_core:{zh:"核心 · 大盘全景",en:"Core · market overview"},
+  grp_au:{zh:"🇦🇺 澳洲 · 独立区",en:"🇦🇺 Australia · independent section"},
   grp_calls:{zh:"出格 · 公开计分",en:"Out-of-bounds · scored calls"},
   grp_tools:{zh:"工具箱",en:"Toolbox"},
   grp_method:{zh:"方法 · 透明度",en:"Method · transparency"}
@@ -327,6 +329,9 @@ function tools(){
       ["t_radar","📡","radar.html"],
       ["t_sec","📊","sectors.html"],
       ["t_heat2","🔳","heatmap.html"]
+    ]],
+    ["grp_au",[
+      ["t_au","🇦🇺","au.html"]
     ]],
     ["grp_calls",[
       ["t_score","📊","scorecard.html",true],
