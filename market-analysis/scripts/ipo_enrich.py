@@ -411,6 +411,9 @@ def _company_index(data):
 
 
 class Budget:
+    # W0④注：单公司富化最多花 3 次 spend()（fetch_submissions/locate_fee_doc/parse_fee_doc 各 1），
+    # 但 can() 只在进入该公司前查一次——故 self.used 实际可超 cap 至多 2（最后一家公司在 cap-1 时
+    # 放行、接着连花 3 次）。MAX_ENRICH_REQ 硬顶本身留了余量，此超顶已知可接受，不额外加锁。
     def __init__(self, cap):
         self.cap, self.used, self.blocked = cap, 0, False
 
@@ -447,6 +450,15 @@ def _process_cik(cik, comp, *, watchlist, aliases, cache, budget, exclusions=Non
             home_b = round(cap / 1e9, 2)
             enr["home_mktcap_usd_b"] = home_b
 
+    # W0②：curated 命中 / 别名母市值已 ≥ 阈值时，tier 在此已可机械判定（decide_tier 里这两条
+    # 排第一、第二位，优先于 spac/amount，不需要 SEC 数据就能定案）——先落 tier，这样下面 SEC
+    # 预算耗尽/403 提前 return 时不会把已知可升档的公司连带打回"未分层"。未知案例不受影响，
+    # 仍要等 SEC/金额信息才能定 tier（未知不升档语义不变）。
+    if enr["curated_hit"] or (home_b is not None and home_b >= HOME_MKTCAP_USD_B):
+        enr["tier"], enr["tier_reasons"] = decide_tier(
+            curated_hit=enr["curated_hit"], home_mktcap_b=home_b, spac=nm_spac,
+            amount_m=None, amount_status="unknown", foreign=foreign)
+
     sic = None
     # 决定是否需要 SEC（B/C）：
     #  · adr-only（纯 F-6）→ 跳过 B/C（详规 §6：程序性代递，SIC/费用无意义）
@@ -469,8 +481,9 @@ def _process_cik(cik, comp, *, watchlist, aliases, cache, budget, exclusions=Non
             if not budget.can():
                 enr["enrich"] = "deferred"
                 enr["amount_status"] = "deferred"
-                # 名称非 SPAC、金额待定：先不落 tier（下轮续跑）；但 foreign 仍可给出保守 notable？
-                # 详规 §7：未知不升档。deferred 行不落 tier（前端「未分层·延迟」）。
+                # W0②：若 curated_hit/home_mktcap 已在上面判过 major，enr["tier"] 已定好、原样带出。
+                # 否则（普通未知案例）：名称非 SPAC、金额待定，先不落 tier（下轮续跑）——
+                # 详规 §7：未知不升档，deferred 行前端显示「未分层·延迟」。
                 return enr
             try:
                 budget.spend()
@@ -496,6 +509,7 @@ def _process_cik(cik, comp, *, watchlist, aliases, cache, budget, exclusions=Non
                 budget.blocked = True
                 enr["enrich"] = "deferred"
                 enr["amount_status"] = "deferred"
+                # W0②：同上——curated/home_mktcap 已判的 tier 在此原样带出，不被 SEC 故障拖回 None。
                 return enr
             except Exception as e:
                 print(f"  ⚠ {cik} ({comp['company']}) 富化失败(跳过·保守 unknown): {type(e).__name__}: {e}")
@@ -542,6 +556,10 @@ def enrich(data, *, watchlist, aliases, cache, budget, exclusions=None):
     """就地富化 data（各 bucket 行加字段）+ 加顶级字段。返回 (n_major, n_notable)。"""
     idx = _company_index(data)
 
+    # W0④注：prio() 这里调 match_watchlist/match_alias 只为排序，_process_cik() 内部会对同一
+    # cik 再调一次做真判定——两遍都可能命中歧义分支打印 warning，同一家公司歧义会看到警告打两遍。
+    # 已知重复；真正去重需要预计算 dict 并改 _process_cik 签名接收，牵动它现有 15+ 处测试直调
+    # 用例，收益（少打一行 log）配不上改动面，故只加注释标已知，不动结构。
     # 优先级：策展/别名 → listing → priced → filed → adr（新→旧）
     def prio(cik):
         c = idx[cik]

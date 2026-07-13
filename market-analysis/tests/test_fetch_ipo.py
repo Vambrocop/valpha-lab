@@ -89,7 +89,11 @@ def test_fetch_forms_caps_rows(monkeypatch):
 
 # ── run(): 组装形状 + 计数一致 + 不落盘（monkeypatch write_json）───────────
 def test_run_shape(monkeypatch):
-    filed_hits = [_hit("Filer Inc  (FILE)  (CIK 0000000010)", "S-1", "2026-06-20", "0000000010")]
+    filed_hits = [
+        _hit("Filer Inc  (FILE)  (CIK 0000000010)", "S-1", "2026-06-20", "0000000010"),
+        # F-1 = 外国发行人招股书（如海力士），须 foreign=True（③ 补测断言）
+        _hit("Foreign Filer Ltd  (FRGN)  (CIK 0000000012)", "F-1", "2026-06-19", "0000000012"),
+    ]
     priced_hits = [_hit("Priced Inc  (PRIC)  (CIK 0000000011)", "424B4", "2026-06-22", "0000000011")]
 
     def fake_get(url):
@@ -103,13 +107,24 @@ def test_run_shape(monkeypatch):
 
     out = fi.run()
     assert out is not None
-    assert out["n_filed"] == len(out["filed"]) == 1
+    assert out["n_filed"] == len(out["filed"]) == 2
     assert out["n_priced"] == len(out["priced"]) == 1
     assert out["filed"][0]["company"] == "Filer Inc"
     assert out["priced"][0]["form"] == "424B4"
     assert captured["name"] == "ipo_filings.json"
     # 诚实纪律：disclaimer 必须点明"含小盘/空壳·非荐股"
     assert "非荐股" in out["disclaimer"]
+
+    # ③ W0 收尾补测：listing/adr 档形状 + n_listing/n_adr 计数键 + foreign 布尔标记
+    for key in ("listing", "adr", "n_listing", "n_adr"):
+        assert key in out
+    assert out["n_listing"] == len(out["listing"])
+    assert out["n_adr"] == len(out["adr"])
+    assert all(isinstance(row.get("foreign"), bool) for row in out["filed"])
+    f1_row = next(r for r in out["filed"] if r["form"] == "F-1")
+    assert f1_row["foreign"] is True                          # F-1 外国发行人行须标 foreign=True
+    s1_row = next(r for r in out["filed"] if r["form"] == "S-1")
+    assert s1_row["foreign"] is False
 
 
 def test_run_empty_keeps_old(monkeypatch):

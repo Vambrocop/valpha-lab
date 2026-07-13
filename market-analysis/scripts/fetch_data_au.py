@@ -21,6 +21,7 @@ fail-soft：单票失败不阻断，静默跳过，仅记入 au_probe.json 的 f
 """
 
 import json
+import sys
 import time
 import warnings
 warnings.filterwarnings("ignore")
@@ -320,4 +321,10 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    # W0①：fail-soft 兜底（照 fetch_ipo.py 模式）——单票失败已在 run() 内部各自吞掉，
+    # 这里再兜一层顶层未预期异常（如落盘 I/O 错误），确保 run_all.py 流水线不因本独立区被阻断。
+    try:
+        run()
+    except Exception as e:
+        print(f"[AU] 澳洲市场取数顶层异常，fail-soft 不阻断: {type(e).__name__}: {e}")
+    sys.exit(0)

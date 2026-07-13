@@ -779,6 +779,9 @@ def _context_states():
             cur = float(trailing_ret.iloc[-1])
             hist = trailing_ret.dropna()                           # 序列末=今日 → 天然 PIT,不含未来
             pctile = round(float((hist <= cur).mean()) * 100, 1)   # 今日 trailing_ret 在历史里的百分位秩
+            # W0④注：pctile=全 formation 史百分位(展示用);zone 用 2520 暖机 PIT 分位(与检验族同口径)
+            # ——两参照略不同,系已知设计(pctile 求"今天在全历史什么水位"图直觉,zone 求"该不该算极端"
+            # 的统计判定,后者须暖机避免早期样本太少虚高/虚低)。
             p10 = _trailing_pit_quantile(trailing_ret, 0.10).iloc[-1]
             p90 = _trailing_pit_quantile(trailing_ret, 0.90).iloc[-1]
             zone = "low" if cur <= p10 else ("high" if cur >= p90 else "mid")

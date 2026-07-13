@@ -252,6 +252,21 @@ def test_budget_exhausted_defers(monkeypatch):
     assert enr["amount_status"] == "deferred"
 
 
+def test_curated_hit_survives_budget_exhausted(monkeypatch):
+    # W0②：curated 命中 + SEC 预算为 0 → tier 仍应是 major（不再被"预算耗尽提前 return"打回 None），
+    # 只有金额字段被延迟（amount_status=deferred）。守住：这改的是"已知可升档"不被 SEC 故障拖下水，
+    # 不是放宽"未知升档"（见 test_budget_exhausted_defers 仍守住未知不升档）。
+    _fake_no_sec(monkeypatch)                                 # 预算 0 → 根本不该发 SEC 请求
+    wl = [("Hynix", ["HYNIX"])]
+    comp = {"buckets": {"filed"}, "company": "SK Hynix Inc.", "foreign": True,
+            "rows": [], "latest": "2026-07-10"}
+    enr = ie._process_cik("0002120882", comp, watchlist=wl, aliases=[],
+                          cache={}, budget=ie.Budget(0))
+    assert enr["tier"] == "major" and enr["tier_reasons"] == ["watchlist"]
+    assert enr["enrich"] == "deferred"
+    assert enr["amount_status"] == "deferred"                 # 金额字段仍延迟，只是 tier 不受影响
+
+
 def test_name_spac_no_sec_needed_rest(monkeypatch):
     # 名称启发已判 SPAC → rest，无需 SEC（省预算）
     _fake_no_sec(monkeypatch)

@@ -19,7 +19,7 @@ run_all.py — 一键运行完整流水线并同步部署目录
     → daily_brief/weekly_report/daily_digest → tipjar/outlook/composite_read(计分账本)
     → survivors_live(读 autodiscovery 存活→喂日读) → llm_daily_read → llm_monthly_read
     (周读【不在】此处:weekly-review.yml 周六生成完整周,勿再接回——07-07 撤重复的教训)
-    → llm_prediction → btc_nasdaq_backtest/regime_forward → fetch_insider/fetch_ipo(fail-soft)
+    → llm_prediction → btc_nasdaq_backtest/regime_forward → fetch_insider/fetch_ipo/fetch_data_au(均fail-soft)
     → insider_signal/pick_ledger → scorecard → evidence_ledger → knowledge_base(kb_ledger·OOS门4)
     → flicker
 【E 封存/门禁/部署】ledger_sidecar(13账本哈希链) → verify_output(不绿不发布)
@@ -97,6 +97,7 @@ steps = [
     ("预FOMC漂移事件研究(出格)", "fomc_study.py"),   # Lucca-Moench 先验:FOMC公告前1交易日SP500偏强?块自助 p+逐十年(2010s真→2020s反转);读SP500_long+硬编码FOMC日期;探索性未入FDR池;不入light
     ("内部人买入取数(SEC Form4)", "fetch_insider.py"),  # 抓近期开市买入P写insider.json;SEC daily-index,需 SEC_UA_CONTACT(secret);SEC失败静默退0不阻断;不入light(日更一次即可)
     ("IPO近期申报取数(SEC EDGAR)", "fetch_ipo.py"),  # 抓近30天S-1/424B申报写ipo_filings.json(IPO雷达页事实层);SEC全文搜索,复用SEC_UA_CONTACT;含大量小盘/空壳非策展;失败静默退0不阻断;不入light(日更一次即可)
+    ("澳洲市场取数(独立区)", "fetch_data_au.py"),  # B1:^AXJO/AUDUSD/ASX50→au_market.json+au_probe.json(au.html 独立市场概览页读);独立平行区,不碰美股任何脚本/数据/账本;fail-soft 不阻断;不入light(日更一次即可)
     ("IPO重大性分层富化(SEC Exhibit107)", "ipo_enrich.py"),  # A2:从ipo_filings.json机械分层🔴major/🟡notable/rest(策展名单/母市值/拟募资/SPAC);读SEC submissions+EX-FILING FEES结构化费用,复用SEC_UA_CONTACT;金额只升档·未知不升档·绝不正文刮数;fail-soft(炸掉→原始json完好·前端显未分层);须在fetch_ipo后;不入light;SEC限流退避·本地分批top-up
 
     ("内部人买入→前向计分(出格)", "insider_signal.py"),  # 跟内部人买的诚实前向公开计分:append notable买入+到期vs SPY自动结算;须在 fetch_insider 后;读yfinance(结算出错不阻断);不入light
