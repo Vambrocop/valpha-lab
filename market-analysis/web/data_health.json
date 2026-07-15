@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-15T14:42:57.772163+00:00",
+  "generated": "2026-07-15T15:14:50.834366+00:00",
   "sources": {
     "asset:NASDAQ": {
       "name": "NASDAQ",
@@ -292,13 +292,13 @@
       "kind": "fred",
       "provider": "FRED",
       "ticker": "T10Y2Y",
-      "source": "live_api",
-      "status": "ok",
+      "source": "cache_after_error",
+      "status": "cache",
       "rows": 6635,
       "last_date": "2026-07-14",
       "age_days": 1,
       "stale_after_days": 10,
-      "error": null
+      "error": "502 Server Error: Bad Gateway for url: https://api.stlouisfed.org/fred/series/observations?series_id=T10Y2Y&api_key=fa035833bf14face9096716ccffb032d&file_type=json&observation_start=2000-01-01"
     },
     "fred:HY_SPREAD": {
       "name": "HY_SPREAD",
@@ -589,8 +589,8 @@
   },
   "summary": {
     "total": 45,
-    "ok": 45,
-    "cache": 0,
+    "ok": 44,
+    "cache": 1,
     "stale": 0,
     "missing": 0,
     "freshness": "ok"
