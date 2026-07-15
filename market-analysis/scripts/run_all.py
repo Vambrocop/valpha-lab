@@ -99,6 +99,7 @@ steps = [
     ("IPO近期申报取数(SEC EDGAR)", "fetch_ipo.py"),  # 抓近30天S-1/424B申报写ipo_filings.json(IPO雷达页事实层);SEC全文搜索,复用SEC_UA_CONTACT;含大量小盘/空壳非策展;失败静默退0不阻断;不入light(日更一次即可)
     ("澳洲市场取数(独立区)", "fetch_data_au.py"),  # B1:^AXJO/AUDUSD/ASX50→au_market.json+au_probe.json(au.html 独立市场概览页读);独立平行区,不碰美股任何脚本/数据/账本;fail-soft 不阻断;不入light(日更一次即可)
     ("IPO重大性分层富化(SEC Exhibit107)", "ipo_enrich.py"),  # A2:从ipo_filings.json机械分层🔴major/🟡notable/rest(策展名单/母市值/拟募资/SPAC);读SEC submissions+EX-FILING FEES结构化费用,复用SEC_UA_CONTACT;金额只升档·未知不升档·绝不正文刮数;fail-soft(炸掉→原始json完好·前端显未分层);须在fetch_ipo后;不入light;SEC限流退避·本地分批top-up
+    ("IPO重大事件预警(出格·事实通报)", "ipo_alerts.py"),  # A3:major公司状态档(filed/priced/listed取最高)首见即append事件账ipo_alert_log+合并一条Telegram(tag=IPO雷达·事实通报·上市≠值得买非荐股);去重键(cik,stage)绝不改历史行;推送失败pushed=False留痕不重推(见其文件头取舍);须在ipo_enrich后;fail-soft不阻断;不入light
 
     ("内部人买入→前向计分(出格)", "insider_signal.py"),  # 跟内部人买的诚实前向公开计分:append notable买入+到期vs SPY自动结算;须在 fetch_insider 后;读yfinance(结算出错不阻断);不入light
     ("荐股→前向计分vsQQQ(出格)", "pick_ledger.py"),  # outlook看好/看淡进append-only账本+满20交易日vs QQQ自动结算(看好命中=跑赢/看淡命中=跑输);须在outlook后;读yfinance(结算出错不阻断);不入light
@@ -106,7 +107,7 @@ steps = [
     ("证据库总览(吸收)", "evidence_ledger.py"),   # 把已测规律族汇成单一诚实总览(每族 scope+证据+裁决+详情链接·没证据不进库);须在 autodiscovery/placebo/btc/regime 后
     ("门4样本外→知识库晋升降级(自生长P-C)", "knowledge_base.py"),  # OOS门4(oos_gate)只认注册锚后数据:survive∧confirmed→晋升/在库∧翻盘→降级;append-only单调写kb_ledger;须在autodiscovery+candidate_registry后;不入light;Opus双审GO(B1/S1已修);今日全pending=0晋升(边跑边攒约1月出首批)
     ("防闪烁稳定度(自生长P-B)", "flicker.py"),   # 读autodiscovery_log前向史:抓在FDR边界来回横跳的脆弱候选+诚实标注"裁决稳定≠独立确认(自相关)";纯描述不引新统计;须在autodiscovery后;不入light
-    ("账本sidecar哈希链封存", "ledger_sidecar.py"),  # P2-9:13个append-only公开计分账本的链哈希存独立manifest(账本本体零写入);身份字段verify-before-seal被改则拒封;须在全部账本写手后、verify前;入light(无变化=no-op,顺带小时级抓外改)
+    ("账本sidecar哈希链封存", "ledger_sidecar.py"),  # P2-9:14个append-only公开计分账本的链哈希存独立manifest(账本本体零写入);身份字段verify-before-seal被改则拒封;须在全部账本写手后、verify前;入light(无变化=no-op,顺带小时级抓外改)
     ("发布前自检",         "verify_output.py"),   # 失败则终止，不发布坏数据
 ]
 
