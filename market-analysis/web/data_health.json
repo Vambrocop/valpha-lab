@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-15T18:00:33.914378+00:00",
+  "generated": "2026-07-15T19:10:03.879449+00:00",
   "sources": {
     "asset:NASDAQ": {
       "name": "NASDAQ",
@@ -214,13 +214,13 @@
       "kind": "fred",
       "provider": "FRED",
       "ticker": "M2SL",
-      "source": "cache_after_error",
-      "status": "cache",
+      "source": "live_api",
+      "status": "ok",
       "rows": 317,
       "last_date": "2026-05-01",
       "age_days": 75,
       "stale_after_days": 120,
-      "error": "504 Server Error: Gateway Time-out for url: https://api.stlouisfed.org/fred/series/observations?series_id=M2SL&api_key=fa035833bf14face9096716ccffb032d&file_type=json&observation_start=2000-01-01"
+      "error": null
     },
     "fred:FED_RATE": {
       "name": "FED_RATE",
@@ -240,26 +240,26 @@
       "kind": "fred",
       "provider": "FRED",
       "ticker": "CPIAUCSL",
-      "source": "cache_after_error",
-      "status": "cache",
+      "source": "live_api",
+      "status": "ok",
       "rows": 317,
       "last_date": "2026-06-01",
       "age_days": 44,
       "stale_after_days": 120,
-      "error": "HTTPSConnectionPool(host='api.stlouisfed.org', port=443): Read timed out. (read timeout=30)"
+      "error": null
     },
     "fred:UNRATE": {
       "name": "UNRATE",
       "kind": "fred",
       "provider": "FRED",
       "ticker": "UNRATE",
-      "source": "cache_after_error",
-      "status": "cache",
+      "source": "live_api",
+      "status": "ok",
       "rows": 317,
       "last_date": "2026-06-01",
       "age_days": 44,
       "stale_after_days": 120,
-      "error": "502 Server Error: Bad Gateway for url: https://api.stlouisfed.org/fred/series/observations?series_id=UNRATE&api_key=fa035833bf14face9096716ccffb032d&file_type=json&observation_start=2000-01-01"
+      "error": null
     },
     "fred:YIELD_10Y": {
       "name": "YIELD_10Y",
@@ -292,26 +292,26 @@
       "kind": "fred",
       "provider": "FRED",
       "ticker": "T10Y2Y",
-      "source": "cache_after_error",
-      "status": "cache",
+      "source": "live_api",
+      "status": "ok",
       "rows": 6635,
       "last_date": "2026-07-14",
       "age_days": 1,
       "stale_after_days": 10,
-      "error": "502 Server Error: Bad Gateway for url: https://api.stlouisfed.org/fred/series/observations?series_id=T10Y2Y&api_key=fa035833bf14face9096716ccffb032d&file_type=json&observation_start=2000-01-01"
+      "error": null
     },
     "fred:HY_SPREAD": {
       "name": "HY_SPREAD",
       "kind": "fred",
       "provider": "FRED",
       "ticker": "BAMLH0A0HYM2",
-      "source": "cache_after_error",
-      "status": "cache",
+      "source": "live_api",
+      "status": "ok",
       "rows": 786,
       "last_date": "2026-07-14",
       "age_days": 1,
       "stale_after_days": 10,
-      "error": "HTTPSConnectionPool(host='api.stlouisfed.org', port=443): Read timed out. (read timeout=30)"
+      "error": null
     },
     "fred:CREDIT_SPREAD": {
       "name": "CREDIT_SPREAD",
@@ -589,8 +589,8 @@
   },
   "summary": {
     "total": 45,
-    "ok": 40,
-    "cache": 5,
+    "ok": 45,
+    "cache": 0,
     "stale": 0,
     "missing": 0,
     "freshness": "ok"
