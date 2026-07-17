@@ -55,3 +55,30 @@ def test_data_hygiene_notes_present():
 def test_au_names_cover_pool():
     missing = [n for n in fau.STOCK_TICKERS if n not in ac.AU_NAMES]
     assert not missing, f"AU 池有票缺中文名映射: {missing}"
+
+
+# ── fail-soft 冒烟(事后审计 MEDIUM:上游选择逻辑与故障路径此前零测·真实28票全high档跑不到)──
+def test_run_all_fail_soft_all_data_missing(monkeypatch):
+    import util_io
+    monkeypatch.setattr(util_io, "write_json", lambda *a, **k: [])   # 不落盘
+    monkeypatch.setattr(ac, "STOCK_TICKERS", {"BHP": "BHP.AX", "CBA": "CBA.AX"})
+    monkeypatch.setattr(ac, "_load_au_close", lambda name: None)     # AXJO+票 csv 全缺
+    monkeypatch.setattr(ac, "_load_dollar_volume", lambda: None)     # dv 缺
+    out = ac.run_all()                                               # 不炸
+    assert out["summary"]["n_ok"] == 0
+    assert all(v["status"] == "unavailable" for v in out["tickers"].values())
+
+
+def test_run_all_liquidity_unknown_when_few_obs(monkeypatch):
+    import util_io
+    monkeypatch.setattr(util_io, "write_json", lambda *a, **k: [])
+    monkeypatch.setattr(ac, "STOCK_TICKERS", {"BHP": "BHP.AX"})
+    idx = pd.bdate_range("2023-01-02", periods=600)
+    rng = np.random.default_rng(3)
+    px = pd.Series(100 * np.cumprod(1 + rng.normal(0, 0.01, 600)), index=idx)
+    monkeypatch.setattr(ac, "_load_au_close", lambda name: px)       # 票与 AXJO 同型合成序列
+    dv = pd.DataFrame({"BHP.AX": np.full(20, 5e6)}, index=idx[-20:])  # 仅20个有效观测(<30门槛)
+    monkeypatch.setattr(ac, "_load_dollar_volume", lambda: dv)
+    out = ac.run_all()
+    assert out["tickers"]["BHP.AX"]["status"] == "ok"                # 体检本体正常
+    assert out["tickers"]["BHP.AX"]["liquidity"]["status"] == "unknown"   # <30 有效值→不猜档

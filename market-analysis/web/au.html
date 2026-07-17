@@ -89,7 +89,7 @@ const I18N={
            en:"β/vol/drawdown are risk traits, not return promises; franking excluded (no reliable free source). See methodology."}
 };
 const $=id=>document.getElementById(id);
-const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));  // 含单引号:🩺按钮把ticker放进单引号JS串(审计防御纵深)
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
 let DATA=null,CHK=null,sortCol="d1",dir=-1;   // CHK=au_checkup.json(体检·独立fetch·拉不到则不显示体检列)
@@ -168,7 +168,7 @@ function _kv(label,val){return `<div style="display:flex;justify-content:space-b
 function showChk(tk){
   const c=CHK&&CHK.tickers&&CHK.tickers[tk]; if(!c||c.status!=="ok")return;
   const zh=(LANG==="zh");
-  let h=`<div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:1.02rem">${esc(c.name)} <span class="mut" style="margin:0;border:0;padding:0">${esc(tk)}</span></b><span class="chkbtn" role="button" tabindex="0" onclick="closeChk()" style="cursor:pointer">✕</span></div>
+  let h=`<div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:1.02rem">${esc(c.name)} <span class="mut" style="margin:0;border:0;padding:0">${esc(tk)}</span></b><span class="chkbtn" role="button" tabindex="0" onclick="closeChk()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeChk()}" style="cursor:pointer" aria-label="关闭 / close">✕</span></div>
   <div class="mut" style="margin:4px 0 10px;border:0;padding:0">${t("chkTitle")}</div>`;
   h+=_kv(t("chkVol"), `${c.ann_vol_pct}%`);
   h+=_kv(t("chkDd"), `<span class="neg">${c.max_drawdown_pct}%</span>`);
