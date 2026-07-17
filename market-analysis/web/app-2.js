@@ -584,6 +584,19 @@ async function loadRiskDashboard() {
       <div style="color:var(--muted);font-size:0.72rem;margin-top:.15rem">${vpL(`区间 ${sp.min}~${sp.max}，均值 ${sp.mean}（${sp.start}–${sp.end}，n=${sp.n}）`, `Range ${sp.min}~${sp.max}, mean ${sp.mean} (${sp.start}–${sp.end}, n=${sp.n})`)}</div>
     </div>`;
   }
+  // VXSMH 半导体恐慌计——纯描述(指数2025-09才发布·史太短不能回测·不进信号);muted 样式,不做红绿情绪渲染
+  const sm = RISK_DASH.vxsmh;
+  let smHtml = "";
+  if (sm && sm.status === "ok") {
+    smHtml = `<div style="border-left:3px solid var(--muted);padding:.4rem .7rem;margin-bottom:.6rem;">
+      <div style="font-size:0.76rem;color:var(--muted)">${vpL("VXSMH 半导体恐慌计（SMH 隐含波动率 · Cboe）","VXSMH semiconductor fear gauge (SMH implied vol · Cboe)")}</div>
+      <div style="display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap;">
+        <span style="font-size:1.15rem;font-weight:800">${sm.close}</span>
+        <span style="color:var(--muted);font-size:0.76rem">${vpL(`≈ VIX 的 ${sm.vs_vix ?? "—"}× · VXN 的 ${sm.vs_vxn ?? "—"}× · 发布以来 ${sm.pctile_since_launch} 分位（仅 ${sm.n_days} 个交易日）`, `≈ ${sm.vs_vix ?? "—"}× VIX · ${sm.vs_vxn ?? "—"}× VXN · ${sm.pctile_since_launch}th pct since launch (only ${sm.n_days} td)`)}</span>
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:.15rem">${vpL(`⚠ 指数 ${sm.launch_date} 才发布、历史太短——不能回测/不能检验，纯描述读数、非信号（截至 ${sm.date}）`, `⚠ Launched ${sm.launch_date}; history too short to backtest — descriptive reading only, not a signal (as of ${sm.date})`)}</div>
+    </div>`;
+  }
   const dd = RISK_DASH.downside_by_vix || [];
   let ddHtml = "";
   if (dd.length) {
@@ -628,7 +641,7 @@ async function loadRiskDashboard() {
         ${rows}
       </table></div>`;
   }
-  el.innerHTML = `${spreadHtml}${ddHtml}${evtHtml}${dwHtml}
+  el.innerHTML = `${spreadHtml}${smHtml}${ddHtml}${evtHtml}${dwHtml}
     <div style="font-size:0.73rem;color:var(--muted);margin-top:.6rem;line-height:1.55">${RISK_DASH.caveat || ""}</div>`;
 }
 

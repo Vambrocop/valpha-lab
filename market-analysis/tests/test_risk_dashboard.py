@@ -100,3 +100,26 @@ def test_evt_reports_extremal_index_and_sensitivity():
     assert 1 <= r["n_clusters"] <= r["n_exceed"]                # 簇数≤超阈数
     assert r["xi_sensitivity"] and set(r["xi_sensitivity"]) <= {"90.0", "95.0", "97.5"}
     assert "start" in r and "end" in r                          # 数据起止可复现
+
+
+# ── VXSMH 半导体恐慌计(纯描述·史太短不进信号) ──────────────────────────
+def test_semis_vol_read_basic():
+    from risk_dashboard import semis_vol_read
+    idx = pd.bdate_range("2025-09-16", periods=100)
+    vxsmh = pd.Series(np.linspace(20, 60, 100), index=idx)          # 单调升→当前=最大
+    vix = pd.Series([20.0], index=[idx[-1]])
+    vxn = pd.Series([30.0], index=[idx[-1]])
+    r = semis_vol_read(vxsmh, vix, vxn)
+    assert r["status"] == "ok" and r["close"] == 60.0
+    assert r["pctile_since_launch"] == 99.0                         # 严格 < :99/100
+    assert r["vs_vix"] == 3.0 and r["vs_vxn"] == 2.0
+    assert r["launch_date"] == "2025-09-16" and r["n_days"] == 100
+
+
+def test_semis_vol_read_unavailable_and_no_ratio():
+    from risk_dashboard import semis_vol_read
+    assert semis_vol_read(None)["status"] == "unavailable"          # 抓取失败→如实 unavailable
+    assert semis_vol_read(pd.Series(dtype=float))["status"] == "unavailable"
+    idx = pd.bdate_range("2025-09-16", periods=50)
+    r = semis_vol_read(pd.Series(np.full(50, 40.0), index=idx))     # 无 VIX/VXN → 不给倍数,不猜
+    assert r["status"] == "ok" and "vs_vix" not in r and "vs_vxn" not in r

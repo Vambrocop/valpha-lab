@@ -30,6 +30,48 @@ Q_TAIL  = 0.05    # 下行尾部分位
 N_BINS  = 4       # VIX 档位数
 
 
+def cboe_index_history(name, cache_dir=None):
+    """Cboe CDN 官方指数日线 CSV（免费公开·与 fetch_putcall 同源域）→ 收盘 Series | None。
+    fail-soft：失败回退本地缓存、再无则 None（绝不阻断）。用于 VXSMH 等 Yahoo 无史的 Cboe 指数。"""
+    import io
+    import urllib.request
+    cache = (cache_dir or RAW_DIR) / f"cboe_{name}.csv"
+    url = f"https://cdn.cboe.com/api/global/us_indices/daily_prices/{name}_History.csv"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "valpha-lab honest-stats dashboard"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            raw = r.read(8_000_000).decode("utf-8", "replace")
+        df = pd.read_csv(io.StringIO(raw))
+        s = pd.Series(pd.to_numeric(df["CLOSE"], errors="coerce").values,
+                      index=pd.to_datetime(df["DATE"])).dropna().sort_index()
+        if len(s):
+            s.to_csv(cache)
+            return s
+    except Exception as e:
+        print(f"  ⚠ Cboe {name} 抓取失败（非致命）：{e}")
+    if cache.exists():
+        return pd.read_csv(cache, index_col=0, parse_dates=True).iloc[:, 0].dropna()
+    return None
+
+
+def semis_vol_read(vxsmh, vix=None, vxn=None):
+    """VXSMH 半导体恐慌计（SMH 隐含波动率·Cboe）——**纯描述当前读数**。
+    🔴 诚实边界：指数 2025-09-16 才发布、史仅数月——**不能回测/不能检验/不进任何信号链**；
+    分位仅相对发布以来（样本极短，只当刻度尺参考）。用户 2026-07-17 提议纳入，按站规
+    "够长历史能回测"降档为描述件；等它攒够历史再议升级。"""
+    if vxsmh is None or not len(vxsmh):
+        return {"status": "unavailable"}
+    cur = float(vxsmh.iloc[-1])
+    out = {"status": "ok", "close": round(cur, 2), "date": str(vxsmh.index[-1].date()),
+           "launch_date": str(vxsmh.index[0].date()), "n_days": int(len(vxsmh)),
+           "pctile_since_launch": round(float((vxsmh < cur).mean()) * 100, 1)}
+    if vix is not None and len(vix):
+        out["vs_vix"] = round(cur / float(vix.iloc[-1]), 2)
+    if vxn is not None and len(vxn):
+        out["vs_vxn"] = round(cur / float(vxn.iloc[-1]), 2)
+    return out
+
+
 def _fetch(tickers, start="2001-01-01"):
     """日收盘，自带缓存兜底（yfinance 限流时回退上次缓存）。"""
     import yfinance as yf
@@ -216,6 +258,10 @@ def run_all():
     drawdown = ([d for d in (path_drawdown(sp_ret, h) for h in (HORIZON, 60))
                  if d.get("status") == "ok"] if sp_ret is not None else [])
 
+    # VXSMH 半导体恐慌计(用户 2026-07-17 提议)——纯描述,史太短不进任何信号链
+    vxsmh = cboe_index_history("VXSMH")
+    semis = semis_vol_read(vxsmh, px.get("^VIX"), px.get("^VXN"))
+
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "caveat": "风险/体制读数，非方向预测。条件下行=历史上某 VIX 档位后 20 日收益的 5% 分位，"
@@ -228,6 +274,7 @@ def run_all():
                   "路径回撤=非重叠 N 日窗口内峰到谷最大跌幅的分布(持有期内最深回撤)，与单日 EVT/期末下行互补，仍只测严重度、非方向。",
         "horizon": HORIZON, "q_tail": Q_TAIL,
         "vxn_vix_spread": spread,
+        "vxsmh": semis,   # 半导体恐慌计(Cboe·2025-09发布·史仅数月)——纯描述,不能回测,不进信号
         "downside_by_vix": downside,
         "evt": evt,
         "drawdown": drawdown,
