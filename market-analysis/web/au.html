@@ -27,6 +27,9 @@
   .pos{color:var(--grn)} .neg{color:var(--red)}
   .tag{font-size:.66rem;padding:1px 4px;border-radius:4px;margin-left:3px;cursor:help}
   .shorth{background:rgba(210,153,34,.18);color:#e3b341}.idn{background:rgba(88,166,255,.18);color:#8ec3ff}
+  .chkbtn{cursor:pointer;padding:1px 5px;border-radius:5px}
+  .chkbtn:hover{background:rgba(163,113,247,.15)}
+  .chkbtn:focus{outline:2px solid var(--acc);outline-offset:1px}
   .mut{color:var(--mut);font-size:.78rem;margin-top:14px;border-top:1px solid var(--border);padding-top:8px}
   #src{color:var(--mut);font-size:.78rem}
   #excl{font-size:.78rem;color:var(--mut);margin:6px 0}
@@ -50,6 +53,8 @@
 <div id="src"></div>
 <div class="mut" data-i18n="foot"></div>
 
+<div id="modal" role="dialog" aria-modal="true" aria-label="体检 / checkup" onclick="if(event.target===this)closeChk()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:50;align-items:center;justify-content:center;padding:16px"><div id="mbody" style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;max-width:480px;width:100%;max-height:88vh;overflow:auto"></div></div>
+
 <script>
 const LIVE="https://vambrocop.github.io/valpha-lab/au_market.json";
 const I18N={
@@ -69,13 +74,25 @@ const I18N={
   live:{zh:"实时 ✓",en:"Live ✓"},err:{zh:"拉不到 au_market.json——确认已部署。",en:"Can't load au_market.json — check deployment."},asof:{zh:"数据日",en:"as of"},
   excl:{zh:"已剔除",en:"Excluded"},
   short_tag:{zh:"短史",en:"Short hist."},id_tag:{zh:"身份留痕",en:"Identity note"},
-  asx50:{zh:"ASX50 大盘涨跌榜 · 近期动量",en:"ASX50 board · recent momentum"}
+  asx50:{zh:"ASX50 大盘涨跌榜 · 近期动量",en:"ASX50 board · recent momentum"},
+  cchk:{zh:"体检",en:"Checkup"},
+  chkTitle:{zh:"🩺 诚实体检(风险画像·非荐股非预测)",en:"🩺 Honest checkup (risk profile · not advice)"},
+  chkVol:{zh:"年化波动",en:"Ann. vol"},chkDd:{zh:"历史最深回撤",en:"Max drawdown"},
+  chkBeta:{zh:"β 对 ASX200",en:"β vs ASX200"},chkEvt:{zh:"EVT 尾部 ξ",en:"EVT tail ξ"},
+  chkDep:{zh:"大盘解释度 R²",en:"Market R²"},chkLiq:{zh:"流动性(60日中位成交额)",en:"Liquidity (60d median $vol)"},
+  chkConf:{zh:"20日收益 90% 区间",en:"20d return 90% band"},
+  chkPat:{zh:"日历规律真伪",en:"Calendar patterns"},
+  patNone:{zh:"无可靠规律(诚实结果:单股日历规律本就几乎测不出)",en:"No reliable pattern (honest: single-stock calendar effects rarely survive)"},
+  liq_high:{zh:"高",en:"high"},liq_mid:{zh:"中",en:"mid"},liq_low:{zh:"低·点差/滑点风险",en:"low · spread/slippage risk"},liq_unknown:{zh:"未知",en:"unknown"},
+  chkAsof:{zh:"体检数据日",en:"checkup as of"},
+  chkFoot:{zh:"β/波动/回撤是风险特征、不是收益承诺;不含 franking(无可靠免费源,宁缺勿猜)。详见方法论页。",
+           en:"β/vol/drawdown are risk traits, not return promises; franking excluded (no reliable free source). See methodology."}
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
-let DATA=null,sortCol="d1",dir=-1;
+let DATA=null,CHK=null,sortCol="d1",dir=-1;   // CHK=au_checkup.json(体检·独立fetch·拉不到则不显示体检列)
 
 function pn(v){if(v==null)return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}</span>`;}
 
@@ -117,17 +134,23 @@ function tagOf(d){
 function renderTable(){
   if(!DATA){return;}
   const stocks=DATA.stocks||[];
+  const hasChk=!!(CHK&&CHK.tickers);
   const COLS=[["n","cn"],["p","cp"],["d1","cd1"],["w1","cw1"],["m1","cm1"],["c6","c6"],["c1","c1"],["v","cv"],["tag","ctag"]];
+  if(hasChk)COLS.push(["chk","cchk"]);
   let rows=stocks.slice();
   rows.sort((a,b)=>{const x=a[sortCol],y=b[sortCol];if(x==null)return 1;if(y==null)return -1;
     return (typeof x==="number")?(y-x)*dir*-1:String(x).localeCompare(String(y),'zh')*dir*-1;});
   let h=`<caption style="caption-side:top;text-align:left;color:var(--mut);font-size:.82rem;padding:4px 0 8px;font-weight:600">${t("asx50")}</caption><thead><tr>`;
   COLS.forEach(([k,lk])=>{const on=k===sortCol;h+=`<th data-k="${k}" scope="col" tabindex="0" role="button" aria-sort="${on?(dir<0?'descending':'ascending'):'none'}" class="${on?'s':''}">${t(lk)}</th>`;});
   h+="</tr></thead><tbody>";
-  rows.forEach(d=>{h+=`<tr><td>${esc(d.n)}</td>
+  rows.forEach(d=>{
+    const chkBtn=(hasChk&&CHK.tickers[d.t]&&CHK.tickers[d.t].status==="ok")
+      ?`<td><span class="chkbtn" role="button" tabindex="0" onclick="showChk('${esc(d.t)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showChk('${esc(d.t)}')}" title="${t('chkTitle')}">🩺</span></td>`
+      :(hasChk?'<td><span class="mut">—</span></td>':'');
+    h+=`<tr><td>${esc(d.n)}</td>
     <td>${d.p==null?'<span class="mut">—</span>':d.p}</td><td>${pn(d.d1)}</td><td>${pn(d.w1)}</td><td>${pn(d.m1)}</td>
     <td>${pn(d.c6)}</td><td>${pn(d.c1)}</td><td>${d.v==null?'<span class="mut">—</span>':d.v}</td>
-    <td style="text-align:left">${tagOf(d)}</td></tr>`;});
+    <td style="text-align:left">${tagOf(d)}</td>${chkBtn}</tr>`;});
   h+="</tbody>";$("tbl").innerHTML=h;
   $("tbl").querySelectorAll("th").forEach(th=>{const sort=()=>{const k=th.dataset.k;if(k===sortCol)dir*=-1;else{sortCol=k;dir=-1;}renderTable();};th.onclick=sort;th.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();sort();}};});
 }
@@ -140,23 +163,57 @@ function renderExcl(){
 
 function redraw(){applyStatic();renderOverview();renderTable();renderExcl();
   $("src").textContent=(DATA?`${t("live")} ${(DATA.stocks||[]).length} · ${t("asof")} ${DATA.as_of||""}`:"");}
+// ── 🩺 体检模态(数据=au_checkup.json;风险画像·非荐股非预测) ──────────────
+function _kv(label,val){return `<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px dashed var(--border)"><span class="mut" style="margin:0;border:0;padding:0">${label}</span><b style="font-variant-numeric:tabular-nums">${val}</b></div>`;}
+function showChk(tk){
+  const c=CHK&&CHK.tickers&&CHK.tickers[tk]; if(!c||c.status!=="ok")return;
+  const zh=(LANG==="zh");
+  let h=`<div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:1.02rem">${esc(c.name)} <span class="mut" style="margin:0;border:0;padding:0">${esc(tk)}</span></b><span class="chkbtn" role="button" tabindex="0" onclick="closeChk()" style="cursor:pointer">✕</span></div>
+  <div class="mut" style="margin:4px 0 10px;border:0;padding:0">${t("chkTitle")}</div>`;
+  h+=_kv(t("chkVol"), `${c.ann_vol_pct}%`);
+  h+=_kv(t("chkDd"), `<span class="neg">${c.max_drawdown_pct}%</span>`);
+  h+=_kv(t("chkBeta"), c.beta_axjo==null?"—":c.beta_axjo);
+  const ev=c.evt||{}; if(ev.status==="ok")h+=_kv(t("chkEvt"), ev.xi);
+  const md=c.market_dep||{}; if(md.status==="ok")h+=_kv(t("chkDep"), `${md.r2_pct}%`);
+  const lq=c.liquidity||{};
+  h+=_kv(t("chkLiq"), lq.status==="ok"?`${t("liq_"+lq.tier)} · A$${lq.median_daily_aud_m}M/d`:t("liq_unknown"));
+  const cf=c.conformal||{}; if(cf.status==="ok")h+=_kv(t("chkConf"), `${cf.lower_pct}% ~ +${cf.upper_pct}%`);
+  const pat=c.patterns||{};
+  if(pat.status==="ok"){
+    const vs=(pat.tests||[]).map(x=>x.verdict||"");
+    const good=vs.some(v=>v==="real"||v==="hist_robust"||v==="faded");
+    h+=_kv(t("chkPat"), good?esc(vs.join(", ")):`<span class="mut" style="margin:0;border:0;padding:0">${t("patNone")}</span>`);
+  }
+  const notes=[];
+  if(c.short_history_note)notes.push(c.short_history_note[LANG]||c.short_history_note.zh);
+  if(c.identity_note)notes.push(c.identity_note[LANG]||c.identity_note.zh);
+  if(lq.status==="ok"&&lq.tier==="low")notes.push(zh?lq.note_zh:lq.note_en);
+  notes.forEach(n=>{h+=`<div style="background:rgba(210,153,34,.12);border:1px solid var(--amb);border-radius:6px;padding:6px 9px;font-size:.78rem;margin-top:8px;color:#e3b341">⚠ ${esc(n)}</div>`;});
+  h+=`<div class="mut" style="margin-top:10px;padding-top:8px">${t("chkFoot")} · ${t("chkAsof")} ${esc((CHK.generated||"").slice(0,10))}</div>`;
+  $("mbody").innerHTML=h;$("modal").style.display="flex";
+}
+function closeChk(){$("modal").style.display="none";}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("modal").style.display!=="none")closeChk();});
+
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};redraw();};
 
+// 相对优先 → github.io 兜底(与 discoveries/self_growing 同范式;本地/预览环境不再 404)
+const g=u=>fetch(u,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
 async function load(){
   applyStatic();
-  try{
-    const r=await fetch(LIVE,{cache:"no-store"});if(!r.ok)throw 0;
-    DATA=await r.json();
-    if(!DATA.stocks||!DATA.stocks.length){
-      const msg=LANG==="en"?"No data yet — check back soon":"暂无数据，稍后再试";
-      $("tbl").innerHTML=`<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--mut)">${msg}</td></tr>`;
-      $("src").textContent="";
-    }else{redraw();}
-  }catch(e){
+  DATA=await g("au_market.json")||await g(LIVE);
+  CHK=await g("au_checkup.json")||await g("https://vambrocop.github.io/valpha-lab/au_checkup.json");  // fail-soft:拉不到则无体检列
+  if(!DATA){
     $("src").textContent=t("err");
     const msg=LANG==="en"?"Failed to load — refresh later":"加载失败，请稍后刷新";
     $("tbl").innerHTML=`<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--mut)">${msg}</td></tr>`;
+    return;
   }
+  if(!DATA.stocks||!DATA.stocks.length){
+    const msg=LANG==="en"?"No data yet — check back soon":"暂无数据，稍后再试";
+    $("tbl").innerHTML=`<tr><td colspan="9" style="text-align:center;padding:18px;color:var(--mut)">${msg}</td></tr>`;
+    $("src").textContent="";
+  }else{redraw();}
 }
 load();
 </script>

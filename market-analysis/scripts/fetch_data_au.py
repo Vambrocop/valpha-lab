@@ -97,24 +97,35 @@ IDENTITY_NOTES = {
 }
 
 
+def _clean_col(col, ticker):
+    """单列清洗：dropna + DatetimeIndex 去时区。"""
+    if isinstance(col, pd.DataFrame):
+        col = col.iloc[:, 0]
+    col = col.dropna()
+    col.index = pd.to_datetime(col.index)
+    try:
+        col.index = col.index.tz_localize(None)
+    except Exception:
+        pass
+    return col.rename(ticker)
+
+
 def _yf_fetch_max(ticker):
     """period='max' 全史抓取，带退避重试；失败回退 Ticker.history(period='max')。
-    永不抛异常：全部失败返回 (None, error_str)。"""
+    永不抛异常：全部失败返回 (None, None, error_str)。
+    W2 起同时带回 Volume（B2 体检的流动性档位要 60 日中位日成交额=Close×Volume；
+    指数/汇率的 Volume 无意义或缺失 → 返回 None，调用方自行忽略）。"""
     last_err = None
     for attempt in range(3):
         try:
             df = yf.download(ticker, period="max", auto_adjust=True, progress=False)
             if not df.empty:
-                col = df["Close"]
-                if isinstance(col, pd.DataFrame):
-                    col = col.iloc[:, 0]
-                col = col.dropna()
-                col.index = pd.to_datetime(col.index)
-                try:
-                    col.index = col.index.tz_localize(None)
-                except Exception:
-                    pass
-                return col.rename(ticker), None
+                close = _clean_col(df["Close"], ticker)
+                vol = None
+                if "Volume" in df.columns:
+                    v = _clean_col(df["Volume"], ticker)
+                    vol = v if len(v) else None
+                return close, vol, None
         except Exception as e:
             last_err = e
         time.sleep(1.0 * (attempt + 1))  # 1s, 2s, 3s 退避
@@ -122,17 +133,16 @@ def _yf_fetch_max(ticker):
     try:
         hist = yf.Ticker(ticker).history(period="max", auto_adjust=True)
         if not hist.empty:
-            col = hist["Close"].dropna()
-            col.index = pd.to_datetime(col.index)
-            try:
-                col.index = col.index.tz_localize(None)
-            except Exception:
-                pass
-            return col.rename(ticker), None
+            close = _clean_col(hist["Close"], ticker)
+            vol = None
+            if "Volume" in hist.columns:
+                v = _clean_col(hist["Volume"], ticker)
+                vol = v if len(v) else None
+            return close, vol, None
     except Exception as e:
         last_err = e
 
-    return None, str(last_err)[:300] if last_err else "empty"
+    return None, None, str(last_err)[:300] if last_err else "empty"
 
 
 def _diag(series):
@@ -176,10 +186,16 @@ def _market_metrics(p, price_round=2):
     return {"p": round(last, price_round), "d1": d1, "w1": w1, "m1": m1, "c6": c6, "c1": c1, "v": vol, "fh": fh}
 
 
-def _fetch_one(name, ticker, price_round=2):
-    """抓一票→(series, diag, metrics)；失败返回 (None, diag_failed, None)，永不抛异常。"""
+def _fetch_one(name, ticker, price_round=2, collect_dv=None):
+    """抓一票→(series, diag, metrics)；失败返回 (None, diag_failed, None)，永不抛异常。
+    collect_dv 非 None（dict）时：把近 400 日的日成交额 AUD（Close×Volume）收进去
+    （B2 流动性档位数据源；Volume 缺失的票静默跳过，体检侧如实标 unknown）。"""
     print(f"  抓 {name} ({ticker})...")
-    series, err = _yf_fetch_max(ticker)
+    series, volume, err = _yf_fetch_max(ticker)
+    if collect_dv is not None and series is not None and volume is not None:
+        dv = (series * volume.reindex(series.index)).dropna().tail(400)
+        if len(dv):
+            collect_dv[ticker] = dv
     if series is None or series.empty:
         print(f"    x 失败：{err}")
         return None, {
@@ -240,8 +256,9 @@ def run():
         probe_results.append({"group": "etf", "name": name, "ticker": ticker, **diag})
 
     print("\n=== ASX50 大盘票 ===")
+    dollar_vol = {}                       # W2:近400日 日成交额AUD(Close×Volume)→dollar_volume.csv 喂 B2 流动性档位
     for name, ticker in STOCK_TICKERS.items():
-        series, diag, m = _fetch_one(name, ticker, price_round=2)
+        series, diag, m = _fetch_one(name, ticker, price_round=2, collect_dv=dollar_vol)
         probe_results.append({"group": "stock", "name": name, "ticker": ticker, **diag})
         if m is None:
             continue
@@ -258,6 +275,10 @@ def run():
         else:
             row["identity_note"] = None
         market["stocks"].append(row)
+
+    if dollar_vol:                        # W2:宽表(列=ticker)落盘;raw/ gitignore,与价格 CSV 同域
+        pd.DataFrame(dollar_vol).sort_index().to_csv(RAW_DIR / "dollar_volume.csv")
+        print(f"  日成交额宽表 -> dollar_volume.csv（{len(dollar_vol)} 票 × 近400日）")
 
     market["n_stocks"] = len(market["stocks"])
     market["n_excluded"] = len(market["excluded"])

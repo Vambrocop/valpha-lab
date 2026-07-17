@@ -270,8 +270,11 @@ def compute_conformal(px, horizon=20, level=0.90):
             "n_windows": int(len(rets))}
 
 
-def compute_basic_risk(px, nasdaq):
-    """单票价格序列 px + 纳指价格序列 nasdaq（皆 pd.Series，索引=日期）→ 基础风险字典。"""
+def compute_basic_risk(px, nasdaq, beta_key="beta_nasdaq"):
+    """单票价格序列 px + 基准价格序列（皆 pd.Series，索引=日期）→ 基础风险字典。
+    beta_key：输出里 β 的键名——默认 "beta_nasdaq"=美股原行为（回归门保证逐字节不变）；
+    AU 体检（au_checkup.py）传 "beta_axjo"（β 对 ^AXJO）。第二参名沿称 nasdaq 是历史命名，
+    语义=基准序列（美股回归门不许改签名，故不重命名）。"""
     px = pd.to_numeric(px, errors="coerce").dropna()
     px.index = pd.to_datetime(px.index)   # 防御：非 DatetimeIndex 输入兜底（已是 DatetimeIndex 则无副作用）
     px = px.sort_index()
@@ -294,7 +297,7 @@ def compute_basic_risk(px, nasdaq):
         "start": str(px.index[0].date()), "end": str(px.index[-1].date()),
         "ann_vol_pct": round(annualized_vol(ret.to_numpy()) * 100, 1),
         "max_drawdown_pct": round(max_drawdown(px.to_numpy()) * 100, 1),
-        "beta_nasdaq": round(b, 2) if b is not None else None,
+        beta_key: round(b, 2) if b is not None else None,
     }
 
 

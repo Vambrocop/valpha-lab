@@ -97,7 +97,8 @@ steps = [
     ("预FOMC漂移事件研究(出格)", "fomc_study.py"),   # Lucca-Moench 先验:FOMC公告前1交易日SP500偏强?块自助 p+逐十年(2010s真→2020s反转);读SP500_long+硬编码FOMC日期;探索性未入FDR池;不入light
     ("内部人买入取数(SEC Form4)", "fetch_insider.py"),  # 抓近期开市买入P写insider.json;SEC daily-index,需 SEC_UA_CONTACT(secret);SEC失败静默退0不阻断;不入light(日更一次即可)
     ("IPO近期申报取数(SEC EDGAR)", "fetch_ipo.py"),  # 抓近30天S-1/424B申报写ipo_filings.json(IPO雷达页事实层);SEC全文搜索,复用SEC_UA_CONTACT;含大量小盘/空壳非策展;失败静默退0不阻断;不入light(日更一次即可)
-    ("澳洲市场取数(独立区)", "fetch_data_au.py"),  # B1:^AXJO/AUDUSD/ASX50→au_market.json+au_probe.json(au.html 独立市场概览页读);独立平行区,不碰美股任何脚本/数据/账本;fail-soft 不阻断;不入light(日更一次即可)
+    ("澳洲市场取数(独立区)", "fetch_data_au.py"),
+    ("澳股诚实体检(独立区)", "au_checkup.py"),   # B2:stock_checkup 纯函数复用到 ASX50(β=^AXJO+流动性档位+FMG/COL标记透传)→au_checkup.json(au.html 🩺模态读);美股路径零触碰(回归门已验逐字节);FDR AU独立池;须在 fetch_data_au 后;不入 light  # B1:^AXJO/AUDUSD/ASX50→au_market.json+au_probe.json(au.html 独立市场概览页读);独立平行区,不碰美股任何脚本/数据/账本;fail-soft 不阻断;不入light(日更一次即可)
     ("IPO重大性分层富化(SEC Exhibit107)", "ipo_enrich.py"),  # A2:从ipo_filings.json机械分层🔴major/🟡notable/rest(策展名单/母市值/拟募资/SPAC);读SEC submissions+EX-FILING FEES结构化费用,复用SEC_UA_CONTACT;金额只升档·未知不升档·绝不正文刮数;fail-soft(炸掉→原始json完好·前端显未分层);须在fetch_ipo后;不入light;SEC限流退避·本地分批top-up
     ("IPO重大事件预警(出格·事实通报)", "ipo_alerts.py"),  # A3:major公司状态档(filed/priced/listed取最高)首见即append事件账ipo_alert_log+合并一条Telegram(tag=IPO雷达·事实通报·上市≠值得买非荐股);去重键(cik,stage)绝不改历史行;推送失败pushed=False留痕不重推(见其文件头取舍);须在ipo_enrich后;fail-soft不阻断;不入light
 
