@@ -34,7 +34,23 @@
   #src{color:var(--mut);font-size:.78rem}
   #excl{font-size:.78rem;color:var(--mut);margin:6px 0}
   th:focus{outline:2px solid var(--acc);outline-offset:-2px}
-  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}table{font-size:.8rem}.ov-card .big{font-size:1.3rem}}
+  /* 🎯 荐股(独立计分·出格) —— 照 picks.html 骨架收窄,变量名与本页 :root 共用 */
+  h2{font-size:1.05rem;margin:22px 0 4px;border-top:1px solid var(--border);padding-top:16px}
+  h3{font-size:.92rem;margin:14px 0 4px}
+  .pk-verdict{background:rgba(163,113,247,.12);border:2px solid var(--acc);border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.92rem;line-height:1.7}
+  .pk-stats{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+  .pk-stat{flex:1 1 130px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px;text-align:center}
+  .pk-stat .v{font-size:1.4rem;font-weight:800;line-height:1.15}.pk-stat .l{color:var(--mut);font-size:.72rem;margin-top:3px}
+  .pk-launch{background:rgba(210,153,34,.1);border:1px solid var(--amb);border-radius:8px;padding:10px 13px;margin:10px 0;font-size:.85rem;color:#e8c96a;line-height:1.55}
+  .pk-vbull{display:inline-block;font-size:.74rem;padding:1px 8px;border-radius:20px;border:1px solid rgba(63,185,80,.5);background:rgba(63,185,80,.12);color:var(--grn)}
+  .pk-vbear{display:inline-block;font-size:.74rem;padding:1px 8px;border-radius:20px;border:1px solid rgba(248,81,73,.5);background:rgba(248,81,73,.12);color:var(--red)}
+  .pk-badge{display:inline-block;font-size:.72rem;padding:1px 7px;border-radius:20px;border:1px solid var(--border);color:var(--mut)}
+  #pkRecent th:first-child,#pkRecent td:first-child,#pkRecent th:nth-child(2),#pkRecent td:nth-child(2){text-align:left}
+  .bt-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin:10px 0}
+  .bt-meta{color:var(--mut);font-size:.78rem;line-height:1.65;margin:6px 0}
+  .bt-meta b{color:var(--fg)}
+  .bt-decl{margin:6px 0 0;padding-left:18px}.bt-decl li{margin:3px 0}
+  @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}table{font-size:.8rem}.ov-card .big{font-size:1.3rem}.pk-stat{flex:1 1 45%}}
   @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -51,6 +67,22 @@
 <div style="overflow-x:auto"><table id="tbl"></table></div>
 <div id="excl"></div>
 <div id="src"></div>
+
+<h2 data-i18n="pkH"></h2>
+<p class="sub" style="color:var(--mut);font-size:.82rem;margin:0 0 8px;line-height:1.55" data-i18n="pkIntro"></p>
+<div class="pk-verdict" id="pkVerdict"></div>
+<div class="pk-stats" id="pkStats"></div>
+<div class="pk-launch" id="pkLaunch" style="display:none"></div>
+<h3 data-i18n="pkHRecent"></h3>
+<p class="sub" style="color:var(--mut);font-size:.78rem;margin:0 0 6px" data-i18n="pkSRecent"></p>
+<div style="overflow-x:auto"><table id="pkRecent"></table></div>
+<details class="vp-more"><summary data-i18n="pkMoreExp"></summary>
+  <div class="bt-meta" id="pkCaveat" style="margin-top:8px"></div>
+</details>
+<div id="pkSrc" style="color:var(--mut);font-size:.78rem;margin-top:4px"></div>
+
+<div id="backtest-disclosure" style="margin-top:16px"></div>
+
 <div class="mut" data-i18n="foot"></div>
 
 <div id="modal" role="dialog" aria-modal="true" aria-label="体检 / checkup" onclick="if(event.target===this)closeChk()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:50;align-items:center;justify-content:center;padding:16px"><div id="mbody" style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;max-width:480px;width:100%;max-height:88vh;overflow:auto"></div></div>
@@ -86,13 +118,49 @@ const I18N={
   liq_high:{zh:"高",en:"high"},liq_mid:{zh:"中",en:"mid"},liq_low:{zh:"低·点差/滑点风险",en:"low · spread/slippage risk"},liq_unknown:{zh:"未知",en:"unknown"},
   chkAsof:{zh:"体检数据日",en:"checkup as of"},
   chkFoot:{zh:"β/波动/回撤是风险特征、不是收益承诺;不含 franking(无可靠免费源,宁缺勿猜)。详见方法论页。",
-           en:"β/vol/drawdown are risk traits, not return promises; franking excluded (no reliable free source). See methodology."}
+           en:"β/vol/drawdown are risk traits, not return promises; franking excluded (no reliable free source). See methodology."},
+  // ── 🎯 荐股(独立计分·出格·B3) ── 与美股 picks.html 同构,基准换 ^AXJO ──────
+  pkH:{zh:"🎯 荐股(独立计分·出格)",en:"🎯 Stock picks (independent scoring · off-piste)"},
+  pkIntro:{zh:"我们直接给这批 ASX50 精选股「看好 / 看淡」——规则透明可换（见下方「方法」），出榜次日入场、持有 20 个交易日、相对 ^AXJO 结算，append-only 写进<b>独立</b>公开账本（不与美股 picks.json 混，基准不同不可比）。非投资建议，敢喊也敢被记账。",
+          en:"We make direct bull/bear calls on this ASX50-selected pool — the rule is transparent and swappable (see 'Method' below). Entry is the day after the pick, held 20 trading days, scored vs ^AXJO, written into an <b>independent</b> append-only ledger (never mixed with the US picks.json — different benchmark, not comparable). Not investment advice — we make the call AND let it be scored."},
+  pkHRecent:{zh:"近期荐股（看好 / 看淡）",en:"Recent picks (bullish / bearish)"},
+  pkSRecent:{zh:"按出榜日排序——大多还在「挂账」（20 个交易日没走完）。透明展示我们喊了哪些，不是「该买这些」。",
+             en:"Sorted by pick date — most are still 'pending' (20-trading-day window not elapsed). Shown for transparency of what we called, not 'you should buy these'."},
+  pkMoreExp:{zh:"方法 & 全部诚实免责（含股息口径不对称·franking·FMG 截断）",en:"Method & full honest disclaimers (dividend asymmetry · franking · FMG cutoff)"},
+  pkSCall:{zh:"叫对率%",en:"call-right%"},pkSBull:{zh:"看好命中%",en:"bullish hit%"},pkSBear:{zh:"看淡命中%",en:"bearish hit%"},
+  pkSBullEx:{zh:"看好平均叫对超额%",en:"bull mean call-excess%"},pkSBearEx:{zh:"看淡平均叫对超额%",en:"bear mean call-excess%"},
+  pkSPend:{zh:"挂账(待结算)",en:"pending"},pkSDrop:{zh:"丢弃(退市/无价)",en:"dropped"},
+  pkLaunch:{zh:"⏳ <b>还没有已结算战绩，正在累积。</b>每条荐股的 20 个交易日窗口要约 1 个月后才走完——首批数字届时才出现。现在只看得到「我们喊了哪些」（下表）。",
+            en:"⏳ <b>No settled track record yet — accumulating.</b> Each pick's 20-trading-day window won't elapse for ~1 month. For now you can only see WHICH picks we called (table below)."},
+  pkCTk:{zh:"代码",en:"Ticker"},pkCView:{zh:"观点",en:"Call"},pkCDate:{zh:"出榜日",en:"Pick date"},
+  pkCMom:{zh:"6月动量",en:"6-mo mom"},pkCStat:{zh:"状态",en:"Status"},pkCEx:{zh:"叫对超额 vs ^AXJO",en:"Call-excess vs ^AXJO"},
+  pkStSettled:{zh:"已结算",en:"settled"},pkStPending:{zh:"挂账",en:"pending"},pkStDropped:{zh:"已丢弃",en:"dropped"},
+  pkVBull:{zh:"看好",en:"Bull"},pkVBear:{zh:"看淡",en:"Bear"},
+  pkErr:{zh:"拉不到 au_picks.json——确认已部署 / 稍后再试。",en:"Can't load au_picks.json — check deployment / try later."},
+  // 回测披露(容器+渲染;数据来自 au_pick_backtest.py 的 au_backtest.json——另一条建造线的产出)
+  btH:{zh:"📜 回测披露(同一规则的历史轨迹)",en:"📜 Backtest disclosure (same-rule historical trace)"},
+  btGenerating:{zh:"回测披露生成中——尚未拉到 au_backtest.json（数据/脚本仍在建造中）。",
+                en:"Backtest disclosure is being generated — au_backtest.json not available yet (data/script still being built)."},
+  btOverall:{zh:"总体",en:"Overall"},btByYear:{zh:"分年",en:"By year"},btMeta:{zh:"披露声明",en:"Disclosures"},
+  btNCalls:{zh:"决策次数",en:"# decisions"},btNSettled:{zh:"已结算",en:"settled"},
+  btHit:{zh:"总命中%",en:"overall hit%"},btHitBull:{zh:"看好命中%",en:"bullish hit%"},btHitBear:{zh:"看淡命中%",en:"bearish hit%"},
+  btCeMean:{zh:"叫对超额均值%",en:"call-excess mean%"},btCeMedian:{zh:"叫对超额中位%",en:"call-excess median%"},
+  btNDrop:{zh:"丢弃数",en:"dropped"},
+  btYYear:{zh:"年份",en:"Year"},btYN:{zh:"决策数",en:"n"},btYHit:{zh:"命中%",en:"hit%"},btYCe:{zh:"平均叫对超额%",en:"mean call-excess%"},btYSel:{zh:"当年可选票数",en:"selectable"},
+  btRule:{zh:"规则",en:"rule"},btHold:{zh:"持有",en:"hold"},btBench:{zh:"基准",en:"bench"},btPeriod:{zh:"期间",en:"period"},
+  btFmg:{zh:"FMG 实证截断日",en:"FMG empirical cutoff"},btGen:{zh:"生成于",en:"generated"},
+  btSurv:{zh:"幸存者偏差",en:"Survivorship bias"},btDiv:{zh:"股息口径顺风",en:"Dividend-convention tailwind"},
+  btIndep:{zh:"非独立性",en:"Non-independence"},btPhase:{zh:"相位锁定",en:"Phase-lock"},btDesc:{zh:"描述性",en:"Descriptive only"},
+  btErr:{zh:"拉不到 au_backtest.json。",en:"Can't load au_backtest.json."}
 };
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));  // 含单引号:🩺按钮把ticker放进单引号JS串(审计防御纵深)
+const num=v=>(typeof v==="number"&&isFinite(v));
+const sgn=v=>num(v)?((v>=0?"+":"")+v+"%"):"—";
+const stripMd=s=>String(s==null?"":s).replace(/\*\*/g,"");
 let LANG="zh"; try{LANG=localStorage.getItem("valpha_lang")||"zh";}catch(e){}
 const t=k=>(I18N[k]&&I18N[k][LANG])||k;
-let DATA=null,CHK=null,sortCol="d1",dir=-1;   // CHK=au_checkup.json(体检·独立fetch·拉不到则不显示体检列)
+let DATA=null,CHK=null,PICKS=null,BT=null,sortCol="d1",dir=-1;   // CHK=au_checkup.json;PICKS=au_picks.json;BT=au_backtest.json(拉不到则显示"生成中")
 
 function pn(v){if(v==null)return '<span class="mut">—</span>';return `<span class="${v>=0?'pos':'neg'}">${v>=0?'+':''}${v}</span>`;}
 
@@ -161,8 +229,109 @@ function renderExcl(){
   $("excl").textContent=`${t("excl")}: ${items}`;
 }
 
-function redraw(){applyStatic();renderOverview();renderTable();renderExcl();
+function redraw(){applyStatic();renderOverview();renderTable();renderExcl();renderPicks();renderBacktest();
   $("src").textContent=(DATA?`${t("live")} ${(DATA.stocks||[]).length} · ${t("asof")} ${DATA.as_of||""}`:"");}
+
+// ── 🎯 荐股(独立计分·B3) —— 数据=au_picks.json(拉不到则整段留空,不报错刷屏) ──────
+function renderPicks(){
+  if(!PICKS){$("pkVerdict").textContent="";$("pkStats").innerHTML="";$("pkLaunch").style.display="none";
+    $("pkRecent").innerHTML="";$("pkCaveat").textContent="";$("pkSrc").textContent=t("pkErr");return;}
+  const tr=PICKS.track_record||{};
+  const bull=tr.bullish||{},bear=tr.bearish||{};
+  const n=tr.n_settled||0;
+  $("pkVerdict").innerHTML="🧭 "+esc(PICKS.verdict||"");
+  const callHit=num(tr.call_hit_pct)?tr.call_hit_pct+"%":"—";
+  const bullHit=num(bull.hit_pct)?bull.hit_pct+"%":"—";
+  const bearHit=num(bear.hit_pct)?bear.hit_pct+"%":"—";
+  const bullEx=sgn(bull.mean_call_excess_pct),bearEx=sgn(bear.mean_call_excess_pct);
+  const bullExCls=num(bull.mean_call_excess_pct)?(bull.mean_call_excess_pct>=0?"pos":"neg"):"";
+  const bearExCls=num(bear.mean_call_excess_pct)?(bear.mean_call_excess_pct>=0?"pos":"neg"):"";
+  const pend=num(tr.n_pending)?tr.n_pending:"—";
+  const dropPct=num(tr.dropped_pct)?tr.dropped_pct:0;
+  const drop=(num(tr.n_dropped)?tr.n_dropped:0)+" ("+dropPct+"%)";
+  $("pkStats").innerHTML=
+     `<div class="pk-stat"><div class="v">${esc(callHit)}</div><div class="l">${t("pkSCall")}</div></div>`
+    +`<div class="pk-stat"><div class="v" style="color:var(--grn)">${esc(bullHit)}</div><div class="l">${t("pkSBull")}</div></div>`
+    +`<div class="pk-stat"><div class="v" style="color:var(--red)">${esc(bearHit)}</div><div class="l">${t("pkSBear")}</div></div>`
+    +`<div class="pk-stat"><div class="v ${bullExCls}">${esc(bullEx)}</div><div class="l">${t("pkSBullEx")}</div></div>`
+    +`<div class="pk-stat"><div class="v ${bearExCls}">${esc(bearEx)}</div><div class="l">${t("pkSBearEx")}</div></div>`
+    +`<div class="pk-stat"><div class="v">${esc(String(pend))}</div><div class="l">${t("pkSPend")}</div></div>`
+    +`<div class="pk-stat"><div class="v" style="color:var(--mut)">${esc(drop)}</div><div class="l">${t("pkSDrop")}</div></div>`;
+  const lb=$("pkLaunch");
+  if(n===0){lb.style.display="";lb.innerHTML=t("pkLaunch");}else{lb.style.display="none";}
+  let h=`<tr><th>${t("pkCTk")}</th><th>${t("pkCView")}</th><th>${t("pkCDate")}</th><th>${t("pkCMom")}</th><th>${t("pkCStat")}</th><th>${t("pkCEx")}</th></tr>`;
+  (PICKS.recent||[]).forEach(r=>{
+    const isBull=r.view==="看好",isBear=r.view==="看淡";
+    let vCell;
+    if(isBull) vCell=`<span class="pk-vbull">${esc(LANG==="en"?t("pkVBull"):r.view)}</span>`;
+    else if(isBear) vCell=`<span class="pk-vbear">${esc(LANG==="en"?t("pkVBear"):r.view)}</span>`;
+    else vCell=`<span class="pk-badge">${esc(r.view||"—")}</span>`;
+    const mom=sgn(r.mom_pct);
+    let status,exCell;
+    if(r.dropped){status=`<span class="pk-badge">${t("pkStDropped")}</span>`;exCell="—";}
+    else if(r.settled){
+      status=`<span class="pk-badge">${t("pkStSettled")}</span>`;
+      if(num(r.call_excess_pct)){const cls=r.hit?"pos":"neg";exCell=`<span class="${cls}">${(r.call_excess_pct>=0?"+":"")+r.call_excess_pct}%</span>`;}else exCell="—";
+    } else {status=`<span class="pk-badge">${t("pkStPending")}</span>`;exCell="—";}
+    h+=`<tr><td>${esc(r.symbol||"—")}</td><td>${vCell}</td><td>${esc(r.pick_date||"—")}</td>`
+      +`<td>${esc(mom)}</td><td>${status}</td><td>${exCell}</td></tr>`;
+  });
+  $("pkRecent").innerHTML=h;
+  $("pkCaveat").textContent="⚠️ "+stripMd(PICKS.caveat||"");
+  const gen=esc((PICKS.generated||"").slice(0,10));
+  const hold=num(PICKS.hold_td)?PICKS.hold_td:20,bm=esc(PICKS.benchmark||"^AXJO");
+  $("pkSrc").textContent=LANG==="en"
+    ?`Source: ${esc(PICKS.source||"AU picks → forward public scoring")} · generated ${gen} · hold ${hold} trading days vs ${bm}`
+    :`数据：${esc(PICKS.source||"澳股荐股 → 前向公开计分")} · 生成 ${gen} · 持有 ${hold} 交易日 vs ${bm}`;
+}
+
+// ── 📜 回测披露(容器+渲染;数据=au_backtest.json,来自另一条建造线 au_pick_backtest.py) ──
+// 契约按 SPEC_AU_PICKS.md §2.3 推定字段名(overall/by_year/meta);实际产出若字段名有出入,
+// 下面按存在性宽松取值+全部"—"兜底,不会因缺字段抛错——集成时如与实际 schema 不符,按此函数改字段名即可。
+function renderBacktest(){
+  const el=$("backtest-disclosure");
+  if(!BT){el.innerHTML=`<div class="bt-card">⏳ ${t("btGenerating")}</div>`;return;}
+  try{
+    const ov=BT.overall||BT.summary||{};
+    const meta=BT.meta||{};
+    const years=BT.by_year||BT.yearly||BT.years||[];
+    const pick=(o,...ks)=>{for(const k of ks){if(o&&o[k]!=null)return o[k];}return null;};
+    const pct=v=>num(v)?v+"%":"—";
+    let h=`<h3 style="margin-top:0">${t("btH")}</h3>`;
+    h+=`<div class="bt-card"><b>${t("btOverall")}</b><div class="pk-stats" style="margin-top:8px">`
+      +`<div class="pk-stat"><div class="v">${esc(pick(ov,"n_calls","n")??"—")}</div><div class="l">${t("btNCalls")}</div></div>`
+      +`<div class="pk-stat"><div class="v">${esc(pick(ov,"n_settled")??"—")}</div><div class="l">${t("btNSettled")}</div></div>`
+      +`<div class="pk-stat"><div class="v">${pct(pick(ov,"hit_pct","hit_rate_pct"))}</div><div class="l">${t("btHit")}</div></div>`
+      +`<div class="pk-stat"><div class="v" style="color:var(--grn)">${pct(pick(ov,"hit_pct_bullish","bullish_hit_pct"))}</div><div class="l">${t("btHitBull")}</div></div>`
+      +`<div class="pk-stat"><div class="v" style="color:var(--red)">${pct(pick(ov,"hit_pct_bearish","bearish_hit_pct"))}</div><div class="l">${t("btHitBear")}</div></div>`
+      +`<div class="pk-stat"><div class="v">${pct(pick(ov,"call_excess_mean_pct","mean_call_excess_pct"))}</div><div class="l">${t("btCeMean")}</div></div>`
+      +`<div class="pk-stat"><div class="v">${pct(pick(ov,"call_excess_median_pct","median_call_excess_pct"))}</div><div class="l">${t("btCeMedian")}</div></div>`
+      +`<div class="pk-stat"><div class="v" style="color:var(--mut)">${esc(pick(ov,"n_dropped","dropped")??"—")}</div><div class="l">${t("btNDrop")}</div></div>`
+      +`</div></div>`;
+    if(years&&years.length){
+      h+=`<div class="bt-card"><b>${t("btByYear")}</b><div style="overflow-x:auto"><table style="margin-top:8px"><thead><tr>`
+        +`<th>${t("btYYear")}</th><th>${t("btYN")}</th><th>${t("btYHit")}</th><th>${t("btYCe")}</th><th>${t("btYSel")}</th></tr></thead><tbody>`;
+      years.forEach(y=>{h+=`<tr><td style="text-align:left">${esc(pick(y,"year")??"—")}</td><td>${esc(pick(y,"n")??"—")}</td>`
+        +`<td>${pct(pick(y,"hit_pct"))}</td><td>${pct(pick(y,"call_excess_mean_pct","mean_call_excess_pct"))}</td>`
+        +`<td>${esc(pick(y,"n_selectable")??"—")}</td></tr>`;});
+      h+="</tbody></table></div></div>";
+    }
+    const decls=[["btSurv","survivorship_note"],["btDiv","dividend_note"],["btIndep","non_independence_note"],
+                 ["btPhase","phase_lock_note"],["btDesc","descriptive_note"]];
+    let declItems=decls.map(([lk,fk])=>{const v=pick(meta,fk);return v?`<li><b>${t(lk)}：</b>${esc(v)}</li>`:"";}).filter(Boolean).join("");
+    if(!declItems&&Array.isArray(meta.notes)) declItems=meta.notes.map(n=>`<li>${esc(n)}</li>`).join("");
+    h+=`<div class="bt-card"><b>${t("btMeta")}</b>`
+      +`<div class="bt-meta">${t("btRule")}: <b>${esc(pick(meta,"rule")||PICKS&&PICKS.pick_rule||"—")}</b>`
+      +` · ${t("btHold")}: ${esc(pick(meta,"hold_td","hold")??"20")} · ${t("btBench")}: ${esc(pick(meta,"bench","benchmark")||"^AXJO")}`
+      +(pick(meta,"period_start")?` · ${t("btPeriod")}: ${esc(pick(meta,"period_start"))} ~ ${esc(pick(meta,"period_end"))}`:"")
+      +(pick(meta,"fmg_cutoff_date")?` · ${t("btFmg")}: ${esc(pick(meta,"fmg_cutoff_date"))}`:"")+`</div>`;
+    if(declItems) h+=`<ul class="bt-decl bt-meta">${declItems}</ul>`;
+    const genAt=esc((pick(meta,"generated")||BT.generated||"").slice(0,10));
+    if(genAt) h+=`<div class="bt-meta">${t("btGen")} ${genAt}</div>`;
+    h+="</div>";
+    el.innerHTML=h;
+  }catch(e){el.innerHTML=`<div class="bt-card">⏳ ${t("btGenerating")}</div>`;}
+}
 // ── 🩺 体检模态(数据=au_checkup.json;风险画像·非荐股非预测) ──────────────
 function _kv(label,val){return `<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px dashed var(--border)"><span class="mut" style="margin:0;border:0;padding:0">${label}</span><b style="font-variant-numeric:tabular-nums">${val}</b></div>`;}
 function showChk(tk){
@@ -203,6 +372,9 @@ async function load(){
   applyStatic();
   DATA=await g("au_market.json")||await g(LIVE);
   CHK=await g("au_checkup.json")||await g("https://vambrocop.github.io/valpha-lab/au_checkup.json");  // fail-soft:拉不到则无体检列
+  PICKS=await g("au_picks.json")||await g("https://vambrocop.github.io/valpha-lab/au_picks.json");    // fail-soft:拉不到则该区显错误提示
+  BT=await g("au_backtest.json")||await g("https://vambrocop.github.io/valpha-lab/au_backtest.json"); // fail-soft:拉不到则显"生成中"(回测由另一条建造线产出,暂缺是预期状态)
+  renderPicks();renderBacktest();
   if(!DATA){
     $("src").textContent=t("err");
     const msg=LANG==="en"?"Failed to load — refresh later":"加载失败，请稍后刷新";

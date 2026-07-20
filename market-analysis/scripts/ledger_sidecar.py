@@ -55,6 +55,8 @@ SPECS = [
      ["pred_date", "symbol", "direction", "confidence", "reason", "horizon_td"]),
     ("pick_ledger.csv",
      ["pick_date", "symbol", "view", "mom_pct"]),
+    ("au_pick_ledger.csv",
+     ["pick_date", "symbol", "view", "mom_pct"]),  # B3:澳股荐股独立账本(pick_ledger 同构;基准^AXJO不同,不与美股混)
     ("insider_signal_log.csv",
      ["filed_date", "ticker", "insider", "title", "txn_date", "shares", "value"]),
     # 极端下跌→次日反弹公开计分(overreaction_alert.py):检测日即定 5 列=身份;结算填 next_*/hit/settled。

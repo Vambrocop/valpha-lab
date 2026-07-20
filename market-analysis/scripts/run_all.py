@@ -20,9 +20,10 @@ run_all.py — 一键运行完整流水线并同步部署目录
     → survivors_live(读 autodiscovery 存活→喂日读) → llm_daily_read → llm_monthly_read
     (周读【不在】此处:weekly-review.yml 周六生成完整周,勿再接回——07-07 撤重复的教训)
     → llm_prediction → btc_nasdaq_backtest/regime_forward → fetch_insider/fetch_ipo/fetch_data_au(均fail-soft)
+    → au_checkup(独立区体检) → au_pick_ledger(B3·澳股荐股独立账本,零克隆 pick_ledger 规则)
     → insider_signal/pick_ledger → scorecard → evidence_ledger → knowledge_base(kb_ledger·OOS门4)
     → flicker
-【E 封存/门禁/部署】ledger_sidecar(13账本哈希链) → verify_output(不绿不发布)
+【E 封存/门禁/部署】ledger_sidecar(14账本哈希链) → verify_output(不绿不发布)
     → web/ 镜像 docs/(Pages 部署目录;check_docs_mirror 守漂移)
 依赖铁则:改 C 链任何统计 → 全量跑通+pytest 绿+新旧指标对比;账本(append-only)绝不改历史行。
 ═══════════════════════════════════════════════════════════════════════════════
@@ -99,6 +100,7 @@ steps = [
     ("IPO近期申报取数(SEC EDGAR)", "fetch_ipo.py"),  # 抓近30天S-1/424B申报写ipo_filings.json(IPO雷达页事实层);SEC全文搜索,复用SEC_UA_CONTACT;含大量小盘/空壳非策展;失败静默退0不阻断;不入light(日更一次即可)
     ("澳洲市场取数(独立区)", "fetch_data_au.py"),
     ("澳股诚实体检(独立区)", "au_checkup.py"),   # B2:stock_checkup 纯函数复用到 ASX50(β=^AXJO+流动性档位+FMG/COL标记透传)→au_checkup.json(au.html 🩺模态读);美股路径零触碰(回归门已验逐字节);FDR AU独立池;须在 fetch_data_au 后;不入 light  # B1:^AXJO/AUDUSD/ASX50→au_market.json+au_probe.json(au.html 独立市场概览页读);独立平行区,不碰美股任何脚本/数据/账本;fail-soft 不阻断;不入light(日更一次即可)
+    ("澳股荐股→前向计分(出格·独立账本)", "au_pick_ledger.py"),  # B3:pick_ledger配置级克隆(_select_picks/_outcome/_followable零克隆import)+^AXJO本地取价结算(forward_ledger零改,从不联网);独立账本data/au_pick_ledger.csv(与美股不混);须在fetch_data_au后;宽表(raw/au/au_stocks_prices.csv)暂缺时fail-soft空跑;不入light
     ("IPO重大性分层富化(SEC Exhibit107)", "ipo_enrich.py"),  # A2:从ipo_filings.json机械分层🔴major/🟡notable/rest(策展名单/母市值/拟募资/SPAC);读SEC submissions+EX-FILING FEES结构化费用,复用SEC_UA_CONTACT;金额只升档·未知不升档·绝不正文刮数;fail-soft(炸掉→原始json完好·前端显未分层);须在fetch_ipo后;不入light;SEC限流退避·本地分批top-up
     ("IPO重大事件预警(出格·事实通报)", "ipo_alerts.py"),  # A3:major公司状态档(filed/priced/listed取最高)首见即append事件账ipo_alert_log+合并一条Telegram(tag=IPO雷达·事实通报·上市≠值得买非荐股);去重键(cik,stage)绝不改历史行;推送失败pushed=False留痕不重推(见其文件头取舍);须在ipo_enrich后;fail-soft不阻断;不入light
 

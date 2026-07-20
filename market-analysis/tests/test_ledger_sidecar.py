@@ -160,18 +160,21 @@ def test_missing_ledger_or_record_skipped(tmp_path):
 def test_real_specs_core_fields_match_writers():
     """SPECS 里结算型账本的身份字段必须真是建行即定的列(与各写手 HEADER 前缀一致)。"""
     from pathlib import Path
+    import au_pick_ledger
     import insider_signal
     import llm_prediction
     import overreaction_alert
     import pick_ledger
     headers = {"llm_prediction_log.csv": llm_prediction.HEADER,
                "pick_ledger.csv": pick_ledger.HEADER,
+               "au_pick_ledger.csv": au_pick_ledger.HEADER,
                "insider_signal_log.csv": insider_signal.HEADER,
                "overreaction_signal_log.csv": overreaction_alert.HEADER}
     # 结算列按账本各记——overreaction 的身份列合法含 ret_pct(检测日收益·建行即定),
     # 它结算填的是 next_ret_pct;不能拿全局黑名单一刀切
     _std = {"entry_date", "entry_px", "exit_date", "exit_px", "ret_pct", "hit", "settled", "dropped"}
     settle_cols = {"llm_prediction_log.csv": _std, "pick_ledger.csv": _std,
+                   "au_pick_ledger.csv": _std,
                    "insider_signal_log.csv": _std,
                    "overreaction_signal_log.csv": {"next_date", "next_ret_pct", "hit", "settled"}}
     for fname, core in ls.SPECS:

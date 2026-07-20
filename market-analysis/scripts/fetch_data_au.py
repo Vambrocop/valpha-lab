@@ -96,6 +96,25 @@ IDENTITY_NOTES = {
     },
 }
 
+# ── FMG 身份连续性截断（B3·SPEC_AU_PICKS §2.2 B-1；宽表单一真相源，live 与回测共用）─────────
+# 实证依据（第 0 步 dump raw/au/FMG.csv 全史，2026-07-19）：
+#   · yfinance auto_adjust 序列是**连续回补的**——**不存在**规格设想的「壳价 $0.00x → 真价 $x.xx
+#     的单日跳变」。壳→真是 2003–2007 平滑爬坡，没有可定位的单一跳变日。
+#   · 壳判据不是「持平天数高」（1988–1998 全体老票 95–98% 持平＝yfinance 老 ASX 数据分辨率低，
+#     非 FMG 独有），而是**价格量级**。〔双审 SHOULD-2 修正：SHL 1990 年也有亚分币价段
+#     （min $0.0094·平台非尖刺），故「唯 FMG」原断言有误；但 SHL 身份连续（非买壳/ticker 重用）、
+#     早年最大动量 ~130%（FMG 爬坡段 200–840%），不需截断——只截 FMG 的决定不变。〕
+#     S-3 全 14 只千禧前老票扫描记录（2026-07-19 建造 + 双审独立复扫）：BHP/NAB/WBC/ANZ/WES/
+#     RIO/WDS/QBE/STO/JHX/AMC/SUN 均正常股价量级；SHL 见上；FMG 见下截断。
+#   · 逐年连续性（distinct/年·持平%·价位）：2002 距 26·75%·$0.001–0.004；2003 距 77·41%·爬到$0.029；
+#     2004 距 87·22%·爬到$0.106；**2005 距 156·持平仅 4%·$0.08→$0.18——首个连续流动真股年**。
+#   · 126 日动量在 2003–2005 爬坡段虚高 200–840%（壳基数假象），2005 起才是真 Fortescue 真动量。
+# 取 2005-01-04（2005 首个 ASX 交易日）为身份真起点：保守剔除整个壳期 + 2003–04 壳→真爬坡段。
+# 宽表中此日前 FMG 全 NaN；配合 _select_picks 的 126 窗 dropna，FMG ≈2005-07 才首次可选（窗全落真区）。
+# 〔决策点·已向主脑上报〕规格设想的「单日跳变」现实不存在；此值属回望身份判断、影响公开回测数字，
+#   建造侧取保守可辩值 + 一行可改（若主脑改锚 2004-12-17 连续起点 / 2003-11-17 更名日，改此常量即可）。
+FMG_TRUE_START = "2005-01-04"
+
 
 def _clean_col(col, ticker):
     """单列清洗：dropna + DatetimeIndex 去时区。"""
@@ -257,9 +276,12 @@ def run():
 
     print("\n=== ASX50 大盘票 ===")
     dollar_vol = {}                       # W2:近400日 日成交额AUD(Close×Volume)→dollar_volume.csv 喂 B2 流动性档位
+    stock_wide = {}                       # B3:各票全史收盘拼宽表 → au_stocks_prices.csv（列=.AX ticker）
     for name, ticker in STOCK_TICKERS.items():
         series, diag, m = _fetch_one(name, ticker, price_round=2, collect_dv=dollar_vol)
         probe_results.append({"group": "stock", "name": name, "ticker": ticker, **diag})
+        if series is not None and not series.empty:
+            stock_wide[ticker] = series   # series.name 已是 .AX ticker（_clean_col rename）——键=列名=选股 symbol
         if m is None:
             continue
         row = {"t": ticker, "n": name, "as_of": diag["last_date"], "years_history": diag["years"], **m}
@@ -279,6 +301,19 @@ def run():
     if dollar_vol:                        # W2:宽表(列=ticker)落盘;raw/ gitignore,与价格 CSV 同域
         pd.DataFrame(dollar_vol).sort_index().to_csv(RAW_DIR / "dollar_volume.csv")
         print(f"  日成交额宽表 -> dollar_volume.csv（{len(dollar_vol)} 票 × 近400日）")
+
+    # B3:荐股账本 + 零调参回测的**单一真相源**面板（date×ticker，列=.AX ticker，同美股 stocks_prices.csv 同构）。
+    # FMG 身份真起点前置 NaN（§2.2 B-1）——live 与回测共用同一份截断，避免两处漂移。
+    if stock_wide:
+        wide = pd.DataFrame(stock_wide).sort_index()
+        fmg_col = STOCK_TICKERS["FMG"]                    # "FMG.AX"
+        if fmg_col in wide.columns:
+            n_before = int(wide[fmg_col].notna().sum())
+            wide.loc[wide.index < pd.Timestamp(FMG_TRUE_START), fmg_col] = np.nan
+            n_after = int(wide[fmg_col].notna().sum())
+            print(f"  FMG 身份截断 @ {FMG_TRUE_START}：{fmg_col} 非空 {n_before} → {n_after} 行（前置 NaN 剔壳期）")
+        wide.to_csv(RAW_DIR / "au_stocks_prices.csv")
+        print(f"  荐股/回测宽表 -> au_stocks_prices.csv（{wide.shape[1]} 票 × {wide.shape[0]} 日）")
 
     market["n_stocks"] = len(market["stocks"])
     market["n_excluded"] = len(market["excluded"])
