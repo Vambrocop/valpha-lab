@@ -50,6 +50,7 @@ SPECS = [
     ("llm_weekly_log.csv", None),         # LLM 周报存档
     ("llm_monthly_log.csv", None),        # LLM 月报存档
     ("ipo_alert_log.csv", None),          # IPO重大事件预警账(A3·事件级:去重键(cik,stage)首见即append,含pushed留痕)
+    ("downturn_brief_log.csv", None),     # W4a:大跌日诚实数据包推送账(去重键=自然日期,首见即append,含pushed留痕)
     # —— forward_ledger 结算型(settle 填空后整文件重写,但行序不变、身份列不碰)——
     ("llm_prediction_log.csv",
      ["pred_date", "symbol", "direction", "confidence", "reason", "horizon_td"]),
