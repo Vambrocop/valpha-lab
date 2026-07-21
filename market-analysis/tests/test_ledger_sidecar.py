@@ -167,6 +167,7 @@ def test_real_specs_core_fields_match_writers():
     import pick_ledger
     headers = {"llm_prediction_log.csv": llm_prediction.HEADER,
                "pick_ledger.csv": pick_ledger.HEADER,
+               "pick_ledger_v2.csv": pick_ledger.HEADER_V2,
                "au_pick_ledger.csv": au_pick_ledger.HEADER,
                "insider_signal_log.csv": insider_signal.HEADER,
                "overreaction_signal_log.csv": overreaction_alert.HEADER}
@@ -174,6 +175,7 @@ def test_real_specs_core_fields_match_writers():
     # 它结算填的是 next_ret_pct;不能拿全局黑名单一刀切
     _std = {"entry_date", "entry_px", "exit_date", "exit_px", "ret_pct", "hit", "settled", "dropped"}
     settle_cols = {"llm_prediction_log.csv": _std, "pick_ledger.csv": _std,
+                   "pick_ledger_v2.csv": _std,
                    "au_pick_ledger.csv": _std,
                    "insider_signal_log.csv": _std,
                    "overreaction_signal_log.csv": {"next_date", "next_ret_pct", "hit", "settled"}}

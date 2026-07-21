@@ -16,6 +16,7 @@
   .stat .v{font-size:1.5rem;font-weight:800;line-height:1.15}.stat .l{color:var(--mut);font-size:.74rem;margin-top:3px}
   .launchbox{background:rgba(210,153,34,.1);border:1px solid var(--amb);border-radius:8px;padding:10px 13px;margin:10px 0;font-size:.85rem;color:#e8c96a;line-height:1.55}
   h2{font-size:1rem;margin:18px 0 6px}
+  h3{font-size:.92rem;margin:16px 0 4px}
   table{width:100%;border-collapse:collapse;font-size:.86rem}
   th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
   th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
@@ -28,10 +29,19 @@
   .meth b{color:var(--fg)}
   .mut{color:var(--mut);font-size:.76rem;margin-top:16px;border-top:1px solid var(--border);padding-top:8px;line-height:1.6}
   #src{color:var(--mut);font-size:.78rem;margin-top:6px}
+  /* v1/v2 并行面板(S6/S7):同格式上下同构,恒常顶层可见,不得折叠 */
+  .overlap-note{background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.4);border-radius:8px;padding:9px 12px;margin:10px 0;font-size:.8rem;color:var(--fg);line-height:1.6}
+  .version-panel{border:1px solid var(--border);border-radius:12px;padding:12px 14px 14px;margin:16px 0;background:rgba(255,255,255,.015)}
+  .vhead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px}
+  .vhead h2{margin:0}
+  .badge-mom{display:inline-block;font-size:.72rem;padding:2px 9px;border-radius:20px;border:1px solid rgba(88,166,255,.5);background:rgba(88,166,255,.12);color:#79b8ff;font-weight:600}
+  .launch-date{color:var(--mut);font-size:.74rem}
   @media(max-width:560px){
     body{padding:11px}h1{font-size:1.12rem}
     table{font-size:.78rem}th,td{padding:5px 5px}
     .stat{flex:1 1 45%}
+    .version-panel{padding:10px 10px 12px}
+    .vhead{gap:6px}
   }
 </style>
 </head>
@@ -42,17 +52,42 @@
 <h1 data-i18n="title"></h1>
 <div class="vp-takeaway" data-i18n="takeaway"></div>
 <p class="sub" data-i18n="intro"></p>
-<div class="verdict" id="verdict"></div>
-<div class="stats" id="stats"></div>
-<div class="launchbox" id="launch" style="display:none"></div>
-<h2 data-i18n="hRecent" style="margin-top:18px"></h2>
-<p class="sub" data-i18n="sRecent"></p>
-<div style="overflow-x:auto"><table id="recent"></table></div>
-<details class="vp-more"><summary data-i18n="more_exp"></summary>
-  <div class="meth" id="meth"></div>
-  <div class="meth" data-i18n="disc" style="margin-top:8px"></div>
-  <div class="mut" id="caveat" style="border:0;margin-top:8px;padding-top:0"></div>
-</details>
+<div class="overlap-note" id="overlapNote" data-i18n="overlapNote"></div>
+
+<section class="version-panel" id="panel-v1">
+  <div class="vhead"><h2 data-i18n="hV1"></h2></div>
+  <div class="verdict" id="verdict-v1"></div>
+  <div class="stats" id="stats-v1"></div>
+  <div class="launchbox" id="launch-v1" style="display:none"></div>
+  <h3 data-i18n="hRecent"></h3>
+  <p class="sub" data-i18n="sRecent"></p>
+  <div style="overflow-x:auto"><table id="recent-v1"></table></div>
+  <details class="vp-more"><summary data-i18n="more_exp"></summary>
+    <div class="meth" id="meth-v1"></div>
+    <div class="meth" data-i18n="disc" style="margin-top:8px"></div>
+    <div class="mut" id="caveat-v1" style="border:0;margin-top:8px;padding-top:0"></div>
+  </details>
+</section>
+
+<section class="version-panel" id="panel-v2">
+  <div class="vhead">
+    <h2 data-i18n="hV2"></h2>
+    <span class="badge-mom" data-i18n="badgeV2"></span>
+    <span class="launch-date" id="launchDate-v2"></span>
+  </div>
+  <div class="verdict" id="verdict-v2"></div>
+  <div class="stats" id="stats-v2"></div>
+  <div class="launchbox" id="launch-v2" style="display:none"></div>
+  <h3 data-i18n="hRecent"></h3>
+  <p class="sub" data-i18n="sRecent"></p>
+  <div style="overflow-x:auto"><table id="recent-v2"></table></div>
+  <details class="vp-more"><summary data-i18n="more_exp"></summary>
+    <div class="meth" id="meth-v2"></div>
+    <div class="meth" data-i18n="disc" style="margin-top:8px"></div>
+    <div class="mut" id="caveat-v2" style="border:0;margin-top:8px;padding-top:0"></div>
+  </details>
+</section>
+
 <div id="src"></div>
 <div class="mut" data-i18n="foot"></div>
 
@@ -66,16 +101,22 @@ const I18N={
     zh:"🎯 <b>我们直接给「看好 / 看淡」——但每一条都公开计分、敢认账。</b>选股规则<b>完全透明、可换</b>（当前规则见下方「方法」）。出榜后我们追踪每只票持有 20 个交易日、对比 QQQ 的表现，<b>append-only 写进公开账本</b>——对了认对、错了认错。<b>非投资建议</b>：这不是「买这个你会发财」，而是「我们敢喊，也敢被记账」。",
     en:"🎯 <b>We make direct bull/bear calls — and publicly score every one.</b> The pick rule is <b>fully transparent and swappable</b> (current rule under 'Method' below). After each pick we track it for 20 trading days vs QQQ and write the result into an <b>append-only public ledger</b> — right or wrong, we own it. <b>This is NOT investment advice</b>: not 'buy this and get rich', but 'we make the call AND let it be scored'."},
   intro:{
-    zh:"看好 = 我们认为它会跑赢 QQQ；看淡 = 我们认为它会跑输 QQQ。出榜「次日」入场（不抢跑），持有 20 个交易日记相对 QQQ 的超额。结算只填空、不改历史——前向公开账本，早期样本极小，别当结论。",
-    en:"看好 (bullish) = we expect it to beat QQQ; 看淡 (bearish) = we expect it to lag QQQ. Entry is the day after the pick (no front-running), held 20 trading days, scored vs QQQ. Settlement only fills blanks, never rewrites history — a forward public ledger; the early sample is tiny, not a conclusion."},
+    zh:"看好 = 我们认为它会跑赢 QQQ；看淡 = 我们认为它会跑输 QQQ。出榜「次日」入场（不抢跑），持有 20 个交易日记相对 QQQ 的超额。结算只填空、不改历史——前向公开账本，早期样本极小，别当结论。下面 v1/v2 两套规则各自独立计分，谁也不折叠、都摆在明面上。",
+    en:"看好 (bullish) = we expect it to beat QQQ; 看淡 (bearish) = we expect it to lag QQQ. Entry is the day after the pick (no front-running), held 20 trading days, scored vs QQQ. Settlement only fills blanks, never rewrites history. Below, v1 and v2 are two independently-scored rules — both shown in full, neither hidden."},
+  overlapNote:{
+    zh:"ℹ️ <b>v1 / v2 只有「最近 21 个交易日是否计入动量」这一处不同。</b>多数时期两版几乎选出同一批票，只在近期急涨急跌的个股上会分歧——那正是分歧要紧、也正是 v2 存在的原因。两版战绩样本都还很小，可能要很久才能分出高下，如实等，不催结论。",
+    en:"ℹ️ <b>v1 and v2 differ only in whether the most-recent 21 trading days count toward momentum.</b> Most of the time both rules pick nearly the same names — they diverge only on stocks with a sharp recent move, which is exactly why v2 exists. Both track records are still tiny; it may take a long time to tell them apart. We wait for real evidence, not rush a verdict."},
+  hV1:{zh:"v1 · 动量 + 低波动（原版）",en:"v1 · Momentum + low-vol (original)"},
+  hV2:{zh:"v2 · 6-1 跳月动量 + 低波动",en:"v2 · 6-1 skip-month momentum + low-vol"},
+  badgeV2:{zh:"6月动量·跳最近1月",en:"6-mo momentum, skip most-recent month"},
   more_exp:{zh:"方法 & 全部诚实免责（展开看专业细节）",en:"Method & full honest disclaimers (expand for expert detail)"},
   hRecent:{zh:"近期荐股（看好 / 看淡）",en:"Recent picks (bullish / bearish)"},
   sRecent:{zh:"按出榜日排序的近期荐股——大多还在「挂账」（20 个交易日没走完，无超额可言）。这是透明展示我们喊了哪些、立了哪些 flag，不是「该买这些」。",
            en:"Recent picks sorted by pick date — most are still 'pending' (the 20-trading-day window hasn't elapsed, so no excess yet). Shown for transparency of what we called, NOT 'you should buy these'."},
   disc:{zh:"<b>诚实边界：</b>非投资建议 · 会错 · 过去 ≠ 未来 · 不可交易（真做有手续费 / 滑点 / 税，本页不计）。前向计分样本早期极小，别当结论；选股规则透明、可换（当前见「方法」），未经我们长期回测；幸存者偏差（退市 / 无价的代码会被丢弃）、重叠窗口、相关 ≠ 因果都未被排除。",
         en:"<b>Honest limits:</b> not investment advice · we can be wrong · past ≠ future · not tradable (real trades incur fees / slippage / tax, none modeled here). Forward-scored sample is tiny early on — not a conclusion; the pick rule is transparent and swappable (see 'Method'), not validated by us; survivorship bias (delisted / unpriced tickers get dropped), overlapping windows, and correlation ≠ causation are all unaddressed."},
-  foot:{zh:"数据：透明规则选股 → 前向公开计分（持有 20 交易日 vs QQQ）。我们给方向，但每条都认账。非投资建议。Valpha Lab。",
-        en:"Data: transparent-rule picks → forward public scoring (20-trading-day hold vs QQQ). We give a direction, and we own every call. Not investment advice. Valpha Lab."},
+  foot:{zh:"数据：透明规则选股 → 前向公开计分（持有 20 交易日 vs QQQ）。v1/v2 并行独立计分，我们给方向，但每条都认账。非投资建议。Valpha Lab。",
+        en:"Data: transparent-rule picks → forward public scoring (20-trading-day hold vs QQQ). v1/v2 are scored independently in parallel; we give a direction, and we own every call. Not investment advice. Valpha Lab."},
   // stat labels
   sCall:{zh:"叫对率%",en:"call-right%"},
   sBull:{zh:"看好命中%",en:"bullish hit%"},
@@ -87,9 +128,10 @@ const I18N={
   // launch (0 settled) state
   launch:{zh:"⏳ <b>还没有已结算战绩，正在累积。</b>每条荐股的 20 个交易日窗口要约 1 个月后才走完——首批叫对率 / 超额数字届时才会出现在上面的卡片里。现在能看的只有「我们喊了哪些」（下表），数字暂时都是「攒战绩中」。",
           en:"⏳ <b>No settled track record yet — accumulating.</b> Each pick's 20-trading-day window won't elapse until ~1 month from launch — the first batch of call-right / excess numbers will appear in the cards above only then. For now you can only see WHICH picks we called (table below); the figures read 'accumulating'."},
+  launchDate:{zh:v=>`上线：${v}`,en:v=>`Launched: ${v}`},
   // table headers
   cTk:{zh:"代码",en:"Ticker"},cView:{zh:"观点",en:"Call"},
-  cDate:{zh:"出榜日",en:"Pick date"},cMom:{zh:"6月动量",en:"6-mo mom"},
+  cDate:{zh:"出榜日",en:"Pick date"},cMom:{zh:"动量",en:"Momentum"},
   cStat:{zh:"状态",en:"Status"},cEx:{zh:"叫对超额 vs QQQ",en:"Call-excess vs QQQ"},
   stSettled:{zh:"已结算",en:"settled"},stPending:{zh:"挂账",en:"pending"},stDropped:{zh:"已丢弃",en:"dropped"},
   accum:{zh:"攒战绩中(约1个月后出首批)",en:"accumulating (~1 mo to first batch)"},
@@ -113,15 +155,13 @@ function applyStatic(){
   document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
 }
 
-function render(d){
-  applyStatic();
-  const tr=(d&&d.track_record)||{};
+// render one version's block (v1 = root JSON; v2 = d.v2 sub-object) into ids suffixed "-<suf>"
+function renderBlock(data, suf){
+  const tr=(data&&data.track_record)||{};
   const bull=tr.bullish||{},bear=tr.bearish||{};
   const n=tr.n_settled||0;
-  // verdict headline — use JSON verdict verbatim (honest, ready-made)
-  $("verdict").innerHTML="🧭 "+esc(d.verdict||"");
+  $("verdict-"+suf).innerHTML="🧭 "+esc(data.verdict||"");
 
-  // scorecard — every numeric field can be null at launch → render "—" / accumulating, never null/NaN
   const callHit=num(tr.call_hit_pct)?tr.call_hit_pct+"%":"—";
   const bullHit=num(bull.hit_pct)?bull.hit_pct+"%":"—";
   const bearHit=num(bear.hit_pct)?bear.hit_pct+"%":"—";
@@ -132,7 +172,7 @@ function render(d){
   const dropPct=num(tr.dropped_pct)?tr.dropped_pct:0;
   const drop=(num(tr.n_dropped)?tr.n_dropped:0)+" ("+dropPct+"%)";
 
-  $("stats").innerHTML=
+  $("stats-"+suf).innerHTML=
      `<div class="stat"><div class="v">${esc(callHit)}</div><div class="l">${t("sCall")}</div></div>`
     +`<div class="stat"><div class="v" style="color:var(--grn)">${esc(bullHit)}</div><div class="l">${t("sBull")}</div></div>`
     +`<div class="stat"><div class="v" style="color:var(--red)">${esc(bearHit)}</div><div class="l">${t("sBear")}</div></div>`
@@ -141,25 +181,20 @@ function render(d){
     +`<div class="stat"><div class="v">${esc(String(pend))}</div><div class="l">${t("sPend")}</div></div>`
     +`<div class="stat"><div class="v" style="color:var(--mut)">${esc(drop)}</div><div class="l">${t("sDrop")}</div></div>`;
 
-  // friendly 0-settled launch state
-  const lb=$("launch");
+  const lb=$("launch-"+suf);
   if(n===0){lb.style.display="";lb.innerHTML=t("launch");}
   else{lb.style.display="none";}
 
-  // recent picks table
   let h=`<tr><th>${t("cTk")}</th><th>${t("cView")}</th>`
        +`<th>${t("cDate")}</th><th>${t("cMom")}</th><th>${t("cStat")}</th><th>${t("cEx")}</th></tr>`;
-  (d.recent||[]).forEach(r=>{
-    // view badge: 看好 green-ish, 看淡 red-ish
+  (data.recent||[]).forEach(r=>{
     const isBull=r.view==="看好";
     const isBear=r.view==="看淡";
     let vCell;
     if(isBull) vCell=`<span class="vbull">${esc(LANG==="en"?t("vBull"):r.view)}</span>`;
     else if(isBear) vCell=`<span class="vbear">${esc(LANG==="en"?t("vBear"):r.view)}</span>`;
     else vCell=`<span class="badge">${esc(r.view||"—")}</span>`;
-    // momentum that drove the pick
     const mom=sgn(r.mom_pct);
-    // status + call-excess vs QQQ
     let status,exCell;
     if(r.dropped){status=`<span class="badge">${t("stDropped")}</span>`;exCell="—";}
     else if(r.settled){
@@ -173,19 +208,33 @@ function render(d){
       +`<td>${esc(r.pick_date||"—")}</td><td>${esc(mom)}</td>`
       +`<td>${status}</td><td>${exCell}</td></tr>`;
   });
-  $("recent").innerHTML=h;
+  $("recent-"+suf).innerHTML=h;
 
-  // expert methodology line — pick rule read from JSON (rule-agnostic; future swaps need no HTML edit)
+  const hold=num(data.hold_td)?data.hold_td:"?",bm=esc(data.benchmark||"QQQ");
+  const rule=esc(data.pick_rule|| (LANG==="en"?"a transparent rule":"透明规则"));
+  $("meth-"+suf).innerHTML=LANG==="en"
+    ?`<b>Method:</b> hold ${hold} trading days · entry the day after the pick · benchmark ${bm} · bullish hit = beat ${bm}, bearish hit = lagged ${bm} · pick rule: <b>${rule}</b>. Append-only ledger; settlement fills blanks only.`
+    :`<b>方法：</b>持有 ${hold} 个交易日 · 出榜次日入场 · 基准 ${bm} · 看好命中 = 跑赢 ${bm}，看淡命中 = 跑输 ${bm} · 选股规则：<b>${rule}</b>。append-only 公开账本，结算只填空。`;
+
+  $("caveat-"+suf).textContent="⚠️ "+stripMd(data.caveat||"");
+}
+
+function render(d){
+  applyStatic();
+  renderBlock(d, "v1");
+
+  const v2panel=$("panel-v2");
+  if(d && d.v2){
+    v2panel.style.display="";
+    renderBlock(d.v2, "v2");
+    const ld=d.v2.launch_date;
+    $("launchDate-v2").textContent = ld ? (LANG==="en"?I18N.launchDate.en(ld):I18N.launchDate.zh(ld)) : "";
+  } else {
+    v2panel.style.display="none";   // picks.json 还没被 run_v2 写过 v2 块时优雅隐藏,不报错
+  }
+
+  // source line (uses v1's generated/source — v1 跑在前,v2 附着同一次生成)
   const hold=num(d.hold_td)?d.hold_td:"?",bm=esc(d.benchmark||"QQQ");
-  const rule=esc(d.pick_rule|| (LANG==="en"?"a transparent rule":"透明规则"));
-  $("meth").innerHTML=LANG==="en"
-    ?`<b>Method:</b> hold ${hold} trading days · entry the day after the pick · benchmark ${bm} · bullish hit = beat ${bm}, bearish hit = lagged ${bm} · pick rule: <b>${rule}</b> (transparent, swappable). Append-only ledger; settlement fills blanks only.`
-    :`<b>方法：</b>持有 ${hold} 个交易日 · 出榜次日入场 · 基准 ${bm} · 看好命中 = 跑赢 ${bm}，看淡命中 = 跑输 ${bm} · 选股规则：<b>${rule}</b>（透明、可换）。append-only 公开账本，结算只填空。`;
-
-  // full caveat from JSON (strip **markdown** bold markers; render as text)
-  $("caveat").textContent="⚠️ "+stripMd(d.caveat||"");
-
-  // source line
   const gen=esc((d.generated||"").slice(0,10));
   $("src").textContent=LANG==="en"
     ?`Source: ${esc(d.source||"6-month momentum → forward public scoring")} · generated ${gen} · hold ${hold} trading days vs ${bm}`
@@ -205,7 +254,7 @@ $("lang").onclick=()=>{
     try{const r=await fetch(u,{cache:"no-store"});if(r.ok){d=await r.json();break;}}catch(e){}
   }
   if(d){window._d=d;render(d);}
-  else{$("verdict").textContent=t("err");}
+  else{$("verdict-v1").textContent=t("err");$("panel-v2").style.display="none";}
 })();
 </script>
 <script src="vp_gloss.js"></script>

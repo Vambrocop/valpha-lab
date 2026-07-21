@@ -51,11 +51,14 @@ SPECS = [
     ("llm_monthly_log.csv", None),        # LLM 月报存档
     ("ipo_alert_log.csv", None),          # IPO重大事件预警账(A3·事件级:去重键(cik,stage)首见即append,含pushed留痕)
     ("downturn_brief_log.csv", None),     # W4a:大跌日诚实数据包推送账(去重键=自然日期,首见即append,含pushed留痕)
+    ("ipo_aftermath_log.csv", None),      # W4b:重大IPO挂牌后事实档(A5·每ticker完成度快照:完成度不变则幂等不append,变了append新行——旧行不改,"最新行为准")
     # —— forward_ledger 结算型(settle 填空后整文件重写,但行序不变、身份列不碰)——
     ("llm_prediction_log.csv",
      ["pred_date", "symbol", "direction", "confidence", "reason", "horizon_td"]),
     ("pick_ledger.csv",
      ["pick_date", "symbol", "view", "mom_pct"]),
+    ("pick_ledger_v2.csv",
+     ["pick_date", "symbol", "view", "mom_pct"]),  # SPEC_PICKS_V2·S4:v2(6-1跳月动量)独立账本,同构 pick_ledger
     ("au_pick_ledger.csv",
      ["pick_date", "symbol", "view", "mom_pct"]),  # B3:澳股荐股独立账本(pick_ledger 同构;基准^AXJO不同,不与美股混)
     ("insider_signal_log.csv",

@@ -13,6 +13,7 @@
   会错、过去≠未来。append-only,绝不改历史行。
 """
 import datetime
+import json
 from pathlib import Path
 
 import numpy as np
@@ -36,6 +37,25 @@ PICK_RULE = "动量+低波动 等权排名（126日动量 + 63日低波动，观
 HEADER = ["pick_date", "symbol", "view", "mom_pct", "entry_date", "entry_px",
           "exit_date", "exit_px", "ret_pct", "bench_pct", "excess_pct",
           "call_excess_pct", "hit", "settled", "dropped"]
+
+# ── v2(SPEC_PICKS_V2.md·R2):独立账本 + 独立公开文案,与 v1 并行计分,冻结集(N2:不得因下次
+# 亏损再换 v3——事件驱动换规则=追亏,DoF 棘轮到此为止)。除动量窗外零改动(观察池/BENCH/HOLD_TD/
+# vol/rank/头尾各3 全同 v1)。
+LOG_V2 = BASE / "data" / "pick_ledger_v2.csv"
+HEADER_V2 = HEADER                             # HEADER 同 15 列(规格 §1.2)
+LAUNCH_DATE_V2 = "2026-07-21"                   # v2 上线日(与 v1 并行计分起始日)
+# PICK_RULE_V2(规格 §1.3):三段公开披露拼接——①规则本身(6-1跳月动量,文献先验)
+# ②B1采纳受事件驱动披露句(规格 §0 原文照抄) ③S5重合披露句(规格 §1.3 原文)
+PICK_RULE_V2 = (
+    "6-1 跳月动量+低波动 等权排名（动量取 t-147→t-21 收盘·126 交易日窗·跳过最近21日=文献标准构造"
+    f"规避短期反转；与 v1 唯一差异，其余全同；{LAUNCH_DATE_V2} 起与 v1 并行计分）。"
+    "v2 上线动机 = v1 首批(2026-06-26)翻车后的改版；规则选择虽有文献先验，采纳的时点与"
+    "「选哪个改良」本身受该次亏损事件驱动——v2 战绩需较长横期，且只能算「看过一次亏损后的"
+    "一个改良」，别当干净的事前 OOS 证据。"
+    "两版规则仅最近 21 日口径不同——多数时期两版几乎同票，只在近期急涨急跌的票上分歧"
+    "（那正是分歧要紧、也正是 v2 为何存在之处）。叠加 19 只池/头尾各3/重叠窗，并行计分早期"
+    "分辨力极低，可能很久才能区分谁好——如实等，不催结论。"
+)
 
 
 # ── 挑票规则:动量 + 低波动 等权排名(透明·可换)──────────────────────
@@ -62,6 +82,34 @@ def _select_picks(prices):
     return out
 
 
+# ── v2 挑票规则(SPEC_PICKS_V2.md·R2):6-1 跳月动量 + 低波动 等权排名 ──────────
+# 与 _select_picks 差异恰两处(B2):①动量窗改跳月式(跳过最近21个交易日,规避短期反转,
+# Jegadeesh-Titman 1993 起的标准构造);②守门相应改 148 行(沿用 v1 的 127 会在 iloc[-148] IndexError)。
+# 其余(vol/rank/head-tail)逐行同 _select_picks——不改 _select_picks 本体(v1/AU 仍在用它)。
+def _select_picks_v2(prices):
+    """价格面板 → 6-1 跳月动量(t-147→t-21 收盘,126 交易日窗,跳过最近 21 日)+ 63日低波动
+    百分位等权打分,取头 N 看好/尾 N 看淡。返回同 _select_picks 的 [{symbol, view, mom_pct}]。
+    诚实定位(SPEC §0):规则本身有文献先验,但*采纳*v2 这件事受 v1 首批(2026-06-26)翻车驱动,
+    别当干净的事前 OOS 证据——由前向公开计分裁决。"""
+    px = prices.apply(pd.to_numeric, errors="coerce")
+    if len(px) < MOM_WIN + 21 + 1:                                  # 148 行(off-by-one 守门)
+        return []
+    mom = px.iloc[-1 - 21] / px.iloc[-1 - 21 - MOM_WIN] - 1        # 跳月:t-21 收盘 / t-147 收盘
+    vol = px.pct_change().iloc[-VOL_WIN:].std()                   # 近 63 日波动(同 v1,未跳月)
+    df = pd.DataFrame({"mom": mom, "vol": vol}).dropna()
+    n = N_PICKS if len(df) >= 2 * N_PICKS else max(1, len(df) // 2)
+    if n < 1 or df.empty:
+        return []
+    df["score"] = 0.5 * df["mom"].rank(pct=True) + 0.5 * (-df["vol"]).rank(pct=True)
+    df = df.sort_values("score", ascending=False)
+    out = []
+    for sym, r in df.head(n).iterrows():
+        out.append({"symbol": str(sym), "view": "看好", "mom_pct": round(float(r["mom"]) * 100, 1)})
+    for sym, r in df.tail(n).iloc[::-1].iterrows():
+        out.append({"symbol": str(sym), "view": "看淡", "mom_pct": round(float(r["mom"]) * 100, 1)})
+    return out
+
+
 def _load_picks():
     """读观察池价格面板 → _select_picks → 标今日为出榜日。读不到价格则空(不阻断)。"""
     try:
@@ -70,6 +118,17 @@ def _load_picks():
         return []
     today = datetime.date.today().isoformat()
     return [{**p, "pick_date": today} for p in _select_picks(prices)]
+
+
+def _load_picks_v2():
+    """v2 版 _load_picks:同一观察池(UNIVERSE 同 v1,规格 §0「除动量窗外零改动」)→ _select_picks_v2。
+    读不到价格则空(不阻断;与 _load_picks 同一 fail-soft 哲学)。"""
+    try:
+        prices = pd.read_csv(UNIVERSE, index_col=0, parse_dates=True)
+    except Exception:
+        return []
+    today = datetime.date.today().isoformat()
+    return [{**p, "pick_date": today} for p in _select_picks_v2(prices)]
 
 
 # ── 「荐股」专属判断：身份去重键 + 可跟单日 + 看好/看淡命中口径 ──────────
@@ -200,5 +259,88 @@ def _num(v):
         return None
 
 
+def _read_picks_json():
+    """读回 run() 刚写的 picks.json(WEB 那份)供 run_v2 合并注入 v2 块。读不到/损坏 → 空 dict
+    (生产上不该发生——run() 先跑完才轮到 run_v2;若真发生,v2 仍会把 picks.json 整份重写,
+    只是暂缺 v1 字段,下一次 run() 会补回来,不阻断)。"""
+    try:
+        return json.loads((WEB / "picks.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def run_v2(write=True, prices=None, existing=None):
+    """v2:6-1 跳月动量(SPEC_PICKS_V2.md·R2)。
+
+    **B3·整腿 fail-soft**:取价+选票+结算+json 注入全程包在本函数的 try/except 里,任何异常
+    打印跳过、绝不 raise 出 __main__(run_all 对非零退出会中止全流水线+封存+发布门——v2 崩
+    不许连坐 v1)。
+    **S3·各取各的价**:只对 v2 自己账本(LOG_V2)里的 unsettled 符号独立 fl.fetch_prices,
+    不共享 v1 的 prices 字典(防 v2 挂账票不在 v1 集合被误判 dropped);两账本各读各的 LOG、
+    各建 seen,零交叉。
+    **picks.json 合并(写死)**:run() 先写完 v1 版 → run_v2 读回(WEB/picks.json)、置
+    out["v2"] = {...}、重写——v1 字段不动,只新增 v2 键。
+    existing:测试注入用(跳过磁盘读回,直接把某个已知 dict 当"读回结果"合并);生产留 None
+    走真实读回。prices:同 run() 的测试注入口子,跳过 yfinance 网络。"""
+    try:
+        rows = fl.read_log(LOG_V2)
+        seen = {_key(r) for r in rows}
+
+        n_new = 0
+        for p in _load_picks_v2():
+            if _key(p) in seen:
+                continue
+            seen.add(_key(p))
+            rows.append({**p, "entry_date": "", "entry_px": "", "exit_date": "", "exit_px": "",
+                         "ret_pct": "", "bench_pct": "", "excess_pct": "", "call_excess_pct": "",
+                         "hit": "", "settled": False, "dropped": False})
+            n_new += 1
+
+        settled_now = 0
+        unsettled = [r for r in rows if not fl.is_true(r.get("settled")) and not fl.is_true(r.get("dropped"))]
+        if unsettled:
+            if prices is None:
+                start = (datetime.date.today() - datetime.timedelta(days=HOLD_TD * 2 + 200)).isoformat()
+                prices = fl.fetch_prices([r["symbol"] for r in unsettled], start, BENCH)
+            settled_now = _settle(rows, prices)
+
+        sc = _scorecard(rows)
+        v2_block = {
+            "pick_rule": PICK_RULE_V2,
+            "hold_td": HOLD_TD, "benchmark": BENCH,
+            "launch_date": LAUNCH_DATE_V2,
+            "track_record": sc,
+            "recent": sorted(
+                [{"symbol": r["symbol"], "view": r.get("view"), "pick_date": r.get("pick_date"),
+                  "mom_pct": _num(r.get("mom_pct")), "settled": fl.is_true(r.get("settled")),
+                  "dropped": fl.is_true(r.get("dropped")), "excess_pct": _num(r.get("excess_pct")),
+                  "call_excess_pct": _num(r.get("call_excess_pct")), "hit": fl.is_true(r.get("hit"))}
+                 for r in rows],
+                key=lambda x: (x["pick_date"] or ""), reverse=True)[:40],
+            "verdict": _verdict(sc),
+            "caveat": ("出格区·荐股前向公开计分(v2·6-1跳月动量,与 v1 并行独立账本 data/pick_ledger_v2.csv,"
+                       "%s 起计分)。挑票规则=%s 进 append-only 账本:出榜次日入场、持有 %d 交易日、"
+                       "相对 %s 结算。看好命中=跑赢%s、看淡命中=跑输%s。**前向计分**:刚上线样本极小"
+                       "(约1月后首批),别当结论。幸存者偏差%s%%因退市/无价被丢;重叠窗口只看描述;"
+                       "相关≠因果;非投资建议、不可交易(成本/滑点/税)、会错、过去≠未来。每跑 append 认账。"
+                       % (LAUNCH_DATE_V2, PICK_RULE_V2, HOLD_TD, BENCH, BENCH, BENCH, sc["dropped_pct"])),
+        }
+
+        if write:
+            from util_io import write_json
+            merged = dict(existing) if existing is not None else _read_picks_json()
+            merged["v2"] = v2_block
+            write_json("picks.json", merged)
+            fl.write_log(LOG_V2, HEADER_V2, rows)
+            print(f"[OK v2] picks.json['v2'] — {v2_block['verdict']}")
+            print(f"  v2 新增 {n_new} 条 · 本次新结算 {settled_now} · 已结算 {sc['n_settled']} "
+                  f"(判断对 {sc['call_hit_pct']}%) · 挂账 {sc['n_pending']} · 丢弃 {sc['n_dropped']}")
+        return v2_block
+    except Exception as e:
+        print(f"[荐股v2] 整腿出错(fail-soft,不影响v1/流水线,不 raise): {e}")
+        return None
+
+
 if __name__ == "__main__":
     run()
+    run_v2()

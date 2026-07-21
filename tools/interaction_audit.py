@@ -20,7 +20,8 @@ HARD_KW = ("溢出", "按钮", "加载失败", "pageerror", "循环动画未清"
 
 PAGES = ["dashboard.html", "index.html", "valpha150.html", "sectors.html", "radar.html",
          "advisor.html", "wild.html", "ipo.html", "methodology.html", "self_growing.html",
-         "discoveries.html", "fxreturn.html", "prediction.html", "heatmap.html", "au.html"]
+         "discoveries.html", "fxreturn.html", "prediction.html", "heatmap.html", "au.html",
+         "picks.html"]  # SPEC_PICKS_V2·③:v1/v2 并行面板加入常规交互审计范围(此前被漏收)
 DASH_VIEWS = ["today", "outlook", "plan", "longterm", "research", "lab", "registry", "quant", "mine"]
 
 
