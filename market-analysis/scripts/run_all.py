@@ -104,6 +104,7 @@ steps = [
     ("澳股荐股→前向计分(出格·独立账本)", "au_pick_ledger.py"),  # B3:pick_ledger配置级克隆(_select_picks/_outcome/_followable零克隆import)+^AXJO本地取价结算(forward_ledger零改,从不联网);独立账本data/au_pick_ledger.csv(与美股不混);须在fetch_data_au后;宽表(raw/au/au_stocks_prices.csv)暂缺时fail-soft空跑;不入light
     ("IPO重大性分层富化(SEC Exhibit107)", "ipo_enrich.py"),  # A2:从ipo_filings.json机械分层🔴major/🟡notable/rest(策展名单/母市值/拟募资/SPAC);读SEC submissions+EX-FILING FEES结构化费用,复用SEC_UA_CONTACT;金额只升档·未知不升档·绝不正文刮数;fail-soft(炸掉→原始json完好·前端显未分层);须在fetch_ipo后;不入light;SEC限流退避·本地分批top-up
     ("IPO重大事件预警(出格·事实通报)", "ipo_alerts.py"),  # A3:major公司状态档(filed/priced/listed取最高)首见即append事件账ipo_alert_log+合并一条Telegram(tag=IPO雷达·事实通报·上市≠值得买非荐股);去重键(cik,stage)绝不改历史行;推送失败pushed=False留痕不重推(见其文件头取舍);须在ipo_enrich后;fail-soft不阻断;不入light
+    ("IPO挂牌后事实档(出格·非计分)", "ipo_aftermath.py"),  # A5:对ipo_alert_log里stage∈(listed,priced)带ticker的major公司,yfinance抓其日线记D1/D5/D20相对首日收盘+vsQQQ同窗超额→data/ipo_aftermath_log.csv(append-only·每ticker取最后一行为准)+web/ipo_aftermath.json(含Ritter长期跑输文献caveat);事实档非计分非荐股;须在ipo_alerts后(读其账本);单票无数据fail-soft跳过;不入light
 
     ("内部人买入→前向计分(出格)", "insider_signal.py"),  # 跟内部人买的诚实前向公开计分:append notable买入+到期vs SPY自动结算;须在 fetch_insider 后;读yfinance(结算出错不阻断);不入light
     ("荐股→前向计分vsQQQ(出格)", "pick_ledger.py"),  # outlook看好/看淡进append-only账本+满20交易日vs QQQ自动结算(看好命中=跑赢/看淡命中=跑输);须在outlook后;读yfinance(结算出错不阻断);不入light

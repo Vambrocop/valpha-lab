@@ -58,6 +58,18 @@
   .badge-unlayered{color:var(--mut);border:1px dashed var(--border);font-weight:400;opacity:.7}
   .rules-box{font-size:.8rem;color:var(--mut);line-height:1.6;margin-top:8px}
   .mut{color:var(--mut);font-size:.78rem;margin-top:20px;border-top:1px solid var(--border);padding-top:8px}
+  /* ── A5：重大 IPO 挂牌后事实档 ── */
+  .am-card .metrics{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 4px;font-size:.84rem}
+  .am-card .metric{display:flex;flex-direction:column;gap:1px}
+  .am-card .metric b{font-size:.62rem;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.03em}
+  .am-card .metric span{font-variant-numeric:tabular-nums;font-weight:600}
+  .am-pos{color:var(--grn)}
+  .am-neg{color:var(--red)}
+  .am-pending{color:var(--mut);font-weight:400;font-style:italic}
+  .am-quality{display:inline-flex;align-items:center;gap:4px;font-size:.66rem;font-weight:600;border-radius:99px;padding:1px 8px;margin-left:auto}
+  .am-q-lead{background:rgba(63,185,80,.16);color:var(--grn);border:1px solid var(--grn)}
+  .am-q-late{background:rgba(227,160,8,.16);color:var(--amber);border:1px solid var(--amber)}
+  .am-q-missed{background:rgba(248,81,73,.16);color:var(--red);border:1px solid var(--red)}
   @media(max-width:560px){body{padding:11px}h1{font-size:1.15rem}.grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -75,6 +87,10 @@
 <h2 class="tier" style="margin-top:30px" data-i18n="autoHead"></h2>
 <p class="sub" data-i18n="autoSub"></p>
 <div id="autoipo"></div>
+
+<h2 class="tier" style="margin-top:30px" data-i18n="amHead"></h2>
+<p class="sub" data-i18n="amSub"></p>
+<div id="aftermath"></div>
 
 <div class="mut" data-i18n="foot"></div>
 
@@ -159,7 +175,33 @@ const I18N={
              en:"⚠ Curated snapshot from {ASOF}, {N} month(s) old — some entries may be stale. The “Recent SEC filings” feed below reflects current facts."},
   // ---- always-visible curated-layer cadence stamp ----
   curatedStamp:{zh:"策展快照 2026-06 · 人工维护 · 下方 SEC 申报随本地流水线运行补充",
-                en:"Curated snapshot 2026-06 · manually maintained · SEC filings below are topped up whenever the local pipeline runs"}
+                en:"Curated snapshot 2026-06 · manually maintained · SEC filings below are topped up whenever the local pipeline runs"},
+  // ---- A5: major IPO post-listing fact sheet ----
+  amHead:{zh:"📈 重大IPO挂牌后事实档",en:"📈 Major IPO post-listing fact sheet"},
+  amSub:{zh:"对上方🔴重大且已挂牌/已定价的 IPO，用 yfinance 真实日线记录挂牌后 D1/D5/D20 相对首日收盘的涨跌 + 同窗 vs QQQ 超额。<b>事实档，不是计分</b>——不判命中、不打分、不建议买卖，只记录已经发生的价格。",
+       en:"For the 🔴 major IPOs above that have listed or priced, this logs real D1/D5/D20 returns off yfinance vs. the debut-day close, plus the same-window excess vs QQQ. <b>A fact sheet, not a scorecard</b> — no hit/miss judging, no scoring, no buy/sell suggestion. Only prices that already happened."},
+  amCaveat:{zh:"📚 <b>反炒作基率</b>：",en:"📚 <b>Anti-hype base rate</b>: "},
+  amDisclaimer:{zh:"事实档，非计分、非荐股、非预测——只记录挂牌后已经发生的价格事实。",
+                en:"A factual record, not a scorecard, not investment advice, not a forecast — only price facts that already happened."},
+  amNone:{zh:"暂无数据（尚无已挂牌/已定价且带股票代码的重大 IPO，或本地流水线尚未跑过 ipo_aftermath.py）。",
+          en:"No data yet (no major IPO has both listed/priced and a ticker, or the local pipeline hasn't run ipo_aftermath.py yet)."},
+  amFirstTrade:{zh:"首交易日",en:"First trade"},
+  amD1:{zh:"D1",en:"D1"}, amD5:{zh:"D5",en:"D5"}, amD20:{zh:"D20",en:"D20"},
+  amVsQqq:{zh:"D20 vs QQQ",en:"D20 vs QQQ"},
+  amPending:{zh:"攒数据中",en:"collecting"},
+  amLeadLabel:{zh:"预警",en:"Alert"},
+  amLeadDays:{zh:"提前 {N} 天",en:"{N}d ahead"},
+  amLateDays:{zh:"晚 {N} 天获悉",en:"{N}d late"},
+  amQLead:{zh:"提前预警",en:"Alerted early"},
+  amQLate:{zh:"事后确认",en:"Confirmed after"},
+  amQMissed:{zh:"挂牌确认缺口",en:"Listing-confirm gap"},
+  amQLeadNote:{zh:"我方账本记录早于实际开始交易——预警确实提前。",
+               en:"Our alert log recorded this before trading actually started — a genuine early warning."},
+  amQLateNote:{zh:"我方账本记录时该股已开始交易，但已确认过\"已挂牌\"这一事实。",
+               en:"Trading had already started by the time our log recorded it, but we did confirm the listing fact."},
+  amQMissedNote:{zh:"我方账本记录时该股已开始交易，且至今未曾确认过\"已挂牌\"事实（账本最高只到\"已定价\"）——本站 IPO 雷达对这家公司的挂牌监测有缺口。",
+                 en:"Trading had already started by the time our log recorded it, and we've never confirmed the actual listing fact (our log tops out at \"priced\") — a monitoring gap for this company."},
+  amStamp:{zh:"数据截至",en:"Data as of"}
 };
 
 // 策展三档快照月份（人工维护，随策展内容更新时同步改）；>2 个月自动提醒渐旧，≤2 个月不打扰。
@@ -377,11 +419,65 @@ function loadAuto(){
     .catch(()=>{AUTO=null;renderAuto();});
 }
 
-function redraw(){applyStatic();render();renderAuto();}
+// ---- A5: major IPO post-listing fact sheet (reads ipo_aftermath.json) ----
+let AFTERMATH=null;
+
+function fmtPct(v){
+  if(v==null) return `<span class="am-pending">${esc(t("amPending"))}</span>`;
+  const cls=v>0?"am-pos":(v<0?"am-neg":"");
+  return `<span class="${cls}">${v>0?"+":""}${v.toFixed(1)}%</span>`;
+}
+function qualityBadge(q){
+  if(q==="lead") return `<span class="am-quality am-q-lead" title="${esc(t("amQLeadNote"))}">${esc(t("amQLead"))}</span>`;
+  if(q==="late") return `<span class="am-quality am-q-late" title="${esc(t("amQLateNote"))}">${esc(t("amQLate"))}</span>`;
+  if(q==="missed") return `<span class="am-quality am-q-missed" title="${esc(t("amQMissedNote"))}">${esc(t("amQMissed"))}</span>`;
+  return "";
+}
+function leadDaysTxt(n){
+  if(n==null) return "";
+  return n>=0 ? t("amLeadDays").replace("{N}",n) : t("amLateDays").replace("{N}",Math.abs(n));
+}
+function renderAftermath(){
+  const box=$("aftermath"); if(!box) return;
+  const rows=(AFTERMATH&&Array.isArray(AFTERMATH.companies))?AFTERMATH.companies:[];
+  if(!AFTERMATH||rows.length===0){ box.innerHTML=`<p class="sub">${esc(t("amNone"))}</p>`; return; }
+  const cav=AFTERMATH.caveat||{};
+  let h=`<div class="note">${t("amCaveat")}${esc(L(cav)||"")}`
+       +(cav.source?` <span style="opacity:.75">(${esc(cav.source)})</span>`:"")+`</div>`;
+  h+=`<div class="grid" style="margin-top:10px">`;
+  rows.forEach(r=>{
+    h+=`<div class="card am-card"><div class="co">${esc(r.company||"")}`;
+    if(r.ticker) h+=`<span class="tk">${esc(r.ticker)}</span>`;
+    h+=qualityBadge(r.alert_quality);
+    h+=`</div>`;
+    h+=`<div class="sec">${esc(t("amFirstTrade"))}: ${esc(r.first_trade_date||"?")}`
+      +(r.alert_lead_days!=null?` · ${esc(t("amLeadLabel"))} ${esc(leadDaysTxt(r.alert_lead_days))}`:"")+`</div>`;
+    h+=`<div class="metrics">`;
+    h+=`<div class="metric"><b>${esc(t("amD1"))}</b><span>${fmtPct(r.d1_pct)}</span></div>`;
+    h+=`<div class="metric"><b>${esc(t("amD5"))}</b><span>${fmtPct(r.d5_pct)}</span></div>`;
+    h+=`<div class="metric"><b>${esc(t("amD20"))}</b><span>${fmtPct(r.d20_pct)}</span></div>`;
+    h+=`<div class="metric"><b>${esc(t("amVsQqq"))}</b><span>${fmtPct(r.vs_qqq_d20_pct)}</span></div>`;
+    h+=`</div></div>`;
+  });
+  h+=`</div>`;
+  const stamp=(AFTERMATH.generated||"").slice(0,10);
+  if(stamp) h+=`<p class="sub" style="margin-top:10px">${esc(t("amStamp"))} ${esc(stamp)}</p>`;
+  h+=`<p class="sub" style="margin-top:4px">${esc(t("amDisclaimer"))}</p>`;
+  box.innerHTML=h;
+}
+function loadAftermath(){
+  fetch("ipo_aftermath.json",{cache:"no-store"})
+    .then(r=>r.ok?r.json():null)
+    .then(d=>{AFTERMATH=(d&&Array.isArray(d.companies))?d:null;renderAftermath();})
+    .catch(()=>{AFTERMATH=null;renderAftermath();});
+}
+
+function redraw(){applyStatic();render();renderAuto();renderAftermath();}
 $("lang").onclick=()=>{LANG=LANG==="zh"?"en":"zh";try{localStorage.setItem("valpha_lang",LANG)}catch(e){};redraw();};
 
 redraw();
 loadAuto();
+loadAftermath();
 </script>
 <script src="vp_gloss.js" data-autoscan></script>
 </body>
