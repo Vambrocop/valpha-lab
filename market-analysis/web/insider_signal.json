@@ -1,17 +1,17 @@
 {
-  "generated": "2026-07-21T22:34:29Z",
+  "generated": "2026-07-22T15:02:46Z",
   "source": "SEC EDGAR Form 4 (开市买入 P) → 前向公开计分",
   "hold_days": 30,
   "filing_lag_days": 3,
   "min_value": 50000.0,
   "benchmark": "SPY",
   "track_record": {
-    "n_settled": 1,
+    "n_settled": 2,
     "n_hit": 0,
     "beat_spy_pct": 0.0,
-    "mean_excess_pct": -7.3,
-    "median_excess_pct": -7.3,
-    "n_pending": 32,
+    "mean_excess_pct": -45.734,
+    "median_excess_pct": -45.734,
+    "n_pending": 31,
     "n_dropped": 0,
     "dropped_pct": 0.0
   },
@@ -363,9 +363,9 @@
       "title": "isTenPercentOwner",
       "txn_date": "2026-06-18",
       "value": 95422.31,
-      "settled": false,
+      "settled": true,
       "dropped": false,
-      "excess_pct": null,
+      "excess_pct": -84.169,
       "hit": false
     },
     {
@@ -380,6 +380,6 @@
       "hit": false
     }
   ],
-  "verdict": "已结算 1 笔：跟买后 ~1 月相对 SPY 平均 -7.30%、跑赢 0.0%（n=1 太小，纯描述、不是结论）。",
+  "verdict": "已结算 2 笔：跟买后 ~1 月相对 SPY 平均 -45.73%、跑赢 0.0%（n=2 太小，纯描述、不是结论）。",
   "caveat": "出格区·聪明钱前向计分。跟内部人开市买入(P·≥$50k)、披露后 +3 日可跟单、持有 30 日 vs SPY。**前向计分**：刚上线样本极小（约 1 月后才有首批结算），别当结论。幸存者偏差：0.0% 因退市/无价被丢→高估 edge；只扫近期 daily-index 前若干份=样本非全量；同一标的同一入场日多名内部人(集群买入)战绩只计一次,防单一事件主导；重叠窗口只看描述性均值/胜率不充显著性；相关≠因果；非荐股、非跟单、不可交易、会错、过去≠未来。每跑 append 公开计分。"
 }
