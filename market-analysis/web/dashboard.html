@@ -1226,7 +1226,10 @@
     g("vp-sub").innerHTML=sub;
     var _rg=LLM&&LLM.generated,_ra=_rg?Math.floor((Date.now()-Date.parse(_rg))/86400000):null;
     var _rw=(_ra!=null&&_ra>4)?('<div style="font-size:.72rem;margin-top:.35rem"><b style="color:#f0883e">'+(_lang==="en"?"⚠ daily read "+_ra+"d ago (should update each trading day · possibly stuck)":"⚠ 日读 "+_ra+"天前(应每交易日更新·疑似卡住)")+'</b></div>'):"";
-    g("vp-read").innerHTML=(LLM&&LLM.text)?((typeof vpAnnotate==="function"?vpAnnotate(LLM.text):"")+_rw):"";  /* vp_gloss.js + 日读卡住告警 */
+    // 2026-09-07:英文模式取 text_en(由 LLM 翻译中文原文而来,保证中英说同一件事);
+    // 缺英文(未生成/调用失败)时回落中文 —— 宁可显示中文,也不显示一段来路不明的英文。
+    var _rdTxt=(LLM?((_lang==="en"&&LLM.text_en)||LLM.text):"");
+    g("vp-read").innerHTML=_rdTxt?((typeof vpAnnotate==="function"?vpAnnotate(_rdTxt):"")+_rw):"";  /* vp_gloss.js + 日读卡住告警 */
     /* D2 微图表:倾向分30日走势——纯历史读数;中性 --mut 不因涨跌染红绿;0=中性参考线 */
     var _hv=(CR.history||[]).map(function(p){return p&&p.s;});
     if(typeof vpSpark==="function"&&_hv.filter(function(v){return v!=null&&isFinite(v);}).length>1){
@@ -1258,11 +1261,11 @@
       var wAgo=_dAgo(W.generated),wSt=wAgo!=null&&wAgo>7;   // >7天=超一周=错过周期=疑似卡住
       var wTag=wSt?(_lang==="en"?" ⚠"+wAgo+"d ago":" ⚠"+wAgo+"天前·疑似卡住"):"";
       g("vp-weekly-t").textContent=(_lang==="en"?"📅 Weekly review":"📅 本周回顾")+(wl?" · "+wl:"")+wTag;
-      g("vp-weekly-x").textContent=snip(W.text,90);g("vp-weekly").style.display="";}
+      g("vp-weekly-x").textContent=snip((_lang==="en"&&W.text_en)||W.text,90);g("vp-weekly").style.display="";}
     if(M&&M.text){any=true;var ml=(_lang==="en"&&M.month_label_en)||M.month_label||M.month||"";
       var mPri=M.month&&M.month<_curM();
       g("vp-monthly-t").textContent=(_lang==="en"?(mPri?"🗓️ Last month":"🗓️ Monthly review"):(mPri?"🗓️ 上月回顾":"🗓️ 本月回顾"))+(ml?" · "+ml:"");
-      g("vp-monthly-x").textContent=snip(M.text,90);g("vp-monthly").style.display="";}
+      g("vp-monthly-x").textContent=snip((_lang==="en"&&M.text_en)||M.text,90);g("vp-monthly").style.display="";}
     if(P){any=true;                       /* 字段名不硬依赖 → 纯入口文案，命中率明细在 prediction.html */
       g("vp-pred-x").textContent=_lang==="en"
         ?"Open for the SPY 5-trading-day direction forecast + public hit-rate by confidence bucket (not investment advice · can be wrong)"

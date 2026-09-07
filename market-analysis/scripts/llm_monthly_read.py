@@ -18,7 +18,7 @@ import datetime
 import json
 from pathlib import Path
 
-from llm_core import _llm, _llm_key, _active_model
+from llm_core import _llm, _llm_key, _active_model, translate_read
 from llm_weekly_read import _load_regime, _load_scorecard_summary   # 复用·不漂移
 
 SCRIPTS = Path(__file__).parent
@@ -160,7 +160,9 @@ def run(write=True, force=False):
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "month": _month_key(today), "month_label": _month_label(today),
         "month_label_en": _month_label_en(today), "n_days": n_days,
-        "model": _active_model(), "text": text, "stances": stances,
+        "model": _active_model(), "text": text,
+        # 英文版=**翻译**已生成的中文(不是重新生成)——保证中英说的是同一件事
+        "text_en": translate_read(text), "stances": stances,
         "caveat": ("LLM 据本月真实因子走势生成的大白话回顾；喂真数据防瞎编，但仍可能误读。"
                    "非预测、非荐股、会错，过去≠未来。每月 append 到 llm_monthly_log 公开计分。"),
     }

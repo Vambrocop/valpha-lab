@@ -14,6 +14,7 @@ import datetime
 from pathlib import Path
 
 # ── shared LLM helpers (provider-agnostic) ───────────────────────────────────
+from llm_core import translate_read  # noqa: E402  英文版:翻译中文,保中英同源
 from llm_core import (  # noqa: F401  (re-exported for back-compat: tests may import these)
     MODEL, URL,
     _provider, _llm_key, _active_model,
@@ -140,7 +141,8 @@ def run():
     out = {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "model": _active_model(), "date": today,
-        "stance": cr.get("stance"), "score": cr.get("score"), "text": text, "coverage_level": qlevel,
+        "stance": cr.get("stance"), "score": cr.get("score"), "text": text,
+        "text_en": translate_read(text), "coverage_level": qlevel,
         "caveat": "LLM 据当日真实因子生成的大白话解读；喂真数据防瞎编，但仍可能误读。"
                   "非预测、非荐股、会错，过去≠未来。每日 append 到 llm_read_log 公开计分。",
     }

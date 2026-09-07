@@ -275,7 +275,7 @@ function loadLLM(){
       var el=$('llmRead');
       el.innerHTML='<div style="font-size:.8rem;color:var(--acc);margin-bottom:6px">🧠 '
         +(LANG==='en'?'AI plain-language read':'AI 大白话日读')+' · '+esc(j.stance||'')+'</div>'
-        +'<div style="font-size:.92rem;line-height:1.7">'+esc(j.text)+'</div>'
+        +'<div style="font-size:.92rem;line-height:1.7">'+esc((LANG==='en'&&j.text_en)||j.text)+'</div>'
         +'<div style="font-size:.7rem;color:var(--mut);margin-top:8px">'+esc(j.caveat||'')+'</div>';
       el.style.display='';
     }).catch(function(){});

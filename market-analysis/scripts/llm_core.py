@@ -95,3 +95,43 @@ def _plainify(text):
             continue
         text = text[:i + len(term)] + f"（{exp}）" + text[i + len(term):]
     return text
+
+
+# ── 大白话解读的英文版(2026-09-07·用户拍板"让 LLM 出英文版") ─────────────────
+_EN_PROMPT = """Translate the following Chinese market commentary into natural, plain English.
+
+Rules — these matter more than fluency:
+1. **Translate, do not re-analyse.** Never add a view, a number, or a caveat that is not in the
+   source. Never drop one either — especially the disclaimers.
+2. Keep every number, percentage, date and ticker **exactly** as written.
+3. Match the register: this is written for a complete beginner. Avoid jargon; where the Chinese
+   explains a term, explain it the same way.
+4. Output the translation only — no preamble, no notes, no markdown fences.
+
+Chinese source:
+{text}"""
+
+
+def translate_read(text):
+    """把已生成的中文解读翻成英文。**翻译,不是重新生成。**
+
+    ## 为什么是翻译而不是"用同一份数据再生成一版英文"
+
+    独立生成会让两个版本**说不一样的话** —— 英文读者看到的结论与中文不同。在一个双语的
+    诚实计分站点上这是硬伤(同 market_regime/composite_read 档位表"中英同源"的道理:
+    两套分支迟早漂移)。翻译则保证两边永远一致,顺带还便宜些(提示词短得多)。
+
+    失败一律返回 None(缺 key / 调用失败 / 空返回)。**绝不编一句英文** ——
+    前端 vpD() 在缺英文时回落中文,宁可显示中文,也不显示一段来路不明的英文。
+    """
+    if not text or not str(text).strip():
+        return None
+    if not _llm_key():
+        return None
+    try:
+        en = _llm(_EN_PROMPT.format(text=text))
+    except Exception as e:                      # 非致命:英文缺失只是少一份译文,不阻断流水线
+        print(f"[LLM英文版] 调用失败(非致命,前端回落中文): {e}")
+        return None
+    en = (en or "").strip()
+    return en or None

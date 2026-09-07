@@ -31,7 +31,7 @@ DATA    = BASE / "data"
 LOG     = DATA / "llm_weekly_log.csv"
 
 # ── shared LLM helpers (provider-agnostic, no dependency on llm_daily_read) ──
-from llm_core import _llm, _llm_key, _active_model, _plainify  # noqa: E402
+from llm_core import _llm, _llm_key, _active_model, _plainify, translate_read  # noqa: E402
 
 # ── 周报 Prompt ───────────────────────────────────────────────────────────────
 WEEKLY_PROMPT = """你是给【完全不懂金融的新手】讲解的助手。下面是本周系统【真实算出】的市场读数摘要：
@@ -332,6 +332,8 @@ def run(force=False, today=None):
         "coverage":     summary["coverage"],
         "stance_trend": summary["stance_trend"],
         "text":         text,
+        # 英文版=**翻译**已生成的中文(不是重新生成)——保证中英说的是同一件事
+        "text_en":      translate_read(text),
         "caveat": (
             "LLM 据本周真实算出因子生成的大白话回顾；喂真数据防瞎编，但仍可能误读。"
             "非预测、非荐股、会错，过去≠未来。每周 append 到 llm_weekly_log 公开计分。"
