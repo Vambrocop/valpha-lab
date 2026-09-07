@@ -78,7 +78,10 @@
 - 跑任何脚本前设 `$env:PYTHONUTF8='1'`（GBK 控制台会让 Unicode 输出崩溃）
 - 全量流水线：`py market-analysis/scripts/run_all.py`（约3分钟）；盘中轻量：加 `--light`
 - 测试：`py -m pytest market-analysis/tests -q`（必须全绿才能提交流水线改动）
-- 前端改动后跑 `py tools/audit_frontend.py` 交叉检查 ID/onclick
+- 前端改动后跑 `py tools/audit_frontend.py` 交叉检查 ID/onclick;交互实测 `py tools/interaction_audit.py [--mobile]`(**桌面和移动端都要跑**)
+- 改 CSP / 引新资源后跑 `py tools/csp_audit.py [--mobile]` —— 真浏览器逐页收
+  `securitypolicyviolation`,专抓「自己的资源被自己的策略挡掉」(静态读 meta 看不出来)。
+  **已知边界(非该工具能改善)**:全站带 `script-src 'unsafe-inline'` → 挡不住 XSS;meta 形式拿不到 `frame-ancestors`。
 
 ## 模型分层委派（用户授权，自主判断不必先问）
 
