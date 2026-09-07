@@ -141,6 +141,32 @@ function render(d){
   } else {
     chHtml+=`<div class="empty-msg">${esc(t("no_dels"))}</div>`;
   }
+  // 2026-09-07:瞬时差分(adds/dels)绝大多数日子是空的,当天没人看就永远丢了。
+  // 所以补两块:① 近半年的**账本**记录;② 池子多久没人维护 —— "悄悄老化"要看得见才治得了。
+  const rc=Array.isArray(d.recent_changes)?d.recent_changes:[];
+  if(rc.length){
+    chHtml+=`<div style="margin-top:14px;font-size:.85rem;font-weight:600;color:var(--fg)">`
+      +(LANG==="zh"?"&#x1F4D2; 近半年成分进出(账本)":"&#x1F4D2; Membership changes, last 180d (ledger)")+`</div>`;
+    chHtml+=`<div class="pill-wrap" style="margin-top:5px">`+rc.slice(0,24).map(function(r){
+      const cls=r.action==="added"?"pill-add":"pill-del";
+      return `<span class="pill ${cls}">${esc(r.date)} ${esc(r.ticker)}</span>`;}).join("")+`</div>`;
+  }
+  if(d.pool_age_days!=null){
+    const old_=d.pool_age_days>60;
+    chHtml+=`<div style="margin-top:14px;font-size:.8rem;color:${old_?"var(--red)":"var(--mut)"}">`
+      +(LANG==="zh"
+        ?`&#x1F4CB; Valpha150 池子距上次人工维护 <b>${esc(d.pool_age_days)}</b> 天（最后 ${esc(d.pool_last_curated||"—")}）`
+          +(old_?"：新晋大市值可能还没纳入。池子是人工策展(带中文名/板块)，不自动重写——是否纳入由人决定。":"")
+        :`&#x1F4CB; The Valpha150 pool was last curated <b>${esc(d.pool_age_days)}</b> days ago (${esc(d.pool_last_curated||"—")})`
+          +(old_?" — newly large-cap names may be missing. The pool is hand-curated, so it is never rewritten automatically; a human decides.":""))
+      +`</div>`;
+  }
+  const ram=Array.isArray(d.recent_added_missing)?d.recent_added_missing:[];
+  if(ram.length){
+    chHtml+=`<div style="margin-top:8px;font-size:.8rem;color:var(--red)">`
+      +(LANG==="zh"?"&#x26A0; 近半年新进指数、但池子还没有：":"&#x26A0; Recently added to the index but still missing from the pool: ")
+      +ram.map(function(x){return esc(x);}).join("、")+`</div>`;
+  }
   $("changes-block").innerHTML=chHtml;
 
   // Gap list
