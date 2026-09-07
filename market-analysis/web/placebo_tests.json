@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-06T12:57:35Z",
+  "generated": "2026-09-07T11:46:37Z",
   "method": "标签置换检验(permutation)；三态：真实/未显现/无定论(检验力不足)；并做 Benjamini-Hochberg 多重检验校正(q_value)——测了多个效应需控假发现率",
   "n_perm": 1000,
   "seed": 20260613,
@@ -8,8 +8,8 @@
   "data": {
     "source": "S&P 500 (^GSPC)",
     "start": "1928-01-03",
-    "end": "2026-09-04",
-    "n_daily": 24786
+    "end": "2026-08-05",
+    "n_daily": 24764
   },
   "tests": [
     {
@@ -18,14 +18,26 @@
       "scope": "日频 S&P500 1952+",
       "claim": "某些交易日平均收益更高",
       "stat": "组间平方和(日均收益)",
-      "min_group_n": 3560,
+      "min_group_n": 3556,
       "detail": "周三最高 / 周一最低",
-      "real": 0.0033022313,
+      "real": 0.0032821256,
       "p_value": 0.000999,
-      "null_p95": 0.0009336995,
-      "recent_p": 0.847153,
+      "null_p95": 0.0009074577,
+      "power": {
+        "years_to_power": 0,
+        "outlook": "powered",
+        "outlook_zh": "样本已足够",
+        "outlook_en": "adequately powered"
+      },
+      "recent_p": 0.828172,
       "recent_significant": false,
-      "recent_min_group_n": 1259,
+      "recent_min_group_n": 1255,
+      "recent_power": {
+        "years_to_power": 0,
+        "outlook": "powered",
+        "outlook_zh": "样本已足够",
+        "outlook_en": "adequately powered"
+      },
       "status": "real",
       "passed": true,
       "verdict": "✓ 真实：通过 placebo (p=0.001)",
@@ -33,7 +45,7 @@
       "scope_en": "Daily S&P500 1952+",
       "claim_en": "Some weekdays have higher average returns",
       "detail_en": "Wed highest / Mon lowest",
-      "q_value": 0.006,
+      "q_value": 0.003,
       "fdr_significant_05": true,
       "fdr_significant_10": true
     },
@@ -45,21 +57,33 @@
       "stat": "组间平方和(月均收益)",
       "min_group_n": 98,
       "detail": "7月最高 / 9月最低",
-      "real": 0.0630149391,
-      "p_value": 0.023976,
-      "null_p95": 0.0558122658,
-      "recent_p": 0.157842,
+      "real": 0.063248372,
+      "p_value": 0.025974,
+      "null_p95": 0.0554509274,
+      "power": {
+        "years_to_power": 0,
+        "outlook": "powered",
+        "outlook_zh": "样本已足够",
+        "outlook_en": "adequately powered"
+      },
+      "recent_p": 0.14985,
       "recent_significant": false,
       "recent_min_group_n": 26,
+      "recent_power": {
+        "years_to_power": 4,
+        "outlook": "soon",
+        "outlook_zh": "再攒几年就够",
+        "outlook_en": "a few more years of data will do it"
+      },
       "status": "real",
       "passed": true,
-      "verdict": "✓ 真实：通过 placebo (p=0.024)",
+      "verdict": "✓ 真实：通过 placebo (p=0.026)",
       "panel_en": "month-of-year effect(monthly win rate)",
       "scope_en": "Monthly S&P500 1928+",
       "claim_en": "Some months are systematically stronger / weaker",
       "detail_en": "Jul highest / Sep lowest",
-      "q_value": 0.048,
-      "fdr_significant_05": true,
+      "q_value": 0.0519,
+      "fdr_significant_05": false,
       "fdr_significant_10": true
     },
     {
@@ -73,6 +97,12 @@
       "real": 0.4564144197,
       "p_value": 0.174825,
       "null_p95": 0.5757426939,
+      "power": {
+        "years_to_power": 226,
+        "outlook": "never",
+        "outlook_zh": "结构上等不到",
+        "outlook_en": "structurally out of reach"
+      },
       "status": "inconclusive",
       "passed": false,
       "verdict": "— 无定论：每组样本仅 9，检验力不足 (p=0.175)",
@@ -95,6 +125,12 @@
       "real": 0.1398427645,
       "p_value": 0.270729,
       "null_p95": 0.2867275382,
+      "power": {
+        "years_to_power": 24,
+        "outlook": "decades",
+        "outlook_zh": "要等几十年",
+        "outlook_en": "decades away"
+      },
       "status": "inconclusive",
       "passed": false,
       "verdict": "— 无定论：每组样本仅 24，检验力不足 (p=0.271)",
@@ -112,22 +148,34 @@
       "scope": "日频 S&P500 1998+",
       "claim": "节前最后一个交易日平均看涨",
       "stat": "节前均值 - 其余均值(单边)",
-      "min_group_n": 263,
-      "detail": "节前交易日 n=263",
-      "real": 0.0010537232,
-      "p_value": 0.087912,
-      "null_p95": 0.0012191588,
+      "min_group_n": 262,
+      "detail": "节前交易日 n=262",
+      "real": 0.0010728294,
+      "p_value": 0.088911,
+      "null_p95": 0.0012910315,
+      "power": {
+        "years_to_power": 0,
+        "outlook": "powered",
+        "outlook_zh": "样本已足够",
+        "outlook_en": "adequately powered"
+      },
       "recent_p": 0.150849,
       "recent_significant": false,
-      "recent_min_group_n": 245,
+      "recent_min_group_n": 244,
+      "recent_power": {
+        "years_to_power": 0,
+        "outlook": "powered",
+        "outlook_zh": "样本已足够",
+        "outlook_en": "adequately powered"
+      },
       "status": "rejected",
       "passed": false,
-      "verdict": "✗ 未显现：充分样本下仍不显著 (p=0.088)",
+      "verdict": "✗ 未显现：充分样本下仍不显著 (p=0.089)",
       "panel_en": "Holiday effect (pre-holiday)",
       "scope_en": "Daily S&P500 1998+",
       "claim_en": "The last trading day before a holiday is bullish on average",
-      "detail_en": "pre-holiday trading days n=263",
-      "q_value": 0.1319,
+      "detail_en": "pre-holiday trading days n=262",
+      "q_value": 0.1334,
       "fdr_significant_05": false,
       "fdr_significant_10": false
     },
@@ -139,20 +187,32 @@
       "stat": "区间均值 - 其余均值(单边)",
       "min_group_n": 530,
       "detail": "区间交易日 n=530",
-      "real": 0.0018038213,
-      "p_value": 0.001998,
-      "null_p95": 0.0008557015,
-      "recent_p": 0.201798,
+      "real": 0.0018035542,
+      "p_value": 0.000999,
+      "null_p95": 0.0008445941,
+      "power": {
+        "years_to_power": 0,
+        "outlook": "powered",
+        "outlook_zh": "样本已足够",
+        "outlook_en": "adequately powered"
+      },
+      "recent_p": 0.202797,
       "recent_significant": false,
       "recent_min_group_n": 142,
+      "recent_power": {
+        "years_to_power": 0,
+        "outlook": "powered",
+        "outlook_zh": "样本已足够",
+        "outlook_en": "adequately powered"
+      },
       "status": "real",
       "passed": true,
-      "verdict": "✓ 真实：通过 placebo (p=0.002)",
+      "verdict": "✓ 真实：通过 placebo (p=0.001)",
       "panel_en": "Christmas rally",
       "scope_en": "Daily S&P500 1928+",
       "claim_en": "The Dec 26 - Jan 3 window is bullish on average",
       "detail_en": "trading days in window n=530",
-      "q_value": 0.006,
+      "q_value": 0.003,
       "fdr_significant_05": true,
       "fdr_significant_10": true
     }

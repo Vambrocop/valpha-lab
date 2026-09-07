@@ -439,6 +439,33 @@ function switchCalTab(name, el) {
 // ── 🔬 规律防伪：placebo 置换检验 + 多重检验校正(FDR) 诚实总览 ──
 // 同源消费 placebo_tests.json（placebo_test.py 产出）。被打回/无定论也是诚实结果。
 let PLACEBO = null;
+// 2026-09-07:「检验力不足」把两件完全不同的事说成了同一句话 ——
+// 月份效应现代段再攒 4 年就够(真的只是"等"),而年份尾数要 226 年(这辈子等不到)。
+// 读者看到的都是"无定论",像是"还在查"。所以把"还要等多久"摆出来。
+// 只在**确实不足**时显示;够了就不啰嗦(警告滥发等于没有警告)。
+// 2026-09-07(§3 旧记录):表里原本只有 p 值,**从不显示样本量** —— 读者看到
+// "无定论(检验力不足)"却不知道是被多小的样本卡住的。而且分半门实际面对的是**半样本**
+// (AAPL 月份效应:全样本每组 26,分半只有 13),只报全样本等于把证据说得比实际强。
+// 两个都显示,小于门槛的标红 —— 让"被什么卡住"一眼可见。
+function groupN(t) {
+  const n = t.min_group_n, h = t.min_group_n_half;
+  if (n == null) return "—";
+  const warn = v => (v != null && v < 30)
+      ? `<span style="color:#e67e22">${v}</span>` : `${v}`;
+  return h == null ? warn(n) : `${warn(n)}<span style="color:var(--muted)">/</span>${warn(h)}`;
+}
+
+function powerNote(t) {
+  const pw = (t.power && t.power.outlook !== "powered") ? t.power
+           : ((t.recent_power && t.recent_power.outlook !== "powered") ? t.recent_power : null);
+  if (!pw) return "";
+  const seg = (pw === t.recent_power) ? vpL("现代段", "modern segment") : vpL("全样本", "full sample");
+  const c = pw.outlook === "never" ? "#e74c3c" : (pw.outlook === "decades" ? "#e67e22" : "var(--muted)");
+  return `<span style="color:${c};font-size:0.78rem">· ${vpL(
+      `${seg}检验力还差约 <b>${pw.years_to_power} 年</b>的数据（${pw.outlook_zh}）`,
+      `${seg} needs ~<b>${pw.years_to_power}</b> more years of data (${pw.outlook_en})`)}</span>`;
+}
+
 async function loadPlacebo() {
   const el = document.getElementById("placebo-overview");
   if (!el) return;
@@ -473,7 +500,7 @@ async function loadPlacebo() {
       <strong style="min-width:8.5rem">${vpD(t,"panel")}</strong>
       <span style="color:${s.c};font-weight:700">${s.t}</span>
       <span style="color:var(--muted);font-size:0.78rem">p=${t.p_value.toFixed(3)} · q=${t.q_value.toFixed(3)} ${fdr}</span>
-      ${modern}
+      ${modern}${powerNote(t)}
       <span style="color:var(--muted);font-size:0.73rem;flex-basis:100%">${vpL(`${t.claim}——${t.detail}（${t.scope}）`, `${vpD(t,"claim")} — ${vpD(t,"detail")} (${vpD(t,"scope")})`)}</span>
     </div>`;
   }).join("");
@@ -1043,6 +1070,7 @@ function renderStockCheckup(code) {
       return `<tr style="border-top:1px solid var(--border-faint)">
         <td style="padding:.3rem .4rem;color:var(--muted)">${effectLabel(t2.effect)}</td>
         <td style="padding:.3rem .4rem;text-align:center;color:${c};font-size:.76rem">${lbl}</td>
+        <td style="padding:.3rem .4rem;text-align:right;font-size:.74rem;font-variant-numeric:tabular-nums">${groupN(t2)}</td>
         <td style="padding:.3rem .4rem;text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums">${sig(t2.p_value)}</td>
         <td style="padding:.3rem .4rem;text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums">${sig(hp[0])}/${sig(hp[1])}</td>
         <td style="padding:.3rem .4rem;text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums">${sig(t2.recent_p)}</td></tr>`;
@@ -1050,7 +1078,7 @@ function renderStockCheckup(code) {
     patHtml = `<div style="margin-top:.75rem">
       <div style="color:var(--muted);font-size:0.74rem;margin-bottom:.25rem">${vpL("日历规律真伪（置换检验 + 跨票 FDR + 分段稳健；* = p&lt;0.05）：","Real vs. fake calendar patterns (permutation test + cross-ticker FDR + split robustness; * = p&lt;0.05):")}</div>
       <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
-        <tr class="u-cap"><td style="padding:.2rem .4rem">${vpL("效应","Effect")}</td><td style="text-align:center;padding:.2rem .4rem">${vpL("判定","Verdict")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("全样本","Full sample")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("前半/后半","1st half/2nd half")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("近5年","Last 5yr")}</td></tr>
+        <tr class="u-cap"><td style="padding:.2rem .4rem">${vpL("效应","Effect")}</td><td style="text-align:center;padding:.2rem .4rem">${vpL("判定","Verdict")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("每组n<br>全/分半","n per group<br>full/half")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("全样本","Full sample")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("前半/后半","1st half/2nd half")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("近5年","Last 5yr")}</td></tr>
         ${prows}
       </table>
       <div style="color:var(--muted);font-size:0.7rem;margin-top:.3rem;line-height:1.5">${vpL('只问"是真是噪声"、<b>不预测涨跌</b>。<b>历史有·近年消失</b>=典型被套利(如 AAPL 星期效应:全史显著、近5年 p≈0.57 已无)。单股日历效应极易过拟合，故跨票 FDR + 分半 + 近期三关从严。', 'This only asks "real or noise" — <b>it does not predict direction</b>. <b>Once real, faded in recent years</b> = a textbook arbitraged-away pattern (e.g. AAPL\'s day-of-week effect: significant over the full history, gone by recent-5yr p≈0.57). Single-stock calendar effects overfit very easily, so cross-ticker FDR + split-half + recency form three strict gates.')}</div></div>`;

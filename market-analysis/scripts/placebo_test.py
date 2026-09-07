@@ -112,6 +112,43 @@ def make_dir_diff_stat():
     return f
 
 
+# ── 检验力还要等多久(2026-09-07) ─────────────────────────────────────────
+# 「无定论(检验力不足)」这句话把两件完全不同的事混成了一句:
+#   · 月份效应现代段:每组 26,再攒 **4 年** 就够 → 真的只是"等";
+#   · 总统任期年:每组 24,每 4 年才 +1 → 还要 **24 年**;
+#   · 年份尾数:每组 9,每 10 年才 +1 → 还要 **210 年**,这辈子等不到。
+# 读者看到的却是同一句"检验力不足",像是"还在查"。所以把"还要等多久"算出来说清楚。
+#
+# 速率**从数据推导**(min_group_n ÷ 该检验自己窗口的年数),不写死映射表 ——
+# 写死的表一旦上游改了起点/分组就悄悄失真,而这正是要防的那类"悄悄不准"。
+_OUTLOOK = {
+    "powered":  ("样本已足够", "adequately powered"),
+    "soon":     ("再攒几年就够", "a few more years of data will do it"),
+    "decades":  ("要等几十年", "decades away"),
+    "never":    ("结构上等不到", "structurally out of reach"),
+}
+
+
+def _power_outlook(min_group_n, span_years):
+    """返回 {years_to_power, outlook, outlook_zh/en}。
+
+    假设积累速率不变 —— 对日历效应成立(一年永远 12 个月、10 年才出一个尾数),
+    这正是这些检验的特性。返回 None 表示算不出(缺输入)。
+    """
+    if min_group_n is None or not span_years or span_years <= 0:
+        return None
+    if min_group_n >= MIN_GROUP_N:
+        zh, en = _OUTLOOK["powered"]
+        return {"years_to_power": 0, "outlook": "powered", "outlook_zh": zh, "outlook_en": en}
+    rate = min_group_n / float(span_years)          # 每组每年新增多少观测
+    if rate <= 0:
+        return None
+    yrs = (MIN_GROUP_N - min_group_n) / rate
+    key = "soon" if yrs < 10 else ("decades" if yrs <= 50 else "never")
+    zh, en = _OUTLOOK[key]
+    return {"years_to_power": round(yrs), "outlook": key, "outlook_zh": zh, "outlook_en": en}
+
+
 def _verdict(p, min_group_n):
     """诚实三态。注意顺序：显著优先——置换检验在小样本下 type-I 仍受控，
     若真测到显著(p<α)那就是真实；只有"不显著"时才需区分'样本足够仍无效应'
@@ -204,20 +241,24 @@ def run_all():
     print(f"  S&P500 日收益 {ret.index[0].date()}–{ret.index[-1].date()}  n={len(ret)}")
 
     tests = []
-    recent_cut = pd.Timestamp("2000-01-01")               # 分段:全样本 vs "现代"(2000后),看效应是否随时间消失(被套利)
+    recent_cut = pd.Timestamp("2000-01-01")
+    _recent_span = (ret.index[-1] - recent_cut).days / 365.25   # 现代段年数(推导速率用)               # 分段:全样本 vs "现代"(2000后),看效应是否随时间消失(被套利)
 
     def add(idx_key, recent_mask=None, **kw):
         rng = np.random.default_rng([SEED, idx_key])      # 每项独立流
         vals, labs, sf = kw.pop("values"), kw.pop("labels"), kw.pop("stat_fn")
         r = perm_test(vals, labs, sf, rng)
         status, verdict = _verdict(r["p_value"], kw["min_group_n"])
-        rec = {}
+        span = kw.pop("span_years", None)                  # 该检验自己窗口的年数(推导速率用)
+        rec = {"power": _power_outlook(kw["min_group_n"], span)}
         if recent_mask is not None and int(recent_mask.sum()) >= 200:   # 现代段够样本才测
             rp = perm_test(vals[recent_mask], labs[recent_mask], sf,
                            np.random.default_rng([SEED, idx_key, 2000]))["p_value"]
             rmin = int(np.unique(labs[recent_mask], return_counts=True)[1].min())   # 现代段最小组样本→判检验力
-            rec = {"recent_p": round(rp, 6), "recent_significant": bool(rp < ALPHA),
-                   "recent_min_group_n": rmin}                          # 前端据此区分"消失"vs"现代样本不足"
+            rec.update({"recent_p": round(rp, 6), "recent_significant": bool(rp < ALPHA),
+                        "recent_min_group_n": rmin,       # 前端据此区分"消失"vs"现代样本不足"
+                        # 现代段窗口固定从 recent_cut(2000)算起
+                        "recent_power": _power_outlook(rmin, _recent_span)})
         tests.append({**kw, **r, **rec, "status": status,
                       "passed": bool(status == "real"), "verdict": verdict})
 
@@ -231,6 +272,7 @@ def run_all():
     add(1, recent_mask=np.asarray(dret.index[wmask] >= recent_cut),
         values=wvals, labels=wlab, stat_fn=make_ssb_stat(5),
         key="dow", panel="星期效应", scope=f"日频 S&P500 {DOW_START[:4]}+",
+        span_years=(dret.index[-1] - dret.index[0]).days / 365.25,
         claim="某些交易日平均收益更高", stat="组间平方和(日均收益)",
         min_group_n=int(cnt.min()),
         detail=f"{names[int(np.argmax(gm))]}最高 / {names[int(np.argmin(gm))]}最低")
@@ -241,6 +283,7 @@ def run_all():
     add(2, recent_mask=np.asarray(monthly.index >= recent_cut),
         values=monthly.values, labels=mlab, stat_fn=make_ssb_stat(12),
         key="month", panel="月份效应(月度胜率)", scope="月频 S&P500 1928+",
+        span_years=(monthly.index[-1] - monthly.index[0]).days / 365.25,
         claim="某些月份系统性更强/更弱", stat="组间平方和(月均收益)",
         min_group_n=int(cnt.min()),
         detail=f"{int(np.argmax(gm))+1}月最高 / {int(np.argmin(gm))+1}月最低")
@@ -250,6 +293,7 @@ def run_all():
     _, cnt = _group_means(annual.values, digit, 10)
     add(3, values=annual.values, labels=digit, stat_fn=make_ssb_stat(10),
         key="decade_digit", panel="年份尾数", scope="年频 S&P500",
+        span_years=(annual.index[-1] - annual.index[0]).days / 365.25,
         claim="尾数为 X 的年份历史最强", stat="组间平方和(年均收益)",
         min_group_n=int(cnt.min()), detail=f"每组仅约 {len(annual)//10} 年")
 
@@ -258,6 +302,7 @@ def run_all():
     _, cnt = _group_means(annual.values, cyc, 4)
     add(4, values=annual.values, labels=cyc, stat_fn=make_ssb_stat(4),
         key="presidential_cycle", panel="总统任期年", scope="年频 S&P500",
+        span_years=(annual.index[-1] - annual.index[0]).days / 365.25,
         claim="任期第 3 年(选前)最强", stat="组间平方和(年均收益)",
         min_group_n=int(cnt.min()), detail=f"每组仅约 {len(annual)//4} 年")
 
@@ -267,6 +312,7 @@ def run_all():
     add(5, recent_mask=np.asarray(hret.index >= recent_cut),
         values=hret.values, labels=pre.astype(int), stat_fn=make_dir_diff_stat(),
         key="pre_holiday", panel="假日效应(节前)", scope=f"日频 S&P500 {HOLIDAY_START[:4]}+",
+        span_years=(hret.index[-1] - hret.index[0]).days / 365.25,
         claim="节前最后一个交易日平均看涨", stat="节前均值 - 其余均值(单边)",
         min_group_n=int(pre.sum()), detail=f"节前交易日 n={int(pre.sum())}")
 
@@ -276,6 +322,7 @@ def run_all():
     add(6, recent_mask=np.asarray(ret.index >= recent_cut),
         values=ret.values, labels=santa, stat_fn=make_dir_diff_stat(),
         key="santa_claus", panel="圣诞行情", scope="日频 S&P500 1928+",
+        span_years=(ret.index[-1] - ret.index[0]).days / 365.25,
         claim="Dec26–Jan3 区间平均看涨", stat="区间均值 - 其余均值(单边)",
         min_group_n=int(santa.sum()), detail=f"区间交易日 n={int(santa.sum())}")
 
