@@ -447,6 +447,28 @@ let PLACEBO = null;
 // "无定论(检验力不足)"却不知道是被多小的样本卡住的。而且分半门实际面对的是**半样本**
 // (AAPL 月份效应:全样本每组 26,分半只有 13),只报全样本等于把证据说得比实际强。
 // 两个都显示,小于门槛的标红 —— 让"被什么卡住"一眼可见。
+// 2026-09-07(§3 旧记录):近期列原本一律显示 "—",把两件事混成了一句"没测":
+//   · structural = 这个粒度在 5 年窗里**永远**凑不够样本(月度 5×12=60 < 门槛 100),
+//     不是"再等等"就会好 —— 实测 18 条月份检验**全部**如此;
+//   · short_history = 这只票历史不够长,补数据就能测。
+// 前者标 "n/a",后者仍是 "—",hover 给出原因。别让读者以为还在攒数据。
+function recentCell(t) {
+  if (t.recent_p != null) return t.recent_p < 0.05
+      ? `<b style="color:var(--fg)">${t.recent_p}*</b>` : `${t.recent_p}`;
+  return t.recent_block === "structural"
+      ? `<span style="color:var(--muted)">n/a</span>` : "—";
+}
+function recentTitle(t) {
+  if (t.recent_p != null) return "";
+  const zh = t.recent_block === "structural"
+      ? `该粒度在近5年窗内只有约 ${t.recent_n} 个观测（门槛 100）——结构上测不了，不是样本还在攒`
+      : `这只票历史不够长（近5年仅 ${t.recent_n} 个观测），补足数据后可测`;
+  const en = t.recent_block === "structural"
+      ? `Only ~${t.recent_n} observations fit in the 5-year window at this frequency (threshold 100) — structurally untestable, not a matter of waiting`
+      : `This ticker's history is too short (${t.recent_n} observations in the last 5y); testable once there is more data`;
+  return ` title="${esc(vpL(zh, en))}"`;
+}
+
 function groupN(t) {
   const n = t.min_group_n, h = t.min_group_n_half;
   if (n == null) return "—";
@@ -1073,7 +1095,7 @@ function renderStockCheckup(code) {
         <td style="padding:.3rem .4rem;text-align:right;font-size:.74rem;font-variant-numeric:tabular-nums">${groupN(t2)}</td>
         <td style="padding:.3rem .4rem;text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums">${sig(t2.p_value)}</td>
         <td style="padding:.3rem .4rem;text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums">${sig(hp[0])}/${sig(hp[1])}</td>
-        <td style="padding:.3rem .4rem;text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums">${sig(t2.recent_p)}</td></tr>`;
+        <td style="padding:.3rem .4rem;text-align:right;font-size:.76rem;font-variant-numeric:tabular-nums"${recentTitle(t2)}>${recentCell(t2)}</td></tr>`;
     }).join("");
     patHtml = `<div style="margin-top:.75rem">
       <div style="color:var(--muted);font-size:0.74rem;margin-bottom:.25rem">${vpL("日历规律真伪（置换检验 + 跨票 FDR + 分段稳健；* = p&lt;0.05）：","Real vs. fake calendar patterns (permutation test + cross-ticker FDR + split robustness; * = p&lt;0.05):")}</div>
@@ -1081,7 +1103,7 @@ function renderStockCheckup(code) {
         <tr class="u-cap"><td style="padding:.2rem .4rem">${vpL("效应","Effect")}</td><td style="text-align:center;padding:.2rem .4rem">${vpL("判定","Verdict")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("每组n<br>全/分半","n per group<br>full/half")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("全样本","Full sample")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("前半/后半","1st half/2nd half")}</td><td style="text-align:right;padding:.2rem .4rem">${vpL("近5年","Last 5yr")}</td></tr>
         ${prows}
       </table>
-      <div style="color:var(--muted);font-size:0.7rem;margin-top:.3rem;line-height:1.5">${vpL('只问"是真是噪声"、<b>不预测涨跌</b>。<b>历史有·近年消失</b>=典型被套利(如 AAPL 星期效应:全史显著、近5年 p≈0.57 已无)。单股日历效应极易过拟合，故跨票 FDR + 分半 + 近期三关从严。', 'This only asks "real or noise" — <b>it does not predict direction</b>. <b>Once real, faded in recent years</b> = a textbook arbitraged-away pattern (e.g. AAPL\'s day-of-week effect: significant over the full history, gone by recent-5yr p≈0.57). Single-stock calendar effects overfit very easily, so cross-ticker FDR + split-half + recency form three strict gates.')}</div></div>`;
+      <div style="color:var(--muted);font-size:0.7rem;margin-top:.3rem;line-height:1.5">${vpL('只问"是真是噪声"、<b>不预测涨跌</b>。<b>历史有·近年消失</b>=典型被套利(如 AAPL 星期效应:全史显著、近5年 p≈0.57 已无)。单股日历效应极易过拟合，故跨票 FDR + 分半 + 近期三关从严。<b>近期列 n/a</b>=该粒度在5年窗内凑不够样本（月度只有~60个月），<b>结构上测不了、不是还在攒</b>。', 'This only asks "real or noise" — <b>it does not predict direction</b>. <b>Once real, faded in recent years</b> = a textbook arbitraged-away pattern (e.g. AAPL\'s day-of-week effect: significant over the full history, gone by recent-5yr p≈0.57). Single-stock calendar effects overfit very easily, so cross-ticker FDR + split-half + recency form three strict gates.')}</div></div>`;
   }
   const cf = t.conformal;
   let cfHtml = "";

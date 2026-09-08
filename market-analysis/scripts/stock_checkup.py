@@ -126,17 +126,38 @@ def _effect_test(values, labels, k, rng, recent_mask):
     half = len(values) // 2
 
     def _p_dom(v, l):
+        """返回 (p, 主导组下标, 各组计数)。
+
+        **主导组 = 偏离总均值最远的组,不是均值最高的组**(2026-09-07 修·§3 旧记录)。
+        分半稳健要求"两半的主导组一致",而检验统计量是 SSB = Σ n·(组均值-总均值)²
+        —— 它对**低**离群组一样敏感。原来用 argmax(取均值最高的组),遇到"某组特别弱"
+        驱动的效应(九月最弱、周一最差都是这种)时,argmax 指向的是剩下那些组里的噪声,
+        两半自然对不上 → 把真效应误判成不稳。改用 |偏离| 最大的组,才是真正驱动 SSB 的那个。
+        """
         r = perm_test(v, l, make_ssb_stat(k), rng)
         g, c = _group_means(v, l, k)
         gm = np.where(c > 0, g, np.nan)
-        return r["p_value"], (int(np.nanargmax(gm)) if np.isfinite(gm).any() else -1), c
+        if not np.isfinite(gm).any():
+            return r["p_value"], -1, c
+        dev = np.abs(gm - np.nanmean(np.asarray(v, float)))    # 距总均值的绝对偏离
+        return r["p_value"], int(np.nanargmax(dev)), c
 
     p1, d1, c1 = _p_dom(values[:half], labels[:half])
     p2, d2, c2 = _p_dom(values[half:], labels[half:])
     stable = bool(p1 < ALPHA and p2 < ALPHA and d1 == d2 and d1 >= 0)   # 两半都显著且主导组一致
     rp = None
-    if int(recent_mask.sum()) >= 100:                                  # 近期持续性：末段~5年够样本才测
+    recent_n = int(recent_mask.sum())
+    if recent_n >= 100:                                                # 近期持续性：末段~5年够样本才测
         rp = round(perm_test(values[recent_mask], labels[recent_mask], make_ssb_stat(k), rng)["p_value"], 4)
+    # 近期测不了时,**说清是哪一种测不了**(2026-09-07 修·§3 旧记录):
+    #   · structural = 这个粒度在 5 年窗里**永远**凑不够 100 个观测(月度:5×12=60,注定不可测),
+    #     不是"再等等"就会好 —— 它和"历史太短"是两码事,混成一句"近期未测"会让人以为还在攒;
+    #   · short_history = 这只票历史本身不够长,补足数据就能测。
+    # 判据:窗口已被数据填满(全样本 ≥ 窗口长度)却仍不足 → 结构性。
+    recent_block = None
+    if rp is None:
+        full_covers_window = len(values) >= recent_n and recent_n > 0
+        recent_block = "structural" if full_covers_window and recent_n < 100 else "short_history"
     # min_group_n=全样本每组最小n(仍用于 inconclusive 门槛,行为不变)；
     # min_group_n_half=分半置换【实际面对】的半样本组最小n(更诚实——分半门槛看的是这个样本量，展示需一致，不得据此改判)
     half_ns = np.concatenate([c1[c1 > 0], c2[c2 > 0]])
@@ -145,6 +166,7 @@ def _effect_test(values, labels, k, rng, recent_mask):
             "min_group_n_half": min_group_n_half,
             "split_half_p": [round(p1, 4), round(p2, 4)], "split_half_stable": stable,
             "recent_p": rp, "recent_testable": bool(rp is not None),    # 区分"近期没测"与"近期测了没效应"
+            "recent_n": recent_n, "recent_block": recent_block,         # 再区分"永远测不了"与"历史还不够长"
             "recent_significant": bool(rp is not None and rp < ALPHA)}
 
 
