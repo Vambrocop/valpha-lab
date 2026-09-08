@@ -450,3 +450,40 @@ def test_flicker_runs_before_survivors_live_in_pipeline():
     assert fi > 0 and si > 0, "run_all.py 里找不到这两步,写法变了先修这里"
     assert fi < si, (
         "flicker.py 跑在 survivors_live.py 之后了 → 观察台会读到上一轮的陈旧横跳数据")
+
+
+def test_flickering_survivors_sort_after_stable_ones(tmp_path, monkeypatch):
+    """横跳的必须整体排在稳定的后面 —— 排序是"降级展示"的地基。
+
+    2026-09-07 用户拍板:一条一周翻转 18~19 次、当前裁决只稳 3 天的规律,和稳了 54 天的
+    并排放在同一张榜上,视觉上就是在说"它们一样可信"。**不隐藏**(那是藏证据),但要分组。
+    """
+    web = tmp_path / "web"; raw = tmp_path / "raw"
+    web.mkdir(); raw.mkdir()
+    monkeypatch.setattr(sl, "WEB", web); monkeypatch.setattr(sl, "RAW", raw)
+    _price(raw / "SP500_long.csv", list(np.linspace(100, 300, 400)))
+    _price(raw / "BTC.csv", [100.0] * 40)
+    _autodisc(web, [
+        # 横跳的那条历史 edge 更大 —— 若排序只看 edge,它会排到前面去
+        {"family": "regime", "key": "golden_cross_sp500", "verdict": "survive", "recent_p": 0.01,
+         "windows": [{"label": "2000后", "up_pct": 90, "base_pct": 50}]},
+        {"family": "factor", "key": "BTC_mom20_pos", "verdict": "survive", "recent_p": 0.01,
+         "windows": [{"label": "2000后", "up_pct": 66, "base_pct": 62}]},
+    ])
+    _flicker(web, [{"key": "golden_cross_sp500", "boundary_flicker": True, "flips": 18, "stable_days": 1},
+                   {"key": "BTC_mom20_pos", "boundary_flicker": False, "flips": 0, "stable_days": 54}])
+    out = sl.build()
+    keys = [r["key"] for r in out["survivors"]]
+    assert keys[0] == "BTC_mom20_pos", f"稳定的没排在前面(edge 大的横跳项抢了位): {keys}"
+    assert out["n_stable"] == 1 and out["n_flicker"] == 1
+    assert out["n_survivors"] == 2, "分组不能改变总数 —— 横跳的仍然算存活者,只是单独放"
+
+
+def test_frontend_groups_flickering_separately_without_hiding():
+    """前端必须**分组**而不是过滤掉 —— 藏起来就成了藏证据。"""
+    from pathlib import Path
+    html = (Path(__file__).resolve().parents[1] / "web" / "composite.html").read_text(encoding="utf-8")
+    assert "boundary_flicker" in html, "前端没按横跳分组"
+    assert "flick.map(rowHtml)" in html, "横跳的没被渲染出来(疑似被过滤掉了=藏证据)"
+    assert "stable.map(rowHtml)" in html
+    assert "n_stable" in html, "头部没标出'其中仅 N 条裁决稳定',读者仍会以为 N/N 都可信"

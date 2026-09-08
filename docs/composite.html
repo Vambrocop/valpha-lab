@@ -290,9 +290,13 @@ function loadSurvivors(){
       var head='<div style="font-size:.8rem;color:var(--grn);margin-bottom:6px">🔬 '
         +(LANG==='en'?'Survivor watchlist':'存活规律观察台')
         +' · '+(LANG==='en'?('active '+j.n_active+'/'+j.n_survivors):('今日应期 '+j.n_active+'/'+j.n_survivors))
+        +(j.n_flicker?(LANG==='en'?(' · only '+j.n_stable+' verdict-stable'):(' · 其中仅 '+j.n_stable+' 条裁决稳定')):'')
         +asofTxt
         +'</div>';
-      var rows=j.survivors.map(function(s){
+      // 2026-09-07:横跳的沉到单独一组。**不隐藏**(那是藏证据),但一条一周翻转 18~19 次、
+      // 当前裁决只稳 1~4 天的规律,和稳了 54 天的并排放在同一张榜上,视觉上就是在说
+      // "它们一样可信"。分组 + 视觉降级,让读者一眼分得清哪些经得住看。
+      function rowHtml(s){
         var on=s.active===true;
         var dot=on?'<span style="color:var(--grn)">●</span>':'<span style="color:var(--mut)">○</span>';
         var tag=on?(LANG==='en'?'ACTIVE':'应期')
@@ -304,8 +308,30 @@ function loadSurvivors(){
           +'<div style="font-size:.74rem;color:var(--mut);margin-top:2px">'+esc(s.edge_plain||'')+'</div>'
           +(s.stability_note?'<div style="font-size:.7rem;color:var(--amber);margin-top:2px">'+esc(s.stability_note)+'</div>':'')
           +'</div>';
-      }).join('');
-      el.innerHTML=head+rows
+      }
+      var stable=j.survivors.filter(function(s){return !s.boundary_flicker;});
+      var flick =j.survivors.filter(function(s){return  s.boundary_flicker;});
+      var body=stable.map(rowHtml).join('');
+      if(!stable.length){
+        body+='<div style="padding:6px 0;font-size:.78rem;color:var(--mut)">'
+          +(LANG==='en'?'None currently stable — every surviving pattern is flip-flopping at the boundary.'
+                       :'当前没有稳定的 —— 所有存活规律都在边界上反复改判。')+'</div>';
+      }
+      if(flick.length){
+        body+='<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)">'
+          +'<div style="font-size:.76rem;color:var(--amber);font-weight:600">&#x26A0; '
+          +(LANG==='en'
+            ? ('Verdict flip-flopping at the boundary ('+flick.length+') — listed but held apart')
+            : ('裁决在边界横跳（'+flick.length+' 条）—— 列出但单独放'))
+          +'</div>'
+          +'<div style="font-size:.7rem;color:var(--mut);margin:2px 0 4px">'
+          +(LANG==='en'
+            ? 'They pass the cross-family FDR line today and may fail it tomorrow. Not hidden — but do not read them as established.'
+            : '它们今天过跨族 FDR 线、明天可能就不过。不藏起来,但别当成站得住的结论。')
+          +'</div>'
+          +'<div style="opacity:.72">'+flick.map(rowHtml).join('')+'</div></div>';
+      }
+      el.innerHTML=head+body
         +'<div style="font-size:.68rem;color:var(--mut);margin-top:8px;border-top:1px solid var(--border);padding-top:6px">'
         +esc(j.caveat||'')+'</div>';
       el.style.display='';

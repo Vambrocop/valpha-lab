@@ -289,15 +289,25 @@ def build():
             "stability_note": "；".join(notes),
         })
 
-    def _sortkey(x):                                 # 应期在前→休眠→未接入；同类按历史 |edge| 大的在前
+    def _sortkey(x):
+        """稳定的整体排在横跳的前面;组内再按 应期→休眠→未接入,同类按历史 |edge| 大的在前。
+
+        2026-09-07:横跳的不只是加个 ⚠ 就够 —— 一条一周翻转 18~19 次、当前裁决只稳 1 天的
+        规律,和稳了 53 天的并排放在同一张榜上,视觉上就是在说"它们一样可信"。
+        **不隐藏**(那是藏证据),但要沉到单独一组去,让读者一眼分得清哪些经得住看。
+        """
+        flick = 1 if x.get("boundary_flicker") else 0
         act = 0 if x["active"] is True else (1 if x["active"] is False else 2)
         mag = -abs((x["up_pct"] or 0) - (x["base_pct"] or 0))
-        return (act, mag)
+        return (flick, act, mag)
 
     rows.sort(key=_sortkey)
     n_active = sum(1 for x in rows if x["active"] is True)
+    n_flicker = sum(1 for x in rows if x.get("boundary_flicker"))
+    n_stable = len(rows) - n_flicker
     return {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "n_stable": n_stable, "n_flicker": n_flicker,   # 前端据此分组;总数仍是 n_survivors
         "as_of": datetime.date.today().isoformat(),
         "n_survivors": len(rows), "n_active": n_active, "survivors": rows,
         "caveat": "存活规律 = 在预声明候选池里扛过多重检验(BY-FDR)且现代子样本仍显著的历史规律。"
