@@ -100,6 +100,10 @@
 - 全量流水线：`py market-analysis/scripts/run_all.py`（约3分钟）；盘中轻量：加 `--light`
 - 测试：`py -m pytest market-analysis/tests -q`（必须全绿才能提交流水线改动）
 - 前端改动后跑 `py tools/audit_frontend.py` 交叉检查 ID/onclick;交互实测 `py tools/interaction_audit.py [--mobile]`(**桌面和移动端都要跑**)
+- 怀疑账本丢过数据时跑 `py tools/ledger_gap_audit.py` —— 以 **git 历史**为参照,
+  查「曾经出现过的日期现在没了」。现有防线都抓不住这类:门比的是工作树 vs origin
+  (坏版本推上去后两边都缺)、哈希链的 n_rows 在「删 N 加 N」时净额不变。
+  实证:autodiscovery_log 曾被 bot 提交删掉 2026-07-06(104行)与 07-11(148行),2 个月没人发现。
 - 改 CSP / 引新资源后跑 `py tools/csp_audit.py [--mobile]` —— 真浏览器逐页收
   `securitypolicyviolation`,专抓「自己的资源被自己的策略挡掉」(静态读 meta 看不出来)。
   **已知边界(非该工具能改善)**:全站带 `script-src 'unsafe-inline'` → 挡不住 XSS;meta 形式拿不到 `frame-ancestors`。
