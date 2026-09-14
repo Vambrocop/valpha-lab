@@ -1,11 +1,11 @@
 {
-  "generated": "2026-09-14T07:36:26Z",
+  "generated": "2026-09-14T18:23:19Z",
   "anchor_common": "2026-06-26",
   "days_since_anchor": 80,
   "min_oos_n": 30,
   "summary": {
     "in_kb": 0,
-    "queue": 6,
+    "queue": 7,
     "confirmed": 0,
     "overturned": 0,
     "neutral": 0,
@@ -13,6 +13,20 @@
   },
   "members": [],
   "queue": [
+    {
+      "key": "world_cup_year_nasdaq",
+      "candidate_id": "cal_11bf800cae",
+      "family": "calendar",
+      "verdict": "survive",
+      "oos_status": "pending",
+      "anchor_date": "2026-06-26",
+      "oos_n": 0,
+      "oos_p": null,
+      "full_sign": 1,
+      "oos_sign": null,
+      "n_ctrl": null,
+      "note": "锚后样本不足(<1000日)"
+    },
     {
       "key": "september_sp500",
       "candidate_id": "cal_f923f81493",
@@ -52,8 +66,8 @@
       "oos_p": null,
       "full_sign": -1,
       "oos_sign": null,
-      "n_ctrl": 25,
-      "note": "锚后触发组与对照组都不足:触发 1 / 对照 25(各需 ≥30)"
+      "n_ctrl": 52,
+      "note": "锚后触发组不足:触发 1 / 对照 52(各需 ≥30)"
     },
     {
       "key": "golden_cross_sp500",
@@ -62,12 +76,12 @@
       "verdict": "survive",
       "oos_status": "pending",
       "anchor_date": "2026-06-26",
-      "oos_n": 7,
+      "oos_n": 34,
       "oos_p": null,
       "full_sign": 1,
       "oos_sign": null,
       "n_ctrl": 0,
-      "note": "锚后触发组与对照组都不足:触发 7 / 对照 0(各需 ≥30)"
+      "note": "锚后**对照组**不足(条件在锚后几乎一直成立→无可比的反面样本):触发 34 / 对照 0(各需 ≥30)"
     },
     {
       "key": "BTC_mom20_pos",
