@@ -63,12 +63,17 @@ def _oos_seed(cid):
 
 # 注:full_sign 故意取**全样本**方向 = 候选注册时的既定假说方向（不 floor 到锚后）。OOS 检验问的是
 # "锚后数据是否**独立**地仍朝这个既定方向、且显著"——oos_p/oos_sign 才只用锚后数据。别把 full_sign 也 floor。
-def _result(cand, anchor, status, *, oos_n=0, oos_p=None, oos_sign=None, full_sign=None, note=""):
+def _result(cand, anchor, status, *, oos_n=0, n_ctrl=None, oos_p=None, oos_sign=None,
+            full_sign=None, note=""):
     return {"candidate_id": cand["candidate_id"], "key": cand["key"], "family": cand["family"],
             "anchor_date": anchor, "oos_status": status, "oos_n": int(oos_n),
             "oos_p": (None if oos_p is None else round(float(oos_p), 6)),
             "oos_sign": (None if oos_sign is None else int(oos_sign)),
             "full_sign": (None if full_sign is None else int(full_sign)),
+            # n_ctrl:锚后**对照组**样本数。"触发组够了但对照组不够"和"两边都不够"是两种完全
+            # 不同的处境:前者**光等不一定来**(得等条件真的转向),后者攒时间就行。
+            # 只报 oos_n 看不出区别 —— 线上 golden_cross 就是这么被说错的。
+            "n_ctrl": (None if n_ctrl is None else int(n_ctrl)),
             "note": note}
 
 
@@ -94,8 +99,16 @@ def _calendar_oos(cand, anchor):
     vo, lo, _io, stat_o, _d = oos
     labs, counts = np.unique(lo, return_counts=True)
     if len(labs) < 2 or counts.min() < MIN_OOS_N:
-        return _result(cand, anchor, PENDING, oos_n=int(counts.min() if len(counts) else 0),
-                       full_sign=full_sign, note="锚后触发组样本不足")
+        # 同上:说清是哪一组、各多少。只剩单一标签时最该讲明白(那是"锚后从未出现过反面")。
+        if len(labs) < 2:
+            only = int(labs[0]) if len(labs) else None
+            note = f"锚后只出现单一标签(label={only})→ 无对照组,无法比较(需两组各 ≥{MIN_OOS_N})"
+            nmin = int(counts.min()) if len(counts) else 0
+        else:
+            pairs = " / ".join(f"label{int(l)}={int(c)}" for l, c in zip(labs, counts))
+            note = f"锚后分组样本不足:{pairs}(各需 ≥{MIN_OOS_N})"
+            nmin = int(counts.min())
+        return _result(cand, anchor, PENDING, oos_n=nmin, full_sign=full_sign, note=note)
     oos_p = pb.perm_test(vo, lo, stat_o, np.random.default_rng(_oos_seed(cid)))["p_value"]
     if np.isnan(oos_p):
         return _result(cand, anchor, PENDING, oos_n=int(counts.min()),
@@ -115,8 +128,17 @@ def _diff_oos(cand, anchor, arr, *, block):
     mask = np.asarray(idx > pd.Timestamp(anchor))
     sel_o, y_o = sel[mask], y[mask]
     n_trig = int(sel_o.sum())
-    if n_trig < MIN_OOS_N or int((~sel_o).sum()) < MIN_OOS_N:
-        return _result(cand, anchor, PENDING, oos_n=n_trig, full_sign=full_sign, note="锚后触发组样本不足")
+    n_ctrl = int((~sel_o).sum())
+    # 2026-09-14 修:原来两个条件共用一句"锚后触发组样本不足",**会说错话**。
+    # 实证:线上 golden_cross_sp500 的 oos_n=33(≥30)却挂着"触发组样本不足" ——
+    # 真正缺的是**对照组**(锚点后金叉一天没断过,n_ctrl=0,没有"不成立"的日子可比)。
+    # 这个区别决定"等下去有没有用":触发组不足=攒时间就行;对照组不足=**得等条件真的转向**。
+    if n_trig < MIN_OOS_N or n_ctrl < MIN_OOS_N:
+        which = ("触发组与对照组都不足" if n_trig < MIN_OOS_N and n_ctrl < MIN_OOS_N
+                 else ("触发组不足" if n_trig < MIN_OOS_N
+                       else "**对照组**不足(条件在锚后几乎一直成立→无可比的反面样本)"))
+        return _result(cand, anchor, PENDING, oos_n=n_trig, n_ctrl=n_ctrl, full_sign=full_sign,
+                       note=f"锚后{which}:触发 {n_trig} / 对照 {n_ctrl}(各需 ≥{MIN_OOS_N})")
     bb = block_bootstrap_diff(sel_o, y_o, block=block, seed=_oos_seed(cand["candidate_id"]))
     if bb is None:
         return _result(cand, anchor, PENDING, oos_n=n_trig, full_sign=full_sign, note="锚后自助不可算")

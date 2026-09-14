@@ -231,8 +231,14 @@ def test_positioning_oos_dispatch_no_silent_factor_note(monkeypatch):
             "params": {"market": "sp500", "series": "legacy_noncomm_pct_oi", "extreme": "hi", "hold": 20}}
     v = og.oos_verdict(cand, "2008-01-01")
     assert "因子族" not in v["note"]                      # 绝不误落 factor 分支
+    # 2026-09-14:原来断言 note **等于**两个写死的字符串。那把散文钉死了 ——
+    # 门的 pending 措辞后来改成指名道姓("触发 33 / 对照 0"),这条就假红了。
+    # 本测试的真实意图是「别误落 factor 分支」,已由上面的 `"因子族" not in note`
+    # 和下面的 `full_sign is not None`(证明 _diff_oos 真跑了)覆盖。
+    # 这里只守**意图**:pending 的理由必须来自 _diff_oos 的样本/自助路径。
     assert v["oos_status"] in (og.CONFIRMED, og.OVERTURNED, og.NEUTRAL) or (
-        v["oos_status"] == og.PENDING and v["note"] in ("锚后触发组样本不足", "锚后自助不可算"))
+        v["oos_status"] == og.PENDING
+        and ("样本" in v["note"] or "不足" in v["note"] or "自助" in v["note"])), v["note"]
     assert v["full_sign"] is not None                     # _diff_oos 真跑了(全样本方向已算)
 
 

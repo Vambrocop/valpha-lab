@@ -132,7 +132,13 @@ def export_json(verdicts, results, members, today, write=True, path=LOG):
         adj = vmap.get(v["candidate_id"], {})
         item = {"key": v["key"], "candidate_id": v["candidate_id"], "family": v["family"],
                 "verdict": adj.get("verdict"), "oos_status": v["oos_status"], "anchor_date": v["anchor_date"],
-                "oos_n": v["oos_n"], "oos_p": v["oos_p"], "full_sign": v["full_sign"], "oos_sign": v["oos_sign"]}
+                "oos_n": v["oos_n"], "oos_p": v["oos_p"], "full_sign": v["full_sign"],
+                "oos_sign": v["oos_sign"],
+                # 2026-09-14:把门的 n_ctrl 与 note 一起带出来。只报 oos_n 时,
+                # 队列里看到 "oos_n=33 已过门槛 30 却还 pending" 完全无法解释 ——
+                # 真因是**对照组**为 0(条件在锚后一直成立、没有反面样本),
+                # 而那决定"等下去有没有用":对照组不足光等不一定来。
+                "n_ctrl": v.get("n_ctrl"), "note": v.get("note")}
         if adj.get("verdict") == "survive" and v["candidate_id"] not in members:
             queue.append(item)                  # 已过全样本检验、还没进库 → 正等样本外确认
         if v["oos_status"] in (oos_gate.CONFIRMED, oos_gate.OVERTURNED, oos_gate.NEUTRAL):
