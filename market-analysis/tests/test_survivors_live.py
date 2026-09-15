@@ -487,3 +487,48 @@ def test_frontend_groups_flickering_separately_without_hiding():
     assert "flick.map(rowHtml)" in html, "横跳的没被渲染出来(疑似被过滤掉了=藏证据)"
     assert "stable.map(rowHtml)" in html
     assert "n_stable" in html, "头部没标出'其中仅 N 条裁决稳定',读者仍会以为 N/N 都可信"
+
+
+def test_unwired_oos_family_is_flagged_per_row(tmp_path, monkeypatch):
+    """OOS 未接线的族必须**逐条**标出来,不能只靠一句总括免责。
+
+    实证(2026-09-15):观察台 caveat 统一写"前向 OOS(门4)仍在累积、未确认",
+    但 **factor 族的 OOS 至今没接线**(oos_gate 直接返回"因子族 OOS 待接(§10)")——
+    对那一族来说"仍在累积"是**不成立**的。而 7 条存活者里 `BTC_mom20_pos` 正是 factor 族,
+    还是仅有 2 条"裁决真稳"之一,最容易被读成"快确认了"。
+
+    KB 页面本来就在 caveat 里披露了这件事(我一开始以为没披露,是我说重了);
+    缺的是**观察台逐条可见** —— 只说"其中 1 条"读者不知道是哪条。
+    """
+    web = tmp_path / "web"; raw = tmp_path / "raw"
+    web.mkdir(); raw.mkdir()
+    monkeypatch.setattr(sl, "WEB", web); monkeypatch.setattr(sl, "RAW", raw)
+    _price(raw / "SP500_long.csv", list(np.linspace(100, 300, 400)))
+    _price(raw / "BTC.csv", [100.0] * 40)
+    _autodisc(web, [
+        {"family": "factor", "key": "BTC_mom20_pos", "verdict": "survive", "recent_p": 0.01,
+         "windows": [{"label": "2000后", "up_pct": 75, "base_pct": 62}]},
+        {"family": "regime", "key": "golden_cross_sp500", "verdict": "survive", "recent_p": 0.01,
+         "windows": [{"label": "2000后", "up_pct": 66, "base_pct": 63}]},
+    ])
+    out = sl.build()
+    by = {r["key"]: r for r in out["survivors"]}
+    assert by["BTC_mom20_pos"]["oos_wired"] is False, "factor 族没被标成未接线"
+    assert by["golden_cross_sp500"]["oos_wired"] is True, "已接线的族被误标"
+    # caveat 必须把"并不在累积"说出来,而不是让总括的"仍在累积"覆盖到它
+    assert "并不在累积" in out["caveat"], f"caveat 没给未接线的族开豁免: {out['caveat'][-160:]}"
+
+
+def test_caveat_stays_clean_when_all_families_are_wired():
+    """全都接线时别硬塞那句豁免 —— 免责滥发等于没有免责。"""
+    import re
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "survivors_live.py").read_text(encoding="utf-8")
+    assert "if n_unwired else" in src, "豁免句没有按条数做条件,会无脑常驻"
+
+
+def test_frontend_marks_the_unwired_row():
+    from pathlib import Path
+    html = (Path(__file__).resolve().parents[1] / "web" / "composite.html").read_text(encoding="utf-8")
+    assert "oos_wired===false" in html, "前端没逐条标未接线"
+    assert "并不在累积" in html

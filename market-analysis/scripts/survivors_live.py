@@ -284,6 +284,11 @@ def build():
             "up_pct": up, "base_pct": base, "window": wlabel, "dnote": dnote,
             "edge_plain": _edge_plain(desc, up, base, wlabel, dnote),
             "recent_p": rp, "modern": c.get("modern_status"),
+            # 2026-09-15:caveat 原本统一写"前向 OOS(门4)仍在累积",但**对 factor 族不成立**——
+            # 那一族的 OOS 至今没接线(oos_gate 直接返回"因子族 OOS 待接(§10)")。
+            # 实测 7 条存活者里 BTC_mom20_pos 就是 factor 族,而它还是仅有 2 条"真稳"之一。
+            # 一句总括的免责盖不住逐条的事实差异 → 每条自带 oos_wired,让页面能分开说。
+            "oos_wired": c.get("family") != "factor",
             "unstable": unstable,
             "flips": flips, "stable_days": stable_days, "boundary_flicker": flicker,
             "stability_note": "；".join(notes),
@@ -304,6 +309,7 @@ def build():
     rows.sort(key=_sortkey)
     n_active = sum(1 for x in rows if x["active"] is True)
     n_flicker = sum(1 for x in rows if x.get("boundary_flicker"))
+    n_unwired = sum(1 for x in rows if not x.get("oos_wired"))   # OOS 未接线的条数(现仅 factor 族)
     n_stable = len(rows) - n_flicker
     return {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -312,7 +318,10 @@ def build():
         "n_survivors": len(rows), "n_active": n_active, "survivors": rows,
         "caveat": "存活规律 = 在预声明候选池里扛过多重检验(BY-FDR)且现代子样本仍显著的历史规律。"
                   "仅描述性、非预测非荐股；「应期」=今天该条件成立、「休眠」=今天不成立(休眠的别当当前信号)、"
-                  "「未接入」=当前态未监测(仅历史)；前向 OOS(门4)仍在累积、未确认；扛过检验≠下次一定灵；过去≠未来。",
+                  "「未接入」=当前态未监测(仅历史)；前向 OOS(门4)仍在累积、未确认"
+                  + (f"（但其中 {n_unwired} 条属**因子族**：该族 OOS 尚未接线（§10 待办），"
+                     "它的前向样本**并不在累积**，不是快确认了）" if n_unwired else "")
+                  + "；扛过检验≠下次一定灵；过去≠未来。",
     }
 
 

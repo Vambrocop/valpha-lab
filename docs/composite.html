@@ -307,6 +307,13 @@ function loadSurvivors(){
           +'<div style="font-size:.78rem;margin-top:2px">'+esc(s.state)+'</div>'
           +'<div style="font-size:.74rem;color:var(--mut);margin-top:2px">'+esc(s.edge_plain||'')+'</div>'
           +(s.stability_note?'<div style="font-size:.7rem;color:var(--amber);margin-top:2px">'+esc(s.stability_note)+'</div>':'')
+          // 2026-09-15:OOS 未接线的要**逐条**标出来。caveat 里只说"其中 1 条",读者不知道是哪条;
+          // 而这条恰好是仅有 2 条"真稳"之一(BTC 动量),最容易被当成"快确认了"。
+          +(s.oos_wired===false?'<div style="font-size:.7rem;color:var(--mut);margin-top:2px">'
+             +(LANG==='en'
+               ? '&#x1F6A7; Forward OOS is not wired for this family yet (§10 TODO) — its out-of-sample evidence is NOT accumulating.'
+               : '&#x1F6A7; 该族前向 OOS 尚未接线（§10 待办）——它的样本外证据**并不在累积**。')
+             +'</div>':'')
           +'</div>';
       }
       var stable=j.survivors.filter(function(s){return !s.boundary_flicker;});
