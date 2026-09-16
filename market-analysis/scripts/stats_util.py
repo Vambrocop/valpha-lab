@@ -108,6 +108,41 @@ def calibration_drift(fold_probs, fold_outcomes, fold_labels, n_bins=5, gap_tol=
             "verdict": verdict, "note": note}
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# 蒙特卡洛分辨率元数据（SPEC_MC_RESOLUTION Part A · 2026-09-16）
+#
+# 为什么要存**原始计数**而不是 p 或 SE：
+#   线上实测，BY-FDR 拒绝的 14 条里 13 条是「0 次穿越/命中」、第 14 条是「1 次穿越」，
+#   而第 15 条（被判 dead）是「3 次穿越」—— **FDR 的刀口落在 1 次与 3 次之间**。
+#   在这个尺度上，`p=0.0000` 不是"极显著"，是"低于本估计器能报的最小值"：
+#   X=0/B=2000 时双侧 p 的 95% 上界 ≈0.003，与那条 0.0030 的 dead **统计上分不开**。
+#   只存 p 就把这件事抹掉了；只存 SE 更糟 —— X=0 时 SE=0，会**编出一个"精确到 0"的假象**
+#   （同 `oos_gate._sign(nan)` 那次教训：退化情形必须显式说"没有"，不能编个 0）。
+#   存 (X, n) 则一切可导出、与 B/N 天然同源、且退化情形看得见。
+_MC_KINDS = ("bootstrap", "permutation")
+
+
+def mc_meta(x, n, kind):
+    """把原始 MC 计数打包成元数据。x=穿越/命中次数, n=有效重采样/置换次数。
+
+    · bootstrap  ：`p = 2·X/n`（CI 反演双侧），分辨下限 `2/n`。
+      **n 必须是 `n_used`（=B−n_dropped）而不是 B** —— 分母不对，SE 与下限都会偏。
+    · permutation：`p = (X+1)/(n+1)`（已含 +1 平滑），分辨下限 `1/(n+1)`。
+
+    `p_at_floor` 只看 `x == 0`：那是"一次都没穿过/没命中过"，
+    即这个估计器**在当前 n 下无法把它与更小的值区分开**，与 p 被舍入成多少无关。
+    """
+    if kind not in _MC_KINDS:
+        raise ValueError(f"mc_meta: 未知 kind={kind!r}（应为 {_MC_KINDS}）")
+    if x is None or n is None or n <= 0:
+        return None                         # 显式说"没有"，绝不编 0
+    x, n = int(x), int(n)
+    floor = (2.0 / n) if kind == "bootstrap" else (1.0 / (n + 1))
+    return {"mc_x": x, "mc_n": n, "mc_kind": kind,
+            "p_floor": round(floor, 8),
+            "p_at_floor": x == 0}
+
+
 def bh_reject(pvals, q):
     """Benjamini-Hochberg step-up：返回被拒(=显著存活)的索引集合。"""
     m = len(pvals)

@@ -34,6 +34,7 @@ import pandas as pd
 from pathlib import Path
 
 import placebo_test as pb
+import stats_util as su
 from walk_forward import build_feature_df, block_bootstrap_diff
 import factor_pruning as fp
 import candidate_space as cs
@@ -265,20 +266,25 @@ def _calendar(eff, index, cid):
     if arr is None:
         return None
     vals, lab, idx, stat, _directional = arr
-    p = pb.perm_test(vals, lab, stat, np.random.default_rng(_seed_for(cid)))["p_value"]
+    pr = pb.perm_test(vals, lab, stat, np.random.default_rng(_seed_for(cid)))
+    p = pr["p_value"]
     # 现代段(post-2000)：够样本才测；年频(decade/presidential)样本太疏 → 不测 → inconclusive
     rmask = np.asarray(idx >= RECENT_CUT)
-    recent_p, powered = None, False
+    recent_p, powered, mc_recent = None, False, None
     if eff not in ("decade_digit", "presidential_cycle", "term_year3") and int(rmask.sum()) >= 200:
-        rp = pb.perm_test(vals[rmask], lab[rmask], stat,
-                          np.random.default_rng(_seed_for(cid) + [2000]))["p_value"]
+        rpr = pb.perm_test(vals[rmask], lab[rmask], stat,
+                           np.random.default_rng(_seed_for(cid) + [2000]))
+        rp = rpr["p_value"]
         if not np.isnan(rp):                       # P2-a 守卫:现代段单标签组→NaN→留 None/False(防 allow_nan=False 崩盘)
             rmin = int(np.unique(lab[rmask], return_counts=True)[1].min())
             recent_p, powered = rp, rmin >= pb.MIN_GROUP_N
+            mc_recent = su.mc_meta(rpr["mc_x"], rpr["mc_n"], "permutation")
     dirf = eff in _DIR_EFFECTS
     showup = dirf or eff.startswith("monthof_")    # 月扫虽两侧,仍亮"该月上涨率"便于看方向
     return {"p": float(p), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
+            # 原始 MC 计数(Part A):判定所需的信息在 X 里,不在舍入后的 p 里
+            "mc": su.mc_meta(pr["mc_x"], pr["mc_n"], "permutation"), "mc_recent": mc_recent,
             "windows": _cal_windows(idx, vals, lab, stat, cid, eff),
             "decades": (_decade_rows(idx, lab == 1, vals > 0) if showup else []),
             "effect": ("该月上涨率 vs 基率(两侧·机器枚举)" if eff.startswith("monthof_")
@@ -316,14 +322,16 @@ def _rebound(pctl, hold, index, cid):
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
-    recent_p, powered = None, False
+    recent_p, powered, mc_recent = None, False, None
     rsel = sel & rmask
     if int(rsel.sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
         rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
+            mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
+            "mc": su.mc_meta(bb["mc_x"], bb["n_used"], "bootstrap"), "mc_recent": mc_recent,
             "windows": _diff_windows(idx, sel, y, hold),
             "decades": _decade_rows(idx, sel, y > 0),
             "effect": "触发日后持有期上涨率 vs 基率"}
@@ -371,13 +379,15 @@ def _regime(signal, index, cid, hold=20):
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
-    recent_p, powered = None, False
+    recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 100 and int((~sel & rmask).sum()) >= 100:
         rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
+            mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
+            "mc": su.mc_meta(bb["mc_x"], bb["n_used"], "bootstrap"), "mc_recent": mc_recent,
             "windows": _diff_windows(idx, sel, y, hold),
             "decades": _decade_rows(idx, sel, y > 0),
             "effect": "信号成立时未来20日上涨率 vs 基率"}
@@ -504,13 +514,15 @@ def _positioning(market, series, extreme, hold, cid):
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
-    recent_p, powered = None, False
+    recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
         rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=block)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
+            mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
+            "mc": su.mc_meta(bb["mc_x"], bb["n_used"], "bootstrap"), "mc_recent": mc_recent,
             "windows": _diff_windows(idx, sel, y, block),
             "decades": _decade_rows(idx, sel, y > 0),
             "effect": "仓位极端状态下未来持有期上涨率 vs 基率"}
@@ -586,13 +598,15 @@ def _optsent(series, extreme, hold, cid):
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
-    recent_p, powered = None, False
+    recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
         rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
+            mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
+            "mc": su.mc_meta(bb["mc_x"], bb["n_used"], "bootstrap"), "mc_recent": mc_recent,
             "windows": _diff_windows(idx, sel, y, hold),
             "decades": _decade_rows(idx, sel, y > 0),
             "effect": "期权情绪极端状态下未来持有期上涨率 vs 基率"}
@@ -644,15 +658,17 @@ def _streak(kind, n, hold, index, cid):
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
-    recent_p, powered = None, False
+    recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
         rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
+            mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
     effect = ("连跌N天后持有期上涨率 vs 基率" if kind == "streak_down"
               else "连跌后首个上涨日(反转确认)持有期上涨率 vs 基率")
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
+            "mc": su.mc_meta(bb["mc_x"], bb["n_used"], "bootstrap"), "mc_recent": mc_recent,
             "windows": _diff_windows(idx, sel, y, hold),
             "decades": _decade_rows(idx, sel, y > 0),
             "effect": effect}
@@ -739,14 +755,16 @@ def _trailing_extreme(n, hold, side, index, cid):
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
-    recent_p, powered = None, False
+    recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
         rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=block)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
+            mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
     side_lab = "跌了好久(trailing 低分位)" if side == "low" else "涨了好久(trailing 高分位)"
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
+            "mc": su.mc_meta(bb["mc_x"], bb["n_used"], "bootstrap"), "mc_recent": mc_recent,
             "windows": _diff_windows(idx, sel, y, block),
             "decades": _decade_rows(idx, sel, y > 0),
             "effect": f"{side_lab}后持有期上涨率 vs 基率"}
@@ -819,12 +837,16 @@ def _factor_map(factor_cands):
         obs_start = (str(pd.Timestamp(arr[0].min()).date()) if arr is not None else None)
         base = {"windows": wins, "effect": "因子为真时20日上涨率 vs 基率", "obs_start": obs_start}
         if seg is None:
-            out[c["candidate_id"]] = {"p": 1.0, "recent_p": None, "recent_powered": False, **base}
+            # 样本不足 → 进分母但永不存活。**mc 必须是 None 而不是编一个 X=0**：
+            # X=0 的语义是"跑了 n 次、一次都没穿过"，而这里是"根本没跑"，两者不能混（Part A/D10）。
+            out[c["candidate_id"]] = {"p": 1.0, "recent_p": None, "recent_powered": False,
+                                      "mc": None, "mc_recent": None, **base}
         else:
             out[c["candidate_id"]] = {
                 "p": float(seg["full_p"]),
                 "recent_p": (None if seg["recent_p"] is None else float(seg["recent_p"])),
-                "recent_powered": seg["status"] != "现代检验力不足", **base}
+                "recent_powered": seg["status"] != "现代检验力不足",
+                "mc": seg.get("mc"), "mc_recent": seg.get("mc_recent"), **base}
     return out
 
 
@@ -858,7 +880,8 @@ def compute_results(candidates):
             raise ValueError(f"compute_results: 未路由的 family={fam!r}"
                               "(H-1 反退化:新族必须显式接线，不许静默落 p=1.0)")
         if r is None:                       # 数据不足 → 进分母但永不存活(检验力不足)
-            r = {"p": 1.0, "recent_p": None, "recent_powered": False}
+            # mc=None = "根本没跑过统计",区别于 mc_x=0 = "跑了 n 次、一次都没穿过"(Part A/D10)
+            r = {"p": 1.0, "recent_p": None, "recent_powered": False, "mc": None, "mc_recent": None}
         results.append({"candidate_id": c["candidate_id"], "family": fam, "key": c["key"], **r})
     return results
 

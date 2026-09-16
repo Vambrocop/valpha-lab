@@ -314,12 +314,19 @@ def block_bootstrap_diff(sel, y, block=20, B=2000, seed=42):
     diffs = np.array(diffs)
     obs = float(y[sel].mean() - y.mean())
     lo, hi = np.percentile(diffs, [2.5, 97.5])
+    # 原始穿零计数（SPEC_MC_RESOLUTION Part A）：p 只是 2·X/n_used 的舍入结果，
+    # 而 FDR 的刀口落在「X=1 vs X=3」之间 → 判定所需的信息在 X 里，不在舍入后的 p 里。
+    # X=0 尤其要看得见：那是"一次都没穿过"，不是"p 精确等于 0"。
+    x_le, x_ge = int((diffs <= 0).sum()), int((diffs >= 0).sum())
+    mc_x = min(x_le, x_ge)
     p = 2 * min(float((diffs <= 0).mean()), float((diffs >= 0).mean()))
     # n_dropped 透明化(诚实):有 sel.sum()>=10 门槛,抽到零-sel 重采样概率≈e^-10,故通常为 0;
     # 若某用法 n_dropped 占比大,说明该 sel 太稀疏、CI 被非对称截断,需警惕(审计 B1)。
     return {"diff": round(obs * 100, 2),
             "ci95": [round(lo * 100, 2), round(hi * 100, 2)],
             "p_boot": round(min(p, 1.0), 4),
+            # mc_x = 取到 min 那一侧的穿零计数；配 n_used 即可复原/重抽 p（Part A）
+            "mc_x": mc_x,
             "n_dropped": n_dropped, "n_used": int(len(diffs))}
 
 

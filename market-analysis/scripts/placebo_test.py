@@ -82,8 +82,13 @@ def perm_test(values, labels, stat_fn, rng, n_perm=N_PERM):
     for i in range(n_perm):
         null[i] = stat_fn(values, rng.permutation(labels))
     # 单边：真实统计量越大越显著；+1 平滑避免 p=0；-eps 容忍浮点等值
-    p = float((np.sum(null >= real - 1e-15) + 1) / (n_perm + 1))
+    # 原始命中计数（SPEC_MC_RESOLUTION Part A）：p 已含 +1 平滑，下限 1/(n_perm+1)。
+    # X=0 = "一次置换都没超过观测值" → 该估计器在当前 n_perm 下分辨不到更小的值，
+    # 不是"p 精确等于 1/1001"。线上 BY 拒绝的 14 条里有 8 条正是 X=0。
+    mc_x = int(np.sum(null >= real - 1e-15))
+    p = float((mc_x + 1) / (n_perm + 1))
     return {"real": round(real, 10), "p_value": round(p, 6),
+            "mc_x": mc_x, "mc_n": int(n_perm),
             "null_p95": round(float(np.percentile(null, 100 * (1 - ALPHA))), 10)}
 
 

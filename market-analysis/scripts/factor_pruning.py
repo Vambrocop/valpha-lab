@@ -27,6 +27,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 
 from walk_forward import build_feature_df, BINARY_FEATURES, block_bootstrap_diff
+import stats_util as su
 from signal_model import build_design_matrix
 from stats_util import benjamini_hochberg, benjamini_yekutieli   # DSR/反过拟合：多重检验校正(审计S5:统一来源)
 
@@ -130,6 +131,9 @@ def _segment_lens(df, col, assumed, cutoff):
     nfire, nnon = int(rsel.sum()), int((~rsel).sum())
     seg = {"window_years": RECENT_YEARS, "recent_start": str(pd.Timestamp(cutoff).date()),
            "full_diff_pp": full["diff"], "full_p": full["p_boot"],
+           # 原始 MC 计数(SPEC_MC_RESOLUTION Part A)：因子族的 p 直接进跨族 BY-FDR，
+           # 而 FDR 的刀口落在「X=1 vs X=3」之间 → 判定所需的信息在 X 里、不在舍入后的 p 里
+           "mc": su.mc_meta(full["mc_x"], full["n_used"], "bootstrap"), "mc_recent": None,
            "recent_n_obs": int(len(rec)), "recent_n_fires": nfire,
            "recent_diff_pp": None, "recent_p": None}
     # 检验力门(抄 placebo recent_min_group_n：现代段够样本才下结论，否则只标"样本不足")
@@ -138,6 +142,7 @@ def _segment_lens(df, col, assumed, cutoff):
         return seg
     rb = block_bootstrap_diff(rsel, rec["fwd_up_20d"].values, block=HORIZON)
     seg["recent_diff_pp"], seg["recent_p"] = rb["diff"], rb["p_boot"]
+    seg["mc_recent"] = su.mc_meta(rb["mc_x"], rb["n_used"], "bootstrap")
     recent_sig = bool(rb["p_boot"] < 0.10 and np.sign(rb["diff"]) == assumed)
     if recent_sig:
         seg["status"] = "现代仍有效"
