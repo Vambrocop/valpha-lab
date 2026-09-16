@@ -805,17 +805,26 @@ def _factor_map(factor_cands):
     for c in factor_cands:
         col = c["params"]["factor"]
         seg = fp._segment_lens(df, col, fp.ASSUMED_DIR.get(col, +1), cutoff)
-        wins = (_diff_windows(df["date"], (df[col] == 1).values, df["fwd_up_20d"].values.astype(float), fp.HORIZON)
-                if col in df.columns else [])
+        # 2026-09-16 修：此前这里是 `(df[col] == 1).values` 配**全量** df —— 晚出现的因子
+        # 在自己出现前该列是 NaN、`NaN == 1` 为 False → 那些"因子当时还不存在"的日子
+        # 被算进了**对照组**。而 `_diff_windows` 的 base 是 `yy.mean()`(全样本基率)，
+        # BTC 因子的对照组里因此混进 2000–2014 十四年、VIX 期限结构混进 2000–2006 六年半,
+        # 恰好覆盖互联网泡沫 + 金融危机(上涨率低) → **基率被压低、因子边际被放大**。
+        # 实测:BTC_mom20_pos 的公开边际 +12.6pp 实为 +8.7pp;vix_backwardation 符号都翻了。
+        # 注意裁决 p 走的是 `_segment_lens`(它一直有 notna) → 存活判定不受影响,错的是展示值。
+        arr = fp.factor_arrays(df, col)
+        wins = _diff_windows(*arr, fp.HORIZON) if arr is not None else []
+        # N2:窗口掩码现在算在**该因子自己的**可观测 index 上(而非全量 df)。
+        # 今天各列末日一致、无差别;但某列数据卡住时"近1年"窗会随之前移 —— 故把起点发出来。
+        obs_start = (str(pd.Timestamp(arr[0].min()).date()) if arr is not None else None)
+        base = {"windows": wins, "effect": "因子为真时20日上涨率 vs 基率", "obs_start": obs_start}
         if seg is None:
-            out[c["candidate_id"]] = {"p": 1.0, "recent_p": None, "recent_powered": False,
-                                      "windows": wins, "effect": "因子为真时20日上涨率 vs 基率"}
+            out[c["candidate_id"]] = {"p": 1.0, "recent_p": None, "recent_powered": False, **base}
         else:
             out[c["candidate_id"]] = {
                 "p": float(seg["full_p"]),
                 "recent_p": (None if seg["recent_p"] is None else float(seg["recent_p"])),
-                "recent_powered": seg["status"] != "现代检验力不足",
-                "windows": wins, "effect": "因子为真时20日上涨率 vs 基率"}
+                "recent_powered": seg["status"] != "现代检验力不足", **base}
     return out
 
 

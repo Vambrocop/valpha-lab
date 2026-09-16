@@ -121,8 +121,19 @@ def test_world_cup_dormant_in_winter(monkeypatch):
 
 
 def test_diff_family_rest_is_base_rate_not_complement(tmp_path, monkeypatch):
-    """诚实守门(Opus 审#Critical)：factor/regime/rebound 走 _diff_windows，base=全样本基率(非补集)。
-    rest 必须写「全样本基率」，绝不能写补集名(如"200线下方"/"未成立")——否则把全样本数字安到补集头上。"""
+    """诚实守门(Opus 审#Critical)：factor/regime/rebound 走 _diff_windows，base=**基率**而非补集。
+
+    命门(不变)：`_diff_windows` 的 base 是 `yy.mean()`(含触发日的基率)，**不是**补集均值。
+    所以 rest 绝不能写补集名(如"200 日线下方"/"未成立") —— 那会把一个基率数字
+    安到补集头上，读者会以为 63% 描述的是"没触发的那些天"。
+
+    2026-09-16 更新：base 取在**哪个窗口**上按族分开了(同一命门、更细的口径)——
+      · regime/rebound/positioning → 仍是"全样本基率"；
+      · **factor → "同期基率"**：晚出现的因子(BTC 2014-10 起)此前把"它还不存在"的日子
+        算进对照组、压低基率、放大边际(+12.6pp 实为 +8.7pp)。基率既然只取在可观测期上，
+        标签就不能再自称"全样本"。
+    这条测试**不是**被新口径废掉，是跟着把"两族两种说法"一起钉住。
+    """
     web = tmp_path / "web"; web.mkdir()
     monkeypatch.setattr(sl, "WEB", web)
     monkeypatch.setattr(sl, "RAW", tmp_path)
@@ -132,13 +143,21 @@ def test_diff_family_rest_is_base_rate_not_complement(tmp_path, monkeypatch):
         {"family": "regime", "key": "golden_cross_sp500", "verdict": "survive",
          "windows": [{"label": "2000后", "up_pct": 66, "base_pct": 63}]},
         {"family": "factor", "key": "NASDAQ_above_ma200", "verdict": "survive",
+         "obs_start": "2000-10-11",
          "windows": [{"label": "2000后", "up_pct": 66, "base_pct": 62}]},
     ])
     out = sl.build()
+    by = {s["key"]: s for s in out["survivors"]}
     for s in out["survivors"]:
-        assert "全样本基率" in s["edge_plain"]          # base 挂到"全样本基率"
-        assert "200 日线下方" not in s["edge_plain"]     # 绝不把全样本数字标成补集
+        # 不变式：base 绝不被标成补集名
+        assert "200 日线下方" not in s["edge_plain"]
         assert "未成立 63%" not in s["edge_plain"]
+        assert "基率" in s["edge_plain"], "base 没挂在任何'基率'字样上"
+    assert "全样本基率 63%" in by["golden_cross_sp500"]["edge_plain"]
+    f = by["NASDAQ_above_ma200"]["edge_plain"]
+    assert "同期基率 62%" in f, f"因子族仍自称全样本基率: {f}"
+    assert "全样本" not in f, f"因子族的基率只取在可观测期上,不该写'全样本': {f}"
+    assert "2000-10 起" in f, f"窗口标签没换成真实可观测起点: {f}"
 
 
 def test_rebound_active_on_crash_day(tmp_path, monkeypatch):

@@ -79,6 +79,37 @@ def _purged_train(df, train_end, test_start_pos, sorted_dates):
     return train[train["date"] < cutoff_date]
 
 
+def factor_obs(df, col):
+    """因子 col 的**可观测窗口** —— 单一真相源，凡是要算该因子基率的地方都必须过这里。
+
+    命门：晚出现的因子(BTC 2014-10 起 / VIX 期限结构 2006-07 起 / MA200 有 200 日暖机)
+    在自己出现之前该列是 NaN，而 `df[col] == 1` 对 NaN 求值为 **False**
+    → 那些"因子当时还不存在"的日子会被算进**对照组**、压低基率、**放大因子边际**。
+    实测(2026-09-16)：BTC 三因子的基率被压 62% vs 真实 66%，
+    `BTC_mom20_pos` 的边际因此从 +8.7pp 被说成 +12.6pp(夸大 45%)，而它就在公开观察台上。
+
+    此前项目里有三份拷贝的 `notna` 过滤 + 两处漏了，正是"同一效应两套口径"。
+    抽成函数不是为了少打字，是为了让漏掉这一步在物理上更难发生。
+    """
+    return df[df[col].notna()]
+
+
+def factor_arrays(df, col, *, min_obs=50, min_fires=30):
+    """因子族的 (idx, sel, y) 三元组 —— 与其余各族 `_xxx_arrays` 同形，供展示窗与门4 共用。
+
+    样本不足(与 `_segment_lens` 同一道门)或列不存在 → 返回 **None**，
+    **绝不**返回空数组：空数组会让 `mean()` 出 NaN，下游 `_sign(nan)` 曾因此
+    编出一个"看跌"方向号(见 oos_gate._sign 注释)。退化情形必须显式说"没有"。
+    """
+    if col not in df.columns:
+        return None
+    obs = factor_obs(df, col)
+    sel = (obs[col] == 1).values
+    if len(obs) < min_obs or int(sel.sum()) < min_fires:
+        return None
+    return (obs["date"], sel, obs["fwd_up_20d"].values.astype(float))
+
+
 def _segment_lens(df, col, assumed, cutoff):
     """描述性「时间衰减透镜」——把 placebo 的「全样本 vs 现代段」口径推广到二值因子：
     对因子的 raw edge「触发胜率 − 基率」在 全观测段 vs 最近段(cutoff 后) 各算一次(块自助)。
@@ -87,7 +118,7 @@ def _segment_lens(df, col, assumed, cutoff):
 
     三态：现代仍有效 / 现代已淡(全段有边际、现代测不到→很可能被套利) / 现代检验力不足。
     """
-    obs = df[df[col].notna()]
+    obs = factor_obs(df, col)                    # 单一真相源(别再就地写 notna，会漂)
     sel = (obs[col] == 1).values
     if len(obs) < 50 or int(sel.sum()) < 30:
         return None
@@ -132,12 +163,17 @@ def factor_scorecard(df):
         if len(train) < 200:
             continue
         test_pools.append(test)
-        base = test["fwd_up_20d"].mean()
         for col, _ in BINARY_FEATURES:
-            if col in test.columns:
-                fire = test[test[col] == 1]["fwd_up_20d"]
-                if len(fire) >= 10:
-                    per_fold_sign[col].append(np.sign(fire.mean() - base))
+            if col not in test.columns:
+                continue
+            # 2026-09-16：这里原本用 `base = test["fwd_up_20d"].mean()`(**整折**基率)去和
+            # `test[test[col]==1]` 比。fire 侧是对的，但 base 侧把"因子当时还不存在"的
+            # NaN 行算进了对照 → 逐折符号可能反，而它喂 sign_stable → 喂 factor_audit
+            # 公开发布的 verdict。基率必须取在**该因子自己的可观测折**上。
+            fold_obs = factor_obs(test, col)
+            fire = fold_obs[fold_obs[col] == 1]["fwd_up_20d"]
+            if len(fire) >= 10 and len(fold_obs):
+                per_fold_sign[col].append(np.sign(fire.mean() - fold_obs["fwd_up_20d"].mean()))
 
     pool = pd.concat(test_pools, ignore_index=True).sort_values("date").reset_index(drop=True)
     holdout = df[df["year"] >= HOLDOUT_START]
@@ -149,7 +185,7 @@ def factor_scorecard(df):
         if col not in pool.columns:
             continue
         # 只在因子可观测的行上算（否则 BTC 等晚出现的因子，pre-2015 NaN 行会污染基率）
-        obs = pool[pool[col].notna()]
+        obs = factor_obs(pool, col)              # 单一真相源
         if len(obs) < 50 or (obs[col] == 1).sum() < 30:
             continue
         sel = (obs[col] == 1).values
@@ -163,7 +199,7 @@ def factor_scorecard(df):
 
         hold_diff = None
         if len(holdout):
-            hobs = holdout[holdout[col].notna()]
+            hobs = factor_obs(holdout, col)      # 单一真相源
             hsel = hobs[col] == 1
             if hsel.sum() >= 10 and len(hobs):
                 hbase = float(hobs["fwd_up_20d"].mean())
@@ -189,6 +225,11 @@ def factor_scorecard(df):
         rows.append({
             "factor": col, "name": name, "assumed_dir": assumed,
             "fires_pct": round(float(sel.mean()) * 100, 1), "n_obs": int(len(obs)),
+            # dev_diff_pp 是"触发胜率 − **该因子可观测期**基率"，而页面上那个 base_rate_dev
+            # 是**全池**单一基率 → 两个数对不上(读者没法把 diff 还原)。把本因子自己的基率
+            # 和可观测起点一并发出，口径才自洽；晚出现的因子(BTC 2014-10)差得最多。
+            "dev_base_pct": round(float(obs["fwd_up_20d"].mean()) * 100, 2),
+            "obs_start": str(pd.Timestamp(factor_obs(df, col)["date"].min()).date()),
             "dev_diff_pp": diff, "dev_ci95": bb["ci95"], "dev_p_boot": p_boot,
             "sign_stable": sign_stable, "n_folds_signed": n_signs,
             "sign_agree_frac": round(agree_frac, 2), "holdout_diff_pp": hold_diff,

@@ -163,18 +163,23 @@ def _world_cup_state():
 #     · 日历族(_cal_windows): up=label==1 组、base=label==0 **补集** → rest 写真实补集名(如"九月")。
 #     · 反弹/因子/体制族(_diff_windows): up=触发组、base=`yy.mean()` **全样本基率**(含触发日,非补集!)
 #        → rest 必须写"全样本基率",**绝不能**写补集名(如"200线下方"),否则把全样本数字安到补集头上。
+#     · 2026-09-16 补:**因子族**的 base 现在取在「该因子自己的可观测期」上
+#        (晚出现的因子此前把"它还不存在"的日子算进了对照组,压低基率、放大边际 —— 实测
+#        BTC_mom20_pos 的 +12.6pp 实为 +8.7pp)。所以因子族 rest 写"**同期**基率"而非"全样本基率",
+#        窗口标签也改成真实可观测起点(见 _pick_window):
+#        对一只 2014-10 才可观测的因子,"2000后"这个标签本身就在虚报窗口长度。
 _DESCRIPTORS = {
     ("regime", "golden_cross_sp500"): dict(     # _diff_windows → base=全样本基率
         name="标普金叉（50 日线上穿 200 日线）", trigger="标普金叉成立时", rest="全样本基率",
         horizon="标普未来 20 日", state=_golden_cross_state),
-    ("factor", "BTC_mom20_pos"): dict(          # _diff_windows → base=全样本基率
-        name="BTC 20 日动量为正（风险偏好代理）", trigger="BTC 动量 >+5% 时", rest="全样本基率",
+    ("factor", "BTC_mom20_pos"): dict(          # _diff_windows → base=**该因子可观测期**基率
+        name="BTC 20 日动量为正（风险偏好代理）", trigger="BTC 动量 >+5% 时", rest="同期基率",
         horizon="纳指未来 20 日", state=_btc_mom_pos_state),
-    ("factor", "BTC_mom20_neg"): dict(          # _diff_windows → base=全样本基率
-        name="BTC 20 日动量为负（风险偏好走弱）", trigger="BTC 动量 <-5% 时", rest="全样本基率",
+    ("factor", "BTC_mom20_neg"): dict(          # _diff_windows → base=**该因子可观测期**基率
+        name="BTC 20 日动量为负（风险偏好走弱）", trigger="BTC 动量 <-5% 时", rest="同期基率",
         horizon="纳指未来 20 日", state=_btc_mom_neg_state),
-    ("factor", "NASDAQ_above_ma200"): dict(     # _diff_windows → base=全样本基率
-        name="纳指在 200 日线上方（趋势）", trigger="纳指收盘 >200 日线时", rest="全样本基率",
+    ("factor", "NASDAQ_above_ma200"): dict(     # _diff_windows → base=**该因子可观测期**基率
+        name="纳指在 200 日线上方（趋势）", trigger="纳指收盘 >200 日线时", rest="同期基率",
         horizon="纳指未来 20 日", state=_nasdaq_ma200_state),
     ("rebound", "p5_h1_nasdaq"): dict(          # _diff_windows → base=全样本基率
         name="纳指大跌后的次日走向", trigger="纳指跌进历史最低 5% 的大跌日", rest="全样本基率",
@@ -195,11 +200,20 @@ _DESCRIPTORS = {
 
 
 def _pick_window(cand):
-    """取历史 edge 窗口：优先'2000后'(现代代表)，回退'完整'。返回 (up, base, label)。"""
+    """取历史 edge 窗口：优先'2000后'(现代代表)，回退'完整'。返回 (up, base, label)。
+
+    2026-09-16：**因子族**的标签改用该因子自己的可观测起点。
+    "2000后"对一只 2014-10 才可观测的因子(BTC 系列)暗示 26 年数据、实际 12 年；
+    而 base 这次已修成"可观测期基率"(见 autodiscovery._factor_map) —— 数字修对了、
+    标签还写"2000后"的话等于只修一半：读者会拿一个 12 年的边际当 26 年的证据。
+    """
     wins = {w.get("label"): w for w in cand.get("windows", [])}
+    obs_start = cand.get("obs_start")
     for lab in ("2000后", "完整"):
         w = wins.get(lab)
         if w and w.get("up_pct") is not None and w.get("base_pct") is not None:
+            if cand.get("family") == "factor" and obs_start:
+                lab = f"{str(obs_start)[:7]} 起"
             return w["up_pct"], w["base_pct"], lab
     return None, None, None
 
