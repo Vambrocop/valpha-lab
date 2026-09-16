@@ -3,6 +3,8 @@
 实盘今日全候选锚=注册日 → 锚后空 → 全 pending（测不到 confirmed/overturned）。故这里**合成锚在过去 +
 锚后数据成立/翻盘/不足**的场景，把每条裁决路径真正跑出来断言。命门复用项目生产模块、不复制逻辑。
 """
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -38,6 +40,30 @@ def test_classify_omnibus_and_pending():
 def test_sign():
     assert og._sign(0.5) == 1 and og._sign(-0.3) == -1
     assert og._sign(0.0) == 0 and og._sign(1e-15) == 0 and og._sign(None) == 0
+
+
+def test_sign_never_fabricates_a_direction_from_nan():
+    """NaN 必须归 0，**绝不能**落 -1（2026-09-16 独立审规格发现的真 bug）。
+
+    机制：空/退化观测窗 → `mean()` 出 NaN → 旧写法 `abs(nan)<1e-12` 为 False、
+    `nan>0` 也为 False → 静默返回 -1 = **给没有数据的候选编出一个"看跌"方向号**，
+    而 full_sign 会进公开 JSON、并被 `_classify` 当既定假说方向判 confirmed/overturned。
+    旧 test_sign 只测了 None→0，这条路径没人守。
+    """
+    assert og._sign(float("nan")) == 0, "NaN 被判成了方向号 —— 会编出一个不存在的方向"
+    assert og._sign(np.nan) == 0
+    assert og._sign(np.float64("nan")) == 0
+    # 空数组的 mean 正是现实里 NaN 的来源，端到端确认一遍（numpy 会对空切片告警，非本测试关注点）
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        empty_mean_diff = np.array([]).mean() - np.array([]).mean()
+    assert og._sign(empty_mean_diff) == 0
+
+
+def test_classify_treats_no_direction_as_omnibus_not_as_bearish():
+    """方向号为 0 时不该被当成 -1：与 full_sign 比较不能把"无方向"误判成反号翻盘。"""
+    # 无方向(0) vs 无方向(0) 且 p 小 → 不该因为"符号不等"而 overturned
+    assert og._classify(0, 0, 0.04) == og.CONFIRMED
 
 
 # ════════════════════════════════════════════════════════════════════════════

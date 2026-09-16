@@ -34,7 +34,21 @@ MIN_OOS_N = pb.MIN_GROUP_N                   # 锚后触发组 < 此 → 未到�
 
 
 def _sign(x):
-    return 0 if (x is None or abs(float(x)) < 1e-12) else (1 if x > 0 else -1)
+    """方向号：+1 / -1 / 0(无方向)。None、**NaN**、近零都归 0。
+
+    NaN 必须显式归 0(2026-09-16 独立审规格发现)：空或退化的观测窗会让 `mean()` 出 NaN，
+    而旧写法 `0 if (x is None or abs(float(x)) < 1e-12) else (1 if x > 0 else -1)` 里
+    `abs(nan) < 1e-12` 为 False、`nan > 0` 也为 False → **静默落 -1**，
+    等于给一个根本没有数据的候选**编出一个"看跌"方向号**，并且会随 `full_sign`
+    进公开 JSON、再被 `_classify` 当成既定假说方向去判 confirmed/overturned。
+    本机 `vix_backwardation` 的可观测行数=0(VIX3M 历史损坏)时就会命中这条路径。
+    """
+    if x is None:
+        return 0
+    x = float(x)
+    if x != x or abs(x) < 1e-12:      # x != x 即 NaN
+        return 0
+    return 1 if x > 0 else -1
 
 
 def _classify(full_sign, oos_sign, oos_p):
