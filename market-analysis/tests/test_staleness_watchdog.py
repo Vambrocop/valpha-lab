@@ -29,6 +29,10 @@ def fake_web(tmp_path, monkeypatch):
     ]
     files["insider"] = "insider.json"
     monkeypatch.setattr(wd, "CHECKS", checks)
+    # WEB 也必须指到 tmp:find_shrunk() 读 WEB/"data_health.json"。
+    # 不 patch 的话它读**真实**的 market-analysis/web/,而往那儿写 fixture 会覆盖已发布产物
+    # —— 2026-09-16 我就这么干过一次(前端读的 data_health 被改成 1 条源的假数据)。
+    monkeypatch.setattr(wd, "WEB", web)
     state = tmp_path / "watchdog_state.json"
     monkeypatch.setattr(wd, "STATE", state)
 
@@ -138,3 +142,78 @@ def test_every_failsoft_product_is_watched():
         + "\n  ".join(f"{k}  ←  {', '.join(v)}" for k, v in missing.items())
         + "\n修法:加进 staleness_watchdog.CHECKS;确有理由不盯就写进本测试的 EXEMPT 并注明原因。"
     )
+
+
+# ── 历史塌缩告警（2026-09-16 事故之后补）────────────────────────────
+# 为什么单开一组：塌缩与"超期"是**两种不同的坏**。超期=文件不更新(年龄检查能抓)；
+# 塌缩=文件很新、内容没了 → 上面那套年龄检查**一个都不会响**。
+# 实测事故：^VIX3M 的取数回退把 6717 行缓存覆盖成 1 行，data_health 报
+# "rows: 1, status: ok"，时间戳全新。取数侧的闸只让前端显示 ⚠；
+# 维护者侧此前没有任何出口 —— 而本项目最贵的教训就是"静默两个月"。
+def _health(web, sources):
+    (web / "data_health.json").write_text(
+        json.dumps({"sources": sources, "summary": {"total": len(sources)}}, ensure_ascii=False),
+        encoding="utf-8")
+
+
+def test_no_health_file_is_silent(fake_web):
+    """缺 data_health 不在这里报(产物缺失由年龄检查兜底) —— 免得同一件事报两遍。"""
+    assert wd.find_shrunk() == []
+
+
+def test_healthy_sources_no_shrink_alert(fake_web):
+    _health(wd.WEB, {"asset:VIX": {"name": "VIX", "rows": 6717, "status": "ok",
+                                   "shrink_blocked": None}})
+    assert wd.find_shrunk() == []
+
+
+def test_blocked_shrink_is_alerted_with_both_counts(fake_web):
+    """告警里必须带"取到多少 / 保留多少"两个数 —— 只说"塌缩了"没法判断严重程度。"""
+    _health(wd.WEB, {"asset:VIX3M": {"name": "VIX3M", "rows": 6717, "status": "shrunk",
+                                     "shrink_blocked": [1, 6717]}})
+    got = wd.find_shrunk()
+    assert len(got) == 1
+    key, label, age, detail, kind = got[0]
+    assert kind == "shrunk" and age is None
+    assert "VIX3M" in label
+    assert "1" in detail and "6717" in detail
+    assert key == "shrunk:asset:VIX3M", "key 要按源区分,否则多个源塌缩会互相顶掉去重状态"
+
+
+def test_shrink_alert_wording_is_not_stuck(fake_web, monkeypatch):
+    """塌缩项 age 恒为 None，若 shrunk 分支没排在 `age is None` 之前，
+    会被误报成"缺失或时间戳不可读" —— 那会把排查方向带到"流水线卡住"上去，全错。"""
+    monkeypatch.setattr(wd, "CHECKS", [])          # 隔离:只看塌缩这一路
+    _health(wd.WEB, {"asset:VIX3M": {"name": "VIX3M", "rows": 6717, "status": "shrunk",
+                                     "shrink_blocked": [1, 6717]}})
+    sent = {}
+    import notify_telegram
+    monkeypatch.setattr(notify_telegram, "send", lambda msg, tag=None: sent.setdefault("msg", msg) or True)
+    wd.run(NOW, state_path=fake_web["state"])        # state 只落 tmp,绝不在 data/ 留文件
+    msg = sent.get("msg", "")
+    assert "缺失或时间戳不可读" not in msg, "塌缩被误报成缺失 —— 排查方向会被带错"
+    assert "取数在坏" in msg, "表头没跟'数据卡住'分开"
+    assert "6717" in msg and "1" in msg
+
+
+def test_run_combines_stale_and_shrunk(fake_web, monkeypatch):
+    """两类告警走同一套去重/Telegram，别只接一路。"""
+    _health(wd.WEB, {"asset:VIX3M": {"name": "VIX3M", "rows": 6717, "status": "shrunk",
+                                     "shrink_blocked": [1, 6717]}})
+    kinds = {s[4] for s in (wd.find_stale(NOW) + wd.find_shrunk())}
+    assert "shrunk" in kinds
+
+
+def test_fixture_isolates_web_dir(fake_web, tmp_path):
+    """守门:fixture 必须把 wd.WEB 指到 tmp。
+
+    2026-09-16 实测事故(我自己犯的):新加的塌缩测试用 `_health(wd.WEB, ...)` 写 fixture,
+    而当时 fixture 只 patch 了 CHECKS/STATE、**没 patch WEB** →
+    直接把真实的 `market-analysis/web/data_health.json`(前端读的已发布产物)
+    覆盖成了一条源的假数据。差一点提交出去。
+    这条钉住隔离,以后往 wd.WEB 写东西的测试都落在 tmp 里。
+    """
+    assert tmp_path in wd.WEB.parents or wd.WEB.parent == tmp_path, (
+        f"wd.WEB 没被隔离到 tmp(现为 {wd.WEB}) —— 写 fixture 会污染真实 web/ 产物")
+    assert wd.STATE.parent == tmp_path or tmp_path in wd.STATE.parents, (
+        f"wd.STATE 没被隔离到 tmp(现为 {wd.STATE}) —— 会在 data/ 留残留文件")

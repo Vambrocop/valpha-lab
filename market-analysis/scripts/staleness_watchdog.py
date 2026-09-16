@@ -112,6 +112,34 @@ def find_stale(now=None):
     return stale
 
 
+# ── 历史塌缩告警（2026-09-16 事故之后补）────────────────────────────
+# 与上面的"超期"是**两种不同的坏**：超期 = 文件不更新；塌缩 = 文件很新、但**内容没了**。
+# 实测事故：`^VIX3M` 的取数回退把 6717 行缓存覆盖成 1 行，data_health 当时写的是
+# `{"rows": 1, "status": "ok"}` —— 时间戳全新，本文件上面那套年龄检查**一个都不会响**。
+# 取数侧已加防塌缩闸（fetch_data._save_series：保留缓存不覆盖 + status="shrunk"），
+# 但那只让**前端**显示 ⚠；维护者侧没有任何出口。而本项目最贵的教训恰恰是"静默两个月"
+# （autodiscovery_log 被 bot 提交删掉 104/148 行，两个月没人发现）→ 塌缩必须走 Telegram。
+def find_shrunk():
+    """data_health 里被防塌缩闸拦下的取数源 → [(key, 人话名, None, 详情, "shrunk")]。
+
+    fail-soft：读不到 data_health 就返回空（产物缺失由上面的年龄检查兜底，这里不重复报）。
+    """
+    try:
+        dh = json.loads((WEB / "data_health.json").read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    out = []
+    for skey, src in sorted((dh.get("sources") or {}).items()):
+        blocked = src.get("shrink_blocked")
+        if not blocked:
+            continue
+        got, kept = (list(blocked) + [None, None])[:2]
+        out.append((f"shrunk:{skey}", f"{src.get('name', skey)} 取数塌缩", None,
+                    f"本轮只取到 {got} 行，已保留缓存 {kept} 行（数据保住了，但取数在坏）",
+                    "shrunk"))
+    return out
+
+
 def _load_state():
     try:
         return json.loads(STATE.read_text(encoding="utf-8"))
@@ -132,7 +160,8 @@ def _over_snooze(last_alert, now):
 
 def run(now=None, state_path=STATE):
     now = now or datetime.datetime.now(datetime.timezone.utc)
-    stale = find_stale(now)
+    # 超期(年龄) + 塌缩(内容)两类合并走同一套去重/免打扰/Telegram
+    stale = find_stale(now) + find_shrunk()
     if not stale:
         print("[看门狗] 全部新鲜,无告警")
         return []
@@ -146,17 +175,24 @@ def run(now=None, state_path=STATE):
         return []
 
     # 只有 known-limited 源超期 → 是"该本地补"的提醒而非事故;有 live 源超期 → 真卡住
-    any_live = any(s[4] != "known-limited" for s in fresh_alerts)
-    lines = ["🐶 Valpha 看门狗:数据卡住了" if any_live else "🐶 Valpha 看门狗:SEC 源该本地补了"]
+    any_shrunk = any(s[4] == "shrunk" for s in fresh_alerts)
+    any_live = any(s[4] not in ("known-limited", "shrunk") for s in fresh_alerts)
+    # 塌缩不是"卡住"(文件很新),措辞要分开,否则排查方向会被带错
+    lines = [("🐶 Valpha 看门狗:数据卡住了" if any_live
+              else "🐶 Valpha 看门狗:取数在坏(历史差点被覆盖)" if any_shrunk
+              else "🐶 Valpha 看门狗:SEC 源该本地补了")]
     for _, label, age, ts, kind in fresh_alerts:
-        if age is None:
+        if kind == "shrunk":            # 必须在 age is None 之前:塌缩项 age 恒 None,会被误报成"缺失"
+            lines.append(f"· {label}:{ts}")
+        elif age is None:
             lines.append(f"· {label}:缺失或时间戳不可读(视同卡住)")
         elif kind == "known-limited":
             lines.append(f"· {label}:已 {age} 天未刷新 · SEC 限 CI 抓取,本地跑 run_all 即补(最后 {ts})")
         else:
             lines.append(f"· {label}:已 {age} 天未更新(最后 {ts})")
     lines.append("")
-    lines.append("排查:live 类看 Actions 是否红(HANDOVER §4);known-limited 类=本地跑 run_all 补齐。")
+    lines.append("排查:live 类看 Actions 是否红(HANDOVER §4);known-limited 类=本地跑 run_all 补齐;"
+                 "塌缩类=查该 ticker 在 Yahoo 是否改名/下架(闸已保住缓存,不急,但会一直报到取数修好)。")
 
     sent = False
     try:
