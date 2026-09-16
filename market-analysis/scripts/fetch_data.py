@@ -41,10 +41,52 @@ def _stale_after(name, kind):
     return 6
 
 
+# ── 防历史塌缩（2026-09-16 实测事故）──────────────────────────────────
+# ^VIX3M 的 yf.download 返回空 → 落到 Ticker.history("3mo") 兜底 → 该兜底**立刻写缓存**，
+# 把 6717 行覆盖成 1 行。而 _record_health 只查 rows==0 和日期新鲜度，于是写出
+# "rows: 1, status: ok" —— 历史静默消失、看板报"健康"，vix_backwardation 的 556 个观测全丢。
+# data/raw 在 .gitignore 里，git 拿不回来 → 必须在**写入前**拦，不能靠事后发现。
+# 语义：价格历史只增不减，任何显著缩短都是取数异常，**保留缓存、不覆盖**（自愈），并报 shrunk。
+SHRINK_KEEP_RATIO = 0.90    # 新序列不足缓存的 90% = 塌缩（留 10% 容忍供应商回修）
+SHRINK_MIN_CACHE  = 100     # 缓存本身很短（新 ticker 刚开始积累）时不设防，免得挡住正常增长
+
+
+def _load_cached(name):
+    """读已有的 per-name 缓存 CSV；读不到/空则 None。"""
+    cache = RAW_DIR / f"{name}.csv"
+    if not cache.exists():
+        return None
+    try:
+        s = pd.read_csv(cache, index_col=0, parse_dates=True).squeeze("columns").dropna()
+        return s.rename(name) if len(s) else None
+    except Exception:
+        return None
+
+
+def _save_series(name, s):
+    """写 per-name 缓存，但**拒绝**用明显更短的新序列替换更长的已有历史。
+
+    返回实际该采用的序列（被拦时返回缓存本身，让它照常进 combined_prices，
+    而不是把塌缩后的短序列传下去）。
+    """
+    cached = _load_cached(name)
+    if (cached is not None and len(cached) >= SHRINK_MIN_CACHE
+            and len(s) < len(cached) * SHRINK_KEEP_RATIO):
+        print(f"  ⚠ {name} 新取 {len(s)} 行 < 缓存 {len(cached)} 行的 "
+              f"{SHRINK_KEEP_RATIO:.0%} → **保留缓存、不覆盖**（防历史塌缩）")
+        cached.attrs["health_source"] = s.attrs.get("health_source", "live")
+        cached.attrs["shrink_blocked"] = [int(len(s)), int(len(cached))]
+        return cached
+    s.to_csv(RAW_DIR / f"{name}.csv")
+    return s
+
+
 def _record_health(name, kind, provider, ticker, source, series=None, error=None):
     age = None
     last_date = None
     rows = 0
+    # attrs 要在 dropna 复制**之前**读：pd.Series(...) 会新建对象、attrs 不保证带过来
+    shrink = (getattr(series, "attrs", {}) or {}).get("shrink_blocked")
     if series is not None:
         s = pd.Series(series).dropna()
         rows = int(len(s))
@@ -55,6 +97,9 @@ def _record_health(name, kind, provider, ticker, source, series=None, error=None
     status = "ok"
     if source == "missing" or rows == 0:
         status = "missing"
+    elif shrink:
+        # 数据本身是好的（保留了缓存），但**这一轮取数塌缩了** → 必须可见，否则下次就悄悄过去了
+        status = "shrunk"
     elif age is not None and age > stale_after:
         status = "stale"
     elif source in {"cache", "cache_after_error"}:
@@ -71,6 +116,8 @@ def _record_health(name, kind, provider, ticker, source, series=None, error=None
         "last_date": last_date,
         "age_days": age,
         "stale_after_days": stale_after,
+        # 被防塌缩闸拦下时记 [本轮取到的行数, 保留的缓存行数]，便于事后查是哪一天开始取数坏的
+        "shrink_blocked": shrink,
         "error": str(error)[:300] if error else None,
     }
 
@@ -78,11 +125,14 @@ def _record_health(name, kind, provider, ticker, source, series=None, error=None
 def _write_health():
     src = HEALTH["sources"]
     counts = {k: sum(1 for v in src.values() if v.get("status") == k)
-              for k in ["ok", "cache", "stale", "missing"]}
+              for k in ["ok", "cache", "stale", "missing", "shrunk"]}
     HEALTH["summary"] = {
         "total": len(src),
         **counts,
+        # shrunk 也要把 freshness 打成非 ok —— 前端 renderFreshness 只看 freshness，
+        # 不这样写的话"取数塌缩但保住了缓存"会显示成绿色"新鲜 ✓"，等于白拦。
         "freshness": "ok" if counts["stale"] == 0 and counts["missing"] == 0
+        and counts["shrunk"] == 0
         else ("degraded" if counts["missing"] == 0 else "incomplete"),
     }
     for out in [RAW_DIR / "data_health.json", WEB_DIR / "data_health.json"]:
@@ -181,9 +231,10 @@ def _get_close(ticker, name):
                 s = hist["Close"].dropna().rename(name)
                 s.index = pd.to_datetime(s.index.tz_localize(None).date)
                 print(f"    （Ticker.history 回退，{len(s)} 行）")
-                s.to_csv(RAW_DIR / f"{name}.csv")     # 写缓存，与主路径同款兜底
                 s.attrs["health_source"] = "history_fallback"
-                return s
+                # 这条路径只能拿到 period="3mo" 的短序列 —— 2026-09-16 的 VIX3M 事故就是
+                # 它把 6717 行缓存覆盖成 1 行。必须过防塌缩闸，绝不裸写。
+                return _save_series(name, s)
         except Exception:
             pass
         return _cache_fallback(name)   # 限流/ticker变更/宕机 → 回退缓存而非掉列
@@ -218,8 +269,8 @@ def fetch_yahoo():
         print(f"  下载 {name} ({ticker})...")
         s = _get_close(ticker, name)
         if s is not None:
+            s = _save_series(name, s)      # 先过防塌缩闸，再入 frames→combined_prices
             frames[name] = s
-            s.to_csv(RAW_DIR / f"{name}.csv")
             _record_health(name, "asset", "Yahoo Finance", ticker,
                            s.attrs.get("health_source", "live"), s)
             print(f"    → {len(s)} 行")
@@ -268,8 +319,8 @@ def fetch_fred():
             s = _via_api(series) if api_key else _via_graph(series)
             s = s[s.index >= pd.Timestamp(START)].astype(float)
             s.index.name = "Date"; s.name = name
+            s = _save_series(name, s)      # 同款防塌缩：无 key 时 graph CSV 对日频只返~2年
             frames[name] = s
-            s.to_csv(RAW_DIR / f"{name}.csv")
             _record_health(name, "fred", "FRED", series, "live_api" if api_key else "live_graph", s)
             print(f"    → {len(s)} 行（{'API全史' if api_key else 'graph'}，{s.index[0].date()}–{s.index[-1].date()}）")
         except Exception as e:
