@@ -156,6 +156,10 @@ const I18N={
                en:"This candidate's triggered group differs measurably from the baseline/comparison."},
   dClick:{zh:"点开看详情",en:"tap for detail"},
   dFam:{zh:"检验族",en:"family"},dVerdict:{zh:"裁决",en:"verdict"},
+  dStab:{zh:"换个随机种子",en:"If the random seed changed"},
+  dStabSurv:{zh:"这条还在存活名单上的概率",en:"chance this stays on the survivor list"},
+  dStabChg:{zh:"裁决会变的概率",en:"chance the verdict flips"},
+  dFloor:{zh:"已到该估计器的分辨下限（重采样一次都没穿过零）——真值可能更小，但这次抽样分辨不出来",en:"at this estimator's resolution floor (zero crossings) — the true value may be smaller, but this run cannot tell"},
   dP:{zh:"校正前 p 值",en:"pre-FDR p"},dRecent:{zh:"现代 p",en:"modern p"},dModern:{zh:"现代段(2000后)",en:"modern (post-2000)"},
   dClose:{zh:"关闭",en:"Close"},
   vSurvive:{zh:"真存活",en:"survive"},vFaded:{zh:"已淡",en:"faded"},vDead:{zh:"未过FDR",en:"dead"},vInconc:{zh:"检验力不足",en:"inconclusive"},
@@ -315,7 +319,14 @@ function pcard(c,cls){
 // ── 详情弹窗（逐窗口表 + 逐十年表，复用 self_growing.html 同款）────────────
 function showAD(id){const c=ADC.find(x=>x.candidate_id===id);if(!c)return;
   const vl={survive:t("vSurvive"),faded:t("vFaded"),dead:t("vDead"),inconclusive:t("vInconc")}[c.verdict]||c.verdict;
-  const pp=v=>v==null?"—":(+v).toPrecision(3);
+  // SPEC_MC_RESOLUTION Part A：p 落在估计器分辨下限上时**不许**显示成一个精确数字。
+  // X=0 的含义是"重采样/置换一次都没穿过零/没超过观测值"，不是"p 精确等于 0"——
+  // X=0/B=2000 时双侧 p 的 95% 上界 ≈0.003，与被判 dead 的 0.0030 统计上分不开。
+  const pp=(v,mc)=>{
+    if(v==null) return "—";
+    if(mc&&mc.p_at_floor) return `<span title="${esc(t("dFloor"))}" style="border-bottom:1px dotted var(--mut)">≤${(+mc.p_floor).toPrecision(2)}</span>`;
+    return (+v).toPrecision(3);
+  };
   const wr=(c.windows||[]).map(w=>{
     const up=w.up_pct==null?"—":w.up_pct+"%",bs=w.base_pct==null?"—":w.base_pct+"%";
     const hi=(w.up_pct!=null&&w.base_pct!=null);
@@ -339,7 +350,7 @@ function showAD(id){const c=ADC.find(x=>x.candidate_id===id);if(!c)return;
   $("mbody").innerHTML=`<div style="font-weight:700;font-size:1.05rem;margin-bottom:8px">${esc(c.key)}</div>
     <div style="color:var(--mut);font-size:.85rem;line-height:1.9">
       ${t("dFam")}：<b style="color:var(--fg)">${esc(c.family)}</b> · ${t("dVerdict")}：<b style="color:${VCLR[c.verdict]||'var(--fg)'}">${vl}</b>${c.reason?` · ${esc(c.reason)}`:""}<br>
-      ${t("dP")}：<b style="color:var(--fg)">${pp(c.p)}</b>（${t("dRecent")} ${pp(c.recent_p)}）· ${t("dModern")}：${esc(c.modern_status||"—")}
+      ${t("dP")}：<b style="color:var(--fg)">${pp(c.p,c.mc)}</b>（${t("dRecent")} ${pp(c.recent_p,c.mc_recent)}）· ${t("dModern")}：${esc(c.modern_status||"—")}${c.mc_survive_prob==null?"":`<br>${t("dStab")}：<b style="color:${c.mc_survive_prob>=0.8?"var(--grn)":c.mc_survive_prob>=0.5?"var(--amb)":"var(--red)"}">${Math.round(c.mc_survive_prob*100)}%</b> ${t("dStabSurv")}（${t("dStabChg")} ${Math.round((c.mc_change_prob||0)*100)}%）`}
     </div>${wt}${dt}
     ${AD&&AD.caveat?`<div style="font-size:.68rem;color:var(--mut);margin-top:10px;border-top:1px solid var(--border);padding-top:7px;line-height:1.5">${esc(AD.caveat)}</div>`:""}
     <button onclick="closeD()" style="margin-top:14px;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:7px 18px;cursor:pointer">${t("dClose")}</button>`;
@@ -416,7 +427,7 @@ function render(){
   $("dead").innerHTML=dead.length?[...dead].sort(ord).map(c=>{
     const pn=plainName(c);
     const fl=pn.unsure?" ⚠️":"";
-    return `<span class="gchip" style="cursor:pointer" onclick="showAD('${esc(c.candidate_id)}')" title="${esc(c.key)} · p=${c.p==null?"—":(+c.p).toPrecision(2)}">${pn.name}${fl}</span>`;
+    return `<span class="gchip" style="cursor:pointer" onclick="showAD('${esc(c.candidate_id)}')" title="${esc(c.key)} · p=${c.p==null?"—":((c.mc&&c.mc.p_at_floor)?"≤"+(+c.mc.p_floor).toPrecision(2):(+c.p).toPrecision(2))}${c.mc_survive_prob==null?"":" · 换种子仍存活 "+Math.round(c.mc_survive_prob*100)+"%"}">${pn.name}${fl}</span>`;
   }).join(""):`<div class="mut">—</div>`;
   // 数据日 + 账本追踪天数
   const asof=AD.generated?`${t("asof")} ${esc(AD.generated.slice(0,10))}`:"";

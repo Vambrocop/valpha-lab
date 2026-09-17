@@ -38,7 +38,7 @@ import stats_util as su
 from walk_forward import build_feature_df, block_bootstrap_diff
 import factor_pruning as fp
 import candidate_space as cs
-from quality_gate import adjudicate, summarize
+from quality_gate import adjudicate, summarize, change_probabilities
 
 SCRIPTS = Path(__file__).parent
 RAW_DIR = SCRIPTS.parent / "data" / "raw"
@@ -911,6 +911,14 @@ def run_all(write=True, q=0.10):
     cands = cs.enumerate_candidates()
     results = compute_results(cands)
     adjudicate(results, q=q, expect_n=cs.N_DECLARED)   # 断言分母完整 = 全部候选都算了
+    # 裁决的蒙特卡洛稳定性(SPEC_MC_RESOLUTION Part B/C)：只重抽已存下的 MC 计数、
+    # 重跑 adjudicate，**不重跑任何自助/置换** → 实测 K=2000 约 1.2s，可以天天算。
+    # 不这么报的话，"存活名单"读起来像个确定的清单，而实测每次重抽平均有 4.4 条会变。
+    mc_probs, mc_sum = change_probabilities(results, q=q)
+    for r in results:
+        pr = mc_probs.get(r["key"], {})
+        r["mc_change_prob"] = pr.get("change_prob")
+        r["mc_survive_prob"] = pr.get("survive_prob")
     s = summarize(results)
     if write:
         _append_log(results)               # 每交易日 append 裁决快照，攒衰减/自升级前向史
@@ -919,9 +927,12 @@ def run_all(write=True, q=0.10):
         "method": ("自动发现 Phase 1b：预注册有限候选(日历/反弹/因子)各路由到真统计算 p，"
                    "经 quality_gate 双栏 BY-FDR(族内+跨族)+三态裁决。全部候选进分母、禁预筛、固定种子。"),
         "caveat": "存活≠未来重演≠可交易；现代已淡=全段过FDR但现代测不到(疑被套利)；"
+                  f"**边界不确定**：只换自助/置换的随机种子(数据与方法全不动)，平均有 {mc_sum['mean_changes']} 条裁决会变、这份存活名单原样复现的概率约 {mc_sum['published_set_prob']:.0%}——逐条看 mc_survive_prob；"
                   "检验力不足=样本太小不下结论。因子族 FDR 为**无向双侧**(只问'有无可测边际'、不含方向判断，"
                   "与 factor_pruning 的方向门控透镜口径不同)。门4样本外待接入。探索性，非预测、非荐股。",
         "q": q, "n_declared": cs.N_DECLARED, "days_tracked": _log_days(), "summary": s,
+        # 只换随机种子(数据/方法/阈值全不动)时裁决有多稳 —— 边界落在 MC 噪声里的直接度量
+        "mc_stability": mc_sum,
         "context_states": _context_states(),   # B2:当前态快照(喂问答卡·三锁·纯描述无预测力)
         "candidates": sorted(results, key=lambda r: r["p"]),
     }

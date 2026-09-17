@@ -285,6 +285,16 @@ def build():
         unstable = bool(near_line or flicker)
 
         notes = []
+        # 阈值定在 **50%** 而不是更宽松的线：低于 50% 意味着这条**更可能不在**名单上，
+        # 是个质的区别、值得一句人话警告。60–80% 那档的梯度信息由行上那句
+        # 「换个随机种子 N%」的颜色承载（绿≥80 / 灰 60–80 / 琥珀<60）——
+        # 若阈值取 0.70，线上 7 条里会有 4 条挂警告，而"警告滥发等于没有警告"。
+        sp = c.get("mc_survive_prob")
+        if sp is not None and sp < 0.50:
+            notes.append(f"⚠ **蒙特卡洛边界不稳**：只换自助/置换的随机种子（数据与方法全不动），"
+                         f"这条还留在存活名单上的概率只有约 {sp:.0%}"
+                         f"（裁决会变的概率 {(c.get('mc_change_prob') or 0):.0%}）——"
+                         "也就是说它**更可能不在**这张名单上，别当成确定结论")
         if near_line:
             notes.append(f"⚠ 现代显著性临界（recent_p≈{rp:.2f}·近 q=0.10 存活线，下次刷新可能退出，别过度当真）")
         if flicker:
@@ -303,6 +313,11 @@ def build():
             # 实测 7 条存活者里 BTC_mom20_pos 就是 factor 族,而它还是仅有 2 条"真稳"之一。
             # 一句总括的免责盖不住逐条的事实差异 → 每条自带 oos_wired,让页面能分开说。
             "oos_wired": c.get("family") != "factor",
+            # 换个 MC 种子这条还在名单上的概率(SPEC_MC_RESOLUTION Part C)。
+            # 不报这个的话，"存活规律"读起来像个确定的清单 —— 而实测线上 7 条里
+            # `world_cup_year_nasdaq` 只有约 40%、整份名单原样复现的概率不到 10%。
+            "mc_survive_prob": c.get("mc_survive_prob"),
+            "mc_change_prob": c.get("mc_change_prob"),
             "unstable": unstable,
             "flips": flips, "stable_days": stable_days, "boundary_flicker": flicker,
             "stability_note": "；".join(notes),
@@ -323,7 +338,12 @@ def build():
     rows.sort(key=_sortkey)
     n_active = sum(1 for x in rows if x["active"] is True)
     n_flicker = sum(1 for x in rows if x.get("boundary_flicker"))
-    n_unwired = sum(1 for x in rows if not x.get("oos_wired"))   # OOS 未接线的条数(现仅 factor 族)
+    n_unwired = sum(1 for x in rows if not x.get("oos_wired"))
+    # 边界不确定度摘要(SPEC_MC_RESOLUTION Part C)：只消费 autodiscovery 算好的，不重算
+    _ms = ad.get("mc_stability") or {}
+    mc_mean, mc_set = _ms.get("mean_changes"), _ms.get("published_set_prob")
+    if mc_mean is None or mc_set is None:        # 老产物没这个字段 → 静默省略,不阻断
+        mc_mean = mc_set = None   # OOS 未接线的条数(现仅 factor 族)
     n_stable = len(rows) - n_flicker
     return {
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -335,7 +355,13 @@ def build():
                   "「未接入」=当前态未监测(仅历史)；前向 OOS(门4)仍在累积、未确认"
                   + (f"（但其中 {n_unwired} 条属**因子族**：该族 OOS 尚未接线（§10 待办），"
                      "它的前向样本**并不在累积**，不是快确认了）" if n_unwired else "")
-                  + "；扛过检验≠下次一定灵；过去≠未来。",
+                  + "；扛过检验≠下次一定灵；过去≠未来。"
+                  # 2026-09-16:整份名单的**边界不确定度**也要在总括里说一句。
+                  # 只在逐条字段/提示里给概率，读者仍会把这张表当成一份确定的清单 ——
+                  # 而实测只换自助/置换的随机种子(数据与方法全不动)，这份名单原样复现的概率不到 10%。
+                  + (f"**这张名单本身有边界不确定性**：只换统计用的随机种子(数据与方法全不动)，"
+                     f"平均约 {mc_mean} 条裁决会变、整份名单原样复现的概率约 {mc_set:.0%}"
+                     f"——逐条看「换个随机种子」那一行。" if mc_mean is not None else ""),
     }
 
 

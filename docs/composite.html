@@ -306,6 +306,16 @@ function loadSurvivors(){
           +'<span style="font-size:.7rem;color:'+(on?'var(--grn)':'var(--mut)')+'">['+tag+']</span></div>'
           +'<div style="font-size:.78rem;margin-top:2px">'+esc(s.state)+'</div>'
           +'<div style="font-size:.74rem;color:var(--mut);margin-top:2px">'+esc(s.edge_plain||'')+'</div>'
+          // 2026-09-16:逐条报"换个随机种子它还在不在名单上"(SPEC_MC_RESOLUTION Part C)。
+          // 不报的话这份清单读起来像确定的 —— 而实测只换自助/置换种子(数据与方法全不动),
+          // 平均 4.55 条裁决会变、整份名单原样复现的概率不到 7%,世界杯年那条只有约 36%。
+          +(s.mc_survive_prob==null?'':'<div style="font-size:.7rem;margin-top:2px;color:'
+             +(s.mc_survive_prob>=0.8?'var(--grn)':s.mc_survive_prob>=0.6?'var(--mut)':'var(--amber)')+'">'
+             +(LANG==='en'
+               ? '&#x1F3B2; If the random seed changed: <b>'+Math.round(s.mc_survive_prob*100)
+                 +'%</b> chance this stays on the list'
+               : '&#x1F3B2; 换个随机种子：<b>'+Math.round(s.mc_survive_prob*100)+'%</b> 的概率它还在这张名单上')
+             +'</div>')
           +(s.stability_note?'<div style="font-size:.7rem;color:var(--amber);margin-top:2px">'+esc(s.stability_note)+'</div>':'')
           // 2026-09-15:OOS 未接线的要**逐条**标出来。caveat 里只说"其中 1 条",读者不知道是哪条;
           // 而这条恰好是仅有 2 条"真稳"之一(BTC 动量),最容易被当成"快确认了"。
