@@ -275,6 +275,38 @@ except Exception as e:
     errors.append(f"data_health 形状检查失败: {e}")
     print(f"  ✗ data_health 形状检查失败: {e}")
 
+# 3i-2b. 自生长裁决的蒙特卡洛守门（SPEC_MC_RESOLUTION Part D）
+#   不变式：**每条裁决要么已分辨、要么已标注**。二者皆非 = 一个悄悄落在 MC 噪声里的裁决。
+#   为什么放在这里而不是 pytest：pytest 拿不到真产物（要跑 3 分钟流水线），而这道门的价值
+#   恰恰在于盯**真实发布出去的那份**。不变式本身的逻辑有 hermetic 单测（test_mc_stability）。
+try:
+    ad_path = WEB_DIR / "autodiscovery.json"
+    if ad_path.exists():
+        with open(ad_path, encoding="utf-8") as fh:
+            adj = json.load(fh)
+        cands = adj.get("candidates") or []
+        stab = adj.get("mc_stability") or {}
+        if cands and stab:
+            from quality_gate import unresolved_audit   # 同目录，path 已就绪(见顶部 ledger_hash 的 import)
+            thr = stab.get("p_unresolved")
+            if thr is None:
+                check(False, "autodiscovery.json 的 mc_stability 缺 p_unresolved（守门无阈值可用）")
+            else:
+                bad = unresolved_audit(cands, float(thr))
+                check(not bad, f"MC 守门：{len(cands)} 条裁决全部已分辨或已标注"
+                               + (f"；违规 {len(bad)} 条: {bad[:3]}" if bad else ""))
+                # 加算集/未分辨数进不进 STOP 区间，也一并亮出来（S2/S5 的可见性）
+                nr, nu = stab.get("n_refined"), stab.get("n_unresolved")
+                check(nr is None or nr <= 40,
+                      f"MC 加算集 {nr} 条（>40 即触 S2：预算要重定，别默默跑很久）")
+                check(nu is None or nu <= 15,
+                      f"MC 未分辨 {nu} 条（>15 即触 S5：判定架构的边界本质太糊，需单独谈）")
+        elif cands and not stab:
+            print("  · autodiscovery.json 尚无 mc_stability（旧产物）→ 跳过 MC 守门")
+except Exception as e:
+    errors.append(f"MC 守门检查失败: {e}")
+    print(f"  ✗ MC 守门检查失败: {e}")
+
 # 3i-3. IPO 近期申报形状（SEC EDGAR：两档均为列表、行带 company/cik、日期倒序。存在才查、缺失不致命）
 try:
     ipo_path = WEB_DIR / "ipo_filings.json"
