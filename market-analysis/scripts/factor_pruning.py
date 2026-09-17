@@ -26,7 +26,7 @@ from pathlib import Path
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 
-from walk_forward import build_feature_df, BINARY_FEATURES, block_bootstrap_diff
+from walk_forward import build_feature_df, BINARY_FEATURES, block_bootstrap_diff, BOOT_B
 import stats_util as su
 from signal_model import build_design_matrix
 from stats_util import benjamini_hochberg, benjamini_yekutieli   # DSR/反过拟合：多重检验校正(审计S5:统一来源)
@@ -111,7 +111,7 @@ def factor_arrays(df, col, *, min_obs=50, min_fires=30):
     return (obs["date"], sel, obs["fwd_up_20d"].values.astype(float))
 
 
-def _segment_lens(df, col, assumed, cutoff):
+def _segment_lens(df, col, assumed, cutoff, boost=1):
     """描述性「时间衰减透镜」——把 placebo 的「全样本 vs 现代段」口径推广到二值因子：
     对因子的 raw edge「触发胜率 − 基率」在 全观测段 vs 最近段(cutoff 后) 各算一次(块自助)。
     **与上方 OOS 裁决口径不同**：那是从未训练过的样本外严格裁决；这里只描述「原始边际随
@@ -123,7 +123,8 @@ def _segment_lens(df, col, assumed, cutoff):
     sel = (obs[col] == 1).values
     if len(obs) < 50 or int(sel.sum()) < 30:
         return None
-    full = block_bootstrap_diff(sel, obs["fwd_up_20d"].values, block=HORIZON)
+    full = block_bootstrap_diff(sel, obs["fwd_up_20d"].values, block=HORIZON,
+                                B=BOOT_B * boost)
     full_sig = bool(full["p_boot"] < 0.10 and np.sign(full["diff"]) == assumed)
 
     rec = obs[obs["date"] >= cutoff]
@@ -140,7 +141,8 @@ def _segment_lens(df, col, assumed, cutoff):
     if len(rec) < 200 or nfire < 30 or nnon < 30:
         seg["status"] = "现代检验力不足"
         return seg
-    rb = block_bootstrap_diff(rsel, rec["fwd_up_20d"].values, block=HORIZON)
+    rb = block_bootstrap_diff(rsel, rec["fwd_up_20d"].values, block=HORIZON,
+                              B=BOOT_B * boost)
     seg["recent_diff_pp"], seg["recent_p"] = rb["diff"], rb["p_boot"]
     seg["mc_recent"] = su.mc_meta(rb["mc_x"], rb["n_used"], "bootstrap")
     recent_sig = bool(rb["p_boot"] < 0.10 and np.sign(rb["diff"]) == assumed)

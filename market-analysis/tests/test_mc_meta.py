@@ -49,7 +49,8 @@ def _case(n, every, up_sel, up_base):
 def test_bootstrap_floor_and_flag():
     m = su.mc_meta(0, 2000, "bootstrap")
     assert m["p_at_floor"] is True
-    assert m["p_floor"] == pytest.approx(2 / 2000)
+    # D6 之后自助也带 +1 平滑 → 下限是 2/(n+1) 而不是 2/n（两族口径终于一致）
+    assert m["p_floor"] == pytest.approx(2 / 2001, abs=1e-8)
     assert m["mc_x"] == 0 and m["mc_n"] == 2000 and m["mc_kind"] == "bootstrap"
 
 
@@ -93,7 +94,7 @@ def test_floor_tracks_n_not_a_hardcoded_constant(n):
     `1/20001 = 4.99975e-05` 舍入成 `5e-05` → 测试假红。
     舍入位数本身也一起钉住，以后谁改精度都会被看见。
     """
-    for kind, exact in (("bootstrap", 2 / n), ("permutation", 1 / (n + 1))):
+    for kind, exact in (("bootstrap", 2 / (n + 1)), ("permutation", 1 / (n + 1))):
         got = su.mc_meta(0, n, kind)["p_floor"]
         assert got == round(exact, 8), f"{kind} 的下限公式或舍入位数变了: {got} vs {round(exact, 8)}"
         assert got == pytest.approx(exact, rel=1e-3), f"{kind} 的下限偏离精确值过多"
@@ -110,7 +111,8 @@ def test_bootstrap_p_reconstructs_from_counts(n, every, us, ub):
     """`p == round(2X/n_used, 4)` 必须成立 —— 这是元数据有意义的前提。"""
     r = bbd(*_case(n, every, us, ub), block=20)
     assert "mc_x" in r and "n_used" in r
-    recon = round(min(2 * r["mc_x"] / r["n_used"], 1.0), 4)
+    # D6 之后自助 p = 2·(X+1)/(n+1)（+1 平滑，与置换一致）
+    recon = round(min(2 * (r["mc_x"] + 1) / (r["n_used"] + 1), 1.0), 4)
     assert recon == pytest.approx(r["p_boot"], abs=1e-9), (
         f"p({r['p_boot']}) 无法从 X={r['mc_x']}/n={r['n_used']} 复原({recon}) —— "
         "p 公式与 mc_x 已经漂开了，元数据失效")
@@ -184,7 +186,7 @@ def test_factor_family_carries_mc_via_segment_lens():
     df = pd.DataFrame({"date": idx, "year": idx.year, "fwd_up_20d": y.astype(float), COL: col})
     seg = fp._segment_lens(df, COL, +1, df["date"].max() - pd.DateOffset(years=fp.RECENT_YEARS))
     assert seg["mc"] is not None and seg["mc"]["mc_kind"] == "bootstrap"
-    recon = round(min(2 * seg["mc"]["mc_x"] / seg["mc"]["mc_n"], 1.0), 4)
+    recon = round(min(2 * (seg["mc"]["mc_x"] + 1) / (seg["mc"]["mc_n"] + 1), 1.0), 4)
     assert recon == pytest.approx(seg["full_p"], abs=1e-9)
 
 

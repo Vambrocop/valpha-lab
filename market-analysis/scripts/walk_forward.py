@@ -43,6 +43,9 @@ PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 WEB_DIR  = Path(__file__).parent.parent / "web"
 
 HORIZON = 20  # 主要关注20日前向胜率
+# 块自助的基线重采样次数。抽成常量是为了让"加算"(SPEC_MC_RESOLUTION Part B)能按倍数放大，
+# 且下限/SE/重抽全部由 (X, n_used) 导出、与它天然同源 —— 谁都别再写死 2000。
+BOOT_B = 2000
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -288,12 +291,13 @@ def fit_logit(train_df):
     return m, cols
 
 
-def block_bootstrap_diff(sel, y, block=20, B=2000, seed=42):
+def block_bootstrap_diff(sel, y, block=20, B=None, seed=42):
     """循环块自助（块长=前向窗口20日）：Tier≥4 子集胜率 - 全体胜率 的 CI 与 p 值。
 
     P2-4：重叠20日窗口让 t 检验 p 值乐观约一个数量级，这里按日序列整块重采样，
     保留序列相关结构。p 值 = 自助分布穿越 0 的双侧份额（CI 反演法）。
     """
+    B = BOOT_B if B is None else int(B)
     sel = np.asarray(sel, dtype=bool)
     y = np.asarray(y, dtype=float)
     n = len(y)
@@ -319,7 +323,15 @@ def block_bootstrap_diff(sel, y, block=20, B=2000, seed=42):
     # X=0 尤其要看得见：那是"一次都没穿过"，不是"p 精确等于 0"。
     x_le, x_ge = int((diffs <= 0).sum()), int((diffs >= 0).sum())
     mc_x = min(x_le, x_ge)
-    p = 2 * min(float((diffs <= 0).mean()), float((diffs >= 0).mean()))
+    # 2026-09-16 (SPEC_MC_RESOLUTION D6)：加 **+1 平滑**，与 placebo_test.perm_test 一致。
+    # 真理由不是"消掉精确 0.0 的假象"(那是次要的)，而是修一个**既有的口径不一致**：
+    # 同一个跨族 BY-FDR 池里，51 条置换 p 是平滑过的、97 条自助 p **没平滑** →
+    # 自助族系统性占了约 1/B 的便宜。而 FDR 的刀口恰在 1/B 量级
+    # (线上 c₁..c₁₄ = 0.000121–0.001696，而未平滑的自助 p 在这个区间里**只有 0.000 和 0.001
+    # 两个可取值**) → 这个便宜直接决定谁进公开存活名单。
+    # 平滑后下限变 2/(n+1)：`p=0.0000` 这个"把低于下限当精确值"的写法也一并消失。
+    n_eff = len(diffs)
+    p = 2 * min((x_le + 1) / (n_eff + 1), (x_ge + 1) / (n_eff + 1))
     # n_dropped 透明化(诚实):有 sel.sum()>=10 门槛,抽到零-sel 重采样概率≈e^-10,故通常为 0;
     # 若某用法 n_dropped 占比大,说明该 sel 太稀疏、CI 被非对称截断,需警惕(审计 B1)。
     return {"diff": round(obs * 100, 2),

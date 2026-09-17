@@ -35,7 +35,7 @@ from pathlib import Path
 
 import placebo_test as pb
 import stats_util as su
-from walk_forward import build_feature_df, block_bootstrap_diff
+from walk_forward import build_feature_df, block_bootstrap_diff, BOOT_B
 import factor_pruning as fp
 import candidate_space as cs
 from quality_gate import adjudicate, summarize, change_probabilities
@@ -46,6 +46,14 @@ WEB_DIR = SCRIPTS.parent / "web"
 PROC_DIR = SCRIPTS.parent / "data" / "processed"
 DOCS_DIR = SCRIPTS.parent.parent / "docs"
 RECENT_CUT = pd.Timestamp("2000-01-01")   # 现代段口径，与 placebo 一致
+# ── 边界带自适应加算（SPEC_MC_RESOLUTION Part B）──────────────────────
+# pass-1 用基线精度算完 → 用"重抽 MC 计数、重跑 adjudicate"量出每条的**改判概率** →
+# 只把可能被 MC 噪声改判的那些按倍数重算 → 再量一次；仍不稳的如实标 mc_unresolved。
+# 触发条件**只**看改判概率，与结论方向无关(D1/D2)；加算后**一律采用 pass-2 的 p**，
+# 绝不取 min(pass1, pass2)——两次抽样取极值会破坏 p 值有效性(D9)，这是最易被"顺手优化"掉的一条。
+P_REFINE = 0.05        # pass-1 改判概率 > 此值 → 进加算集
+P_UNRESOLVED = 0.10    # 加算后仍 > 此值 → 标"分辨不了"，不再升级(D3：只升一次)
+REFINE_FACTOR = 10     # 加算倍数（B 2000→20000 / n_perm 1000→10000）
 LOG = SCRIPTS.parent / "data" / "autodiscovery_log.csv"   # append-only 裁决账本(被 CI 提交持久化;Phase4 衰减/建议器自升级的前向史)
 
 
@@ -261,19 +269,21 @@ def _calendar_arrays(eff, index, floor=None):
     return vals, lab, idx, stat, directional
 
 
-def _calendar(eff, index, cid):
+def _calendar(eff, index, cid, boost=1):
     arr = _calendar_arrays(eff, index)
     if arr is None:
         return None
     vals, lab, idx, stat, _directional = arr
-    pr = pb.perm_test(vals, lab, stat, np.random.default_rng(_seed_for(cid)))
+    pr = pb.perm_test(vals, lab, stat, np.random.default_rng(_seed_for(cid)),
+                      n_perm=pb.N_PERM * boost)
     p = pr["p_value"]
     # 现代段(post-2000)：够样本才测；年频(decade/presidential)样本太疏 → 不测 → inconclusive
     rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered, mc_recent = None, False, None
     if eff not in ("decade_digit", "presidential_cycle", "term_year3") and int(rmask.sum()) >= 200:
         rpr = pb.perm_test(vals[rmask], lab[rmask], stat,
-                           np.random.default_rng(_seed_for(cid) + [2000]))
+                           np.random.default_rng(_seed_for(cid) + [2000]),
+                           n_perm=pb.N_PERM * boost)
         rp = rpr["p_value"]
         if not np.isnan(rp):                       # P2-a 守卫:现代段单标签组→NaN→留 None/False(防 allow_nan=False 崩盘)
             rmin = int(np.unique(lab[rmask], return_counts=True)[1].min())
@@ -313,19 +323,19 @@ def _rebound_arrays(pctl, hold, index):
     return df.index, sel, y
 
 
-def _rebound(pctl, hold, index, cid):
+def _rebound(pctl, hold, index, cid, boost=1):
     arr = _rebound_arrays(pctl, hold, index)
     if arr is None:
         return None
     idx, sel, y = arr
-    bb = block_bootstrap_diff(sel, y, block=hold)
+    bb = block_bootstrap_diff(sel, y, block=hold, B=BOOT_B * boost)
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered, mc_recent = None, False, None
     rsel = sel & rmask
     if int(rsel.sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
-        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold, B=BOOT_B * boost)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
             mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
@@ -370,18 +380,18 @@ def _regime_arrays(signal, index, hold=20):
     return df.index, sel, y
 
 
-def _regime(signal, index, cid, hold=20):
+def _regime(signal, index, cid, hold=20, boost=1):
     arr = _regime_arrays(signal, index, hold)
     if arr is None:
         return None
     idx, sel, y = arr
-    bb = block_bootstrap_diff(sel, y, block=hold)
+    bb = block_bootstrap_diff(sel, y, block=hold, B=BOOT_B * boost)
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 100 and int((~sel & rmask).sum()) >= 100:
-        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold, B=BOOT_B * boost)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
             mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
@@ -504,19 +514,19 @@ def _positioning_arrays(market, series, extreme, hold):
     return keep_dates, sel, y
 
 
-def _positioning(market, series, extreme, hold, cid):
+def _positioning(market, series, extreme, hold, cid, boost=1):
     arr = _positioning_arrays(market, series, extreme, hold)
     if arr is None:
         return None
     idx, sel, y = arr
     block = _positioning_block(hold)                  # H-3:状态多周持续 → block 放大(hold+episode p90)
-    bb = block_bootstrap_diff(sel, y, block=block)
+    bb = block_bootstrap_diff(sel, y, block=block, B=BOOT_B * boost)
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
-        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=block)
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=block, B=BOOT_B * boost)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
             mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
@@ -589,18 +599,18 @@ def _optsent_arrays(series, extreme, hold):
     return df2.index, sel, y
 
 
-def _optsent(series, extreme, hold, cid):
+def _optsent(series, extreme, hold, cid, boost=1):
     arr = _optsent_arrays(series, extreme, hold)
     if arr is None:
         return None
     idx, sel, y = arr
-    bb = block_bootstrap_diff(sel, y, block=hold)      # 尖峰型 sel → block=hold 不放大(与 positioning 不同)
+    bb = block_bootstrap_diff(sel, y, block=hold, B=BOOT_B * boost)      # 尖峰型 sel → block=hold 不放大(与 positioning 不同)
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
-        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold, B=BOOT_B * boost)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
             mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
@@ -649,18 +659,18 @@ def _streak_arrays(kind, n, hold, index):
     return df.index, sel, y
 
 
-def _streak(kind, n, hold, index, cid):
+def _streak(kind, n, hold, index, cid, boost=1):
     arr = _streak_arrays(kind, n, hold, index)
     if arr is None:
         return None
     idx, sel, y = arr
-    bb = block_bootstrap_diff(sel, y, block=hold)             # 事件日 → block=hold 即可(无需状态族放大)
+    bb = block_bootstrap_diff(sel, y, block=hold, B=BOOT_B * boost)             # 事件日 → block=hold 即可(无需状态族放大)
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
-        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold)
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold, B=BOOT_B * boost)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
             mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
@@ -742,7 +752,7 @@ def _trailing_extreme_block(hold):
     return hold + TRAILING_BLOCK_EXTRA                          # B1:discovery/OOS 两处同用同一公式
 
 
-def _trailing_extreme(n, hold, side, index, cid):
+def _trailing_extreme(n, hold, side, index, cid, boost=1):
     """长跨度族真统计(stage4)：状态族 block=hold+TRAILING_BLOCK_EXTRA(命门2·绝不 block=hold)
     块自助 + 现代段(recent_p)。数据/暖机不足 → _trailing_extreme_arrays 返回 None →
     compute_results 既有"数据不足→p=1.0"兜底接住(H-1 显式路由已就绪，非静默落 else)。"""
@@ -751,13 +761,13 @@ def _trailing_extreme(n, hold, side, index, cid):
         return None
     idx, sel, y = arr
     block = _trailing_extreme_block(hold)                       # 命门2:绝不 block=hold
-    bb = block_bootstrap_diff(sel, y, block=block)
+    bb = block_bootstrap_diff(sel, y, block=block, B=BOOT_B * boost)
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
-        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=block)
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=block, B=BOOT_B * boost)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
             mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
@@ -814,7 +824,7 @@ def _context_states():
 
 
 # ── 因子族：复用 _segment_lens 的 全段 full_p + 现代段 recent_p ──
-def _factor_map(factor_cands):
+def _factor_map(factor_cands, boosts=None):
     if not factor_cands:        # 无因子候选不碰特征数据集(CI 干净检出无 data/raw/,#104 连挂根因)
         return {}
     df = build_feature_df()
@@ -822,7 +832,8 @@ def _factor_map(factor_cands):
     out = {}
     for c in factor_cands:
         col = c["params"]["factor"]
-        seg = fp._segment_lens(df, col, fp.ASSUMED_DIR.get(col, +1), cutoff)
+        seg = fp._segment_lens(df, col, fp.ASSUMED_DIR.get(col, +1), cutoff,
+                               boost=int((boosts or {}).get(c["candidate_id"], 1)))
         # 2026-09-16 修：此前这里是 `(df[col] == 1).values` 配**全量** df —— 晚出现的因子
         # 在自己出现前该列是 NaN、`NaN == 1` 为 False → 那些"因子当时还不存在"的日子
         # 被算进了**对照组**。而 `_diff_windows` 的 base 是 `yy.mean()`(全样本基率)，
@@ -850,30 +861,37 @@ def _factor_map(factor_cands):
     return out
 
 
-def compute_results(candidates):
-    """每候选路由到真统计 → {candidate_id, family, key, p, recent_p, recent_powered}。"""
-    fac = _factor_map([c for c in candidates if c["family"] == "factor"])
+def compute_results(candidates, boosts=None):
+    """每候选路由到真统计 → {candidate_id, family, key, p, recent_p, recent_powered}。
+
+    `boosts`: {candidate_id: 倍数} —— **只对选中的候选**把 B / n_perm 按倍数放大
+    (SPEC_MC_RESOLUTION Part B 的"边界带自适应加算")。未列出 = 1 = 基线精度。
+    `candidates` 可以是子集(pass-2 只重算选中的那些，别把 130 条没选中的也重跑一遍)。
+    """
+    boosts = boosts or {}
+    fac = _factor_map([c for c in candidates if c["family"] == "factor"], boosts=boosts)
     results = []
     for c in candidates:
         fam = c["family"]
+        bst = int(boosts.get(c["candidate_id"], 1))
         if fam == "calendar":
-            r = _calendar(c["params"]["effect"], c["params"]["index"], c["candidate_id"])
+            r = _calendar(c["params"]["effect"], c["params"]["index"], c["candidate_id"], boost=bst)
         elif fam == "rebound":
-            r = _rebound(c["params"]["pctl"], c["params"]["hold"], c["params"]["index"], c["candidate_id"])
+            r = _rebound(c["params"]["pctl"], c["params"]["hold"], c["params"]["index"], c["candidate_id"], boost=bst)
         elif fam == "regime":
-            r = _regime(c["params"]["signal"], c["params"]["index"], c["candidate_id"])
+            r = _regime(c["params"]["signal"], c["params"]["index"], c["candidate_id"], boost=bst)
         elif fam == "positioning":                       # H-1 BLOCKER:必须显式路由，绝不落 else→p=1.0
             p = c["params"]
-            r = _positioning(p["market"], p["series"], p["extreme"], p["hold"], c["candidate_id"])
+            r = _positioning(p["market"], p["series"], p["extreme"], p["hold"], c["candidate_id"], boost=bst)
         elif fam == "options_sentiment":                  # H-1 BLOCKER:同上
             p = c["params"]
-            r = _optsent(p["series"], p["extreme"], p["hold"], c["candidate_id"])
+            r = _optsent(p["series"], p["extreme"], p["hold"], c["candidate_id"], boost=bst)
         elif fam in ("streak_down", "streak_break"):      # H-1 BLOCKER:同上(2026-07-10 stage2)
             p = c["params"]
-            r = _streak(fam, p["n"], p["hold"], p["index"], c["candidate_id"])
+            r = _streak(fam, p["n"], p["hold"], p["index"], c["candidate_id"], boost=bst)
         elif fam == "trailing_extreme":                   # H-1 BLOCKER:同上(2026-07-11 stage4 真统计)
             p = c["params"]
-            r = _trailing_extreme(p["n"], p["hold"], p["side"], p["index"], c["candidate_id"])
+            r = _trailing_extreme(p["n"], p["hold"], p["side"], p["index"], c["candidate_id"], boost=bst)
         elif fam == "factor":
             r = fac.get(c["candidate_id"])
         else:
@@ -914,11 +932,47 @@ def run_all(write=True, q=0.10):
     # 裁决的蒙特卡洛稳定性(SPEC_MC_RESOLUTION Part B/C)：只重抽已存下的 MC 计数、
     # 重跑 adjudicate，**不重跑任何自助/置换** → 实测 K=2000 约 1.2s，可以天天算。
     # 不这么报的话，"存活名单"读起来像个确定的清单，而实测每次重抽平均有 4.4 条会变。
+    # pass-1 的改判概率 → 选加算集（只看概率，不看方向；带内全选，一条不挑 D1/D2）
+    probs1, _ = change_probabilities(results, q=q)
+    refine_ids = {r["candidate_id"] for r in results
+                  if (probs1.get(r["key"], {}).get("change_prob") or 0) > P_REFINE}
+    if refine_ids:
+        redo = [c for c in cands if c["candidate_id"] in refine_ids]
+        boosted = compute_results(redo, boosts={cid: REFINE_FACTOR for cid in refine_ids})
+        by_id = {x["candidate_id"]: x for x in boosted}
+        # D9：**一律**替换成 pass-2 的结果，绝不比较两次谁更显著
+        results[:] = [by_id.get(r["candidate_id"], r) for r in results]
+        adjudicate(results, q=q, expect_n=cs.N_DECLARED)
     mc_probs, mc_sum = change_probabilities(results, q=q)
     for r in results:
         pr = mc_probs.get(r["key"], {})
-        r["mc_change_prob"] = pr.get("change_prob")
+        cp = pr.get("change_prob")
+        r["mc_change_prob"] = cp
         r["mc_survive_prob"] = pr.get("survive_prob")
+        r["mc_refined"] = r["candidate_id"] in refine_ids
+        r["mc_unresolved"] = bool(cp is not None and cp > P_UNRESOLVED)
+        if r["mc_unresolved"]:
+            dist = " / ".join(f"{k} {v:.0%}" for k, v in
+                              sorted(pr.get("verdict_dist", {}).items(), key=lambda x: -x[1]))
+            # 文案必须分清"加算过还是没加算过"：加算会挪动 FDR 阈值，
+            # 理论上能让一条**没进加算集**的候选反而变不稳 —— 那时说"加算到 10× 后仍…"是假话。
+            if r["mc_refined"]:
+                r["mc_unresolved_reason"] = (
+                    f"加算到 {REFINE_FACTOR}× 精度后，改判概率仍有 {cp:.0%}"
+                    f"（{mc_sum['K']} 次重抽的裁决分布：{dist}）——"
+                    "这条的边界**本质上**分辨不了，不是算得不够多")
+            else:
+                r["mc_unresolved_reason"] = (
+                    f"改判概率 {cp:.0%}（{mc_sum['K']} 次重抽的裁决分布：{dist}）。"
+                    f"它在 pass-1 时低于加算阈值 {P_REFINE:.0%}、**未被加算** ——"
+                    "是别的候选加算后挪动了 FDR 阈值才把它推到边界上")
+        else:
+            r["mc_unresolved_reason"] = None
+    mc_sum["n_refined"] = len(refine_ids)
+    mc_sum["n_unresolved"] = sum(1 for r in results if r["mc_unresolved"])
+    mc_sum["p_refine"] = P_REFINE
+    mc_sum["p_unresolved"] = P_UNRESOLVED
+    mc_sum["refine_factor"] = REFINE_FACTOR
     s = summarize(results)
     if write:
         _append_log(results)               # 每交易日 append 裁决快照，攒衰减/自升级前向史

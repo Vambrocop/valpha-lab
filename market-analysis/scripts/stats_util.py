@@ -125,7 +125,7 @@ _MC_KINDS = ("bootstrap", "permutation")
 def mc_meta(x, n, kind):
     """把原始 MC 计数打包成元数据。x=穿越/命中次数, n=有效重采样/置换次数。
 
-    · bootstrap  ：`p = 2·X/n`（CI 反演双侧），分辨下限 `2/n`。
+    · bootstrap  ：`p = 2·(X+1)/(n+1)`（CI 反演双侧，**已含 +1 平滑**），分辨下限 `2/(n+1)`。
       **n 必须是 `n_used`（=B−n_dropped）而不是 B** —— 分母不对，SE 与下限都会偏。
     · permutation：`p = (X+1)/(n+1)`（已含 +1 平滑），分辨下限 `1/(n+1)`。
 
@@ -137,7 +137,8 @@ def mc_meta(x, n, kind):
     if x is None or n is None or n <= 0:
         return None                         # 显式说"没有"，绝不编 0
     x, n = int(x), int(n)
-    floor = (2.0 / n) if kind == "bootstrap" else (1.0 / (n + 1))
+    # 两个估计器现在都带 +1 平滑（D6 修了此前"置换平滑、自助不平滑"的口径不一致）
+    floor = (2.0 / (n + 1)) if kind == "bootstrap" else (1.0 / (n + 1))
     return {"mc_x": x, "mc_n": n, "mc_kind": kind,
             "p_floor": round(floor, 8),
             "p_at_floor": x == 0}

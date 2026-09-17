@@ -103,7 +103,10 @@ def _resample_p(rng, mc):
     x, n, kind = mc["mc_x"], mc["mc_n"], mc["mc_kind"]
     theta = rng.beta(x + 0.5, n - x + 0.5)
     xs = int(rng.binomial(n, theta))
-    return min(1.0, 2.0 * xs / n) if kind == "bootstrap" else min(1.0, (xs + 1) / (n + 1))
+    # 两族都用**各自估计器带平滑的**公式重建（D6 之后自助也是 +1 平滑）。
+    # 用错公式会让两族的噪声尺度系统性错配，而它们共用一个跨族 BY 池。
+    return (min(1.0, 2.0 * (xs + 1) / (n + 1)) if kind == "bootstrap"
+            else min(1.0, (xs + 1) / (n + 1)))
 
 
 def change_probabilities(results, q=Q_DEFAULT, K=2000, seed=_MC_SEED):
@@ -121,6 +124,15 @@ def change_probabilities(results, q=Q_DEFAULT, K=2000, seed=_MC_SEED):
                     "published_set_prob"(已发布存活集原样复现的比例), "n_resampled"}
     """
     import numpy as np
+    # 本函数的返回按 `key` 索引。key 必须唯一，否则字典会**静默丢掉**一个候选，
+    # 而丢掉的那条会拿到别人的改判概率 —— 这种错不会报、只会让数字悄悄失真。
+    # （实测今天 148 个 key 全不重复；这道断言是给将来新增候选时的保险。）
+    keys = [r["key"] for r in results]
+    if len(set(keys)) != len(keys):
+        import collections
+        dup = [k for k, v in collections.Counter(keys).items() if v > 1]
+        raise ValueError(f"change_probabilities: 候选 key 重复 {dup} —— "
+                         "返回按 key 索引，重复会让某条拿到别人的改判概率")
     base = {r["key"]: r.get("verdict") for r in results}
     pub_surv = frozenset(k for k, v in base.items() if v == "survive")
     rng = np.random.default_rng(seed)
@@ -159,6 +171,36 @@ def change_probabilities(results, q=Q_DEFAULT, K=2000, seed=_MC_SEED):
                "published_set_prob": round(set_hits / K, 4),
                "n_resampled": sum(1 for r in results if r.get("mc"))}
     return probs, summary
+
+
+def unresolved_audit(results, p_unresolved):
+    """守门不变式：**每条裁决要么已分辨、要么已标注**（SPEC_MC_RESOLUTION Part D）。
+
+    二者皆非 = 一个悄悄落在蒙特卡洛噪声里的裁决 —— 那正是本规格要消灭的东西。
+    返回违规列表 [(key, change_prob, 说明)]；空列表 = 通过。
+
+    豁免（审查 S-e，已核实线上口径）：
+      · `recent_powered=False` 的候选在 `adjudicate` 里短路成 `inconclusive`，
+        FDR 判定与 modern 判定对它们的裁决**都不起作用** → 不该被要求"分辨"。
+        **注意不许用 `recent_p is None` 当代理** —— 线上实测两者解耦
+        （6 条未 powered，其中 2 条 recent_p 非 None；另有 4 条 recent_p 为 None）。
+      · `mc` 缺失 = 根本没跑过统计（样本不足，p 硬编码 1.0）→ 无噪声可言。
+    """
+    bad = []
+    for r in results:
+        if not r.get("recent_powered", True):
+            continue                                  # 裁决不依赖 p，豁免
+        if not r.get("mc"):
+            continue                                  # 没跑过统计，无噪声
+        cp = r.get("mc_change_prob")
+        if cp is None:
+            bad.append((r.get("key"), None, "缺 mc_change_prob —— 度量没接上，等于没守门"))
+        elif cp > p_unresolved and not r.get("mc_unresolved"):
+            bad.append((r.get("key"), cp,
+                        f"改判概率 {cp:.0%} > 阈值 {p_unresolved:.0%} 却**没标** mc_unresolved"))
+        elif r.get("mc_unresolved") and not r.get("mc_unresolved_reason"):
+            bad.append((r.get("key"), cp, "标了 mc_unresolved 但没给人话原因"))
+    return bad
 
 
 def summarize(results):

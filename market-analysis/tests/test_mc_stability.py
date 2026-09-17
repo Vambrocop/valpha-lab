@@ -32,11 +32,14 @@ import stats_util as su
 
 def _row(key, fam, x, n, kind, rx=None, powered=True):
     """造一条带原始 MC 计数的候选。rx=None → recent_p 缺失。"""
-    p = (2 * x / n) if kind == "bootstrap" else ((x + 1) / (n + 1))
+    # 两族都用**带 +1 平滑**的公式（D6 之后自助也平滑）——
+    # 合成 p 与估计器公式脱节的话，整个改判概率判据就在测一个不存在的世界
+    _p = lambda k: (2 * (k + 1) / (n + 1)) if kind == "bootstrap" else ((k + 1) / (n + 1))
+    p = _p(x)
     rp = None
     mcr = None
     if rx is not None:
-        rp = (2 * rx / n) if kind == "bootstrap" else ((rx + 1) / (n + 1))
+        rp = _p(rx)
         mcr = su.mc_meta(rx, n, kind)
     return {"candidate_id": key, "key": key, "family": fam,
             "p": min(p, 1.0), "recent_p": rp, "recent_powered": powered,
@@ -44,10 +47,18 @@ def _row(key, fam, x, n, kind, rx=None, powered=True):
 
 
 def _pool(n_noise=40):
-    """一个小池子：3 条强、1 条贴边界、其余噪声。"""
+    """一个小池子：2 条强(已加算精度)、1 条贴边界、1 条中等、其余噪声。
+
+    强候选刻意用 **n=20000**（= 加算后的精度）而不是 2000：
+    D6 的 +1 平滑让最小可达 p 变成 `2/(n+1)`，而 44 条池子的 rank-1 BY 临界值
+    `c₁ = q/(m·H_m) ≈ 0.0005` —— 若强候选只有 n=2000，它的下限 0.001 **高于**自己的临界值，
+    连"完美"候选都清不过线，`test_a_rock_solid_candidate_has_low_change_prob` 就会假红
+    （起草时真踩了：实测 0.38，而真实 148 条池子里 `p5_h1_nasdaq` 只有 15.6%）。
+    顺带这样池子里**同时存在两种精度** —— 正是加算落地后的真实状态，比单一精度更有代表性。
+    """
     rows = [
-        _row("strong_a", "rebound", 0, 2000, "bootstrap", rx=0),
-        _row("strong_b", "regime", 0, 2000, "bootstrap", rx=2),
+        _row("strong_a", "rebound", 0, 20000, "bootstrap", rx=0),
+        _row("strong_b", "regime", 0, 20000, "bootstrap", rx=20),
         _row("edge", "calendar", 0, 1000, "permutation", rx=95),      # recent_p≈.096 贴 0.10
         _row("mid", "factor", 30, 2000, "bootstrap", rx=400),
     ]
@@ -155,9 +166,12 @@ def test_resample_p_respects_each_estimator_formula():
     rng = np.random.default_rng(0)
     boots = [qg._resample_p(rng, su.mc_meta(0, 2000, "bootstrap")) for _ in range(400)]
     perms = [qg._resample_p(rng, su.mc_meta(0, 1000, "permutation")) for _ in range(400)]
-    assert min(boots) == 0.0, "自助零穿越重抽后应能取到精确 0（2X/n，X 可为 0）"
+    # D6 之后两族都带 +1 平滑 → 重抽也**绝不**跌破各自下限（不再出现"精确 0"）
+    assert min(boots) >= 2 / 2001 - 1e-12, f"自助重抽跌破了 2/(n+1) 下限: {min(boots)}"
     assert min(perms) >= 1 / 1001 - 1e-12, "置换重抽跌破了 (X+1)/(n+1) 的下限"
-    assert all(v % (2 / 2000) < 1e-9 or abs(v % (2 / 2000) - 2 / 2000) < 1e-9 for v in boots[:20])
+    # 自助重抽落在 2/(n+1) 的网格上（步长 2/(n+1)）
+    step = 2 / 2001
+    assert all(abs(v / step - round(v / step)) < 1e-6 for v in boots[:20]), "自助重抽不在其网格上"
     assert qg._resample_p(rng, None) is None
 
 
@@ -279,3 +293,146 @@ def test_deck_consumes_stability_without_recomputing():
     assert 'ad.get("mc_stability")' in src
     assert "change_probabilities" not in src, (
         "观察台自己调了 change_probabilities —— 两处各算一次迟早漂移，应只读 autodiscovery 的结果")
+
+
+# ── 加算（Part B pass-2）──────────────────────────────────────────────
+def test_duplicate_keys_raise_instead_of_silently_dropping():
+    """返回按 `key` 索引 → key 重复会**静默丢掉**一个候选，而它会拿到别人的改判概率。
+
+    这种错不报、只让数字悄悄失真。今天 148 个 key 全不重复，这道断言是给将来的保险。
+    """
+    rows = [{"key": "dup", "candidate_id": "1", "family": "x", "p": 0.5},
+            {"key": "dup", "candidate_id": "2", "family": "x", "p": 0.5}]
+    with pytest.raises(ValueError, match="key 重复"):
+        qg.change_probabilities(rows, K=2)
+
+
+def test_boost_scales_the_estimator_n():
+    """加算必须真的把 B / n_perm 放大 —— 否则"加算"只是改了个标签。"""
+    import autodiscovery as ad
+    import candidate_space as cs
+    cands = cs.enumerate_candidates()
+    one = [c for c in cands if c["key"] == "september_sp500"]
+    assert one, "找不到基准候选，候选池变了?"
+    base = ad.compute_results(one)[0]
+    up = ad.compute_results(one, boosts={one[0]["candidate_id"]: ad.REFINE_FACTOR})[0]
+    assert up["mc"]["mc_n"] == base["mc"]["mc_n"] * ad.REFINE_FACTOR, (
+        f"boost 没放大 n：{base['mc']['mc_n']} → {up['mc']['mc_n']}")
+    assert up["mc"]["p_floor"] < base["mc"]["p_floor"], "加算后分辨下限没变低"
+
+
+def test_refinement_never_picks_the_better_of_two_passes():
+    """D9：加算后**一律**用 pass-2，绝不取 `min(pass1, pass2)` 或"更显著的那个"。
+
+    两次抽样取极值不再是对理想 p 的一致估计，且取哪个依赖观测结果 ——
+    那会把 p-hacking 藏进实现细节。这是规格里标明"最容易被顺手优化掉"的一条。
+    """
+    from pathlib import Path
+    import autodiscovery as ad
+    src = Path(ad.__file__).read_text(encoding="utf-8")
+    i = src.index("refine_ids = {")
+    # **先剥注释再扫代码**：起草时这条命中了我自己那句「绝不比较两次谁更显著」的注释
+    # —— 源码文本断言的典型假阳性（审查 S-5 警告过这类脆弱）。禁词只该对**代码**成立。
+    code = " ".join(ln.split("#", 1)[0]
+                    for ln in src[i:i + 1400].splitlines())
+    assert "by_id.get(" in code, "没看到无条件替换成 pass-2 的写法"
+    for bad in ("min(p", "max(p", "if p2", "if pass"):
+        assert bad not in code, f"加算段的**代码**里出现了两次取优的痕迹: {bad!r}（D9/S7 红线）"
+
+
+def test_unresolved_reason_distinguishes_refined_from_not():
+    """加算会挪动 FDR 阈值 → 一条**没被加算**的候选也可能变不稳。
+    那时说"加算到 10× 后仍…"是假话，文案必须分开。"""
+    from pathlib import Path
+    import autodiscovery as ad
+    src = Path(ad.__file__).read_text(encoding="utf-8")
+    i = src.index("mc_unresolved_reason")
+    body = src[i - 400:i + 1200]
+    assert 'if r["mc_refined"]' in body, "reason 没按是否加算分支 —— 会对未加算的候选说假话"
+    assert "未被加算" in body
+
+
+def test_refine_selection_is_direction_blind():
+    """D1/D2：加算的触发条件只看改判概率，**不看**结论方向、也不挑。"""
+    from pathlib import Path
+    import autodiscovery as ad
+    src = Path(ad.__file__).read_text(encoding="utf-8")
+    i = src.index("refine_ids = {")
+    sel = src[i:src.index("if refine_ids:")]
+    assert "change_prob" in sel
+    for bad in ("survive", "verdict", "full_sign", "diff", "方向"):
+        assert bad not in sel, f"选加算集时看了 {bad!r} —— 触发条件掺进结论方向 = 自动化 p-hacking"
+
+
+# ── Part D：守门不变式 ────────────────────────────────────────────────
+# 「每条裁决要么已分辨、要么已标注」。二者皆非 = 一个悄悄落在 MC 噪声里的裁决 ——
+# 那正是本规格要消灭的东西。不变式逻辑在这里 hermetic 测；
+# **真产物**的检查在 `verify_output.py` 里（pytest 拿不到真产物，要跑 3 分钟流水线）。
+def _row_audit(key, *, powered=True, mc=True, cp=0.02, unres=False, reason="因为…"):
+    return {"key": key, "recent_powered": powered,
+            "mc": {"mc_x": 1, "mc_n": 2000} if mc else None,
+            "mc_change_prob": cp, "mc_unresolved": unres,
+            "mc_unresolved_reason": (reason if unres else None)}
+
+
+def test_audit_passes_when_everything_is_resolved_or_labelled():
+    rows = [_row_audit("ok_low", cp=0.02),
+            _row_audit("ok_labelled", cp=0.40, unres=True)]
+    assert qg.unresolved_audit(rows, 0.10) == []
+
+
+def test_audit_catches_a_verdict_sitting_in_the_noise_unlabelled():
+    """这条就是整个 Part D 存在的理由。"""
+    rows = [_row_audit("sneaky", cp=0.30, unres=False)]
+    bad = qg.unresolved_audit(rows, 0.10)
+    assert len(bad) == 1 and bad[0][0] == "sneaky"
+    assert "没标" in bad[0][2]
+
+
+def test_audit_catches_missing_measurement():
+    """度量没接上 = 守门形同虚设，必须报出来而不是当"通过"。"""
+    rows = [_row_audit("nomeasure", cp=None)]
+    bad = qg.unresolved_audit(rows, 0.10)
+    assert len(bad) == 1 and "缺 mc_change_prob" in bad[0][2]
+
+
+def test_audit_requires_a_human_readable_reason():
+    """只给布尔不算披露 —— 读者需要知道"为什么分辨不了"。"""
+    rows = [{"key": "nore", "recent_powered": True, "mc": {"mc_x": 1, "mc_n": 2000},
+             "mc_change_prob": 0.4, "mc_unresolved": True, "mc_unresolved_reason": None}]
+    bad = qg.unresolved_audit(rows, 0.10)
+    assert len(bad) == 1 and "没给人话原因" in bad[0][2]
+
+
+def test_audit_exempts_unpowered_candidates_by_the_right_field():
+    """`recent_powered=False` 在 adjudicate 里短路成 inconclusive → 裁决不依赖 p，豁免。
+
+    **不许用 `recent_p is None` 当代理**：线上实测两者解耦
+    （6 条未 powered、其中 2 条 recent_p 非 None；另有 4 条 recent_p 为 None）。
+    用错代理会让该豁免的没豁免、直接把守门顶到 S5。
+    """
+    # 未 powered 但 recent_p 有值 → 仍应豁免
+    r = _row_audit("unpowered", powered=False, cp=0.9)
+    r["recent_p"] = 0.03
+    assert qg.unresolved_audit([r], 0.10) == []
+    # powered 且 recent_p 为 None → **不**豁免（代理法会错放它过关）
+    r2 = _row_audit("powered_no_recent", powered=True, cp=0.9)
+    r2["recent_p"] = None
+    assert len(qg.unresolved_audit([r2], 0.10)) == 1, (
+        "用 recent_p is None 当豁免代理了? 那会放过真正落在噪声里的裁决")
+
+
+def test_audit_exempts_candidates_that_never_ran_statistics():
+    """`mc=None` = 根本没跑过统计（样本不足，p 硬编码 1.0）→ 无噪声可言。"""
+    assert qg.unresolved_audit([_row_audit("neverran", mc=False, cp=None)], 0.10) == []
+
+
+def test_verify_output_actually_calls_the_audit():
+    """守门必须挂在**真产物**的检查里，否则它只是个没人调的函数。"""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "verify_output.py").read_text(encoding="utf-8")
+    assert "unresolved_audit" in src, "verify_output 没调 MC 守门"
+    assert "n_refined" in src and "n_unresolved" in src, "S2/S5 的计数没在流水线里亮出来"
+    i = src.index("unresolved_audit")
+    body = src[i - 900:i + 900]
+    assert "旧产物" in body, "老产物缺字段时应优雅跳过而不是把流水线干红"

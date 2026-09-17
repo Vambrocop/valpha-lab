@@ -53,13 +53,23 @@ def _case(n, every, up_sel, up_base):
 
 
 # ── 1. 精确金标准（生产默认 B=2000 / seed=42）────────────────────────
+# 2026-09-16 **故意更新**（SPEC_MC_RESOLUTION D6：自助 p 加 +1 平滑）。
+# 前后对照（`diff` 与 `ci95` **完全没变** → 改动精确隔离在 p 公式上）：
+#     strong    p 0.000  → 0.0010     （X=0 → 2/(n+1)，"精确 0"的假象消失）
+#     negative  p 0.000  → 0.0010
+#     block1    p 0.000  → 0.0010
+#     weak      p 0.292  → 0.2929
+#     null      p 0.989  → 0.9895
+# 真理由不是"美化显示"，而是修一个**既有的口径不一致**：同一个跨族 BY-FDR 池里
+# 51 条置换 p 是平滑过的、97 条自助 p 没平滑 → 自助族系统性占了约 1/B 的便宜，
+# 而 FDR 的刀口恰在 1/B 量级（未平滑的自助 p 在 c₁..c₁₄ 区间里只有 0.000/0.001 两个可取值）。
 GOLDEN = [
     # (名称, n, every, up_sel, up_base, block, diff, ci95, p_boot, n_used)
-    ("strong",   2000, 4, 0.95, 0.50, 20,  33.75, [27.55, 40.30], 0.000, 2000),
-    ("weak",     2000, 4, 0.55, 0.50, 20,   4.50, [-4.05, 12.80], 0.292, 2000),
-    ("null",     2000, 4, 0.50, 0.50, 20,   0.00, [-7.90,  8.05], 0.989, 2000),
-    ("negative", 2000, 4, 0.20, 0.50, 20, -22.50, [-29.25, -15.70], 0.000, 2000),
-    ("block1",   1500, 5, 0.80, 0.50,  1,  24.00, [19.68, 28.26], 0.000, 2000),
+    ("strong",   2000, 4, 0.95, 0.50, 20,  33.75, [27.55, 40.30], 0.0010, 2000),
+    ("weak",     2000, 4, 0.55, 0.50, 20,   4.50, [-4.05, 12.80], 0.2929, 2000),
+    ("null",     2000, 4, 0.50, 0.50, 20,   0.00, [-7.90,  8.05], 0.9895, 2000),
+    ("negative", 2000, 4, 0.20, 0.50, 20, -22.50, [-29.25, -15.70], 0.0010, 2000),
+    ("block1",   1500, 5, 0.80, 0.50,  1,  24.00, [19.68, 28.26], 0.0010, 2000),
 ]
 
 
@@ -79,18 +89,20 @@ def test_golden_values(name, n, every, us, ub, blk, diff, ci, p, nu):
 
 
 # ── 2. 零穿越：D6 要改的正是这一格 ──────────────────────────────────
-def test_zero_crossing_currently_returns_exact_zero():
-    """**现状**：零穿越时 p 返回**精确的 0.0**（无平滑）。
+def test_zero_crossing_no_longer_returns_a_fake_exact_zero():
+    """零穿越时 p = `2/(n+1)`（下限），**不再是"精确的 0.0"**。
 
-    这不是"极显著"，是"低于本估计器能报的最小值"——零穿越(X=0, B=2000)时
-    双侧 p 的 95% 上界 ≈0.003，和线上 rank 15 的 0.0030 **在统计上分不开**，
-    却被 FDR 分到了线的两侧（线上 rank 1–5 正是这一格）。
+    `p = 0.0000` 曾把"低于本估计器能报的最小值"说成"极显著"——
+    零穿越(X=0, B=2000)时双侧 p 的 95% 上界 ≈0.003，和线上 rank 15 那条
+    p=0.0030 的 dead **在统计上分不开**，却被 FDR 分到了线的两侧。
 
-    D6 加 +1 平滑后这里会变成 ≈ 2/(B+1) ≈ 0.001 —— **那时改这条测试是对的**，
-    但必须是**故意**改，并在 commit 里记清楚它影响哪些已发布的 p。
+    ⚠ 这条**不许**再回到 `== 0.0`：那会把假象重新引入，并让
+    `p_at_floor` 的展示口径（显示 `≤下限` 而非精确值）失去依据。
     """
     r = bbd(*_case(3000, 4, 1.0, 0.40), block=20)
-    assert r["p_boot"] == 0.0, "零穿越不再返回精确 0.0 —— 是 D6 的平滑上线了吗?"
+    assert r["p_boot"] > 0.0, "零穿越又返回精确 0.0 了 —— +1 平滑被撤了?"
+    assert r["p_boot"] == pytest.approx(2 / (r["n_used"] + 1), abs=5e-5)
+    assert r["mc_x"] == 0, "下限的判据是 X=0，不是 p 被舍入成多少"
     assert r["diff"] > 0
 
 
@@ -167,7 +179,7 @@ def test_consumer_inventory_is_pinned():
 def test_p_formula_lives_in_exactly_one_place():
     """p 公式必须只有一份实现 —— 8 个消费者共用，复制一份出去就会口径漂移。"""
     src = (SCRIPTS / "walk_forward.py").read_text(encoding="utf-8")
-    hits = len(re.findall(r"2 \* min\(float\(\(diffs <= 0\)\.mean\(\)\)", src))
+    hits = len(re.findall(r"p = 2 \* min\(\(x_le \+ 1\) / \(n_eff \+ 1\)", src))
     assert hits == 1, f"p 公式出现 {hits} 次；应当只有 block_bootstrap_diff 内部那一处"
 
 
@@ -188,7 +200,7 @@ def test_oos_gate_diff_oos_golden():
     cand = {"candidate_id": "golden01", "key": "golden_test", "family": "rebound", "params": {}}
     v = og._diff_oos(cand, anchor, (idx, sel, y), block=5)
     assert v["oos_status"] == og.CONFIRMED
-    assert v["oos_p"] == pytest.approx(0.0, abs=1e-9), (
+    assert v["oos_p"] == pytest.approx(0.001, abs=1e-9), (
         f"门4 的 oos_p 变了({v['oos_p']}) —— 它决定 confirmed/overturned，"
         "而那会写进 append-only kb_ledger。若是 D6 的平滑，请一并核对滞回阈值 0.10/0.20 的影响。")
     assert v["full_sign"] == 1 and v["oos_sign"] == 1
@@ -213,7 +225,7 @@ def test_factor_pruning_segment_lens_golden():
     df = pd.DataFrame({"date": idx, "year": idx.year, "fwd_up_20d": y.astype(float), COL: col})
     seg = fp._segment_lens(df, COL, +1, df["date"].max() - pd.DateOffset(years=fp.RECENT_YEARS))
     assert seg is not None
-    assert seg["full_p"] == pytest.approx(0.0, abs=1e-9), (
+    assert seg["full_p"] == pytest.approx(0.001, abs=1e-9), (
         f"因子族的 full_p 变了({seg['full_p']}) —— 它直接进跨族 BY-FDR、决定公开存活名单。")
     # diff = 触发组 80% − **基率** 70%（= (80+60)/2，**含触发日、非补集**）= 10.0pp。
     # 起草这条时我按补集算成了 20pp、测试红 —— 正好把 survivors_live 那条命门
