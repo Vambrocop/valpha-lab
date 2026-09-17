@@ -21,7 +21,10 @@ HARD_KW = ("溢出", "按钮", "加载失败", "pageerror", "循环动画未清"
 PAGES = ["dashboard.html", "index.html", "valpha150.html", "sectors.html", "radar.html",
          "advisor.html", "wild.html", "ipo.html", "methodology.html", "self_growing.html",
          "discoveries.html", "fxreturn.html", "prediction.html", "heatmap.html", "au.html",
-         "picks.html", "fear.html", "dip.html", "vixvol.html", "feargreed.html", "treasury.html", "myportfolio.html", "au_radar.html"]  # picks:SPEC_PICKS_V2·③;fear:SPEC_FEAR_EXTREMES·③;dip:SPEC_DIP_HOLD·③;vixvol:VIX波动预报复现图;feargreed:SPEC_FEAR_GREED·③
+         "picks.html", "fear.html", "dip.html", "vixvol.html", "feargreed.html", "treasury.html", "myportfolio.html", "au_radar.html",
+         "composite.html"]   # composite:存活规律观察台 —— 2026-09-16 发现它一直不在本清单里,
+         #   而它是公开面板、有 JS 渲染(存活行/横跳分组/概率标注)。清单是手维护的 → 见
+         #   test_interaction_audit_coverage.py:带 JS 交互的页面必须在册,否则改了没人验  # picks:SPEC_PICKS_V2·③;fear:SPEC_FEAR_EXTREMES·③;dip:SPEC_DIP_HOLD·③;vixvol:VIX波动预报复现图;feargreed:SPEC_FEAR_GREED·③
 DASH_VIEWS = ["today", "outlook", "plan", "longterm", "research", "lab", "registry", "quant", "mine"]
 
 
