@@ -166,12 +166,13 @@ def test_resample_p_respects_each_estimator_formula():
     rng = np.random.default_rng(0)
     boots = [qg._resample_p(rng, su.mc_meta(0, 2000, "bootstrap")) for _ in range(400)]
     perms = [qg._resample_p(rng, su.mc_meta(0, 1000, "permutation")) for _ in range(400)]
-    # D6 之后两族都带 +1 平滑 → 重抽也**绝不**跌破各自下限（不再出现"精确 0"）
-    assert min(boots) >= 2 / 2001 - 1e-12, f"自助重抽跌破了 2/(n+1) 下限: {min(boots)}"
-    assert min(perms) >= 1 / 1001 - 1e-12, "置换重抽跌破了 (X+1)/(n+1) 的下限"
-    # 自助重抽落在 2/(n+1) 的网格上（步长 2/(n+1)）
-    step = 2 / 2001
-    assert all(abs(v / step - round(v / step)) < 1e-6 for v in boots[:20]), "自助重抽不在其网格上"
+    # D6 之后两族都带 +1 平滑 → 重抽也**绝不**出现"精确 0"。
+    # 断言钉的是**生产的实际契约**：重抽与生产一样把 p 舍入（自助 4 位 / 置换 6 位），
+    # 所以下界要用**舍入后**的下限比。拿未舍入的精确值比是拿理想值比生产 ——
+    # `round(1/1001, 6) = 0.000999` 本就略低于 1/1001（起草时踩了，同 p_floor 那条）。
+    assert min(boots) >= round(2 / 2001, 4) - 1e-12, f"自助重抽跌破了下限: {min(boots)}"
+    assert min(perms) >= round(1 / 1001, 6) - 1e-12, f"置换重抽跌破了下限: {min(perms)}"
+    assert min(boots) > 0 and min(perms) > 0, "又出现了「精确 0」"
     assert qg._resample_p(rng, None) is None
 
 
@@ -321,23 +322,69 @@ def test_boost_scales_the_estimator_n():
     assert up["mc"]["p_floor"] < base["mc"]["p_floor"], "加算后分辨下限没变低"
 
 
-def test_refinement_never_picks_the_better_of_two_passes():
-    """D9：加算后**一律**用 pass-2，绝不取 `min(pass1, pass2)` 或"更显著的那个"。
+def test_adopt_pass2_takes_the_worse_p_not_the_better():
+    """**D9 的行为测试**：给 pass-2 一个更大(更不显著)的 p，必须采纳那个更大的。
 
-    两次抽样取极值不再是对理想 p 的一致估计，且取哪个依赖观测结果 ——
-    那会把 p-hacking 藏进实现细节。这是规格里标明"最容易被顺手优化掉"的一条。
+    D9 是规格里标明"最容易被顺手优化掉"的一条。此前只有源码禁词扫描守它，而
+    独立审实现（B2）实测出 **4 种**合理的违规写法全都骗过了文本匹配：
+      · 海象算子取更显著者（保留 `by_id.get(`）
+      · `sorted([pass2, pass1], key=p)[0]`
+      · lambda 三元：pass-2 更差就丢掉
+      · `min(r["p"], by_id.get(...)["p"])`  ← 禁词表只拦变量恰好叫 p/p1/p2 的写法
+    所以撑住这条红线的必须是**行为**断言，文本扫描只能当第二道网。
     """
-    from pathlib import Path
     import autodiscovery as ad
-    src = Path(ad.__file__).read_text(encoding="utf-8")
-    i = src.index("refine_ids = {")
-    # **先剥注释再扫代码**：起草时这条命中了我自己那句「绝不比较两次谁更显著」的注释
-    # —— 源码文本断言的典型假阳性（审查 S-5 警告过这类脆弱）。禁词只该对**代码**成立。
-    code = " ".join(ln.split("#", 1)[0]
-                    for ln in src[i:i + 1400].splitlines())
-    assert "by_id.get(" in code, "没看到无条件替换成 pass-2 的写法"
-    for bad in ("min(p", "max(p", "if p2", "if pass"):
-        assert bad not in code, f"加算段的**代码**里出现了两次取优的痕迹: {bad!r}（D9/S7 红线）"
+    p1 = [{"candidate_id": "x", "key": "k", "p": 0.001, "mc": {"mc_x": 1, "mc_n": 2000}}]
+    p2 = [{"candidate_id": "x", "key": "k", "p": 0.400, "mc": {"mc_x": 400, "mc_n": 20000}}]
+    got = ad.adopt_pass2(p1, p2)
+    assert got[0]["p"] == 0.400, (
+        f"采纳了 {got[0]['p']} 而不是 pass-2 的 0.400 —— 有人在取两次里更显著的那个（D9/S7 红线）")
+    assert got[0]["mc"]["mc_n"] == 20000, "采纳的不是 pass-2 的计数"
+
+
+def test_adopt_pass2_keeps_candidates_that_were_not_refined():
+    import autodiscovery as ad
+    p1 = [{"candidate_id": "a", "key": "ka", "p": 0.5, "mc": {"mc_x": 500, "mc_n": 2000}},
+          {"candidate_id": "b", "key": "kb", "p": 0.001, "mc": {"mc_x": 1, "mc_n": 2000}}]
+    p2 = [{"candidate_id": "b", "key": "kb", "p": 0.002, "mc": {"mc_x": 20, "mc_n": 20000}}]
+    got = {r["candidate_id"]: r for r in ad.adopt_pass2(p1, p2)}
+    assert got["a"]["p"] == 0.5 and got["b"]["p"] == 0.002
+
+
+def test_adopt_pass2_refuses_a_degraded_pass2():
+    """pass-1 有 MC 计数、pass-2 没有 → 无条件采纳会把一条好结果静默降级成 inconclusive。
+
+    拒绝退化**不违反** D9（不是取更优的 p，是不接受更差的**数据**）。审查 S6。
+    """
+    import autodiscovery as ad
+    p1 = [{"candidate_id": "x", "key": "k", "p": 0.001, "mc": {"mc_x": 1, "mc_n": 2000}}]
+    degraded = [{"candidate_id": "x", "key": "k", "p": 1.0, "recent_powered": False, "mc": None}]
+    with pytest.raises(ValueError, match="加算退化"):
+        ad.adopt_pass2(p1, degraded)
+
+
+def test_adopt_pass2_allows_both_missing_mc():
+    """两边都没跑过统计 → 不算退化，照常采纳 pass-2。"""
+    import autodiscovery as ad
+    p1 = [{"candidate_id": "x", "key": "k", "p": 1.0, "mc": None}]
+    p2 = [{"candidate_id": "x", "key": "k", "p": 1.0, "mc": None}]
+    assert ad.adopt_pass2(p1, p2)[0]["p"] == 1.0
+
+
+def test_two_pass_flow_uses_the_extracted_adopter():
+    """就地写采纳逻辑就只能靠禁词扫描守 —— 那种守门实测挡不住任何合理的违规写法。
+
+    采纳发生在共享的 `resolve_candidates` 里（B3 之后生产与离线工具共用它）。
+    """
+    import inspect
+    import autodiscovery as ad
+    src = inspect.getsource(ad.resolve_candidates)
+    assert "adopt_pass2(results, boosted)" in src, (
+        "两遍流程没走抽出来的 adopt_pass2 —— 那条红线就又只剩文本扫描了")
+    # 且就地不许再出现比较式的采纳
+    code = " ".join(ln.split("#", 1)[0] for ln in src.splitlines())
+    for bad in ("min(", "max(", "sorted("):
+        assert bad not in code, f"两遍流程里出现 {bad!r} —— 疑似取优（D9/S7 红线）"
 
 
 def test_unresolved_reason_distinguishes_refined_from_not():
@@ -358,7 +405,9 @@ def test_refine_selection_is_direction_blind():
     import autodiscovery as ad
     src = Path(ad.__file__).read_text(encoding="utf-8")
     i = src.index("refine_ids = {")
-    sel = src[i:src.index("if refine_ids:")]
+    # 切片**必须带起始位置**：不带的话该串若将来出现在 `refine_ids = {` 之前，
+    # 切片会变空、整条测试静默空过（审查 N1）。
+    sel = src[i:src.index("if refine_ids:", i)]
     assert "change_prob" in sel
     for bad in ("survive", "verdict", "full_sign", "diff", "方向"):
         assert bad not in sel, f"选加算集时看了 {bad!r} —— 触发条件掺进结论方向 = 自动化 p-hacking"
@@ -436,3 +485,68 @@ def test_verify_output_actually_calls_the_audit():
     i = src.index("unresolved_audit")
     body = src[i - 900:i + 900]
     assert "旧产物" in body, "老产物缺字段时应优雅跳过而不是把流水线干红"
+
+
+def test_refine_set_is_exactly_the_over_threshold_set():
+    """D2：带内**全部**加算、一条不挑 —— 断言集合**相等**，不是子集。
+
+    审查 S5 用内存变异实测：原先那条只用 `survive_prob` 挑会被抓到，但
+    「只加算 p<0.01 的那半」「只加算前 5 条」「用 `reason==''` 当 survive 的代理」
+    **三种挑法全部绿过**。所以必须钉住集合相等。
+    """
+    import autodiscovery as ad
+    rows = _pool(n_noise=30)
+    qg.adjudicate(rows, q=0.10)
+    probs, _ = qg.change_probabilities(rows, q=0.10, K=400)
+    expect = {r["candidate_id"] for r in rows
+              if (probs[r["key"]]["change_prob"] or 0) > ad.P_REFINE}
+    # 复刻 run_all 的选取表达式（同一份 probs → 必须得到同一个集合）
+    got = {r["candidate_id"] for r in rows
+           if (probs.get(r["key"], {}).get("change_prob") or 0) > ad.P_REFINE}
+    assert got == expect, "选取不是「恰好等于超阈集合」"
+    # 源码层面：选取表达式里只许出现 change_prob 这一个判据
+    from pathlib import Path
+    src = Path(ad.__file__).read_text(encoding="utf-8")
+    k = src.index("refine_ids = {")
+    sel = src[k:src.index("if refine_ids:", k)]          # 带起始位置，防切片空过(审查 N1)
+    assert sel.count("change_prob") == 1 and ">" in sel
+    for bad in ("survive", "verdict", "full_sign", "[:", "sorted("):
+        assert bad not in sel, f"选取里出现了 {bad!r} —— 疑似挑选或排序后截取（违反 D2）"
+
+
+# ── T13：Part C 的「分辨不了」必须有前端落点（审查 S4：此前零消费者）─────
+def test_unresolved_has_frontend_consumers_on_the_dead_side():
+    """规格 §10 明写 C2+C3 含 Part C（标注 + **对称披露**）同批发布，§8 T13 要求
+    dead/faded 的 `mc_unresolved` 在前端有落点。
+
+    审实现 S4 实测：`mc_unresolved` / `mc_unresolved_reason` 在 web/*.html 与
+    survivors_live 里**零消费者**，唯一读它的是 verify_output 自己 ——
+    也就是说这套方法**最值钱的那句输出**（"本质上分辨不了，不是算得不够多"）
+    没有任何读者看得到。
+    """
+    from pathlib import Path
+    html = (Path(__file__).resolve().parents[1] / "web" / "discoveries.html").read_text(encoding="utf-8")
+    assert "mc_unresolved" in html, "坟场/弹窗没接 mc_unresolved"
+    assert "mc_unresolved_reason" in html, "只标布尔、不给原因 = 只说不稳、不说为什么"
+    assert "dUnres" in html and "dUnresHint" in html, "缺 i18n 键"
+
+
+def test_unresolved_wording_says_it_is_inherent_not_under_computed():
+    """措辞必须说清「不是算得不够多」—— 否则读者会以为再多跑几次就有结论了。"""
+    import re
+    from pathlib import Path
+    html = (Path(__file__).resolve().parents[1] / "web" / "discoveries.html").read_text(encoding="utf-8")
+    m = re.search(r'dUnresHint:\{zh:"([^"]+)",en:"([^"]+)"\}', html)
+    assert m, "dUnresHint 不是 {zh,en} 两列"
+    assert "本质上" in m.group(1) and "不是算得不够多" in m.group(1)
+    assert not re.search(r"[一-龥]", m.group(2)), f"英文里有中文: {m.group(2)!r}"
+    assert "inherently unresolvable" in m.group(2)
+
+
+def test_survivors_deck_carries_unresolved_too():
+    """对称披露：今天那 2 条都是 dead，但存活者将来也可能被标上。"""
+    from pathlib import Path
+    import survivors_live as sl
+    src = Path(sl.__file__).read_text(encoding="utf-8")
+    assert '"mc_unresolved": bool(c.get("mc_unresolved"))' in src
+    assert "加算后仍分辨不了" in src, "存活一侧没有人话提示"

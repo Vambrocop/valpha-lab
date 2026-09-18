@@ -98,3 +98,43 @@ def test_tool_declares_it_must_not_run_in_ci():
     """每个种子约 2 分钟 → 进 CI 会撑爆预算。文档里必须写明。"""
     src = AUDIT.read_text(encoding="utf-8")
     assert "不进 CI" in src or "勿进 CI" in src
+
+
+# ── B3 的回归守门（第一版实现只跑未加算的 pass-1）──────────────────────
+def test_tool_shares_the_production_two_pass_flow():
+    """工具必须走生产那条 `resolve_candidates`，不能自己另写一套。
+
+    审实现 B3：第一版只调 `compute_results`（未加算）→ 它量的是**未加算管线**的
+    种子敏感度，规格 §9-4 的"修前修后对照"根本做不出来，
+    而结尾话术读起来像能做到。共用同一条流程才能验到修复效果。
+    """
+    src = AUDIT.read_text(encoding="utf-8")
+    assert "resolve_candidates" in src, (
+        "工具没走生产的两遍流程 —— 它量的将是未加算管线，验不到 C3 的效果（B3）")
+    assert "ad.compute_results(cands)" not in src, (
+        "工具还在直接调 compute_results（未加算）—— 那是 B3 的原始形态")
+
+
+def test_tool_can_produce_the_before_after_comparison():
+    """规格 §9-4 要的是"修前修后对照" —— 工具必须能一次跑出两种口径。"""
+    src = AUDIT.read_text(encoding="utf-8")
+    assert "--both" in src and "refine=False" in src, "没有未加算口径，出不了对照"
+    assert "§9-4" in src, "没标明它交付的是哪条验收判据"
+    assert "不下降就是没修对" in src, "对照没给判据，读者不知道该看什么"
+
+
+def test_tool_no_longer_implies_an_effect_it_cannot_measure():
+    """第一版结尾写"若这是加算上线之后，说明修复生效了" —— 而它测不到加算。
+
+    把一个测不到的因果暗示给下一个人，比不说更糟。
+    """
+    src = AUDIT.read_text(encoding="utf-8")
+    assert "若这是加算上线之后" not in src, "那句测不到的因果暗示还在"
+
+
+def test_seed_patch_forwards_args_generically():
+    """替身用 `*a, **k` 转发 —— 写死签名的话，`block_bootstrap_diff` 将来加参数
+    会被静默丢掉（审查 N4）。"""
+    src = AUDIT.read_text(encoding="utf-8")
+    i = src.index("def bbd(")
+    assert "*a, **k" in src[i:i + 80], f"替身签名写死了: {src[i:i+60]!r}"

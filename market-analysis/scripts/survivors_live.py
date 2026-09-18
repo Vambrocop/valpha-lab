@@ -289,6 +289,8 @@ def build():
         # 是个质的区别、值得一句人话警告。60–80% 那档的梯度信息由行上那句
         # 「换个随机种子 N%」的颜色承载（绿≥80 / 灰 60–80 / 琥珀<60）——
         # 若阈值取 0.70，线上 7 条里会有 4 条挂警告，而"警告滥发等于没有警告"。
+        if c.get("mc_unresolved") and c.get("mc_unresolved_reason"):
+            notes.append("⚠ **加算后仍分辨不了**：" + str(c["mc_unresolved_reason"]))
         sp = c.get("mc_survive_prob")
         if sp is not None and sp < 0.50:
             notes.append(f"⚠ **蒙特卡洛边界不稳**：只换自助/置换的随机种子（数据与方法全不动），"
@@ -318,6 +320,11 @@ def build():
             # `world_cup_year_nasdaq` 只有约 40%、整份名单原样复现的概率不到 10%。
             "mc_survive_prob": c.get("mc_survive_prob"),
             "mc_change_prob": c.get("mc_change_prob"),
+            # Part C 的"分辨不了就说分辨不了" —— 对称披露的另一半。
+            # 今天那 2 条都是 dead(落在 discoveries 的坟场)，但存活者将来也可能被标上，
+            # 到那时这张最面向用户的表必须说得出来，而不是只剩一个概率数字。
+            "mc_unresolved": bool(c.get("mc_unresolved")),
+            "mc_unresolved_reason": c.get("mc_unresolved_reason"),
             "unstable": unstable,
             "flips": flips, "stable_days": stable_days, "boundary_flicker": flicker,
             "stability_note": "；".join(notes),

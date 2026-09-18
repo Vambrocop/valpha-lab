@@ -159,7 +159,9 @@ const I18N={
   dStab:{zh:"换个随机种子",en:"If the random seed changed"},
   dStabSurv:{zh:"这条还在存活名单上的概率",en:"chance this stays on the survivor list"},
   dStabChg:{zh:"裁决会变的概率",en:"chance the verdict flips"},
-  dFloor:{zh:"已到该估计器的分辨下限（重采样一次都没穿过零）——真值可能更小，但这次抽样分辨不出来",en:"at this estimator's resolution floor (zero crossings) — the true value may be smaller, but this run cannot tell"},
+  dUnres:{zh:"⚠ 分辨不了",en:"⚠ Cannot be resolved"},
+  dUnresHint:{zh:"加算到更高精度后改判概率仍高 —— 这条的边界**本质上**分辨不了，不是算得不够多",en:"still flips often even after a 10x-precision recompute — this boundary is inherently unresolvable, not just under-computed"},
+  dFloor:{zh:"已到该估计器的分辨下限（重采样一次都没穿过零）——真值可能更小，但这次抽样分辨不出来；零穿越时双侧 p 的 95% 上界约 0.003，也就是说它和被判 dead 的 0.0030 在统计上分不开",en:"at this estimator's resolution floor (zero crossings) — the true value may be smaller, but this run cannot tell. With zero crossings the two-sided 95% upper bound is about 0.003, i.e. statistically indistinguishable from the 0.0030 that was judged dead"},
   dP:{zh:"校正前 p 值",en:"pre-FDR p"},dRecent:{zh:"现代 p",en:"modern p"},dModern:{zh:"现代段(2000后)",en:"modern (post-2000)"},
   dClose:{zh:"关闭",en:"Close"},
   vSurvive:{zh:"真存活",en:"survive"},vFaded:{zh:"已淡",en:"faded"},vDead:{zh:"未过FDR",en:"dead"},vInconc:{zh:"检验力不足",en:"inconclusive"},
@@ -350,7 +352,7 @@ function showAD(id){const c=ADC.find(x=>x.candidate_id===id);if(!c)return;
   $("mbody").innerHTML=`<div style="font-weight:700;font-size:1.05rem;margin-bottom:8px">${esc(c.key)}</div>
     <div style="color:var(--mut);font-size:.85rem;line-height:1.9">
       ${t("dFam")}：<b style="color:var(--fg)">${esc(c.family)}</b> · ${t("dVerdict")}：<b style="color:${VCLR[c.verdict]||'var(--fg)'}">${vl}</b>${c.reason?` · ${esc(c.reason)}`:""}<br>
-      ${t("dP")}：<b style="color:var(--fg)">${pp(c.p,c.mc)}</b>（${t("dRecent")} ${pp(c.recent_p,c.mc_recent)}）· ${t("dModern")}：${esc(c.modern_status||"—")}${c.mc_survive_prob==null?"":`<br>${t("dStab")}：<b style="color:${c.mc_survive_prob>=0.8?"var(--grn)":c.mc_survive_prob>=0.5?"var(--amb)":"var(--red)"}">${Math.round(c.mc_survive_prob*100)}%</b> ${t("dStabSurv")}（${t("dStabChg")} ${Math.round((c.mc_change_prob||0)*100)}%）`}
+      ${t("dP")}：<b style="color:var(--fg)">${pp(c.p,c.mc)}</b>（${t("dRecent")} ${pp(c.recent_p,c.mc_recent)}）· ${t("dModern")}：${esc(c.modern_status||"—")}${c.mc_survive_prob==null?"":`<br>${t("dStab")}：<b style="color:${c.mc_survive_prob>=0.8?"var(--grn)":c.mc_survive_prob>=0.5?"var(--amb)":"var(--red)"}">${Math.round(c.mc_survive_prob*100)}%</b> ${t("dStabSurv")}（${t("dStabChg")} ${Math.round((c.mc_change_prob||0)*100)}%）`}${c.mc_unresolved?`<br><span style="color:var(--amb)" title="${esc(t("dUnresHint"))}"><b>${t("dUnres")}</b>${c.mc_unresolved_reason?"："+esc(c.mc_unresolved_reason):""}</span>`:""}
     </div>${wt}${dt}
     ${AD&&AD.caveat?`<div style="font-size:.68rem;color:var(--mut);margin-top:10px;border-top:1px solid var(--border);padding-top:7px;line-height:1.5">${esc(AD.caveat)}</div>`:""}
     <button onclick="closeD()" style="margin-top:14px;background:var(--acc);color:#fff;border:0;border-radius:8px;padding:7px 18px;cursor:pointer">${t("dClose")}</button>`;
@@ -427,7 +429,7 @@ function render(){
   $("dead").innerHTML=dead.length?[...dead].sort(ord).map(c=>{
     const pn=plainName(c);
     const fl=pn.unsure?" ⚠️":"";
-    return `<span class="gchip" style="cursor:pointer" onclick="showAD('${esc(c.candidate_id)}')" title="${esc(c.key)} · p=${c.p==null?"—":((c.mc&&c.mc.p_at_floor)?"≤"+(+c.mc.p_floor).toPrecision(2):(+c.p).toPrecision(2))}${c.mc_survive_prob==null?"":" · 换种子仍存活 "+Math.round(c.mc_survive_prob*100)+"%"}">${pn.name}${fl}</span>`;
+    return `<span class="gchip" style="cursor:pointer" onclick="showAD('${esc(c.candidate_id)}')" title="${esc(c.key)} · p=${c.p==null?"—":((c.mc&&c.mc.p_at_floor)?"≤"+(+c.mc.p_floor).toPrecision(2):(+c.p).toPrecision(2))}${c.mc_survive_prob==null?"":" · 换种子仍存活 "+Math.round(c.mc_survive_prob*100)+"%"}${c.mc_unresolved?" · ⚠ 加算后仍分辨不了":""}">${c.mc_unresolved?'<span style="color:var(--amb)">⚠</span>':""}${pn.name}${fl}</span>`;
   }).join(""):`<div class="mut">—</div>`;
   // 数据日 + 账本追踪天数
   const asof=AD.generated?`${t("asof")} ${esc(AD.generated.slice(0,10))}`:"";

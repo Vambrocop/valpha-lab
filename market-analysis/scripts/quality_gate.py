@@ -105,8 +105,12 @@ def _resample_p(rng, mc):
     xs = int(rng.binomial(n, theta))
     # 两族都用**各自估计器带平滑的**公式重建（D6 之后自助也是 +1 平滑）。
     # 用错公式会让两族的噪声尺度系统性错配，而它们共用一个跨族 BY 池。
-    return (min(1.0, 2.0 * (xs + 1) / (n + 1)) if kind == "bootstrap"
-            else min(1.0, (xs + 1) / (n + 1)))
+    # 舍入位数与生产一致（自助 4 位 / 置换 6 位）—— 基准 p 来自产物(已舍入)，
+    # 重抽的若不舍入，两者口径就差一点。今天没有任何 BY 临界值落在舍入间隙里
+    # （c₈=9.69e-4、c₉=1.090e-3，间隙 [0.0009995, 0.001]），所以无实际影响，
+    # 但对齐更结实（审查 N2）。
+    return (round(min(1.0, 2.0 * (xs + 1) / (n + 1)), 4) if kind == "bootstrap"
+            else round(min(1.0, (xs + 1) / (n + 1)), 6))
 
 
 def change_probabilities(results, q=Q_DEFAULT, K=2000, seed=_MC_SEED):
@@ -178,6 +182,16 @@ def unresolved_audit(results, p_unresolved):
 
     二者皆非 = 一个悄悄落在蒙特卡洛噪声里的裁决 —— 那正是本规格要消灭的东西。
     返回违规列表 [(key, change_prob, 说明)]；空列表 = 通过。
+
+    ⚠ **这道门的真实强度，别高估**（独立审实现 S1）：
+    `run_all` 里 `mc_unresolved = cp > P_UNRESOLVED` 与本函数的
+    `cp > p_unresolved and not mc_unresolved` **由同一个 cp、同一个常量导出**
+    → "超阈却没标"这条分支在当前生产代码下**不可能命中**；`cp is None` 也不可能。
+    所以它抓不到它字面上宣称抓的那件事（"一条悄悄落在噪声里的裁决"）——
+    噪声与标注同源。它的实际价值是**回归护栏**：将来有人改标注逻辑、或换个生产者
+    来填这些字段时，这里会响。
+    真正独立的防线是 `n_unresolved ≤ 15`（S5）那道计数 + 8 条 hermetic 单测
+    + 离线的 `tools/mc_stability_audit.py`（真换种子重跑，不共享那个噪声模型）。
 
     豁免（审查 S-e，已核实线上口径）：
       · `recent_powered=False` 的候选在 `adjudicate` 里短路成 `inconclusive`，

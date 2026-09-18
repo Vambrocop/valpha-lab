@@ -861,6 +861,82 @@ def _factor_map(factor_cands, boosts=None):
     return out
 
 
+def resolve_candidates(cands, q=0.10, refine=True):
+    """两遍流程（SPEC_MC_RESOLUTION Part B）：pass-1 → 选加算集 → pass-2 → 采纳 → 再量一次。
+
+    **生产（`run_all`）与离线慢查工具（`tools/mc_stability_audit.py`）共用这一份** ——
+    独立审实现（B3）指出：工具原先只跑 `compute_results`(未加算)，所以它量的是
+    **未加算管线**的种子敏感度，规格 §9-4 要的"修前修后对照"它根本做不出来，
+    而它的结尾话术读起来像能做到。共用同一条流程才能让工具真的验到修复效果。
+
+    `refine=False` → 只跑 pass-1（未加算基线），供"修前"对照用。
+
+    返回 (results, refine_ids, probs, summary)；summary 里带两遍的秒数
+    —— S6（耗时 STOP）此前没有任何仪表，上线后没人能复核"没触发"这句话（审查 S3）。
+    """
+    import time
+    t0 = time.time()
+    results = compute_results(cands)
+    adjudicate(results, q=q, expect_n=cs.N_DECLARED)
+    sec1 = time.time() - t0
+
+    refine_ids, sec2 = set(), 0.0
+    if refine:
+        probs1, _ = change_probabilities(results, q=q)
+        refine_ids = {r["candidate_id"] for r in results
+                      if (probs1.get(r["key"], {}).get("change_prob") or 0) > P_REFINE}
+        if refine_ids:
+            t1 = time.time()
+            redo = [c for c in cands if c["candidate_id"] in refine_ids]
+            boosted = compute_results(redo, boosts={cid: REFINE_FACTOR for cid in refine_ids})
+            results = adopt_pass2(results, boosted)      # D9：无条件采纳 pass-2
+            adjudicate(results, q=q, expect_n=cs.N_DECLARED)
+            sec2 = time.time() - t1
+
+    probs, summary = change_probabilities(results, q=q)
+    summary["n_refined"] = len(refine_ids)
+    summary["p_refine"] = P_REFINE
+    summary["p_unresolved"] = P_UNRESOLVED
+    summary["refine_factor"] = REFINE_FACTOR
+    summary["seconds_pass1"] = round(sec1, 1)
+    summary["seconds_pass2"] = round(sec2, 1)
+    summary["refined"] = refine
+    return results, refine_ids, probs, summary
+
+
+def adopt_pass2(results, boosted):
+    """把加算结果并回 pass-1 —— **无条件采纳 pass-2**（规格 D9）。
+
+    D9 是规格里标明"最容易被顺手优化掉"的一条：加算后**一律**用 pass-2 的 p，
+    **绝不**取 `min(pass1, pass2)`、也绝不"哪个更显著用哪个"。
+    两次抽样取极值不再是对理想 p 的一致估计、且取哪个依赖观测结果 ——
+    那会把 p-hacking 藏进实现细节里。
+
+    抽成纯函数是为了能**行为测试**它：给 pass-2 一个更大(更不显著)的 p，
+    断言采纳的就是那个更大的值。此前只有源码禁词扫描守这条，
+    而独立审实现实测出 4 种合理的违规写法都能骗过文本匹配（B2）。
+
+    同时拦一种**退化**：pass-1 有 `mc`（真跑过统计）而 pass-2 没有
+    → 说明加算那次 arrays 退化了，`compute_results` 的兜底会用
+    `{"p":1.0, "recent_powered":False, "mc":None}` **无条件覆盖**掉一条好结果，
+    一条 survive 会静默变 inconclusive。拒绝退化不违反 D9（不是取优，是不接受更差的**数据**）。
+    """
+    by_id = {x["candidate_id"]: x for x in boosted}
+    out = []
+    for r in results:
+        nr = by_id.get(r["candidate_id"])
+        if nr is None:
+            out.append(r)
+            continue
+        if r.get("mc") and not nr.get("mc"):
+            raise ValueError(
+                f"加算退化：{r.get('key')} 在 pass-1 有 MC 计数、pass-2 却没有"
+                "（arrays 退化？）。无条件采纳会把一条好结果静默降级成 inconclusive，"
+                "拒绝继续 —— 请查该候选的数据，别让它悄悄掉级")
+        out.append(nr)               # D9：无条件采纳 pass-2，不比较、不回退
+    return out
+
+
 def compute_results(candidates, boosts=None):
     """每候选路由到真统计 → {candidate_id, family, key, p, recent_p, recent_powered}。
 
@@ -927,23 +1003,10 @@ def _log_days(path=LOG):
 
 def run_all(write=True, q=0.10):
     cands = cs.enumerate_candidates()
-    results = compute_results(cands)
-    adjudicate(results, q=q, expect_n=cs.N_DECLARED)   # 断言分母完整 = 全部候选都算了
-    # 裁决的蒙特卡洛稳定性(SPEC_MC_RESOLUTION Part B/C)：只重抽已存下的 MC 计数、
-    # 重跑 adjudicate，**不重跑任何自助/置换** → 实测 K=2000 约 1.2s，可以天天算。
-    # 不这么报的话，"存活名单"读起来像个确定的清单，而实测每次重抽平均有 4.4 条会变。
-    # pass-1 的改判概率 → 选加算集（只看概率，不看方向；带内全选，一条不挑 D1/D2）
-    probs1, _ = change_probabilities(results, q=q)
-    refine_ids = {r["candidate_id"] for r in results
-                  if (probs1.get(r["key"], {}).get("change_prob") or 0) > P_REFINE}
-    if refine_ids:
-        redo = [c for c in cands if c["candidate_id"] in refine_ids]
-        boosted = compute_results(redo, boosts={cid: REFINE_FACTOR for cid in refine_ids})
-        by_id = {x["candidate_id"]: x for x in boosted}
-        # D9：**一律**替换成 pass-2 的结果，绝不比较两次谁更显著
-        results[:] = [by_id.get(r["candidate_id"], r) for r in results]
-        adjudicate(results, q=q, expect_n=cs.N_DECLARED)
-    mc_probs, mc_sum = change_probabilities(results, q=q)
+    # 两遍流程（pass-1 → 选加算集 → pass-2 → 采纳）抽在 `resolve_candidates` 里，
+    # **与离线慢查工具共用同一份** —— 工具若自己另写一套，它量的就不是生产真正在跑的东西
+    # （审查 B3 实测：原先工具只跑未加算的 pass-1，规格 §9-4 的修前修后对照做不出来）。
+    results, refine_ids, mc_probs, mc_sum = resolve_candidates(cands, q=q)
     for r in results:
         pr = mc_probs.get(r["key"], {})
         cp = pr.get("change_prob")
@@ -968,11 +1031,7 @@ def run_all(write=True, q=0.10):
                     "是别的候选加算后挪动了 FDR 阈值才把它推到边界上")
         else:
             r["mc_unresolved_reason"] = None
-    mc_sum["n_refined"] = len(refine_ids)
     mc_sum["n_unresolved"] = sum(1 for r in results if r["mc_unresolved"])
-    mc_sum["p_refine"] = P_REFINE
-    mc_sum["p_unresolved"] = P_UNRESOLVED
-    mc_sum["refine_factor"] = REFINE_FACTOR
     s = summarize(results)
     if write:
         _append_log(results)               # 每交易日 append 裁决快照，攒衰减/自升级前向史

@@ -286,23 +286,41 @@ try:
             adj = json.load(fh)
         cands = adj.get("candidates") or []
         stab = adj.get("mc_stability") or {}
-        if cands and stab:
+        # 这道门需要 C2+C3 才产出的字段。**判"产物够不够新"必须看齐全部所需字段**，
+        # 不能只看 mc_stability 存不存在 —— 独立审实现（B1）实测到一个会把 CI 干红的形状：
+        # C4a 那版产物**有** mc_stability 却**没有** p_unresolved / mc_unresolved。
+        # 而 `run_all --light`(盘中每 30 分钟一次) 含 verify_output、**不含** autodiscovery
+        # → 读的就是仓库里那份旧产物 → 原先的 `check(False, "缺 p_unresolved")` 会让
+        # 每一次 light 刷新都红（最多 13 次/约 7 小时零发布），直到全量跑把产物重写。
+        # 这正是 fe8af0a 那次"我的守门测试把刷新干红两天"的同一形状,这次在发布前被拦住。
+        needed = ("p_unresolved" in stab
+                  and any("mc_unresolved" in c for c in cands))
+        if cands and stab and needed:
             from quality_gate import unresolved_audit   # 同目录，path 已就绪(见顶部 ledger_hash 的 import)
-            thr = stab.get("p_unresolved")
-            if thr is None:
-                check(False, "autodiscovery.json 的 mc_stability 缺 p_unresolved（守门无阈值可用）")
-            else:
-                bad = unresolved_audit(cands, float(thr))
-                check(not bad, f"MC 守门：{len(cands)} 条裁决全部已分辨或已标注"
-                               + (f"；违规 {len(bad)} 条: {bad[:3]}" if bad else ""))
-                # 加算集/未分辨数进不进 STOP 区间，也一并亮出来（S2/S5 的可见性）
-                nr, nu = stab.get("n_refined"), stab.get("n_unresolved")
-                check(nr is None or nr <= 40,
-                      f"MC 加算集 {nr} 条（>40 即触 S2：预算要重定，别默默跑很久）")
-                check(nu is None or nu <= 15,
-                      f"MC 未分辨 {nu} 条（>15 即触 S5：判定架构的边界本质太糊，需单独谈）")
-        elif cands and not stab:
-            print("  · autodiscovery.json 尚无 mc_stability（旧产物）→ 跳过 MC 守门")
+            thr = float(stab["p_unresolved"])
+            bad = unresolved_audit(cands, thr)
+            check(not bad, f"MC 守门：{len(cands)} 条裁决全部已分辨或已标注"
+                           + (f"；违规 {len(bad)} 条: {bad[:3]}" if bad else ""))
+            # S5（未分辨 >15）硬红是合理的：那是"这份裁决架构今天不该发布"。
+            nu = stab.get("n_unresolved")
+            check(nu is None or nu <= 15,
+                  f"MC 未分辨 {nu} 条（>15 即触 S5：判定架构的边界本质太糊，需单独谈）")
+            # S2（加算集 >40）**不**硬红（审查 S2）：它的语义是"预算要重定"，而 verify_output
+            # 跑的时候算力早花完了，拦发布一分钟也省不回来，炸半径却是整站不发布。
+            # 改为醒目打印 + Telegram（走 cb6280f 那条历史塌缩已建好的出口）。
+            nr = stab.get("n_refined")
+            if nr is not None and nr > 40:
+                msg = (f"⚠ MC 加算集 {nr} 条 > 40（规格 S2）——算力预算要重定；"
+                       "本轮产物仍照常发布，但请查 P_REFINE 是否定太宽或噪声变严重了")
+                print(f"  ! {msg}")
+                try:
+                    import notify_telegram
+                    notify_telegram.send("🎲 Valpha：" + msg, tag="mc_refine_budget")
+                except Exception as e:
+                    print(f"    (Telegram 未发: {type(e).__name__})")
+        elif cands:
+            print("  · autodiscovery.json 尚无 C2+C3 的 MC 字段（旧产物）→ 跳过 MC 守门"
+                  "（陈旧产物本身由 staleness_watchdog 的新鲜度检查负责，不靠拦发布来兼职）")
 except Exception as e:
     errors.append(f"MC 守门检查失败: {e}")
     print(f"  ✗ MC 守门检查失败: {e}")
