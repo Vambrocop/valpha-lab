@@ -22,7 +22,13 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 2026-09-20 30 → 45：C2+C3 的边界带加算让全量 run_all 从 11.3 → 约 13.6 分钟，
+    # 而「Run pipeline」步自带一次重试（首次失败 → sleep 60 → 再跑一遍全量）。
+    # 重试路径 = 13.6 + 1 + 13.6 ≈ 28.2 分钟，加上 checkout/pip/playwright/pytest/
+    # valpha150/站点审计的约 8 分钟固定开销 → 约 36 分钟，**30 分钟必被杀**。
+    # 注：这条在加算之前就已经踩线（11.3×2+1+8 ≈ 31.6），只是没赶上「首次抓取抖动」而已。
+    # 代价：真卡死的 job 要多烧 15 分钟才被杀。取 45 不取更大，是要它仍然是个「门」。
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
