@@ -177,9 +177,30 @@ function render(d){
       ?`共 <b>${esc(String(gapList.length))}</b> 只成分（占纳指100约 <b>${pct}%</b>）在 Valpha150 宇宙外。这些是真实的指数成员，只是超出当前深度分析范围。`
       :`<b>${esc(String(gapList.length))}</b> constituents (~<b>${pct}%</b> of NDX-100) fall outside our Valpha150 universe. They are real index members — just beyond our current deep-coverage scope.`;
     $("gap-list").innerHTML=gapList.map(s=>`<span class="pill pill-gap">${esc(s)}</span>`).join("");
-  } else {
-    $("gap-takeaway").textContent=LANG==="zh"?"暂无缺口——全部成分均已覆盖。":"No gap — all constituents are covered.";
+  }
+  // 2026-09-20:缺口补齐后仍有几只是**刻意不收**的（双股权类/非常规上市工具/历史太短）。
+  // 不把它们说出来的话,空缺口就会显示成「全部成分均已覆盖」—— 那是假话,还跟覆盖数对不上。
+  // 理由走数据层双语惯例(`x` / `x_en`),EN 缺失时回落中文而不是留白。
+  const excZh=(d.excluded_on_purpose&&typeof d.excluded_on_purpose==="object")?d.excluded_on_purpose:{};
+  const excEn=(d.excluded_on_purpose_en&&typeof d.excluded_on_purpose_en==="object")?d.excluded_on_purpose_en:{};
+  const excKeys=Object.keys(excZh);
+  if(!gapList.length){
+    $("gap-takeaway").textContent=excKeys.length
+      ?(LANG==="zh"?"没有还能补的缺口了——池子已覆盖全部成分,刻意不收的除外。"
+                   :"No remaining gap to close — the pool covers every constituent except those excluded on purpose.")
+      :(LANG==="zh"?"暂无缺口——全部成分均已覆盖。":"No gap — all constituents are covered.");
     $("gap-list").innerHTML=`<div class="empty-msg">${esc(t("no_gap"))}</div>`;
+  }
+  if(excKeys.length){
+    const head=LANG==="zh"
+      ?`另有 <b>${esc(String(excKeys.length))}</b> 只成分是<b>刻意不收</b>的（所以上面的覆盖率到不了 100%）：`
+      :`Another <b>${esc(String(excKeys.length))}</b> constituent(s) are <b>excluded on purpose</b> (which is why coverage never reaches 100%):`;
+    $("gap-takeaway").innerHTML=($("gap-takeaway").innerHTML||"")
+      +`<div style="margin-top:8px;font-size:.82rem;color:var(--mut)">${head}<ul style="margin:5px 0 0;padding-left:18px">`
+      +excKeys.map(function(k){
+          const why=(LANG==="en"&&excEn[k])?excEn[k]:excZh[k];
+          return `<li><b>${esc(k)}</b> — ${esc(String(why))}</li>`;}).join("")
+      +`</ul></div>`;
   }
 }
 

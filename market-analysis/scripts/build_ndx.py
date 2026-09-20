@@ -23,6 +23,23 @@ SNAP = BASE / "data" / "ndx_constituents.csv"      # 上次成分快照（被 CI
 WIKI_COMPONENTS = "https://en.wikipedia.org/wiki/List_of_NASDAQ-100_companies"  # 现址（2026-06 起）
 WIKI = "https://en.wikipedia.org/wiki/Nasdaq-100"                              # 旧址，留作 fallback
 
+# 已决定不收的 NDX 成分 —— 理由写在这里，缺口指标才不会永远挂着 3 只「假待办」。
+# 依据 docs_internal/SPEC_VALPHA150_POOL.md「两个必排除的陷阱」+ build_valpha150 的 MIN_HIST=130。
+# 2026-09-20 一次补齐 31 只之后，真实缺口归零，剩下的就只有这三只。
+# 值是 (中文理由, English reason) —— 数据层双语惯例(2026-08-26)：JSON 里出 `x` + `x_en`。
+POOL_EXCLUDE = {
+    "GOOG": ("Alphabet C 类股，池子已有 A 类 GOOGL —— 同一家公司不收两个代码",
+             "Alphabet class C; the pool already holds the class A shares (GOOGL). "
+             "One company, one ticker."),
+    "SPCX": ("SpaceX 载体，数据源给出 1.95 万亿「市值」，对这类上市工具不合理",
+             "A SpaceX vehicle. The data source reports a US$1.95T “market cap”, "
+             "which is not meaningful for this kind of listed instrument."),
+    "HONA": ("上市仅 67 个交易日 < MIN_HIST=130，现在加只会躺在 CSV 里不上看板；约 2026-12 复核",
+             "Only 67 trading days of history, below build_valpha150’s MIN_HIST=130 — "
+             "adding it now would leave a row in the CSV that never reaches the board. "
+             "Revisit around 2026-12."),
+}
+
 
 def _fetch_constituents():
     """抓当前 NDX-100 成分（~100 公司+GOOG/GOOGL 等双股权类≈101-105 行）。失败返回 None。
@@ -109,6 +126,20 @@ def _pool_curation_age(day):
         return None, None
 
 
+def pool_gap(constituents, pool):
+    """把「在 NDX 但不在池子」拆成 (还能补的缺口, 刻意不收的中文理由, 英文理由)。
+
+    抽成纯函数是为了守门测试能验证**行为**——只断言 POOL_EXCLUDE 这张表长什么样，
+    等于没测（表可以是对的、用它的地方仍可以忘了用）。
+    """
+    gap_all = set(constituents) - set(pool)
+    not_in = sorted(gap_all - set(POOL_EXCLUDE))
+    hit = sorted(gap_all & set(POOL_EXCLUDE))
+    excluded = {t: POOL_EXCLUDE[t][0] for t in hit}
+    excluded_en = {t: POOL_EXCLUDE[t][1] for t in hit}
+    return not_in, excluded, excluded_en
+
+
 def build_all():
     cur = _fetch_constituents()
     if not cur:
@@ -118,7 +149,8 @@ def build_all():
     added = sorted(set(cur) - set(prev)) if prev else []     # 首跑无快照 → 仅建基线
     removed = sorted(set(prev) - set(cur)) if prev else []
     v150 = set(pd.read_csv(BASE / "data" / "valpha150.csv")["ticker"].astype(str))
-    not_in = sorted(set(cur) - v150)                         # 在 NDX 但我们 150 没有 = 缺口
+    # 缺口只报「还能动手补的」：已决定不收的单列并带理由，否则指标永远非零 = 等于没有指标。
+    not_in, excluded, excluded_en = pool_gap(cur, v150)
     day = date.today().isoformat()
     _append_changes(day, added, removed)               # 先记账,再出产物
     recent = _recent_changes(day)
@@ -126,10 +158,12 @@ def build_all():
     # 新进指数**且**池子没有 = 真正值得看的缺口。
     # (不报全部 43 个"在 NDX 不在池子":那多半是策展时**刻意**没收的中盘,报出来只会被当噪声忽略。)
     recent_added_missing = sorted({r["ticker"] for r in recent
-                                   if r["action"] == "added" and r["ticker"] not in v150})
+                                   if r["action"] == "added" and r["ticker"] not in v150
+                                   and r["ticker"] not in POOL_EXCLUDE})
     out = {"generated": day, "n": len(cur),
            "added": added, "removed": removed,
            "not_in_valpha150": not_in, "in_valpha150": len(set(cur) & v150),
+           "excluded_on_purpose": excluded, "excluded_on_purpose_en": excluded_en,
            "recent_changes": recent,
            "recent_added_missing": recent_added_missing,
            "pool_last_curated": pool_last, "pool_age_days": pool_age,

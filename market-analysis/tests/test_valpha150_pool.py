@@ -105,3 +105,74 @@ def test_deliberately_small_names_are_still_present(t):
     assert t in pool, (
         f"{t} 被移出池子了。移除只在**退市/并购/代码失效**时才允许 —— "
         "跌得惨不是理由(见 SPEC_VALPHA150_POOL.md ⑤)")
+
+
+# ── 2026-09-20:一次性补齐 31 只纳指成分之后新增的守门 ────────────────────────
+# 补齐把 `not_in_valpha150` 从 34 压到 0,于是剩下**刻意不收**的那几只会变成
+# 一个永远非零的"缺口"数字 —— 永远亮的警告等于没有警告。故把理由登记进
+# `build_ndx.POOL_EXCLUDE`,并在这里钉住:登记表要自洽、用它的地方要真的用了。
+
+def _build_ndx():
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import build_ndx
+    return build_ndx
+
+
+def test_pool_exclude_entries_all_carry_a_bilingual_reason():
+    """不许只写代码不写理由 —— 没理由的排除下次就会被当成遗漏再加回来。
+
+    英文那半同样是硬要求:这几行会**渲染到公开页面上**,站点是双语的,
+    只给中文等于对 EN 读者留白(项目 2026-08-26 起的数据层双语标准)。
+    """
+    ex = _build_ndx().POOL_EXCLUDE
+    assert ex, "POOL_EXCLUDE 空了:那三只会重新变成「假待办」挂在看板上"
+    for k, v in ex.items():
+        assert isinstance(v, tuple) and len(v) == 2,             f"{k} 的值应是 (中文理由, English reason) 二元组,实为 {v!r}"
+        zh, en = v
+        assert (zh or "").strip(), f"{k} 没写中文理由"
+        assert (en or "").strip(), f"{k} 没写英文理由 —— 页面是双语的,EN 读者会看到中文"
+        assert not re.search(r"[一-鿿]", en),             f"{k} 的「英文」理由里还有中文: {en!r}"
+
+
+def test_pool_exclude_names_are_actually_absent_from_the_pool():
+    """登记为「不收」却又躺在池子里 = 两边有一边是错的,当场红。"""
+    ex = _build_ndx().POOL_EXCLUDE
+    pool = {r["ticker"] for r in _rows()}
+    both = sorted(set(ex) & pool)
+    assert not both, (
+        f"{both} 既在 POOL_EXCLUDE 里又在池子里 —— 要么删掉登记,要么删掉行")
+
+
+def test_pool_gap_routes_excluded_names_out_of_the_gap():
+    """**行为**测试:光断言常量表长什么样等于没测(表可以对、用的地方仍可以忘了用)。"""
+    b = _build_ndx()
+    a_key = sorted(b.POOL_EXCLUDE)[0]
+    not_in, excluded, excluded_en = b.pool_gap(["AAPL", a_key, "ZZZZ"], ["AAPL"])
+    assert not_in == ["ZZZZ"], f"还能补的缺口算错了: {not_in}"
+    assert excluded[a_key] == b.POOL_EXCLUDE[a_key][0]
+    assert excluded_en[a_key] == b.POOL_EXCLUDE[a_key][1]
+    assert set(excluded) == set(excluded_en), "中英两份理由的键必须一一对应"
+    # 不在指数里的排除名不该凭空冒出来
+    _, none_ex, none_en = b.pool_gap(["AAPL"], ["AAPL"])
+    assert none_ex == {} and none_en == {}, f"指数里没有的排除名被报了出来: {none_ex}"
+
+
+@pytest.mark.parametrize("t,sec", [
+    ("CDNS", "半导体"), ("SNPS", "半导体"), ("LITE", "半导体"),
+    ("PAYX", "工业"), ("ROP", "科技"), ("TRI", "工业"),
+])
+def test_2026_09_20_sector_judgment_calls_stay_put(t, sec):
+    """这 6 只的板块是**判断**不是抄来的,理由写在 SPEC 里;改动要连规格一起改。
+
+      · CDNS/SNPS(EDA)/LITE(光模块)—— yfinance 给 Technology,但池子既有先例是
+        「芯片价值链归半导体」(WDC/SNDK/STX 三只存储正是这么归的);
+      · PAYX —— 2023 年 GICS 已把 ADP/PAYX 一起挪进工业,池子里 ADP 就在工业;
+      · ROP —— 同一次 GICS 改划里 Roper 是**反向**挪进信息技术的;
+      · TRI —— 汤森路透是 B2B 信息/法律数据(GICS 专业服务→工业),不是消费媒体,
+        所以不进通信服务。
+    """
+    m = {r["ticker"]: r["sector"] for r in _rows()}
+    assert m.get(t) == sec, (
+        f"{t} 的板块从 {sec} 改成了 {m.get(t)} —— 若是有意改动,请同步 "
+        "SPEC_VALPHA150_POOL.md 的「命名与板块惯例」并更新本测试")
