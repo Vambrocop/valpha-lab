@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-18T23:32:32Z",
+  "generated": "2026-09-21T18:25:23Z",
   "method": "跨检验族汇池多重比较：Benjamini-Yekutieli(任意相关稳健，头条) + Benjamini-Hochberg(PRDS，乐观对照) + Bonferroni(FWER)。",
   "caveat": "保守的**探索性**跨族 meta 校正，非统一模型。汇集各方法已发布的 p 值，回答'把试过的所有东西算进去后还剩几条'。部分主张是机械/同期关系(如恐慌↔标普同期负相关)，存活≠真发现，需看各自方法脚注；step-up 程序下，足够多的极小 p 会抬高同批其它主张的阈值，故个别中等 p 可能跨族存活而族内不存活，属正常。",
   "method_en": "Cross-family pooled multiple comparison: Benjamini-Yekutieli (robust to arbitrary dependence — the headline) + Benjamini-Hochberg (PRDS, optimistic reference) + Bonferroni (FWER).",
@@ -87,7 +87,7 @@
     {
       "family": "因子AUC",
       "label": "BTC近20日涨>5%",
-      "p": 0.003,
+      "p": 0.004,
       "survive_by_10": true,
       "survive_by_05": false,
       "survive_bh_10": true,
@@ -109,7 +109,7 @@
     {
       "family": "日历效应",
       "label": "月份效应(月度胜率)",
-      "p": 0.021,
+      "p": 0.024,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": true,
@@ -120,7 +120,7 @@
     {
       "family": "因子AUC",
       "label": "BTC近20日跌<-5%",
-      "p": 0.081,
+      "p": 0.082,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -131,7 +131,7 @@
     {
       "family": "日历效应",
       "label": "假日效应(节前)",
-      "p": 0.0899,
+      "p": 0.0969,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -175,7 +175,7 @@
     {
       "family": "因子AUC",
       "label": "BTC在MA200上方",
-      "p": 0.325,
+      "p": 0.3258,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -186,7 +186,7 @@
     {
       "family": "因子AUC",
       "label": "VIX期限结构倒挂(恐慌)",
-      "p": 0.353,
+      "p": 0.3538,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -197,7 +197,7 @@
     {
       "family": "因子AUC",
       "label": "NASDAQ在MA200上方",
-      "p": 0.396,
+      "p": 0.3968,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -208,7 +208,7 @@
     {
       "family": "因子AUC",
       "label": "NASDAQ近20日涨>5%",
-      "p": 0.405,
+      "p": 0.4058,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -230,7 +230,7 @@
     {
       "family": "因子AUC",
       "label": "NASDAQ近20日跌<-5%",
-      "p": 0.444,
+      "p": 0.4448,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -263,7 +263,7 @@
     {
       "family": "因子AUC",
       "label": "美元走弱",
-      "p": 0.63,
+      "p": 0.6307,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -274,7 +274,7 @@
     {
       "family": "因子AUC",
       "label": "NASDAQ RSI超买>75",
-      "p": 0.647,
+      "p": 0.6477,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -285,7 +285,7 @@
     {
       "family": "因子AUC",
       "label": "NASDAQ高波动>25%",
-      "p": 0.668,
+      "p": 0.6687,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -296,7 +296,7 @@
     {
       "family": "因子AUC",
       "label": "美元走强",
-      "p": 0.673,
+      "p": 0.6737,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -307,7 +307,7 @@
     {
       "family": "因子AUC",
       "label": "隔夜动量为负(20日)",
-      "p": 0.683,
+      "p": 0.6837,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -318,7 +318,7 @@
     {
       "family": "因子AUC",
       "label": "隔夜动量为正(20日)",
-      "p": 0.683,
+      "p": 0.6837,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -329,7 +329,7 @@
     {
       "family": "因子AUC",
       "label": "NASDAQ RSI超卖<35",
-      "p": 0.719,
+      "p": 0.7196,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
@@ -340,7 +340,7 @@
     {
       "family": "因子AUC",
       "label": "NASDAQ低波动<15%",
-      "p": 0.968,
+      "p": 0.9685,
       "survive_by_10": false,
       "survive_by_05": false,
       "survive_bh_10": false,
