@@ -491,8 +491,17 @@ def test_trailing_pit_quantile_never_uses_future_observations():
 
 
 # ── ② 状态族多日 sel 正确(连续尾部段，非单日事件) ──
-def _synth_trailing_price(seed=1, n_days=2900, decline_start=2820, decline_len=50, decline_mag=-0.006):
-    """合成一条价格序列:前段常规噪声，末段插入一段持续下跌(制造 trailing 低分位多日连续状态)。"""
+def _synth_trailing_price(seed=1, n_days=3700, decline_start=3620, decline_len=50, decline_mag=-0.006):
+    """合成一条价格序列:前段常规噪声，末段插入一段持续下跌(制造 trailing 低分位多日连续状态)。
+
+    2026-09-21 把 n_days 从 2900 加到 3700(下跌段仍贴在末尾,形状不变)。
+    原因:`_trailing_extreme_arrays` 的分位暖机(_TRAILING_WARMUP=2520)会吃掉绝大部分前缀,
+    2900 天只剩 **313** 个可用观测;而这一族的 block 是放大过的 hold+77=82 → 只有 **4 块**,
+    新加的 `walk_forward.MIN_BLOCKS` 门(>=10 块)会正确地拒绝给 p → 这几条测试拿到 None。
+    **这不是"改测试迁就实现"**:4 块处纯噪声拒真率实测 0.202(名义 0.10),
+    那个样本长度本来就撑不起一个 p。这些测试要验的是"block 实参有没有放大"、
+    "有没有走真统计",不是"短样本行不行" → 给它们一个块数够用的样本才测得到本意。
+    线上真实数据不受影响(普查:trailing 族全样本 55 块、现代窗 33 块)。"""
     idx = pd.date_range("2000-01-03", periods=n_days, freq="B")
     rng = np.random.default_rng(seed)
     rets = rng.normal(0, 0.01, n_days)

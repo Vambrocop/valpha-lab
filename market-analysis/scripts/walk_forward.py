@@ -47,6 +47,26 @@ HORIZON = 20  # 主要关注20日前向胜率
 # 且下限/SE/重抽全部由 (X, n_used) 导出、与它天然同源 —— 谁都别再写死 2000。
 BOOT_B = 2000
 
+# 循环块自助至少要有多少块，检验才算"有量具"。**低于此宁可不给 p**。
+#
+# 为什么必须有这道门(2026-09-21 实测,见 docs_internal/SPEC_F2_BLOCK_H3.md §0'):
+#   `n_blocks = ceil(n/block)`。当 block >= n 时 n_blocks=1 →
+#   `(start + arange(block)) % n` 的前 n 个恰好是**整条序列的循环平移**,
+#   而 sel 与 y 用的是**同一个 idx** → 每次重采样都原样复现观测统计量,
+#   自助分布的方差为 0 → 一次都不穿零 → p 取到下限 2/(B+1)=0.0010,
+#   也就是**这个估计器能报的最显著的值**。
+#   纯噪声(sel 与 y 独立,真相=无关联)实测拒真率:
+#     1 块 **1.000** · 2 块 0.298 · 3 块 0.208 · 4 块 0.202 · 6 块 0.158
+#     · 8 块 0.158 · 10 块 0.135 · 20 块 0.092 · 50 块 0.107   (名义 0.10)
+#   注意这是 i.i.d. 噪声=**最好情况**;真实数据带自相关只会更差(SPEC §3 实测 0.21–0.35)。
+#   取 10 是"拒真率首次回到与名义同一数量级"的位置,不是安全保证。
+#
+# 这道门在 2026-09-21 之前是缺的,而 `oos_gate` 的 positioning(block=hold+51)/
+# trailing(hold+77)对上 MIN_OOS_N 给出的 n>=60 下限 → **1~2 块**。当时线上 148 条
+# 全是 PENDING(还没有一条跑到自助),所以没有已发布结论受影响 —— 但那是"还没踩上",
+# 不是"没有雷"。同 fe8af0a 的教训:没触发 ≠ 没有 bug。
+MIN_BLOCKS = 10
+
 
 # ══════════════════════════════════════════════════════════════════
 # 1. 构建特征数据集（每天的原始特征 + 前向收益）
@@ -303,8 +323,15 @@ def block_bootstrap_diff(sel, y, block=20, B=None, seed=42):
     n = len(y)
     if n == 0 or sel.sum() < 10:
         return None
-    rng = np.random.default_rng(seed)
+    block = max(int(block), 1)
     n_blocks = int(np.ceil(n / block))
+    # 块太少 → 重采样复现原序列的份额过高,检验不再校准(极端情形 n_blocks=1 是**恒定**
+    # 复现,拒真率 100%)。这种时候诚实的输出是"不可判",不是一个四位小数的 p。
+    # 调用方对 None 已有既定处理:候选 → p=1.0 且 mc=None(进分母、永不存活);
+    # 展示窗 → p 置空但描述性的 up_pct/base_pct 照常显示。
+    if n_blocks < MIN_BLOCKS:
+        return None
+    rng = np.random.default_rng(seed)
     diffs = []
     n_dropped = 0                       # 重采样未抽到任何 sel 日 → diff 无定义,跳过
     for _ in range(B):
@@ -339,6 +366,9 @@ def block_bootstrap_diff(sel, y, block=20, B=None, seed=42):
             "p_boot": round(min(p, 1.0), 4),
             # mc_x = 取到 min 那一侧的穿零计数；配 n_used 即可复原/重抽 p（Part A）
             "mc_x": mc_x,
+            # n_blocks 透明化:过了 MIN_BLOCKS 门不等于块数充裕(10 块的实测拒真率仍是
+            # 0.135)。把它摆出来,下游与审查者才能看见"这个 p 有多薄"。
+            "n_blocks": n_blocks,
             "n_dropped": n_dropped, "n_used": int(len(diffs))}
 
 

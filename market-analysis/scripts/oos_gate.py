@@ -26,7 +26,7 @@ import autodiscovery as ad
 import placebo_test as pb
 import candidate_space as cs
 import candidate_registry
-from walk_forward import block_bootstrap_diff
+from walk_forward import block_bootstrap_diff, MIN_BLOCKS
 
 PENDING, CONFIRMED, OVERTURNED, NEUTRAL = "pending", "confirmed", "overturned", "neutral"
 CONFIRM_P, OVERTURN_P = 0.10, 0.20          # 滞回:confirm 阈 < overturn 阈 → FDR 边界候选不来回翻烧饼
@@ -153,9 +153,26 @@ def _diff_oos(cand, anchor, arr, *, block):
                        else "**对照组**不足(条件在锚后几乎一直成立→无可比的反面样本)"))
         return _result(cand, anchor, PENDING, oos_n=n_trig, n_ctrl=n_ctrl, full_sign=full_sign,
                        note=f"锚后{which}:触发 {n_trig} / 对照 {n_ctrl}(各需 ≥{MIN_OOS_N})")
+    # 2026-09-21:块数门要**在这里**单独报,否则 positioning/trailing 会挂着一句含糊的
+    # 「锚后自助不可算」等上几年,没人知道在等什么。这两族的 block 是放大过的
+    # (hold+51 / hold+77),而 MIN_OOS_N 只保证 n>=60 → 1~2 块 → 块自助在那个长度上
+    # 实测拒真率 100%/30%(见 walk_forward.MIN_BLOCKS)。真相是"样本还不够长",
+    # 且**光靠攒时间一定会到**,与"对照组不足(得等条件转向)"是两种处境 —— 照 bf857cd
+    # 的教训分开说,并把"还要等多久"算出来。
+    n_o = len(y_o)
+    need = MIN_BLOCKS * int(block)
+    if n_o < need:
+        yrs = (need - n_o) / 252.0
+        eta = f"约 {yrs:.1f} 年" if yrs >= 0.5 else f"约 {round((need - n_o) / 21.0)} 个月"
+        return _result(cand, anchor, PENDING, oos_n=n_trig, n_ctrl=n_ctrl, full_sign=full_sign,
+                       note=f"锚后样本 {n_o} 日 < 块长 {int(block)}×{MIN_BLOCKS} = {need} 日:"
+                            f"这条规律的状态能连续持续约 {int(block)} 天,{n_o} 天里只装得下 "
+                            f"{max(n_o // int(block), 1)} 段独立信息,块自助在这个长度上算不准"
+                            f"(会把噪声判成显著)。**攒时间一定会到**,还需 {eta}")
     bb = block_bootstrap_diff(sel_o, y_o, block=block, seed=_oos_seed(cand["candidate_id"]))
     if bb is None:
-        return _result(cand, anchor, PENDING, oos_n=n_trig, full_sign=full_sign, note="锚后自助不可算")
+        return _result(cand, anchor, PENDING, oos_n=n_trig, n_ctrl=n_ctrl, full_sign=full_sign,
+                       note="锚后自助不可算(sel 过稀或样本退化)")
     # S1:oos_sign 取**未舍入**原始差(与 full_sign 同尺度)；bb["diff"] 已 round 到 0.01pp,近零会假翻号
     oos_sign = _sign(y_o[sel_o].mean() - y_o.mean())
     status = _classify(full_sign, oos_sign, bb["p_boot"])

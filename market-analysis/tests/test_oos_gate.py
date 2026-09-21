@@ -344,7 +344,11 @@ def test_streak_oos_unregistered_is_pending():
 # 3d. trailing_extreme OOS — 2026-07-11·stage4 真统计：H-1 显式路由到 _diff_oos（PIT 分位本身即
 # 纯回看=天然点时间，只 floor 到锚后不重算分位；block 与 discovery 同一 hold+TRAILING_BLOCK_EXTRA）
 # ════════════════════════════════════════════════════════════════════════════
-def _synth_trailing_price(seed=1, n_days=2900, decline_start=2820, decline_len=50, decline_mag=-0.006):
+def _synth_trailing_price(seed=1, n_days=3700, decline_start=3620, decline_len=50, decline_mag=-0.006):
+    # 2026-09-21 2900 → 3700，与 test_autodiscovery.py 的同名夹具**必须保持一致**(两份副本)。
+    # 理由见那边的 docstring:分位暖机吃掉 2520 天后只剩 313 个观测 → 放大块长 82 只够 4 块 →
+    # MIN_BLOCKS 门会拒绝给 p。这两条测试本意是验"真跑了统计/floor 语义"，不是验短样本，
+    # 若不加长，它们会从**新的块数门**那里静默返回，断言照样绿 —— 变成测不到本意的假绿。
     idx = pd.date_range("2000-01-03", periods=n_days, freq="B")
     rng = np.random.default_rng(seed)
     rets = rng.normal(0, 0.01, n_days)
@@ -364,6 +368,9 @@ def test_trailing_extreme_oos_dispatch_no_silent_factor_note(monkeypatch):
     assert "因子族" not in v["note"]
     assert "OOS 待接" not in v["note"]                 # stage2 桩措辞不应再出现
     assert v["full_sign"] is not None                 # _diff_oos 真跑了(全样本方向已算)
+    # 2026-09-21 补:上面三条断言在"从块数门返回"时也全部成立 → 会变成假绿。
+    # 钉住真的走到了自助（有 p），这条测试才名副其实。
+    assert v["oos_p"] is not None, f"没跑到块自助就返回了：{v['note']}"
 
 
 def test_trailing_extreme_oos_floor_only_masks_not_recompute(monkeypatch):
