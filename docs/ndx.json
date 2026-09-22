@@ -1,48 +1,31 @@
 {
-  "generated": "2026-09-18",
-  "n": 102,
+  "generated": "2026-09-22",
+  "n": 101,
   "added": [],
-  "removed": [],
-  "not_in_valpha150": [
-    "AEP",
-    "ALNY",
-    "AXON",
-    "BKR",
-    "CCEP",
-    "CDNS",
-    "CPRT",
-    "CSX",
-    "CTAS",
-    "DXCM",
-    "EXC",
-    "FANG",
-    "FAST",
-    "FER",
-    "GEHC",
-    "GOOG",
-    "HONA",
-    "IDXX",
-    "KDP",
-    "KHC",
-    "LITE",
-    "MNST",
-    "ODFL",
-    "PAYX",
-    "PCAR",
-    "RKLB",
-    "ROP",
-    "ROST",
-    "SNPS",
-    "SPCX",
-    "TRI",
-    "TTWO",
-    "WBD",
-    "XEL"
+  "removed": [
+    "KHC"
   ],
-  "in_valpha150": 68,
-  "recent_changes": [],
+  "not_in_valpha150": [],
+  "in_valpha150": 98,
+  "excluded_on_purpose": {
+    "GOOG": "Alphabet C 类股，池子已有 A 类 GOOGL —— 同一家公司不收两个代码",
+    "HONA": "上市仅 67 个交易日 < MIN_HIST=130，现在加只会躺在 CSV 里不上看板；约 2026-12 复核",
+    "SPCX": "SpaceX 载体，数据源给出 1.95 万亿「市值」，对这类上市工具不合理"
+  },
+  "excluded_on_purpose_en": {
+    "GOOG": "Alphabet class C; the pool already holds the class A shares (GOOGL). One company, one ticker.",
+    "HONA": "Only 67 trading days of history, below build_valpha150’s MIN_HIST=130 — adding it now would leave a row in the CSV that never reaches the board. Revisit around 2026-12.",
+    "SPCX": "A SpaceX vehicle. The data source reports a US$1.95T “market cap”, which is not meaningful for this kind of listed instrument."
+  },
+  "recent_changes": [
+    {
+      "date": "2026-09-22",
+      "ticker": "KHC",
+      "action": "removed"
+    }
+  ],
   "recent_added_missing": [],
-  "pool_last_curated": "2026-09-18",
-  "pool_age_days": 0,
+  "pool_last_curated": "2026-09-21",
+  "pool_age_days": 1,
   "caveat": "Valpha150 是**人工策展**池(手写中文名/板块),外部无权威名单可抓,故不自动重写——自动加票会让中文名开天窗、并悄悄改变已发布口径。这里只把老化摆出来:成分进出记进 append-only 账本(否则瞬时差分当天没人看就永远丢了)、并显示池子多久没人维护。是否纳入由人决定。"
 }
