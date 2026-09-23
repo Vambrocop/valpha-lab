@@ -1,8 +1,8 @@
 {
-  "generated": "2026-09-22T23:49:18Z",
+  "generated": "2026-09-23T17:41:51Z",
   "date_range": [
     "2000-01-03",
-    "2026-09-22"
+    "2026-09-23"
   ],
   "yield_proxy": "TNX",
   "yield_proxy_note": "combined_prices.csv 里 YIELD_10Y(FRED GS10)是月频序列(全样本仅341点,最大缺口151天≈100交易日)——拿它算「20交易日变化」会被巨大的月度阶梯 ffill 假象污染(21个交易日的窗口里可能0次真实更新或1次跳变)。TNX(CBOE 10年期收益率指数)是日频(全样本6681点,2000-01-03起),与 YIELD_10Y 在两者共有的对齐点上相关系数0.993(几乎同一量,同为百分比单位),故本研究用 TNX 作连续日频10Y收益率代理,YIELD_10Y 仅供交叉核对。这是工程口径选择,不是统计判断——如果换回 YIELD_10Y,「20日变化」的含义会退化成「距上次月度更新以来变化」。",
@@ -31,7 +31,7 @@
     "NASDAQ": {
       "date_range": [
         "2000-01-03",
-        "2026-09-22"
+        "2026-09-23"
       ],
       "base": {
         "20": {
@@ -138,7 +138,7 @@
           "diff_mean": -0.86,
           "ci95_mean": [
             -1.74,
-            1.7
+            1.69
           ],
           "ci_vs_base": "overlaps_base",
           "era1_up_pct": 51.9,
@@ -309,7 +309,7 @@
           "era1_up_pct": 45.21,
           "era1_mean_pct": -8.62,
           "era2_up_pct": 99.29,
-          "era2_mean_pct": 24.32,
+          "era2_mean_pct": 24.31,
           "era_same_sign": false
         }
       ],
@@ -1341,7 +1341,7 @@
           },
           {
             "start": "2026-03-11",
-            "end": "2026-09-22",
+            "end": "2026-09-23",
             "days": 135
           }
         ]
@@ -2258,14 +2258,14 @@
     "SP500": {
       "date_range": [
         "2000-01-03",
-        "2026-09-22"
+        "2026-09-23"
       ],
       "base": {
         "20": {
           "n_days": 6700,
           "up_pct": 63.16,
           "mean_pct": 0.61,
-          "median_pct": 1.19,
+          "median_pct": 1.18,
           "p10_pct": -4.85
         },
         "60": {
@@ -2300,7 +2300,7 @@
           "p10_pct": -3.29,
           "base_up_pct": 63.16,
           "base_mean_pct": 0.61,
-          "base_median_pct": 1.19,
+          "base_median_pct": 1.18,
           "base_p10_pct": -4.85,
           "diff_mean": 0.52,
           "ci95_mean": [
@@ -2330,7 +2330,7 @@
           "p10_pct": -5.87,
           "base_up_pct": 63.16,
           "base_mean_pct": 0.61,
-          "base_median_pct": 1.19,
+          "base_median_pct": 1.18,
           "base_p10_pct": -4.85,
           "diff_mean": -0.16,
           "ci95_mean": [
@@ -2360,7 +2360,7 @@
           "p10_pct": -5.13,
           "base_up_pct": 63.16,
           "base_mean_pct": 0.61,
-          "base_median_pct": 1.19,
+          "base_median_pct": 1.18,
           "base_p10_pct": -4.85,
           "diff_mean": -0.36,
           "ci95_mean": [
@@ -2371,7 +2371,7 @@
           "era1_up_pct": 54.11,
           "era1_mean_pct": -0.23,
           "era2_up_pct": 68.58,
-          "era2_mean_pct": 1.56,
+          "era2_mean_pct": 1.55,
           "era_same_sign": false
         },
         {
@@ -2557,7 +2557,7 @@
           "p10_pct": -5.75,
           "base_up_pct": 63.16,
           "base_mean_pct": 0.61,
-          "base_median_pct": 1.19,
+          "base_median_pct": 1.18,
           "base_p10_pct": -4.85,
           "diff_mean": 0.19,
           "ci95_mean": [
@@ -2587,7 +2587,7 @@
           "p10_pct": -4.1,
           "base_up_pct": 63.16,
           "base_mean_pct": 0.61,
-          "base_median_pct": 1.19,
+          "base_median_pct": 1.18,
           "base_p10_pct": -4.85,
           "diff_mean": -0.01,
           "ci95_mean": [
@@ -2617,7 +2617,7 @@
           "p10_pct": -4.8,
           "base_up_pct": 63.16,
           "base_mean_pct": 0.61,
-          "base_median_pct": 1.19,
+          "base_median_pct": 1.18,
           "base_p10_pct": -4.85,
           "diff_mean": -0.14,
           "ci95_mean": [
@@ -3568,7 +3568,7 @@
           },
           {
             "start": "2026-03-11",
-            "end": "2026-09-22",
+            "end": "2026-09-23",
             "days": 135
           }
         ]
@@ -4657,7 +4657,7 @@
         "bucket": "high",
         "horizon": 252,
         "era1_mean_pct": -8.62,
-        "era2_mean_pct": 24.32
+        "era2_mean_pct": 24.31
       },
       {
         "asset": "SP500",
@@ -4665,7 +4665,7 @@
         "bucket": "high",
         "horizon": 20,
         "era1_mean_pct": -0.23,
-        "era2_mean_pct": 1.56
+        "era2_mean_pct": 1.55
       },
       {
         "asset": "SP500",
