@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-28T20:03:01Z",
+  "generated": "2026-09-29T01:15:48Z",
   "source": "LLM 据真实算出的因子对 SPY 未来 5 交易日方向出判断 → 前向公开计分",
   "model": "gemini-2.5-flash-lite",
   "symbol": "SPY",
@@ -34,19 +34,30 @@
       "n_settled": 2,
       "n_hit": 0
     },
-    "n_pending": 5,
+    "n_pending": 6,
     "n_dropped": 0
   },
   "latest": {
-    "pred_date": "2026-09-28",
-    "direction": "偏多",
-    "confidence": "中",
-    "reason": "信用利差偏低和个股共动偏低，表明市场整体偏积极且分散性好，但波动率中性，收益率曲线偏平，纳指信号不强，需谨慎。",
+    "pred_date": "2026-09-29",
+    "direction": "中性",
+    "confidence": "低",
+    "reason": "波动率VIX处于中性水平，收益率曲线为正斜率偏平，信用利差偏低但需警惕晚周期风险，个股共动偏低显示分散有效，纳指方向信号无样本外优势。",
     "settled": false,
     "hit": false,
     "ret_pct": null
   },
   "recent": [
+    {
+      "pred_date": "2026-09-29",
+      "direction": "中性",
+      "confidence": "低",
+      "reason": "波动率VIX处于中性水平，收益率曲线为正斜率偏平，信用利差偏低但需警惕晚周期风险，个股共动偏低显示分散有效，纳指方向信号无样本外优势。",
+      "settled": false,
+      "dropped": false,
+      "bucket": "",
+      "ret_pct": null,
+      "hit": false
+    },
     {
       "pred_date": "2026-09-28",
       "direction": "偏多",
@@ -474,17 +485,6 @@
       "dropped": false,
       "bucket": "中性",
       "ret_pct": 0.349,
-      "hit": true
-    },
-    {
-      "pred_date": "2026-08-03",
-      "direction": "中性",
-      "confidence": "低",
-      "reason": "波动率中性，收益率曲线正斜率偏平，信用利差偏低，个股共动偏低，当月季节性弱倾斜，纳指方向信号权重低。",
-      "settled": true,
-      "dropped": false,
-      "bucket": "中性",
-      "ret_pct": 0.288,
       "hit": true
     }
   ],
