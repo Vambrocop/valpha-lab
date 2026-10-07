@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-06T18:50:01Z",
+  "generated": "2026-10-07T01:02:32Z",
   "source": "LLM 据真实算出的因子对 SPY 未来 5 交易日方向出判断 → 前向公开计分",
   "model": "gemini-2.5-flash-lite",
   "symbol": "SPY",
@@ -34,19 +34,30 @@
       "n_settled": 3,
       "n_hit": 1
     },
-    "n_pending": 7,
+    "n_pending": 8,
     "n_dropped": 0
   },
   "latest": {
-    "pred_date": "2026-10-06",
-    "direction": "偏多",
-    "confidence": "中",
-    "reason": "信用利差偏低和个股共动偏低表明市场分散有效且信用宽松，对标普500未来5个交易日有偏多倾向。",
+    "pred_date": "2026-10-07",
+    "direction": "中性",
+    "confidence": "低",
+    "reason": "波动率中性，收益率曲线偏平，信用利差偏低但属晚周期，个股共动偏低，纳指方向信号权重低，季节性仅为弱倾斜。",
     "settled": false,
     "hit": false,
     "ret_pct": null
   },
   "recent": [
+    {
+      "pred_date": "2026-10-07",
+      "direction": "中性",
+      "confidence": "低",
+      "reason": "波动率中性，收益率曲线偏平，信用利差偏低但属晚周期，个股共动偏低，纳指方向信号权重低，季节性仅为弱倾斜。",
+      "settled": false,
+      "dropped": false,
+      "bucket": "",
+      "ret_pct": null,
+      "hit": false
+    },
     {
       "pred_date": "2026-10-06",
       "direction": "偏多",
@@ -474,17 +485,6 @@
       "dropped": false,
       "bucket": "偏空",
       "ret_pct": -1.267,
-      "hit": false
-    },
-    {
-      "pred_date": "2026-08-12",
-      "direction": "中性",
-      "confidence": "低",
-      "reason": "波动率中性，收益率曲线偏平，信用利差偏低，个股共动偏低，纳指方向信号无明显优势，综合判断市场方向不明。",
-      "settled": true,
-      "dropped": false,
-      "bucket": "偏空",
-      "ret_pct": -1.318,
       "hit": false
     }
   ],
