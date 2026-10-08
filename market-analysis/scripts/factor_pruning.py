@@ -26,7 +26,8 @@ from pathlib import Path
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 
-from walk_forward import build_feature_df, BINARY_FEATURES, block_bootstrap_diff, BOOT_B
+from walk_forward import (build_feature_df, BINARY_FEATURES, block_bootstrap_diff,
+                          BOOT_B, HORIZON as _HORIZON_WF, MIN_BLOCKS)
 import stats_util as su
 from signal_model import build_design_matrix
 from stats_util import benjamini_hochberg, benjamini_yekutieli   # DSR/反过拟合：多重检验校正(审计S5:统一来源)
@@ -34,10 +35,27 @@ from stats_util import benjamini_hochberg, benjamini_yekutieli   # DSR/反过拟
 RAW_DIR  = Path(__file__).parent.parent / "data" / "raw"
 PROC_DIR = Path(__file__).parent.parent / "data" / "processed"
 
-HORIZON = 20
+# 2026-09-21：原来这里写死 `HORIZON = 20`，与 walk_forward.HORIZON 是**两份真相**。
+# 本模块既用它当前向窗口、又用它当 block 的基数（factor_block），两边一旦漂开就是
+# "前向窗口 20 天、块长按 25 天算"这种无人察觉的错配。改为单一来源。
+HORIZON = _HORIZON_WF
 RECENT_YEARS = 8       # 现代段透镜窗口：最近 N 年（用户 2026-06-19 定 A·最近8年）
 EMBARGO = 20            # 交易日，=前向窗口，切掉跨界泄漏的训练样本
 HOLDOUT_START = 2024    # 2024+ 从未进过任何折
+
+# ── F2(2026-09-21)：把 H-3 补到因子族 ───────────────────────────────────────
+# 项目 2026-07-04 立的规矩：「状态型 sel(可连续多周) → block = hold + EXTRA，
+# **绝不 block=hold**」。因子族是状态型的典型(`BTC_above_ma200` 段长 p90=143、
+# `NASDAQ_above_ma200` p90=136)，却一直用 block=HORIZON=20，**欠块约 7 倍**。
+# 常量口径与 POSITIONING/TRAILING 完全一致(只测 sel 状态持续、绝不看前向收益)：
+# 全族 15 个因子 sel 连续段长 p90 的最大值 143.2 → ceil = 144。
+# 可复现：`py tools/block_calibration.py --runlengths`(该工具先复现了已有的 51/77)。
+FACTOR_BLOCK_EXTRA = 144
+
+
+def factor_block(hold=_HORIZON_WF):
+    return hold + FACTOR_BLOCK_EXTRA
+
 FDR_Q = 0.10           # 多重检验校正阈值（与 p_boot 显著阈一致，单一来源避免漂移）
 SUBJECTIVE_EVENT_LRS = ["halving", "gold_spike", "oil_spike", "election", "ipo_boom"]
 
@@ -123,8 +141,11 @@ def _segment_lens(df, col, assumed, cutoff, boost=1):
     sel = (obs[col] == 1).values
     if len(obs) < 50 or int(sel.sum()) < 30:
         return None
-    full = block_bootstrap_diff(sel, obs["fwd_up_20d"].values, block=HORIZON,
+    block = factor_block()                       # F2/H-3
+    full = block_bootstrap_diff(sel, obs["fwd_up_20d"].values, block=block,
                                 B=BOOT_B * boost)
+    if full is None:                             # 块数不足(MIN_BLOCKS) → 没有可信的全段 p
+        return None                              # 与上面"样本不足"同一出口,绝不带着 None 往下走
     full_sig = bool(full["p_boot"] < 0.10 and np.sign(full["diff"]) == assumed)
 
     rec = obs[obs["date"] >= cutoff]
@@ -138,11 +159,19 @@ def _segment_lens(df, col, assumed, cutoff, boost=1):
            "recent_n_obs": int(len(rec)), "recent_n_fires": nfire,
            "recent_diff_pp": None, "recent_p": None}
     # 检验力门(抄 placebo recent_min_group_n：现代段够样本才下结论，否则只标"样本不足")
-    if len(rec) < 200 or nfire < 30 or nnon < 30:
+    # F2:检验力门要**块数感知**。原来只看 len(rec)>=200,而放大后 block=164 时
+    # 200 个观测只装得下 2 块 —— 2 块处纯噪声拒真率实测 0.298(名义 0.10)。
+    # "样本够多"和"独立信息够多"是两回事,状态型 sel 上差 8 倍。
+    if len(rec) < max(200, MIN_BLOCKS * block) or nfire < 30 or nnon < 30:
         seg["status"] = "现代检验力不足"
+        seg["recent_need_n"] = int(MIN_BLOCKS * block)   # 说清还差多少,别只说"不足"
         return seg
-    rb = block_bootstrap_diff(rsel, rec["fwd_up_20d"].values, block=HORIZON,
+    rb = block_bootstrap_diff(rsel, rec["fwd_up_20d"].values, block=block,
                               B=BOOT_B * boost)
+    if rb is None:                               # 兜底:门已挡住,这里到不了;到了就是门漏了
+        seg["status"] = "现代检验力不足"
+        seg["recent_need_n"] = int(MIN_BLOCKS * block)
+        return seg
     seg["recent_diff_pp"], seg["recent_p"] = rb["diff"], rb["p_boot"]
     seg["mc_recent"] = su.mc_meta(rb["mc_x"], rb["n_used"], "bootstrap")
     recent_sig = bool(rb["p_boot"] < 0.10 and np.sign(rb["diff"]) == assumed)
@@ -197,7 +226,9 @@ def factor_scorecard(df):
             continue
         sel = (obs[col] == 1).values
         y = obs["fwd_up_20d"].values
-        bb = block_bootstrap_diff(sel, y, block=HORIZON)   # diff(pp)/ci95/p_boot（已对齐可观测期）
+        bb = block_bootstrap_diff(sel, y, block=factor_block())   # F2/H-3;已对齐可观测期
+        if bb is None:              # 块数不足 → 这一折拼不出可信的 p,跳过(同上面样本不足的处理)
+            continue                #   线上实测最小 n=2201 >> 10×164,真实数据到不了这里
         signs = [s for s in per_fold_sign[col] if s != 0]
         # 逐折符号一致比例：BTC 仅 2015+ 可观测，折数本就少，全一致才算稳
         n_signs = len(signs)

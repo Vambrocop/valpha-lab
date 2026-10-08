@@ -321,6 +321,39 @@ try:
         elif cands:
             print("  · autodiscovery.json 尚无 C2+C3 的 MC 字段（旧产物）→ 跳过 MC 守门"
                   "（陈旧产物本身由 staleness_watchdog 的新鲜度检查负责，不靠拦发布来兼职）")
+
+        # F2·P2 守门：**存活却没测过校准**的候选。
+        # 这道门的存在理由：`block_levels.gate()` 对"表里没有"的候选是**放行**的
+        # （那道门只该让我们说得更少、不该让我们说得更多）。放行是对的，
+        # 但"缺一次测量"绝不能变成悄悄发布一条公开结论 —— 缺测必须吵。
+        #
+        # **不硬红**，理由与上面的 S2 完全同一条：校准测量是**离线**的
+        # （R×B ≈ 100k 次重采样/配置，约生产点估计的 25 倍，绝不进 CI），
+        # verify_output 跑的时候补不了。硬红的后果是"新加一条候选并且它存活"
+        # → 整站停发，直到有人手工跑一次离线测量 —— 那正是 fe8af0a 的炸半径形状，
+        # 而代价完全不对称：一条未验证的候选 vs 整站不更新。
+        # 改为醒目打印 + Telegram，并把缺测名单写进产物（前端照实标注）。
+        #
+        # 同样照 B1 的教训：只在产物**已经带**这些字段时才启用，否则旧产物会把
+        # 盘中 --light 整条干红。
+        if cands and any("calib_measured" in c for c in cands):
+            surv = [c for c in cands if c.get("verdict") == "survive"]
+            # 判据抽成纯函数做**行为测试** —— 内联的守门测不到（D9/B2 的教训）。
+            from block_levels import unmeasured_survivors
+            blind = unmeasured_survivors(cands)
+            if blind:
+                msg = (f"⚠ {len(blind)}/{len(surv)} 条**存活者没量过检验的实际水平**："
+                       f"{blind} —— 本轮仍照常发布（前端已标「未校准」），"
+                       "但请尽快本地跑 `py tools/block_calibration.py --real --write "
+                       "market-analysis/data/block_levels.json` 补上")
+                print(f"  ! {msg}")
+                try:
+                    import notify_telegram
+                    notify_telegram.send("🎲 Valpha：" + msg, tag="calib_unmeasured")
+                except Exception as e:
+                    print(f"    (Telegram 未发: {type(e).__name__})")
+            else:
+                print(f"  ✓ F2 校准守门：{len(surv)} 条存活者全部量过检验的实际水平")
 except Exception as e:
     errors.append(f"MC 守门检查失败: {e}")
     print(f"  ✗ MC 守门检查失败: {e}")

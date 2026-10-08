@@ -36,6 +36,7 @@ from pathlib import Path
 import placebo_test as pb
 import stats_util as su
 from walk_forward import build_feature_df, block_bootstrap_diff, BOOT_B
+import block_levels as bl
 import factor_pruning as fp
 import candidate_space as cs
 from quality_gate import adjudicate, summarize, change_probabilities
@@ -328,21 +329,22 @@ def _rebound(pctl, hold, index, cid, boost=1):
     if arr is None:
         return None
     idx, sel, y = arr
-    bb = block_bootstrap_diff(sel, y, block=hold, B=BOOT_B * boost)
+    block = _rebound_block(hold)         # F2/H-3:段长 p90=2 → 只 +2,但口径要与其它状态族一致
+    bb = block_bootstrap_diff(sel, y, block=block, B=BOOT_B * boost)
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered, mc_recent = None, False, None
     rsel = sel & rmask
     if int(rsel.sum()) >= 30 and int((~sel & rmask).sum()) >= 30:
-        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold, B=BOOT_B * boost)
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=block, B=BOOT_B * boost)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
             mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
             "mc": su.mc_meta(bb["mc_x"], bb["n_used"], "bootstrap"), "mc_recent": mc_recent,
-            "windows": _diff_windows(idx, sel, y, hold),
+            "windows": _diff_windows(idx, sel, y, block),   # 同 _positioning 先例:展示窗用同一 block
             "decades": _decade_rows(idx, sel, y > 0),
             "effect": "触发日后持有期上涨率 vs 基率"}
 
@@ -385,20 +387,24 @@ def _regime(signal, index, cid, hold=20, boost=1):
     if arr is None:
         return None
     idx, sel, y = arr
-    bb = block_bootstrap_diff(sel, y, block=hold, B=BOOT_B * boost)
+    block = _regime_block(hold)          # F2/H-3:体制是全系统最状态型的 sel(段长 p90 达 661)
+    bb = block_bootstrap_diff(sel, y, block=block, B=BOOT_B * boost)
     if bb is None:
         return None
     rmask = np.asarray(idx >= RECENT_CUT)
     recent_p, powered, mc_recent = None, False, None
     if int((sel & rmask).sum()) >= 100 and int((~sel & rmask).sum()) >= 100:
-        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=hold, B=BOOT_B * boost)
+        rbb = block_bootstrap_diff(sel[rmask], y[rmask], block=block, B=BOOT_B * boost)
         if rbb is not None:
             recent_p, powered = rbb["p_boot"], True
             mc_recent = su.mc_meta(rbb["mc_x"], rbb["n_used"], "bootstrap")
     return {"p": float(bb["p_boot"]), "recent_p": (None if recent_p is None else float(recent_p)),
             "recent_powered": bool(powered),
             "mc": su.mc_meta(bb["mc_x"], bb["n_used"], "bootstrap"), "mc_recent": mc_recent,
-            "windows": _diff_windows(idx, sel, y, hold),
+            # 展示窗用**同一个** block —— 照 _positioning/_trailing_extreme 的先例。
+            # (短窗如"近1年"装不下 661 的块 → p 置空，但 up_pct/base_pct/diff_pp 照常显示。
+            #  这正是诚实的结果:一条依赖长度 661 天的规律，1 年的窗本来就测不出 p。)
+            "windows": _diff_windows(idx, sel, y, block),
             "decades": _decade_rows(idx, sel, y > 0),
             "effect": "信号成立时未来20日上涨率 vs 基率"}
 
@@ -423,8 +429,37 @@ POSITIONING_BLOCK_EXTRA = 51
 _COT_CACHE = {}
 
 
+# ── F2(2026-09-21)：把 H-3 补到 regime / rebound 两族 ────────────────────────
+# 项目早在 2026-07-04 就立了规矩：「状态型 sel(可连续多周) → block = hold + EXTRA，
+# **绝不 block=hold**」，positioning / trailing_extreme 两族照办了。而 `regime` 是
+# **全系统最状态型的一族**(金叉/均线上方可以连续成立上千天)，用的却是 block=hold=20。
+#
+# 常量来源与 POSITIONING/TRAILING 同一口径、同一纪律(**只测 sel 的状态持续，
+# 绝不看前向收益** —— 让"挑一个对自己有利的 block"在物理上做不到)：
+# 取该族全部候选 sel 连续为真段长的 p90 的最大值，ceil。
+# 可复现：`py tools/block_calibration.py --runlengths`，该工具**先复现了**项目自己
+# 写死的两个常量(positioning 50.6→51、trailing 76.0→77)才报新的，不是另起一套口径。
+#
+#   regime   2 个候选   p90 最大 661.0   最长段 1020   → 661
+#   rebound 12 个候选   p90 最大   2.0   最长段    7   → 2
+#
+# 实测影响(规格 §2)：`golden_cross_sp500` 现代窗 p .0250 → .1869(**越过 q=0.10 存活线**)；
+# `BTC_above_ma200` recent_p .083 → .265 —— .083 本来正贴着存活线，under-blocking
+# 让它看起来比实际更接近存活。rebound 12 条无一越线(block 只 +2)。
+REGIME_BLOCK_EXTRA = 661
+REBOUND_BLOCK_EXTRA = 2
+
+
 def _positioning_block(hold):
     return hold + POSITIONING_BLOCK_EXTRA
+
+
+def _regime_block(hold=20):
+    return hold + REGIME_BLOCK_EXTRA
+
+
+def _rebound_block(hold):
+    return hold + REBOUND_BLOCK_EXTRA
 
 
 def _cot_reports(market, series):
@@ -842,7 +877,9 @@ def _factor_map(factor_cands, boosts=None):
         # 实测:BTC_mom20_pos 的公开边际 +12.6pp 实为 +8.7pp;vix_backwardation 符号都翻了。
         # 注意裁决 p 走的是 `_segment_lens`(它一直有 notna) → 存活判定不受影响,错的是展示值。
         arr = fp.factor_arrays(df, col)
-        wins = _diff_windows(*arr, fp.HORIZON) if arr is not None else []
+        # F2:展示窗与裁决用**同一个** block(照 _positioning/_trailing/_regime 的先例)。
+        # 因子族 sel 段长 p90 达 143 → block=164;短窗装不下就 p 置空,描述性数字照常。
+        wins = _diff_windows(*arr, fp.factor_block()) if arr is not None else []
         # N2:窗口掩码现在算在**该因子自己的**可观测 index 上(而非全量 df)。
         # 今天各列末日一致、无差别;但某列数据卡住时"近1年"窗会随之前移 —— 故把起点发出来。
         obs_start = (str(pd.Timestamp(arr[0].min()).date()) if arr is not None else None)
@@ -937,6 +974,53 @@ def adopt_pass2(results, boosted):
     return out
 
 
+def apply_calibration_gate(r, key, family=None, table=None):
+    """F2·P2：量具没校准就不给结论（纯函数，好测）。
+
+    放大 block 之后校准**普遍改善但并不够** —— 旋转 null 实测 `BTC_above_ma200`
+    仍 0.354/0.296（名义 0.10），而现代段（n≈2009）上换哪个块长都救不回来
+    （blk 20/40/80/164 实测几乎一样）。只做放大 = 一边说"我们把检验做准了"、
+    一边照常发布那几条。
+
+    **阈值取 2.0×（0.20）而不是 1.5×**：这个估计器在答案已知的合成数据上本底就有
+    0.11–0.135，1.5× 落在本底之内、用它当门等于给名单加噪声（SE≈0.018）。
+    完整理由见 `block_levels.py` 的 docstring。
+    实际后果：只有无歧义失败的那几条被拦（`BTC_above_ma200` 0.35/0.30、
+    `NASDAQ_above_ma200` 现代段 0.25），**没有任何已发布的存活者因此被撤**
+    —— 撤销结论要跟建立结论一样谨慎（a2872a3 的教训）。
+    每一条候选的实测水平都照常写进产物（`calib_level`）由前端公开，
+    比一个卡在噪声里的二元阈值更诚实。
+
+    **只动 `recent_powered` 这一个杠杆**：候选仍然留在跨族 FDR 的**分母**里
+    （`adjudicate` 会因 `n != expect_n` 直接 raise —— 动分母本身就是 p-hacking），
+    变的只是裁决 → `inconclusive`。理由字符串一并算好传下去，
+    因为"样本不够"和"量具没校准"是两种不可判，不能共用一句话
+    （照 09-14「触发组不足 vs 对照组不足」的同一教训）。
+
+    抽成纯函数而不是写在循环里：独立审实现（D9/B2）的教训是
+    **守门要做行为测试**，内联在 572 次调用的循环里没法单独验。
+    """
+    # 把**这条自己的 p** 一起传进去：水平门只是筛子，筛出来的还要在
+    # 判定真正发生的位置（它自己那个 p 在 null 下有多罕见）再裁一次。
+    # 连**这个 p 是用多少次重采样算出来的**一起传：null 的格点必须至少同样细，
+    # 否则就是拿粗尺子量细刻度（B=300 的 null 下限 0.0066 vs p_obs=0.0007 那个坑）。
+    g = bl.gate(key, p=r.get("p"), recent_p=r.get("recent_p"),
+                p_n=((r.get("mc") or {}).get("mc_n")),
+                recent_n=((r.get("mc_recent") or {}).get("mc_n")),
+                table=table)
+    out = dict(r)
+    out["calib_measured"] = bool(g["measured"])
+    out["calib_level"] = g["level"]
+    out["calib_cal_p"] = g.get("cal_p")
+    # 「这一族本来就不在覆盖范围内」(日历族走置换检验,另一台机器) 与
+    # 「本该测却没测」是两件事 —— 前者只需如实标注,后者要吵。
+    out["calib_family_covered"] = bool(bl.covers_family(family, table=table))
+    if not g["ok"]:
+        out["recent_powered"] = False
+        out["calib_reason"] = bl.reason(g)
+    return out
+
+
 def compute_results(candidates, boosts=None):
     """每候选路由到真统计 → {candidate_id, family, key, p, recent_p, recent_powered}。
 
@@ -976,6 +1060,7 @@ def compute_results(candidates, boosts=None):
         if r is None:                       # 数据不足 → 进分母但永不存活(检验力不足)
             # mc=None = "根本没跑过统计",区别于 mc_x=0 = "跑了 n 次、一次都没穿过"(Part A/D10)
             r = {"p": 1.0, "recent_p": None, "recent_powered": False, "mc": None, "mc_recent": None}
+        r = apply_calibration_gate(r, c["key"], family=fam)      # F2·P2
         results.append({"candidate_id": c["candidate_id"], "family": fam, "key": c["key"], **r})
     return results
 

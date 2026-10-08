@@ -182,12 +182,17 @@ def _diff_oos(cand, anchor, arr, *, block):
 
 def _rebound_oos(cand, anchor):
     p = cand["params"]
-    return _diff_oos(cand, anchor, ad._rebound_arrays(p["pctl"], p["hold"], p["index"]), block=p["hold"])
+    # F2:block 与 discovery(autodiscovery._rebound_block)同一公式/常量 —— 两处不一致
+    # = 同一效应两套显著性口径(B1 命门,positioning/trailing 早有此纪律)。
+    return _diff_oos(cand, anchor, ad._rebound_arrays(p["pctl"], p["hold"], p["index"]),
+                     block=ad._rebound_block(p["hold"]))
 
 
 def _regime_oos(cand, anchor):
     p = cand["params"]
-    return _diff_oos(cand, anchor, ad._regime_arrays(p["signal"], p["index"], 20), block=20)
+    # F2:同上 —— block 与 discovery(autodiscovery._regime_block)同一公式/常量。
+    return _diff_oos(cand, anchor, ad._regime_arrays(p["signal"], p["index"], 20),
+                     block=ad._regime_block(20))
 
 
 # ── 仓位族(COT)/期权情绪族(P/C) OOS：阈值(滚动分位/滚动z)本身就是纯回看统计=天然点时间，
