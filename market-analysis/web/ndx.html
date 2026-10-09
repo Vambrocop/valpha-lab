@@ -160,6 +160,17 @@ function render(d){
         :`&#x1F4CB; The Valpha150 pool was last curated <b>${esc(d.pool_age_days)}</b> days ago (${esc(d.pool_last_curated||"—")})`
           +(old_?" — newly large-cap names may be missing. The pool is hand-curated, so it is never rewritten automatically; a human decides.":""))
       +`</div>`;
+  } else {
+    // 2026-10-09：`pool_age_days` 为空时原先**什么都不画** —— 等于这个指标悄悄消失，
+    // 而它的全部目的就是让"池子悄悄老化"看得见。现在把"读不到"本身摆出来。
+    // （读不到的已知原因：CI 浅克隆下 git 拿不到池子真实修改日。见 build_ndx。）
+    chHtml+=`<div style="margin-top:14px;font-size:.8rem;color:var(--amb)">`
+      +(LANG==="zh"
+        ?"&#x1F4CB; 池子上次人工维护的日期<b>这次没读到</b>（本轮构建环境拿不到 git 历史）——"
+         +"不是「刚维护过」，是「不知道」。"
+        :"&#x1F4CB; The pool's last hand-curation date <b>could not be read</b> this build "
+         +"(no git history available) — this means <i>unknown</i>, not <i>recently curated</i>.")
+      +`</div>`;
   }
   const ram=Array.isArray(d.recent_added_missing)?d.recent_added_missing:[];
   if(ram.length){

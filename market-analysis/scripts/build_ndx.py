@@ -113,11 +113,42 @@ def _pool_curation_age(day):
     池子是人工策展的(带手写中文名/板块),外部没有权威名单可抓,所以不能自动重写 ——
     自动加票会让 name_cn/sector 开天窗,还会悄悄改变已发布的统计口径。
     能做也该做的是:**把"多久没人管了"摆出来**,让老化看得见。
+
+    ⚠ 2026-10-09 修了一个让这个指标**从建成起就一直在撒谎**的 bug（`ffacdea` 以来）。
+
+    `git log -1 --format=%cs -- <path>` 在**浅克隆**上不可信：CI 用的
+    `actions/checkout@v4` 默认 `fetch-depth: 1`，仓库里只有一个提交、**没有父提交**，
+    于是 git 把它当成"引入了整棵树"，`git log -1 -- 任意路径` 恒等于**那个 tip 提交的日期**。
+    线上实测：origin 的产物写 `pool_last_curated: 2026-10-07 / pool_age_days: 1`，
+    而完整克隆算出来是 **2026-09-20 / 19 天**；本地建一个 `--depth=1` 克隆可当场复现。
+
+    后果：页面上那句「池子距上次人工维护 N 天」**每天都显示 0~1 天**，
+    `>60 天` 的红字警告**永远不可能触发** —— 这个指标的全部目的就是让"悄悄老化"
+    看得见，结果它反过来一直在给人安心。
+
+    **与 `fe8af0a` 是同一个失败模式**（浅克隆 + 无父提交 → git 把整棵树当成改动），
+    换个地方又咬了一次。
+
+    修法两层：
+      ① CI 在跑 build_ndx 之前 `git fetch --unshallow`（那一步每天只跑一次，
+         不是每 30 分钟，代价可接受）；
+      ② 这里**主动检测浅克隆**，是浅的就返回 None —— 宁可页面显示"—"，
+         也绝不报一个假的"刚维护过"。
     """
     import subprocess
+
+    def _git(*args):
+        return subprocess.run(["git", *args], cwd=str(BASE.parent),
+                              capture_output=True, text=True, timeout=20)
+
     try:
-        r = subprocess.run(["git", "log", "-1", "--format=%cs", "--", str(POOL)],
-                           cwd=str(BASE.parent), capture_output=True, text=True, timeout=20)
+        # ① 浅克隆上这个问题无解 → 不给数，别给假数
+        sh = _git("rev-parse", "--is-shallow-repository")
+        if (sh.stdout or "").strip() == "true":
+            print("[NDX] 仓库是浅克隆 → git 历史读不到池子真实维护日，"
+                  "pool_age 留空（绝不报 tip 提交的日期当维护日）")
+            return None, None
+        r = _git("log", "-1", "--format=%cs", "--", str(POOL))
         last = (r.stdout or "").strip()
         if not last:
             return None, None

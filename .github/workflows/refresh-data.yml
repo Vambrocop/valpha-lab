@@ -114,6 +114,14 @@ jobs:
         env:
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}   # 财报日历(fetch_earnings);未配置则该步静默跳过
         run: |
+          # 2026-10-09：`actions/checkout@v4` 默认 fetch-depth: 1 → 仓库只有一个提交、
+          # 无父提交 → git 把它当成"引入了整棵树"，于是
+          # `git log -1 --format=%cs -- <任意路径>` 恒等于 tip 提交的日期。
+          # build_ndx 靠它算「池子多久没人维护」→ 页面每天都显示 0~1 天，
+          # `>60 天` 的红字警告**永远不可能触发**。与 fe8af0a 同一个失败模式。
+          # 这一步每天只跑一次(盘后/手动)，unshallow 的代价付得起；
+          # 失败也不致命 —— build_ndx 自己会检测浅克隆并留空，绝不报假日期。
+          git fetch --unshallow --quiet 2>/dev/null || git fetch --quiet --deepen=200 2>/dev/null || true
           python market-analysis/scripts/build_valpha150.py || echo "::warning::valpha150 刷新失败(非致命，下次重试)"
           python market-analysis/scripts/build_wildpool.py || echo "::warning::wildpool 刷新失败(非致命，下次重试)"
           python market-analysis/scripts/ticker_ondemand.py || echo "::warning::点单深算失败(非致命，下次重试)"
