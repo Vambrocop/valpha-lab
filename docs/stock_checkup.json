@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-09T01:24:41Z",
+  "generated": "2026-10-09T18:41:26Z",
   "caveat": "这是个股的**风险画像**，描述它历史上是什么样——**不预测涨跌、不荐股、不给买卖点**。年化波动=历史日收益波动；最深回撤=历史峰到谷最大跌幅（可能极深，提示风险非机会）；β=对纳指的敏感度（>1 比大盘更颠，<1 更稳），是风险特征不是收益承诺。数据不足的票如实标注。",
   "benchmark": "NASDAQ",
   "min_days": 250,
@@ -10,14 +10,14 @@
     "pattern_real": 0,
     "pattern_faded": 0,
     "pattern_hist_robust": 0,
-    "pattern_data_snoop": 4
+    "pattern_data_snoop": 0
   },
   "tickers": {
     "AAPL": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 38.2,
       "max_drawdown_pct": -81.8,
       "beta_nasdaq": 0.99,
@@ -46,36 +46,36 @@
         "r2_pct": 41.3,
         "idiosyncratic_pct": 58.7,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.003996,
+            "p_value": 0.004995,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.013,
-              0.019
+              0.017,
+              0.023
             ],
             "split_half_stable": false,
-            "recent_p": 0.5495,
+            "recent_p": 0.5574,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.036,
-            "verdict": "data_snoop"
+            "q_value": 0.0539,
+            "verdict": "rejected"
           },
           {
-            "p_value": 0.238761,
+            "p_value": 0.240759,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
               0.7542,
-              0.1229
+              0.1239
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -84,11 +84,11 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.4524,
+            "q_value": 0.4562,
             "verdict": "inconclusive"
           }
         ],
-        "overall": "data_snoop"
+        "overall": "inconclusive"
       },
       "conformal": {
         "status": "ok",
@@ -140,20 +140,20 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 26.1,
-        "vol_percentile": 38.5,
+        "asof": "2026-10-09",
+        "vol_now_pct": 25.9,
+        "vol_percentile": 38.1,
         "high_vol": false,
-        "corr_now": -0.04,
-        "corr_percentile": 0.1,
+        "corr_now": -0.02,
+        "corr_percentile": 0.2,
         "decoupled": true
       }
     },
     "MSFT": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 30.2,
       "max_drawdown_pct": -68.7,
       "beta_nasdaq": 0.91,
@@ -182,36 +182,36 @@
         "r2_pct": 55.9,
         "idiosyncratic_pct": 44.1,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.671329,
+            "p_value": 0.635365,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.1858,
-              0.5854
+              0.1748,
+              0.5674
             ],
             "split_half_stable": false,
-            "recent_p": 0.8262,
+            "recent_p": 0.8342,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.797,
+            "q_value": 0.7624,
             "verdict": "rejected"
           },
           {
-            "p_value": 0.085914,
+            "p_value": 0.081918,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
               0.2527,
-              0.1678
+              0.1558
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -220,7 +220,7 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.2812,
+            "q_value": 0.2681,
             "verdict": "inconclusive"
           }
         ],
@@ -230,9 +230,9 @@
         "status": "ok",
         "horizon": 20,
         "level": 0.9,
-        "lower_pct": -11.79,
+        "lower_pct": -11.78,
         "upper_pct": 14.46,
-        "width_pct": 26.25,
+        "width_pct": 26.24,
         "empirical_coverage": 0.941,
         "n_test": 101,
         "n_windows": 336
@@ -259,7 +259,7 @@
             "p90_pct": 7.41,
             "worst_pct": -21.73,
             "best_pct": 23.33,
-            "pct_negative": 41.5
+            "pct_negative": 41.2
           },
           {
             "horizon": 20,
@@ -269,27 +269,27 @@
             "p90_pct": 14.05,
             "worst_pct": -33.33,
             "best_pct": 44.88,
-            "pct_negative": 45.4
+            "pct_negative": 45.7
           }
         ]
       },
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 39.9,
-        "vol_percentile": 87.6,
+        "asof": "2026-10-09",
+        "vol_now_pct": 40.0,
+        "vol_percentile": 87.7,
         "high_vol": false,
-        "corr_now": 0.55,
-        "corr_percentile": 16.8,
+        "corr_now": 0.57,
+        "corr_percentile": 19.3,
         "decoupled": false
       }
     },
     "GOOGL": {
       "status": "ok",
-      "n_days": 5570,
+      "n_days": 5571,
       "start": "2004-08-19",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 30.7,
       "max_drawdown_pct": -65.3,
       "beta_nasdaq": 0.98,
@@ -318,27 +318,27 @@
         "r2_pct": 47.0,
         "idiosyncratic_pct": 53.0,
         "status": "ok",
-        "n_obs": 5569
+        "n_obs": 5570
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.742258,
+            "p_value": 0.714286,
             "min_group_n": 1043,
             "min_group_n_half": 521,
             "split_half_p": [
-              0.7033,
-              0.7512
+              0.7303,
+              0.6943
             ],
             "split_half_stable": false,
-            "recent_p": 0.8052,
+            "recent_p": 0.8002,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.835,
+            "q_value": 0.8036,
             "verdict": "rejected"
           },
           {
@@ -347,7 +347,7 @@
             "min_group_n_half": 11,
             "split_half_p": [
               0.014,
-              0.027
+              0.025
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -356,11 +356,11 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.036,
-            "verdict": "data_snoop"
+            "q_value": 0.0539,
+            "verdict": "inconclusive"
           }
         ],
-        "overall": "data_snoop"
+        "overall": "inconclusive"
       },
       "conformal": {
         "status": "ok",
@@ -412,20 +412,20 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 33.9,
-        "vol_percentile": 75.5,
+        "asof": "2026-10-09",
+        "vol_now_pct": 32.7,
+        "vol_percentile": 73.5,
         "high_vol": false,
-        "corr_now": 0.48,
-        "corr_percentile": 11.9,
+        "corr_now": 0.45,
+        "corr_percentile": 10.3,
         "decoupled": false
       }
     },
     "AMZN": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 48.5,
       "max_drawdown_pct": -93.3,
       "beta_nasdaq": 1.16,
@@ -445,7 +445,7 @@
           {
             "level": 0.999,
             "var_pct": 15.86,
-            "es_pct": 20.24
+            "es_pct": 20.23
           }
         ]
       },
@@ -454,31 +454,31 @@
         "r2_pct": 34.8,
         "idiosyncratic_pct": 65.2,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.872128,
+            "p_value": 0.883117,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.9371,
-              0.8342
+              0.9181,
+              0.8352
             ],
             "split_half_stable": false,
-            "recent_p": 0.972,
+            "recent_p": 0.963,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.897,
+            "q_value": 0.8981,
             "verdict": "rejected"
           },
           {
-            "p_value": 0.025974,
+            "p_value": 0.024975,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
@@ -492,7 +492,7 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.1558,
+            "q_value": 0.1499,
             "verdict": "inconclusive"
           }
         ],
@@ -548,27 +548,27 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 42.0,
-        "vol_percentile": 65.1,
+        "asof": "2026-10-09",
+        "vol_now_pct": 42.2,
+        "vol_percentile": 65.5,
         "high_vol": false,
         "corr_now": 0.44,
-        "corr_percentile": 14.9,
+        "corr_percentile": 13.8,
         "decoupled": false
       }
     },
     "NVDA": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 58.5,
       "max_drawdown_pct": -89.7,
       "beta_nasdaq": 1.54,
       "name": "英伟达",
       "evt": {
         "status": "ok",
-        "xi": 0.188,
+        "xi": 0.187,
         "tail": "厚尾(ξ>0,极端损失比指数更重)",
         "extremal_index": 0.555,
         "n_exceed": 337,
@@ -581,7 +581,7 @@
           {
             "level": 0.999,
             "var_pct": 17.86,
-            "es_pct": 23.49
+            "es_pct": 23.48
           }
         ]
       },
@@ -590,31 +590,31 @@
         "r2_pct": 42.5,
         "idiosyncratic_pct": 57.5,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.852148,
+            "p_value": 0.856144,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.988,
-              0.5524
+              0.989,
+              0.5175
             ],
             "split_half_stable": false,
-            "recent_p": 0.2607,
+            "recent_p": 0.2887,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.897,
+            "q_value": 0.8981,
             "verdict": "rejected"
           },
           {
-            "p_value": 0.065934,
+            "p_value": 0.066933,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
@@ -628,7 +628,7 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.2374,
+            "q_value": 0.2553,
             "verdict": "inconclusive"
           }
         ],
@@ -667,7 +667,7 @@
             "p90_pct": 16.63,
             "worst_pct": -33.53,
             "best_pct": 73.11,
-            "pct_negative": 45.1
+            "pct_negative": 45.4
           },
           {
             "horizon": 20,
@@ -677,34 +677,34 @@
             "p90_pct": 32.92,
             "worst_pct": -50.64,
             "best_pct": 118.88,
-            "pct_negative": 43.9
+            "pct_negative": 43.6
           }
         ]
       },
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 37.1,
-        "vol_percentile": 29.0,
+        "asof": "2026-10-09",
+        "vol_now_pct": 36.8,
+        "vol_percentile": 27.9,
         "high_vol": false,
-        "corr_now": 0.65,
-        "corr_percentile": 46.1,
+        "corr_now": 0.64,
+        "corr_percentile": 42.7,
         "decoupled": false
       }
     },
     "META": {
       "status": "ok",
-      "n_days": 3618,
+      "n_days": 3619,
       "start": "2012-05-18",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 39.9,
       "max_drawdown_pct": -76.7,
       "beta_nasdaq": 1.19,
       "name": "Meta",
       "evt": {
         "status": "ok",
-        "xi": 0.313,
+        "xi": 0.312,
         "tail": "厚尾(ξ>0,极端损失比指数更重)",
         "extremal_index": 0.575,
         "n_exceed": 181,
@@ -716,8 +716,8 @@
           },
           {
             "level": 0.999,
-            "var_pct": 13.69,
-            "es_pct": 20.2
+            "var_pct": 13.68,
+            "es_pct": 20.16
           }
         ]
       },
@@ -726,36 +726,36 @@
         "r2_pct": 36.3,
         "idiosyncratic_pct": 63.7,
         "status": "ok",
-        "n_obs": 3617
+        "n_obs": 3618
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.136863,
+            "p_value": 0.114885,
             "min_group_n": 679,
             "min_group_n_half": 338,
             "split_half_p": [
-              0.023,
-              0.7662
+              0.02,
+              0.7672
             ],
             "split_half_stable": false,
-            "recent_p": 0.7532,
+            "recent_p": 0.7522,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.3692,
+            "q_value": 0.3447,
             "verdict": "rejected"
           },
           {
-            "p_value": 0.380619,
+            "p_value": 0.37962,
             "min_group_n": 14,
             "min_group_n_half": 7,
             "split_half_p": [
               0.4286,
-              0.7083
+              0.6953
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -764,7 +764,7 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.5481,
+            "q_value": 0.5467,
             "verdict": "inconclusive"
           }
         ],
@@ -792,7 +792,7 @@
             "p10_pct": -3.73,
             "p90_pct": 3.16,
             "worst_pct": -24.56,
-            "best_pct": 10.23,
+            "best_pct": 10.24,
             "pct_negative": 48.1
           },
           {
@@ -820,20 +820,20 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 46.2,
-        "vol_percentile": 78.8,
+        "asof": "2026-10-09",
+        "vol_now_pct": 45.9,
+        "vol_percentile": 78.1,
         "high_vol": false,
-        "corr_now": 0.26,
-        "corr_percentile": 5.9,
+        "corr_now": 0.24,
+        "corr_percentile": 5.1,
         "decoupled": false
       }
     },
     "TSLA": {
       "status": "ok",
-      "n_days": 4095,
+      "n_days": 4096,
       "start": "2010-06-29",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 57.3,
       "max_drawdown_pct": -73.6,
       "beta_nasdaq": 1.48,
@@ -852,46 +852,46 @@
           },
           {
             "level": 0.999,
-            "var_pct": 16.74,
-            "es_pct": 20.71
+            "var_pct": 16.73,
+            "es_pct": 20.7
           }
         ]
       },
       "market_dep": {
         "corr": 0.53,
-        "r2_pct": 27.9,
-        "idiosyncratic_pct": 72.1,
+        "r2_pct": 28.0,
+        "idiosyncratic_pct": 72.0,
         "status": "ok",
-        "n_obs": 4094
+        "n_obs": 4095
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.00999,
+            "p_value": 0.014985,
             "min_group_n": 766,
             "min_group_n_half": 382,
             "split_half_p": [
-              0.4925,
-              0.004
+              0.4555,
+              0.002
             ],
             "split_half_stable": false,
-            "recent_p": 0.038,
+            "recent_p": 0.034,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": true,
             "effect": "星期几",
-            "q_value": 0.0719,
+            "q_value": 0.1079,
             "verdict": "rejected"
           },
           {
-            "p_value": 0.825175,
+            "p_value": 0.827173,
             "min_group_n": 16,
             "min_group_n_half": 8,
             "split_half_p": [
               0.7502,
-              0.8811
+              0.8801
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -900,7 +900,7 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.897,
+            "q_value": 0.8981,
             "verdict": "inconclusive"
           }
         ],
@@ -956,20 +956,20 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 49.5,
-        "vol_percentile": 42.9,
+        "asof": "2026-10-09",
+        "vol_now_pct": 49.7,
+        "vol_percentile": 43.4,
         "high_vol": false,
-        "corr_now": 0.65,
-        "corr_percentile": 78.6,
+        "corr_now": 0.66,
+        "corr_percentile": 79.9,
         "decoupled": false
       }
     },
     "AVGO": {
       "status": "ok",
-      "n_days": 4320,
+      "n_days": 4321,
       "start": "2009-08-06",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 38.2,
       "max_drawdown_pct": -48.3,
       "beta_nasdaq": 1.26,
@@ -998,7 +998,7 @@
         "r2_pct": 44.9,
         "idiosyncratic_pct": 55.1,
         "status": "ok",
-        "n_obs": 4319
+        "n_obs": 4320
       },
       "patterns": {
         "status": "ok",
@@ -1008,13 +1008,13 @@
             "min_group_n": 809,
             "min_group_n_half": 403,
             "split_half_p": [
-              0.0999,
-              0.8252
+              0.1179,
+              0.8162
             ],
             "split_half_stable": false,
-            "recent_p": 0.4346,
+            "recent_p": 0.4126,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
@@ -1027,7 +1027,7 @@
             "min_group_n_half": 8,
             "split_half_p": [
               0.1089,
-              0.2497
+              0.2478
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -1036,7 +1036,7 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.4524,
+            "q_value": 0.4476,
             "verdict": "inconclusive"
           }
         ],
@@ -1051,7 +1051,7 @@
         "width_pct": 31.52,
         "empirical_coverage": 0.815,
         "n_test": 65,
-        "n_windows": 215
+        "n_windows": 216
       },
       "dip_distribution": {
         "status": "ok",
@@ -1059,13 +1059,13 @@
         "distribution": [
           {
             "horizon": 1,
-            "n": 215,
-            "median_pct": 0.23,
+            "n": 216,
+            "median_pct": 0.26,
             "p10_pct": -3.22,
-            "p90_pct": 4.03,
+            "p90_pct": 4.02,
             "worst_pct": -11.05,
             "best_pct": 15.83,
-            "pct_negative": 43.7
+            "pct_negative": 43.5
           },
           {
             "horizon": 5,
@@ -1085,27 +1085,27 @@
             "p90_pct": 16.2,
             "worst_pct": -32.52,
             "best_pct": 56.48,
-            "pct_negative": 30.4
+            "pct_negative": 30.8
           }
         ]
       },
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 39.0,
-        "vol_percentile": 67.2,
+        "asof": "2026-10-09",
+        "vol_now_pct": 37.6,
+        "vol_percentile": 60.3,
         "high_vol": false,
-        "corr_now": 0.63,
-        "corr_percentile": 36.5,
+        "corr_now": 0.61,
+        "corr_percentile": 31.0,
         "decoupled": false
       }
     },
     "TSM": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 41.2,
       "max_drawdown_pct": -84.6,
       "beta_nasdaq": 1.11,
@@ -1134,36 +1134,36 @@
         "r2_pct": 44.3,
         "idiosyncratic_pct": 55.7,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.045954,
+            "p_value": 0.034965,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.0509,
-              0.022
+              0.04,
+              0.026
             ],
             "split_half_stable": false,
-            "recent_p": 0.1788,
+            "recent_p": 0.1988,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.2068,
+            "q_value": 0.1708,
             "verdict": "rejected"
           },
           {
-            "p_value": 0.305694,
+            "p_value": 0.313686,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
               0.1239,
-              0.7542
+              0.7602
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -1228,20 +1228,20 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 34.3,
-        "vol_percentile": 55.8,
+        "asof": "2026-10-09",
+        "vol_now_pct": 34.0,
+        "vol_percentile": 55.4,
         "high_vol": false,
-        "corr_now": 0.73,
-        "corr_percentile": 74.9,
+        "corr_now": 0.72,
+        "corr_percentile": 68.3,
         "decoupled": false
       }
     },
     "COST": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 26.8,
       "max_drawdown_pct": -53.4,
       "beta_nasdaq": 0.55,
@@ -1270,31 +1270,31 @@
         "r2_pct": 25.9,
         "idiosyncratic_pct": 74.1,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.062937,
+            "p_value": 0.070929,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.1708,
-              0.5065
+              0.1838,
+              0.4685
             ],
             "split_half_stable": false,
-            "recent_p": 0.6054,
+            "recent_p": 0.5554,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.2374,
+            "q_value": 0.2553,
             "verdict": "rejected"
           },
           {
-            "p_value": 0.612388,
+            "p_value": 0.613387,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
@@ -1308,7 +1308,7 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.7602,
+            "q_value": 0.7614,
             "verdict": "inconclusive"
           }
         ],
@@ -1364,20 +1364,20 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 18.2,
-        "vol_percentile": 38.4,
+        "asof": "2026-10-09",
+        "vol_now_pct": 17.0,
+        "vol_percentile": 28.4,
         "high_vol": false,
-        "corr_now": -0.19,
-        "corr_percentile": 1.2,
+        "corr_now": -0.14,
+        "corr_percentile": 1.6,
         "decoupled": true
       }
     },
     "LLY": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 28.1,
       "max_drawdown_pct": -68.3,
       "beta_nasdaq": 0.39,
@@ -1406,27 +1406,27 @@
         "r2_pct": 11.8,
         "idiosyncratic_pct": 88.2,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.444555,
+            "p_value": 0.481518,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.1459,
-              0.049
+              0.1319,
+              0.032
             ],
             "split_half_stable": false,
-            "recent_p": 0.1329,
+            "recent_p": 0.1139,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.6114,
+            "q_value": 0.642,
             "verdict": "rejected"
           },
           {
@@ -1435,7 +1435,7 @@
             "min_group_n_half": 13,
             "split_half_p": [
               0.2358,
-              0.7962
+              0.7972
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -1500,27 +1500,27 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 29.5,
-        "vol_percentile": 71.9,
+        "asof": "2026-10-09",
+        "vol_now_pct": 29.4,
+        "vol_percentile": 71.7,
         "high_vol": false,
-        "corr_now": -0.2,
-        "corr_percentile": 1.8,
+        "corr_now": -0.19,
+        "corr_percentile": 2.1,
         "decoupled": true
       }
     },
     "BRK-B": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 21.7,
       "max_drawdown_pct": -53.9,
       "beta_nasdaq": 0.4,
       "name": "伯克希尔",
       "evt": {
         "status": "ok",
-        "xi": 0.219,
+        "xi": 0.218,
         "tail": "厚尾(ξ>0,极端损失比指数更重)",
         "extremal_index": 0.543,
         "n_exceed": 337,
@@ -1542,31 +1542,31 @@
         "r2_pct": 20.6,
         "idiosyncratic_pct": 79.4,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.150849,
+            "p_value": 0.162837,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.1169,
-              0.956
+              0.1109,
+              0.9351
             ],
             "split_half_stable": false,
-            "recent_p": 0.7163,
+            "recent_p": 0.7063,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.3692,
+            "q_value": 0.3908,
             "verdict": "rejected"
           },
           {
-            "p_value": 0.140859,
+            "p_value": 0.142857,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
@@ -1580,7 +1580,7 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.3692,
+            "q_value": 0.3908,
             "verdict": "inconclusive"
           }
         ],
@@ -1636,20 +1636,20 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 13.6,
-        "vol_percentile": 30.1,
+        "asof": "2026-10-09",
+        "vol_now_pct": 13.5,
+        "vol_percentile": 29.6,
         "high_vol": false,
-        "corr_now": -0.16,
-        "corr_percentile": 1.2,
+        "corr_now": -0.13,
+        "corr_percentile": 1.8,
         "decoupled": true
       }
     },
     "KO": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 20.3,
       "max_drawdown_pct": -41.6,
       "beta_nasdaq": 0.26,
@@ -1678,23 +1678,23 @@
         "r2_pct": 10.4,
         "idiosyncratic_pct": 89.6,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.303696,
+            "p_value": 0.280719,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.2957,
-              0.2617
+              0.3207,
+              0.2368
             ],
             "split_half_stable": false,
-            "recent_p": 0.3626,
+            "recent_p": 0.3207,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
@@ -1702,12 +1702,12 @@
             "verdict": "rejected"
           },
           {
-            "p_value": 0.216783,
+            "p_value": 0.213786,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
               0.2917,
-              0.6963
+              0.6913
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -1716,7 +1716,7 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.4524,
+            "q_value": 0.4476,
             "verdict": "inconclusive"
           }
         ],
@@ -1772,21 +1772,21 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 20.3,
-        "vol_percentile": 74.0,
+        "asof": "2026-10-09",
+        "vol_now_pct": 19.4,
+        "vol_percentile": 70.2,
         "high_vol": false,
-        "corr_now": -0.14,
-        "corr_percentile": 8.6,
+        "corr_now": -0.09,
+        "corr_percentile": 10.5,
         "decoupled": false
       }
     },
     "SNDK": {
       "status": "ok",
-      "n_days": 415,
+      "n_days": 416,
       "start": "2025-02-13",
-      "end": "2026-10-08",
-      "ann_vol_pct": 104.7,
+      "end": "2026-10-09",
+      "ann_vol_pct": 104.6,
       "max_drawdown_pct": -56.5,
       "beta_nasdaq": 2.25,
       "name": "闪迪",
@@ -1798,7 +1798,7 @@
         "r2_pct": 22.9,
         "idiosyncratic_pct": 77.1,
         "status": "ok",
-        "n_obs": 414
+        "n_obs": 415
       },
       "patterns": {
         "status": "insufficient"
@@ -1815,9 +1815,9 @@
     },
     "MU": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 56.9,
       "max_drawdown_pct": -98.2,
       "beta_nasdaq": 1.41,
@@ -1836,7 +1836,7 @@
           },
           {
             "level": 0.999,
-            "var_pct": 16.62,
+            "var_pct": 16.61,
             "es_pct": 20.48
           }
         ]
@@ -1846,36 +1846,36 @@
         "r2_pct": 37.5,
         "idiosyncratic_pct": 62.5,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.233766,
+            "p_value": 0.223776,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.3197,
-              0.3756
+              0.3546,
+              0.3606
             ],
             "split_half_stable": false,
-            "recent_p": 0.4565,
+            "recent_p": 0.4685,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.4524,
+            "q_value": 0.4476,
             "verdict": "rejected"
           },
           {
-            "p_value": 0.458541,
+            "p_value": 0.45954,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
               0.3157,
-              0.4046
+              0.4056
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -1884,7 +1884,7 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.6114,
+            "q_value": 0.6363,
             "verdict": "inconclusive"
           }
         ],
@@ -1933,27 +1933,27 @@
             "p90_pct": 28.05,
             "worst_pct": -56.89,
             "best_pct": 83.43,
-            "pct_negative": 42.1
+            "pct_negative": 42.4
           }
         ]
       },
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 74.4,
-        "vol_percentile": 85.0,
+        "asof": "2026-10-09",
+        "vol_now_pct": 73.4,
+        "vol_percentile": 84.6,
         "high_vol": false,
-        "corr_now": 0.53,
-        "corr_percentile": 29.5,
+        "corr_now": 0.51,
+        "corr_percentile": 25.8,
         "decoupled": false
       }
     },
     "AMD": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 61.9,
       "max_drawdown_pct": -96.6,
       "beta_nasdaq": 1.43,
@@ -1982,23 +1982,23 @@
         "r2_pct": 32.5,
         "idiosyncratic_pct": 67.5,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.271728,
+            "p_value": 0.288711,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.6054,
-              0.1109
+              0.5654,
+              0.1209
             ],
             "split_half_stable": false,
-            "recent_p": 0.5145,
+            "recent_p": 0.4965,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
@@ -2006,12 +2006,12 @@
             "verdict": "rejected"
           },
           {
-            "p_value": 0.31968,
+            "p_value": 0.316683,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
               0.2398,
-              0.6623
+              0.6603
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -2076,20 +2076,20 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 64.1,
-        "vol_percentile": 67.8,
+        "asof": "2026-10-09",
+        "vol_now_pct": 63.2,
+        "vol_percentile": 66.4,
         "high_vol": false,
-        "corr_now": 0.63,
-        "corr_percentile": 60.3,
+        "corr_now": 0.61,
+        "corr_percentile": 55.4,
         "decoupled": false
       }
     },
     "INTC": {
       "status": "ok",
-      "n_days": 6732,
+      "n_days": 6733,
       "start": "2000-01-03",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 41.4,
       "max_drawdown_pct": -82.2,
       "beta_nasdaq": 1.12,
@@ -2118,36 +2118,36 @@
         "r2_pct": 45.0,
         "idiosyncratic_pct": 55.0,
         "status": "ok",
-        "n_obs": 6731
+        "n_obs": 6732
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.003996,
+            "p_value": 0.005994,
             "min_group_n": 1262,
             "min_group_n_half": 631,
             "split_half_p": [
-              0.0559,
-              0.2408
+              0.0619,
+              0.2617
             ],
             "split_half_stable": false,
-            "recent_p": 0.4116,
+            "recent_p": 0.3966,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.036,
-            "verdict": "data_snoop"
+            "q_value": 0.0539,
+            "verdict": "rejected"
           },
           {
-            "p_value": 0.546454,
+            "p_value": 0.55045,
             "min_group_n": 26,
             "min_group_n_half": 13,
             "split_half_p": [
               0.05,
-              0.8721
+              0.8731
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -2156,11 +2156,11 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.7026,
+            "q_value": 0.7077,
             "verdict": "inconclusive"
           }
         ],
-        "overall": "data_snoop"
+        "overall": "inconclusive"
       },
       "conformal": {
         "status": "ok",
@@ -2179,13 +2179,13 @@
         "distribution": [
           {
             "horizon": 1,
-            "n": 336,
-            "median_pct": 0.18,
+            "n": 337,
+            "median_pct": 0.17,
             "p10_pct": -3.53,
-            "p90_pct": 5.43,
+            "p90_pct": 5.42,
             "worst_pct": -26.06,
             "best_pct": 19.52,
-            "pct_negative": 48.2
+            "pct_negative": 48.4
           },
           {
             "horizon": 5,
@@ -2212,27 +2212,27 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 70.9,
-        "vol_percentile": 90.6,
+        "asof": "2026-10-09",
+        "vol_now_pct": 69.9,
+        "vol_percentile": 90.2,
         "high_vol": false,
-        "corr_now": 0.67,
-        "corr_percentile": 49.0,
+        "corr_now": 0.66,
+        "corr_percentile": 45.8,
         "decoupled": false
       }
     },
     "NFLX": {
       "status": "ok",
-      "n_days": 6134,
+      "n_days": 6135,
       "start": "2002-05-23",
-      "end": "2026-10-08",
-      "ann_vol_pct": 54.3,
+      "end": "2026-10-09",
+      "ann_vol_pct": 54.2,
       "max_drawdown_pct": -82.0,
       "beta_nasdaq": 1.0,
       "name": "网飞",
       "evt": {
         "status": "ok",
-        "xi": 0.37,
+        "xi": 0.369,
         "tail": "厚尾(ξ>0,极端损失比指数更重)",
         "extremal_index": 0.638,
         "n_exceed": 307,
@@ -2245,7 +2245,7 @@
           {
             "level": 0.999,
             "var_pct": 20.96,
-            "es_pct": 33.69
+            "es_pct": 33.67
           }
         ]
       },
@@ -2254,7 +2254,7 @@
         "r2_pct": 16.5,
         "idiosyncratic_pct": 83.5,
         "status": "ok",
-        "n_obs": 6133
+        "n_obs": 6134
       },
       "patterns": {
         "status": "ok",
@@ -2264,26 +2264,26 @@
             "min_group_n": 1150,
             "min_group_n_half": 574,
             "split_half_p": [
-              0.002,
-              0.2088
+              0.004,
+              0.2418
             ],
             "split_half_stable": false,
-            "recent_p": 0.7413,
+            "recent_p": 0.7223,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.036,
-            "verdict": "data_snoop"
+            "q_value": 0.0539,
+            "verdict": "rejected"
           },
           {
-            "p_value": 0.038961,
+            "p_value": 0.037962,
             "min_group_n": 24,
             "min_group_n_half": 12,
             "split_half_p": [
               0.2268,
-              0.5415
+              0.5455
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -2292,11 +2292,11 @@
             "recent_block": "structural",
             "recent_significant": false,
             "effect": "月份",
-            "q_value": 0.2004,
+            "q_value": 0.1708,
             "verdict": "inconclusive"
           }
         ],
-        "overall": "data_snoop"
+        "overall": "inconclusive"
       },
       "conformal": {
         "status": "ok",
@@ -2348,27 +2348,27 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 36.0,
-        "vol_percentile": 25.2,
+        "asof": "2026-10-09",
+        "vol_now_pct": 36.1,
+        "vol_percentile": 25.3,
         "high_vol": false,
         "corr_now": 0.09,
-        "corr_percentile": 6.3,
+        "corr_percentile": 7.1,
         "decoupled": false
       }
     },
     "HOOD": {
       "status": "ok",
-      "n_days": 1305,
+      "n_days": 1306,
       "start": "2021-07-29",
-      "end": "2026-10-08",
+      "end": "2026-10-09",
       "ann_vol_pct": 73.7,
       "max_drawdown_pct": -90.2,
       "beta_nasdaq": 1.79,
       "name": "罗宾汉",
       "evt": {
         "status": "ok",
-        "xi": 0.182,
+        "xi": 0.18,
         "tail": "厚尾(ξ>0,极端损失比指数更重)",
         "extremal_index": 0.652,
         "n_exceed": 66,
@@ -2380,8 +2380,8 @@
           },
           {
             "level": 0.999,
-            "var_pct": 19.82,
-            "es_pct": 25.62
+            "var_pct": 19.81,
+            "es_pct": 25.57
           }
         ]
       },
@@ -2390,27 +2390,27 @@
         "r2_pct": 29.7,
         "idiosyncratic_pct": 70.3,
         "status": "ok",
-        "n_obs": 1304
+        "n_obs": 1305
       },
       "patterns": {
         "status": "ok",
         "tests": [
           {
-            "p_value": 0.153846,
+            "p_value": 0.156843,
             "min_group_n": 243,
             "min_group_n_half": 118,
             "split_half_p": [
-              0.6663,
-              0.0539
+              0.6643,
+              0.044
             ],
             "split_half_stable": false,
-            "recent_p": 0.3357,
+            "recent_p": 0.3107,
             "recent_testable": true,
-            "recent_n": 1254,
+            "recent_n": 1255,
             "recent_block": null,
             "recent_significant": false,
             "effect": "星期几",
-            "q_value": 0.3692,
+            "q_value": 0.3908,
             "verdict": "rejected"
           },
           {
@@ -2419,7 +2419,7 @@
             "min_group_n_half": 2,
             "split_half_p": [
               0.9251,
-              0.3237
+              0.3227
             ],
             "split_half_stable": false,
             "recent_p": null,
@@ -2484,12 +2484,12 @@
       "anomaly": {
         "status": "ok",
         "win": 60,
-        "asof": "2026-10-08",
-        "vol_now_pct": 71.4,
-        "vol_percentile": 63.1,
+        "asof": "2026-10-09",
+        "vol_now_pct": 69.4,
+        "vol_percentile": 57.2,
         "high_vol": false,
-        "corr_now": 0.53,
-        "corr_percentile": 38.2,
+        "corr_now": 0.51,
+        "corr_percentile": 36.2,
         "decoupled": false
       }
     }

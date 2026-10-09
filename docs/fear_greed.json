@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-09T01:24:43Z",
-  "as_of": "2026-10-08",
+  "generated": "2026-10-09T18:41:28Z",
+  "as_of": "2026-10-09",
   "composite_start": "2000-09-28",
   "components_used": [
     "momentum",
@@ -10,7 +10,7 @@
   ],
   "min_stretches_ci": 8,
   "current": {
-    "composite": 78.5,
+    "composite": 80.9,
     "band": "extreme_greed",
     "components": [
       {
@@ -19,8 +19,8 @@
         "label_en": "Momentum",
         "definition_zh": "SP500 相对 125 日均线偏离(+10%→100,−10%→0)",
         "definition_en": "SP500 vs its 125-day moving average (+10% -> 100, -10% -> 0)",
-        "raw_value": 0.0347,
-        "subscore": 67.35,
+        "raw_value": 0.0399,
+        "subscore": 69.97,
         "available": true
       },
       {
@@ -29,8 +29,8 @@
         "label_en": "Volatility (inverted)",
         "definition_zh": "VIX 在过去 252 日中的分位(越低越贪婪)",
         "definition_en": "VIX's percentile over the trailing 252 days (lower VIX = greedier)",
-        "raw_value": 0.1786,
-        "subscore": 82.14,
+        "raw_value": 0.0754,
+        "subscore": 92.46,
         "available": true
       },
       {
@@ -39,8 +39,8 @@
         "label_en": "Term structure",
         "definition_zh": "VIX3M − VIX(contango 正=贪婪;仅 VIX3M 可得日,2006-07 起)",
         "definition_en": "VIX3M minus VIX (positive/contango = greedy; only on days VIX3M exists, from 2006-07)",
-        "raw_value": 2.67,
-        "subscore": 76.7,
+        "raw_value": 2.99,
+        "subscore": 79.9,
         "available": true
       },
       {
@@ -49,8 +49,8 @@
         "label_en": "Risk appetite",
         "definition_zh": "SP500 20 日收益 − 黄金 20 日收益(仅 GOLD 可得日)",
         "definition_en": "SP500 20-day return minus gold's 20-day return (only on days GOLD data exists)",
-        "raw_value": 0.0756,
-        "subscore": 87.79,
+        "raw_value": 0.0628,
+        "subscore": 81.38,
         "available": true
       }
     ]
@@ -174,10 +174,10 @@
       {
         "band": "greed",
         "horizon": 20,
-        "n_days": 2595,
+        "n_days": 2596,
         "n_stretches": 272,
         "n_independent": 39,
-        "up_pct": 63.58,
+        "up_pct": 63.6,
         "mean_pct": 0.55,
         "base_up_pct": 63.71,
         "base_mean_pct": 0.63,
@@ -231,10 +231,10 @@
       {
         "band": "extreme_greed",
         "horizon": 60,
-        "n_days": 1297,
+        "n_days": 1298,
         "n_stretches": 71,
         "n_independent": 25,
-        "up_pct": 73.71,
+        "up_pct": 73.73,
         "mean_pct": 2.32,
         "base_up_pct": 68.22,
         "base_mean_pct": 1.9,
