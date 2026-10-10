@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-09T18:41:43Z",
+  "generated": "2026-10-10T01:15:07Z",
   "source": "LLM 据真实算出的因子对 SPY 未来 5 交易日方向出判断 → 前向公开计分",
   "model": "gemini-2.5-flash-lite",
   "symbol": "SPY",
@@ -34,19 +34,30 @@
       "n_settled": 3,
       "n_hit": 1
     },
-    "n_pending": 6,
+    "n_pending": 7,
     "n_dropped": 0
   },
   "latest": {
-    "pred_date": "2026-10-09",
+    "pred_date": "2026-10-10",
     "direction": "中性",
     "confidence": "低",
-    "reason": "波动率中性，收益率曲线偏平，信用利差偏低但属晚周期，个股共动偏低，纳指方向信号无样本外优势。",
+    "reason": "波动率VIX中性，收益率曲线偏平，信用利差偏低，个股共动偏低，纳指方向信号权重最低，综合来看缺乏明确的偏多或偏空信号。",
     "settled": false,
     "hit": false,
     "ret_pct": null
   },
   "recent": [
+    {
+      "pred_date": "2026-10-10",
+      "direction": "中性",
+      "confidence": "低",
+      "reason": "波动率VIX中性，收益率曲线偏平，信用利差偏低，个股共动偏低，纳指方向信号权重最低，综合来看缺乏明确的偏多或偏空信号。",
+      "settled": false,
+      "dropped": false,
+      "bucket": "",
+      "ret_pct": null,
+      "hit": false
+    },
     {
       "pred_date": "2026-10-09",
       "direction": "中性",
@@ -475,17 +486,6 @@
       "bucket": "中性",
       "ret_pct": -0.135,
       "hit": true
-    },
-    {
-      "pred_date": "2026-08-14",
-      "direction": "中性",
-      "confidence": "低",
-      "reason": "波动率中性，收益率曲线偏平，信用利差偏低，个股共动偏低，纳指方向信号权重最低。",
-      "settled": true,
-      "dropped": false,
-      "bucket": "偏空",
-      "ret_pct": -1.216,
-      "hit": false
     }
   ],
   "verdict": "已结算 64 条 AI 前瞻：命中(预测方向==实际 5 日方向)率 54.7%。作为对照，**每天闭眼说「中性」**(样本里最常出现的结果)能拿 56.2%——AI 低 1.5pp（单边二项检验 p=0.649）。**注意口径**:64 条里真正押方向(偏多/偏空)的只有 4 条、已结算 3 条,其余都是「中性」——所以这个命中率主要衡量的是「SPY 五天有没有走出 ±1%」,**还不足以谈 AI 的方向判断力**。样本仍小、重叠窗口未除，别当 edge。",
