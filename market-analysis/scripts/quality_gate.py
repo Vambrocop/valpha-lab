@@ -58,11 +58,7 @@ def adjudicate(results, q=Q_DEFAULT, expect_n=None):
             r["modern_status"] = "现代无边际"
         # 总裁决（Phase 1：跨族 FDR + 现代段；门4 OOS 待 Phase 1b）
         if not powered:
-            # F2·P2:"样本不够"和"量具没校准"是两种不可判,理由必须分得开
-            # (照 09-14「触发组不足 vs 对照组不足」的同一教训:含糊一句话会把两种处境
-            #  说成一件事,用户不知道在等什么)。具体措辞由生产方算好传进来。
-            r["verdict"] = "inconclusive"
-            r["reason"] = r.get("calib_reason") or "现代段检验力不足"
+            r["verdict"], r["reason"] = "inconclusive", "现代段检验力不足"
         elif sc and r["modern_status"] == "现代仍有效":
             r["verdict"], r["reason"] = "survive", ""
         elif sc:

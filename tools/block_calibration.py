@@ -47,10 +47,10 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "market-analysis" / "scripts"))
 import walk_forward as wf                                     # noqa: E402
 
-# 实际水平超过名义的这个倍数 → 这个 p 不该被当结论。
-# 取 2.0 的完整理由见 scripts/block_levels.py 的 docstring：**阈值必须高于这把尺子
-# 自己的本底**。--controls 实测本估计器在答案已知的数据上就给出 0.11–0.135，
-# 1.5 倍（0.15）落在本底之内 → 用它当门等于给名单加噪声（SE≈0.018）。
+# 只用来决定**先给哪些行花算力测尾巴**（排序/预算），不决定任何裁决。
+# ⚠ 我原来写的理由（"阈值必须高于估计器自己的本底"）**是错的** ——
+# 那 0.11–0.135 是块自助的真实水平、不是旋转 null 的偏差；审查者验过估计器本身
+# （真值 0.093 vs 旋转 0.070，1 SE 内）。详见 scripts/block_levels.py 的 docstring。
 MAX_LEVEL_RATIO = 2.0
 
 
@@ -347,8 +347,22 @@ def _merge_write(out_path, rows, alpha, R, B):
             prev = json.loads(fp_out.read_text(encoding="utf-8"))
         except Exception:
             prev = {}
-    merged = dict(prev.get("rows") or {})
-    merged.update(rows)
+    # **逐字段**合并，不是逐行替换（独立审查 Important 5，已复现）：
+    # `real()` 造的新 rec 只含 family/window/n/block/n_blocks/ran/level/se，
+    # 整行替换会把 `null_p_q` / `null_B` / `null_p_floor` / `refined` / `R` 全抹掉 ——
+    # 于是一次基线 R 的重测就能**静默**把一行的尾巴数据和"曾经是边界行"的记录删掉，
+    # 而 `test_every_tail_row_carries_the_B_it_was_measured_at` 不会红（两个字段都没了）。
+    # 另外拒绝把一行的精度**调低**：R=1600 测过的行不该被 R=400 的重测覆盖掉，
+    # 除非显式重测到同等精度。
+    merged = {k: dict(v) for k, v in (prev.get("rows") or {}).items()}
+    for k, rec in rows.items():
+        cur = merged.setdefault(k, {})
+        old_r = int(cur.get("R") or cur.get("ran") or 0)
+        new_r = int(rec.get("R") or rec.get("ran") or 0)
+        if old_r > new_r and cur.get("level") is not None:
+            print(f"    [保留高精度行] {k}: 已有 R={old_r} > 本次 R={new_r} → 不降级")
+            continue
+        cur.update(rec)
     payload = {"nominal_alpha": alpha, "max_level_ratio": MAX_LEVEL_RATIO,
                # R/B 是**本次**写入用的；每行自己的 ran/se 才是那一行的真实精度
                # (分族增量测量时各批的 R 可以不同,边界带还会被 --refine 加算)。

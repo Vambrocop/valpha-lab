@@ -166,10 +166,6 @@ const I18N={
   dCalFmt:{zh:"实测约 {n} 次里错判 1 次",en:"in practice, wrong about 1 time in {n}"},
   dCalNom:{zh:"名义应为 10 次里 1 次",en:"nominally it should be 1 in 10"},
   dCalNone:{zh:"这条的检验还没做过校准测量",en:"this test has not been calibration-measured yet"},
-  dCalOk:{zh:"但这条自己的 p 在同一把尺子下仍罕见（校准后约 {p}），所以结论保留",
-          en:"but this rule's own p is still rare on that same ruler (≈{p} after calibration), so the finding stands"},
-  dCalBad:{zh:"把它自己的 p 放回同一把尺子重算，校准后约 {p}，不够显著",
-           en:"re-reading its own p on that same ruler gives ≈{p} after calibration — not significant enough"},
   dCalHint:{zh:"把前向收益相对触发条件随机循环平移——两条序列各自的分布与自相关分毫不动，只有二者的关联被打断。此时本不该有任何发现，实际却报出显著的比例，就是这个检验真正的犯错率。",
             en:"Rotate the forward returns against the trigger condition: each series keeps its own distribution and autocorrelation, only the link between them is broken. Nothing should look significant — the share that still does is this test's true error rate."},
   dUnres:{zh:"⚠ 分辨不了",en:"⚠ Cannot be resolved"},
@@ -331,18 +327,13 @@ function calLine(c){
   if(c.calib_level==null) return "";
   const oneIn=Math.max(Math.round(1/(+c.calib_level)),2);
   const col=oneIn>=9?"var(--grn)":(oneIn>=6?"var(--amb)":"var(--red)");
-  let line=`<br><span title="${esc(t("dCalHint"))}">${t("dCal")}：`
+  // 只披露、不裁决：这个数字是「名义 10 次错 1 次的检验，实测约 N 次错 1 次」。
+  // 刻意**不**在这里印"校准后的 p" —— 那个只在被筛出的窗口上算过，而筛子本身
+  // 是在 α=0.10 处做的，离判定位置（BY 临界值 0.00012~0.0017）差 20~80 倍。
+  // 印出来会让读者以为"这条在判定位置上验过了"，而它没有。
+  return `<br><span title="${esc(t("dCalHint"))}">${t("dCal")}：`
     +`<b style="color:${col}">${esc(t("dCalFmt").replace("{n}",String(oneIn)))}</b>`
     +`<span style="color:var(--mut)">（${t("dCalNom")}）</span></span>`;
-  // 水平偏高但仍保留结论的那几条，必须把**保留的理由**一起摆出来 ——
-  // 否则读者只看到一个难看的数字，会以为我们在无视它。
-  if(c.calib_cal_p!=null){
-    const cp=(+c.calib_cal_p).toPrecision(2);
-    const good=!c.calib_reason;
-    line+=`<br><span style="color:${good?"var(--mut)":"var(--amb)"};font-size:.95em">`
-      +esc(t(good?"dCalOk":"dCalBad").replace("{p}",cp))+`</span>`;
-  }
-  return line;
 }
 
 function pcard(c,cls){

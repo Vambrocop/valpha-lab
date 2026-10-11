@@ -152,15 +152,6 @@ def _gated_table(key, level=0.30):
     return _table(**{f"{key}|现代段": _row(level)})
 
 
-def test_gate_flips_recent_powered_off():
-    import autodiscovery as ad
-    r = {"p": 0.001, "recent_p": 0.002, "recent_powered": True}
-    out = ad.apply_calibration_gate(r, "k", table=_gated_table("k"))
-    assert out["recent_powered"] is False
-    assert out["calib_level"] == 0.30 and out["calib_measured"] is True
-    assert "3 次里错判 1 次" in out["calib_reason"]
-
-
 def test_gate_leaves_a_calibrated_candidate_alone():
     import autodiscovery as ad
     r = {"p": 0.001, "recent_p": 0.002, "recent_powered": True}
@@ -190,32 +181,6 @@ def test_unmeasured_candidate_keeps_its_verdict_but_is_marked():
     import autodiscovery as ad
     out = ad.apply_calibration_gate({"p": 0.001, "recent_powered": True}, "nope", table=_table())
     assert out["recent_powered"] is True and out["calib_measured"] is False
-
-
-# ── adjudicate：两种「不可判」的理由必须分得开 ──────────────────────────────
-
-def test_adjudicate_reports_the_calibration_reason_not_the_generic_one():
-    from quality_gate import adjudicate
-    res = [{"p": 0.001, "recent_p": 0.002, "recent_powered": False,
-            "calib_reason": "量具没校准的具体说法", "family": "factor", "key": "a"},
-           {"p": 0.5, "recent_p": None, "recent_powered": False, "family": "factor", "key": "b"}]
-    adjudicate(res, q=0.10)
-    assert res[0]["verdict"] == "inconclusive"
-    assert res[0]["reason"] == "量具没校准的具体说法"
-    assert res[1]["reason"] == "现代段检验力不足", "没有 calib_reason 的要保持原措辞"
-
-
-def test_a_gated_candidate_cannot_survive():
-    """终点断言：门开了之后，这条**不可能**出现在公开存活名单上。"""
-    from quality_gate import adjudicate
-    import autodiscovery as ad
-    r = ad.apply_calibration_gate(
-        {"p": 0.0001, "recent_p": 0.0001, "recent_powered": True}, "k",
-        table=_gated_table("k"))
-    r.update(family="factor", key="k")
-    adjudicate([r], q=0.10)
-    assert r["verdict"] == "inconclusive", (
-        f"p 小到 0.0001 仍必须被拦下 —— 实为 {r['verdict']}")
 
 
 def test_table_threshold_cannot_silently_diverge_from_the_module_constant():
@@ -304,7 +269,11 @@ def test_a_censored_null_tail_is_refused():
 
 def test_calibrated_p_is_a_conservative_upper_bound():
     row = _row_with_tail(0.3)
-    assert bl.calibrated_p(row, 0.0012) == 0.001      # 正好落在 0.1% 分位
+    # ⚠ 这条原先断言 `== 0.001`，**把 bug 钉成了"正确行为"**（独立审查 BLOCKER 2）：
+    # p_obs 恰好等于某个分位值时，返回那一档是**下界**不是上界（该值处可能有原子）。
+    # 正确行为是跳过并列档、落到下一档。测试名字叫"是保守上界"，断言的却是唯一
+    # 不成立的那个输入 —— 而且它会**挡住修复**。
+    assert bl.calibrated_p(row, 0.0012) == 0.01       # 恰好落在 0.1% 分位上 → 取下一档
     assert bl.calibrated_p(row, 0.003) == 0.01        # 落在 0.1%~1% 之间 → 取上界 1%
     assert bl.calibrated_p(row, 0.9) == 1.0           # 比最大分位还大 → 一点不罕见
     assert bl.calibrated_p(row, None) is None
@@ -328,7 +297,7 @@ def test_a_coarser_null_is_fine_as_long_as_p_obs_is_above_its_floor():
     coarse = _row_with_tail(0.25, null_B=300,
                             q={"0.01": 0.0066, "0.05": 0.0133, "0.1": 0.0399, "0.5": 0.3})
     assert bl.calibrated_p(coarse, 0.35, n_obs=2000) == 1.0      # 粗尺子照样定位
-    assert bl.calibrated_p(coarse, 0.02, n_obs=2000) == 0.1
+    assert bl.calibrated_p(coarse, 0.02, n_obs=2000) == 0.1      # 落在 0.05~0.1 之间
     assert bl.calibrated_p(coarse, 0.0007, n_obs=2000) is None   # 真正该挡的
 
 def test_gate_refuses_when_p_obs_is_below_the_null_floor():
@@ -420,3 +389,170 @@ def test_reported_list_is_sorted_and_deduped_by_key():
     rows = [_c("z", calib_measured=False, calib_family_covered=True),
             _c("a", calib_measured=False, calib_family_covered=True)]
     assert bl.unmeasured_survivors(rows) == ["a", "z"]
+
+
+def test_calibrated_p_stays_an_upper_bound_when_p_obs_lands_on_an_atom():
+    """命门（独立审查 BLOCKER 2）：null p 是离散格点，下限处常堆着一坨原子。
+
+    `p_obs` 恰好等于某个分位值时，`F(该值) >= q` 但可以**远大于** q ——
+    返回最小的并列档就是下界、不是上界，低估幅度 = 整个原子宽度。
+    实测：原子占 8% 时真值 0.08，旧写法（`<=`）返回 0.001，**低估 80 倍**。
+    真实冻结表里 16 行有尾巴的行有 **12 行** q0.001~q0.05 全部并列。
+
+    后果不只是门判错：`calib_cal_p` 是**印到页面上的**，
+    会写成「校准后约 0.0010，所以结论保留」，而诚实的下界是 ≥0.01。
+    """
+    atom = {str(q): 0.0001 for q in (0.001, 0.002, 0.005, 0.01, 0.02, 0.05)}
+    atom.update({"0.1": 0.0004, "0.2": 0.01, "0.5": 0.3})
+    row = _row_with_tail(0.2175, null_B=20000, q=atom)
+    # p_obs 正落在原子上 → 必须跳过全部并列档
+    got = bl.calibrated_p(row, 0.0001)
+    assert got == 0.1, f"落在原子上时返回 {got}，不是跳过并列档后的 0.1"
+    # 原子之上一点 → 照常
+    assert bl.calibrated_p(row, 0.0002) == 0.1
+    # 单调性：p_obs 越大，上界不许变小
+    seq = [bl.calibrated_p(row, x) for x in (0.0001, 0.0005, 0.02, 0.2, 0.9)]
+    assert all(a <= b for a, b in zip(seq, seq[1:])), f"非单调: {seq}"
+
+
+
+# ── 新契约（2026-10-09 独立审查 BLOCKER 1/3 之后）：只披露，绝不裁决 ──────────
+# 原设计用「实测水平 > 2.0×名义」当筛子，筛出来的再在它自己的 p 上裁。
+# 审查指出筛子**本身就是在 α=0.10 处做的测量**，而判定发生在跨族 BY 的
+# c_1..c_14 = 0.000121~0.001696 —— 差 20~80 倍。实测 `BTC_mom20_pos|全段`
+# 水平 0.1875 逃过筛子，可在它自己的位置上 P_null(p<=0.0004)≈0.015 vs c_14=0.0017。
+# 调阈值也修不了（1.5× 会把三条存活者一起筛中、而它们都没尾巴 → 名单塌掉）。
+# → 现在只写 calib_* 字段，**不碰 recent_powered、不碰 p、不碰裁决**。
+
+def test_disclosure_never_changes_a_verdict():
+    """命门：水平再难看也不许动裁决。
+
+    这条是整个新契约的守门 —— 若哪天有人把"顺手拦一下"加回来，它当场红。
+    """
+    import autodiscovery as ad
+    from quality_gate import adjudicate
+    for lv in (0.11, 0.2175, 0.9, 1.0):
+        r = ad.apply_calibration_gate(
+            {"p": 0.0001, "recent_p": 0.0001, "recent_powered": True},
+            "k", family="factor",
+            table=_table(**{"k|现代段": _row(lv)}) | {"families_covered": ["factor"]})
+        assert r["recent_powered"] is True, f"水平 {lv} 改了 recent_powered"
+        assert r["p"] == 0.0001 and r["recent_p"] == 0.0001, "改了 p"
+        assert "calib_reason" not in r, "又开始给裁决编理由了"
+        assert "calib_cal_p" not in r, (
+            "印出了校准后的 p —— 它只在被筛出的窗口上算过，而筛子在 α=0.10 处，"
+            "印出来会让读者以为这条在判定位置上验过了")
+        r.update(family="factor", key="k")
+        adjudicate([r], q=0.10)
+        assert r["verdict"] == "survive", f"水平 {lv} 把裁决改成了 {r['verdict']}"
+
+
+def test_disclosure_records_what_was_measured():
+    import autodiscovery as ad
+    r = ad.apply_calibration_gate({"p": 0.001, "recent_powered": True}, "k", family="factor",
+                                  table=_table(**{"k|全段": _row(0.22, "全段")})
+                                        | {"families_covered": ["factor"]})
+    assert r["calib_measured"] is True
+    assert r["calib_level"] == 0.22
+    assert r["calib_family_covered"] is True
+
+
+def test_uncovered_family_is_marked_not_silently_passed():
+    import autodiscovery as ad
+    r = ad.apply_calibration_gate({"p": 0.001, "recent_powered": True}, "september_sp500",
+                                  family="calendar",
+                                  table=_table() | {"families_covered": ["factor"]})
+    assert r["calib_measured"] is False and r["calib_family_covered"] is False
+
+
+def test_adjudicate_has_no_calibration_hook_left():
+    """反退化：`adjudicate` 不该再读 calib_* —— 没人设它，留着就是死路。"""
+    import inspect
+    from quality_gate import adjudicate
+    src = inspect.getsource(adjudicate)
+    assert "calib" not in src, "adjudicate 里还留着 calib 分支（无人设置的死路）"
+
+
+def test_rerunning_the_tool_does_not_silently_drop_a_rows_tail(tmp_path):
+    """独立审查 Important 5（已复现）：逐行替换会把尾巴数据静默抹掉。
+
+    `real()` 造的新 rec 只含 level/se/ran 等基本字段。若 `_merge_write` 逐行替换，
+    一次基线 R 的重测就会删掉 `null_p_q`/`null_B`/`null_p_floor`/`refined`/`R` ——
+    那一行从"量过尾巴、曾是边界行"变回"只有一个水平数"，
+    而 `test_every_tail_row_carries_the_B_it_was_measured_at` **不会红**（两个字段都没了）。
+    """
+    import importlib.util, json, shutil
+    spec = importlib.util.spec_from_file_location(
+        "bc", ROOT.parent / "tools" / "block_calibration.py")
+    bc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bc)
+
+    dst = tmp_path / "t.json"
+    shutil.copy(ROOT / "data" / "block_levels.json", dst)
+    K = "BTC_mom20_pos|现代段"
+    before = json.loads(dst.read_text(encoding="utf-8"))["rows"][K]
+    assert before.get("null_p_q") and before.get("null_B"), "夹具前提变了"
+
+    bc._merge_write(str(dst), {K: {"family": "factor", "window": "现代段", "n": 2009,
+                                   "block": 164, "n_blocks": 13, "ran": 400,
+                                   "level": 0.19, "se": 0.0196}}, 0.10, 400, 300)
+    after = json.loads(dst.read_text(encoding="utf-8"))["rows"][K]
+    assert after.get("null_p_q"), "尾巴被重测抹掉了"
+    assert after.get("null_B") == before["null_B"], "null_B 被抹掉 → 分辨率守门静默失效"
+    assert after.get("R") == before["R"], "高精度行被低精度重测降级了"
+
+
+def test_merge_write_still_adds_brand_new_rows(tmp_path):
+    """反退化：保护高精度行不能变成"拒绝写入新行"。"""
+    import importlib.util, json, shutil
+    spec = importlib.util.spec_from_file_location(
+        "bc", ROOT.parent / "tools" / "block_calibration.py")
+    bc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bc)
+    dst = tmp_path / "t.json"
+    shutil.copy(ROOT / "data" / "block_levels.json", dst)
+    n0 = len(json.loads(dst.read_text(encoding="utf-8"))["rows"])
+    bc._merge_write(str(dst), {"brand_new|全段": {"family": "factor", "window": "全段",
+                                                 "n": 100, "block": 10, "n_blocks": 10,
+                                                 "ran": 400, "level": 0.12, "se": 0.02}},
+                    0.10, 400, 300)
+    rows = json.loads(dst.read_text(encoding="utf-8"))["rows"]
+    assert len(rows) == n0 + 1 and rows["brand_new|全段"]["level"] == 0.12
+
+
+# ── KB 队列不许让候选"悄悄消失"（独立审查 Important 6）──────────────────────
+
+def tmp_ledger():
+    """指向一个不存在的路径 —— `_read` 对缺失文件返回空，绝不碰真的 kb_ledger.csv。"""
+    return ROOT / "data" / "__kb_ledger_does_not_exist__.csv"
+
+
+def test_kb_queue_keeps_faded_candidates_visible():
+    """F2 把 `golden_cross_sp500` 正确地降成 `faded` —— 但它随即**整条消失**了：
+    不在 queue（verdict 不是 survive）、也不在 movements（oos_status 还是 pending）。
+
+    而 09-14 专门为它建的 `n_ctrl` 诊断（"卡的不是时间，是锚后没有对照组"）
+    就此没有任何地方渲染。这违背项目自己的「说准在等什么」。
+    """
+    import knowledge_base as kb
+
+    verdicts = [
+        {"candidate_id": "c_gc", "key": "golden_cross_sp500", "family": "regime",
+         "oos_status": "pending", "anchor_date": "2026-06-26", "oos_n": 33,
+         "oos_p": None, "full_sign": 1, "oos_sign": None, "n_ctrl": 0,
+         "note": "锚后**对照组**不足:触发 33 / 对照 0(各需 ≥30)"},
+        {"candidate_id": "c_dead", "key": "some_dead", "family": "factor",
+         "oos_status": "pending", "anchor_date": "2026-06-26", "oos_n": 0,
+         "oos_p": None, "full_sign": 0, "oos_sign": None, "n_ctrl": 0, "note": ""},
+    ]
+    results = [{"candidate_id": "c_gc", "verdict": "faded", "family": "regime"},
+               {"candidate_id": "c_dead", "verdict": "dead", "family": "factor"}]
+    out = kb.export_json(verdicts, results, members=set(), today="2026-10-09",
+                         write=False, path=tmp_ledger())
+    keys = [q["key"] for q in out["queue"]]
+    assert "golden_cross_sp500" in keys, (
+        f"faded 的候选从队列里消失了 → 它的 n_ctrl 诊断没地方渲染。queue={keys}")
+    row = next(q for q in out["queue"] if q["key"] == "golden_cross_sp500")
+    assert row["verdict"] == "faded", "要带上 verdict，读者才看得出它为什么还没晋升"
+    assert row["n_ctrl"] == 0 and "对照组" in (row["note"] or ""), "诊断信息要一起带出来"
+    assert "some_dead" not in keys, "dead 的不该进队列"

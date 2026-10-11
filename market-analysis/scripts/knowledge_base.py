@@ -113,7 +113,11 @@ def _member_details(rows, members, vmap):
 
 
 def export_json(verdicts, results, members, today, write=True, path=LOG):
-    """导出 knowledge_base.json 供前端展示：在库成员 + 排队中(survive 待确认) + OOS 异动 + 进出库史。"""
+    """导出 knowledge_base.json 供前端展示：在库成员 + 排队中(survive/faded 待确认)
+    + OOS 异动 + 进出库史。
+
+    2026-10-09：排队口径从「只收 survive」改成「survive 或 faded」——
+    否则一条被正确降级成 faded 的候选会整条从产物里消失（见下方注释）。"""
     import datetime as _dt
     from collections import Counter
     import oos_gate
@@ -139,8 +143,17 @@ def export_json(verdicts, results, members, today, write=True, path=LOG):
                 # 真因是**对照组**为 0(条件在锚后一直成立、没有反面样本),
                 # 而那决定"等下去有没有用":对照组不足光等不一定来。
                 "n_ctrl": v.get("n_ctrl"), "note": v.get("note")}
-        if adj.get("verdict") == "survive" and v["candidate_id"] not in members:
-            queue.append(item)                  # 已过全样本检验、还没进库 → 正等样本外确认
+        # 2026-10-09（独立审查 Important 6）：原先只收 `survive`。
+        # F2 把 `golden_cross_sp500` 从 survive 降成 **faded**（正确的降级：
+        # 它的 sel 连续段长 p90=661 却一直用 block=20，欠块 33 倍）——
+        # 结果它**整条从 knowledge_base.json 里消失了**：不在 queue（verdict 不是 survive）、
+        # 也不在 movements（oos_status 还是 pending）。
+        # 而 09-14 专门为它建的 `n_ctrl` 诊断（"卡的不是时间、是锚后金叉一天没断过、
+        # 没有对照组"）就此**没有任何地方渲染**。
+        # 这违背项目自己的标准：「说准在等什么」。faded 也留在队列里，带上 verdict 让读者
+        # 看得出它为什么还没晋升 —— 而不是悄悄不见。
+        if adj.get("verdict") in ("survive", "faded") and v["candidate_id"] not in members:
+            queue.append(item)                  # 已过全样本检验(或现代段已淡)、还没进库
         if v["oos_status"] in (oos_gate.CONFIRMED, oos_gate.OVERTURNED, oos_gate.NEUTRAL):
             movements.append(item)              # 锚后已有动静(早于晋升的信号)
     osum = oos_gate.summarize(verdicts)
