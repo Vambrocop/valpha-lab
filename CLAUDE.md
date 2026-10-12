@@ -228,6 +228,21 @@
     修：`calibrated_p` 要求 `p_obs >= null_p_floor`；工具按行从产物的 `mc_n`
     读生产真用的 B，**只对真需要那个分辨率的行**抬 B（16 行里仅 1 行需要）。
 
+  · ⚠⚠ **我的两条 F2 测试把周一的刷新连干红两次**（2026-10-12，已修 2026-10-13）：
+    `test_regime_display_windows_use_the_same_amplified_block` 与
+    `..._factor_display_windows_...` 直接调 `ad._regime(...)` / `ad._factor_map(...)`，
+    那要读 `data/raw/` —— 而 **`data/raw` 在 .gitignore 里**，CI 干净检出没有它
+    → arrays 为 None → `seen` 为空 → 断言失败 → **pytest 门拦住发布**（门是对的，红的是我）。
+    **这个坑有两处明文警告我都没照**：`autodiscovery.py:862` 写着
+    「CI 干净检出无 data/raw/，#104 连挂根因」，memory 里写着
+    「门禁测试不能依赖 gitignore 生成数据」。
+    复现方式（以后一律这么验）：`git clone --depth=1 file://<repo> /tmp/x`
+    + 覆盖工作树改动 + 跑全量 —— 干净检出里 `data/raw` 是 **0 个文件**。
+    修法：两条测试改成**全合成数据**（regime 用 9000 日合成价、factor 用合成 feature df）
+    —— 它们要验的是"展示窗有没有拿到放大后的 block"，跟真价格毫无关系，本来就不该依赖真数据。
+    **教训升级**：F2 这一轮我跑了三遍全量 pytest 都是绿的，因为本机有 `data/raw`。
+    「本地全绿」对门禁测试**完全不构成证据** —— 必须在干净检出里再跑一遍。
+
 - **F3 ✅ 已修：暖机 NaN 被当对照日，基率被压低、因子边际被系统性夸大**（本节下方"09-16 完成"）
 
 - **F4 ⏸ 原任务(因子族门4接线)：四件里价值最低，压到最后**

@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -119,14 +120,36 @@ def test_rebound_oos_block_matches_discovery(monkeypatch):
 
 # ── 命门：展示窗与裁决用同一 block（照 _positioning 的先例）────────────────────
 
+# ⚠ 2026-10-13：下面两条原先直接调 `ad._regime(...)` / `ad._factor_map(...)`，
+# 那要读 `data/raw/` —— 而 `data/raw` 在 **.gitignore** 里，CI 的干净检出没有它
+# → arrays 为 None → `seen` 为空 → 断言失败。**把周一的刷新连干红两次**
+# （pytest 门正确地拦住了发布，但红的是我的测试）。
+# `autodiscovery.py` 里早写着这个坑：「CI 干净检出无 data/raw/，#104 连挂根因」，
+# 而 memory 里也记着「门禁测试不能依赖 gitignore 生成数据」—— 我两条都没照。
+# 改成**全合成数据**：要验的是"展示窗有没有拿到放大后的 block"，
+# 跟真价格毫无关系，本来就不该依赖真数据。
+
+def _synth_price(n=9000, seed=7):
+    """造一条够长的价格序列：`_regime` 全段窗要 >= MIN_BLOCKS*681 = 6810 个观测，
+    否则 `block_bootstrap_diff` 返回 None、`_regime` 在跑到展示窗之前就 return 了。"""
+    idx = pd.date_range("1990-01-02", periods=n, freq="B")
+    rng = np.random.default_rng(seed)
+    # 带趋势漂移，保证 50/200 日均线有交叉（否则 sel 恒真/恒假、sel.sum()<10）
+    drift = np.sin(np.arange(n) / 400.0) * 0.0012
+    rets = drift + rng.normal(0, 0.009, n)
+    return pd.Series(100 * np.cumprod(1 + rets), index=idx)
+
+
 def test_regime_display_windows_use_the_same_amplified_block(monkeypatch):
     """展示窗若仍用 block=hold，同一条规律会出现两个不同的 p。
 
     `_positioning` 早就把放大后的 block 传给 `_diff_windows` —— 这是项目已有的先例，
     不是我新发明的取舍。
     """
+    monkeypatch.setattr(ad, "_daily_price", lambda index: _synth_price())
     seen = _spy(monkeypatch, ad)
-    ad._regime("golden_cross", "sp500", "cid")
+    r = ad._regime("golden_cross", "sp500", "cid")
+    assert r is not None, "合成数据没让 _regime 跑完（夹具要调长/调参）"
     assert seen, "根本没跑到自助"
     assert set(seen) == {ad._regime_block(20)}, (
         f"体制族出现了不止一种 block：{sorted(set(seen))}（展示窗漏了放大？）")
@@ -134,6 +157,15 @@ def test_regime_display_windows_use_the_same_amplified_block(monkeypatch):
 
 def test_factor_display_windows_use_the_same_amplified_block(monkeypatch):
     """因子族同理 —— `_factor_map` 里的 `_diff_windows` 此前写死 fp.HORIZON。"""
+    n = 3000                      # > MIN_BLOCKS * factor_block() = 1640
+    rng = np.random.default_rng(3)
+    col = "NASDAQ_above_ma200"
+    df = pd.DataFrame({
+        "date": pd.date_range("2005-01-03", periods=n, freq="B"),
+        col: rng.integers(0, 2, n).astype(float),
+        "fwd_up_20d": (rng.random(n) > 0.45).astype(float),
+    })
+    monkeypatch.setattr(ad, "build_feature_df", lambda: df)
     seen = []
     orig = ad._diff_windows
 
@@ -142,7 +174,7 @@ def test_factor_display_windows_use_the_same_amplified_block(monkeypatch):
         return orig(idx, sel, y, block)
 
     monkeypatch.setattr(ad, "_diff_windows", spy)
-    ad._factor_map([{"candidate_id": "f1", "params": {"factor": "NASDAQ_above_ma200"}}])
+    ad._factor_map([{"candidate_id": "f1", "params": {"factor": col}}])
     assert seen, "因子展示窗没被调用"
     assert set(seen) == {fp.factor_block()}, (
         f"因子展示窗用了 {sorted(set(seen))}，裁决用 {fp.factor_block()}")
