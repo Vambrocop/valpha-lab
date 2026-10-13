@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-13T02:50:38Z",
+  "generated": "2026-10-13T19:46:44Z",
   "source": "澳股(ASX100大中盘池) 动量+低波动 选股 → 前向公开计分(独立账本)",
   "source_en": "AU stocks (ASX100 mid/large-cap pool) · momentum + low-volatility selection -> forward public scoring (independent ledger)",
   "pick_rule": "动量+低波动 等权排名（126日动量 + 63日低波动，ASX100 大中盘池取头/尾各3）——与美股 pick_ledger 同一规则、同一代码（零克隆）",
@@ -7,20 +7,20 @@
   "hold_td": 20,
   "benchmark": "^AXJO",
   "track_record": {
-    "n_settled": 246,
-    "n_hit": 131,
-    "call_hit_pct": 53.3,
+    "n_settled": 252,
+    "n_hit": 136,
+    "call_hit_pct": 54.0,
     "bullish": {
-      "n": 123,
-      "hit_pct": 61.0,
-      "mean_call_excess_pct": 0.505
+      "n": 126,
+      "hit_pct": 61.9,
+      "mean_call_excess_pct": 0.535
     },
     "bearish": {
-      "n": 123,
-      "hit_pct": 45.5,
-      "mean_call_excess_pct": -5.412
+      "n": 126,
+      "hit_pct": 46.0,
+      "mean_call_excess_pct": -5.225
     },
-    "n_pending": 151,
+    "n_pending": 145,
     "n_dropped": 0,
     "dropped_pct": 0.0
   },
@@ -466,7 +466,7 @@
       "hit": false
     }
   ],
-  "verdict": "已结算 246 条荐股：判断对(看好跑赢/看淡跑输 ^AXJO)的比例 53.3%——≈掷硬币，追因子没看出对 ^AXJO 的 edge（诚实）。",
-  "verdict_en": "246 settled picks: the share judged right (bullish beats / bearish lags ^AXJO) is 53.3% — about a coin flip; the momentum factor shows no edge over ^AXJO (honest).",
+  "verdict": "已结算 252 条荐股：判断对(看好跑赢/看淡跑输 ^AXJO)的比例 54.0%——≈掷硬币，追因子没看出对 ^AXJO 的 edge（诚实）。",
+  "verdict_en": "252 settled picks: the share judged right (bullish beats / bearish lags ^AXJO) is 54.0% — about a coin flip; the momentum factor shows no edge over ^AXJO (honest).",
   "caveat": "出格区·澳股荐股前向公开计分,与美股 pick_ledger 完全独立的账本(基准不同不可比)。挑票规则=动量+低波动 等权排名（126日动量 + 63日低波动，ASX100 大中盘池取头/尾各3）——与美股 pick_ledger 同一规则、同一代码（零克隆）,进 append-only 账本:出榜次日入场、持有 20 交易日、相对 ^AXJO 结算。看好命中=跑赢^AXJO、看淡命中=跑输^AXJO。**前向计分**:刚上线样本极小(约1月后首批),别当结论。**股息口径不对称**:个股=含息复权总回报,^AXJO=除息价格指数,存在≈股息率(AU~4%/年≈0.3%/20交易日)的持续性口径顺风,对「看好」系统性有利——这不是edge。franking(红利抵免)不含(无可靠免费源,宁缺勿猜)。池=ASX100大中盘(③扩池~108只·流动性档位见体检,不再全高档),ASX本地日=交易日。FMG在池,1988-2002壳公司数据(2003起才是真Fortescue连续史),本账本窗口只回看近期不跨越该段;长窗口回测(au_pick_backtest.py)另有截断逻辑。池(ASX100大中盘)≈^AXJO主要成分,超额天然被压(「打赢你自己」),AU集中度比美股更极端。幸存者偏差0.0%因退市/无价被丢;重叠窗口只看描述;相关≠因果;非投资建议、不可交易(成本/滑点/税)、会错、过去≠未来。每跑 append 认账。"
 }
