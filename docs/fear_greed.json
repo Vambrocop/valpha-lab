@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-15T23:53:20Z",
-  "as_of": "2026-10-15",
+  "generated": "2026-10-16T17:10:18Z",
+  "as_of": "2026-10-16",
   "composite_start": "2000-09-28",
   "components_used": [
     "momentum",
@@ -10,7 +10,7 @@
   ],
   "min_stretches_ci": 8,
   "current": {
-    "composite": 69.0,
+    "composite": 58.5,
     "band": "greed",
     "components": [
       {
@@ -19,8 +19,8 @@
         "label_en": "Momentum",
         "definition_zh": "SP500 相对 125 日均线偏离(+10%→100,−10%→0)",
         "definition_en": "SP500 vs its 125-day moving average (+10% -> 100, -10% -> 0)",
-        "raw_value": 0.0276,
-        "subscore": 63.82,
+        "raw_value": 0.0174,
+        "subscore": 58.68,
         "available": true
       },
       {
@@ -29,8 +29,8 @@
         "label_en": "Volatility (inverted)",
         "definition_zh": "VIX 在过去 252 日中的分位(越低越贪婪)",
         "definition_en": "VIX's percentile over the trailing 252 days (lower VIX = greedier)",
-        "raw_value": 0.3968,
-        "subscore": 60.32,
+        "raw_value": 0.6627,
+        "subscore": 33.73,
         "available": true
       },
       {
@@ -39,8 +39,8 @@
         "label_en": "Term structure",
         "definition_zh": "VIX3M − VIX(contango 正=贪婪;仅 VIX3M 可得日,2006-07 起)",
         "definition_en": "VIX3M minus VIX (positive/contango = greedy; only on days VIX3M exists, from 2006-07)",
-        "raw_value": 2.03,
-        "subscore": 70.3,
+        "raw_value": 1.27,
+        "subscore": 62.7,
         "available": true
       },
       {
@@ -49,8 +49,8 @@
         "label_en": "Risk appetite",
         "definition_zh": "SP500 20 日收益 − 黄金 20 日收益(仅 GOLD 可得日)",
         "definition_en": "SP500 20-day return minus gold's 20-day return (only on days GOLD data exists)",
-        "raw_value": 0.0635,
-        "subscore": 81.76,
+        "raw_value": 0.0581,
+        "subscore": 79.04,
         "available": true
       }
     ]
@@ -84,7 +84,7 @@
         "n_independent": 27,
         "up_pct": 65.62,
         "mean_pct": 2.64,
-        "base_up_pct": 68.24,
+        "base_up_pct": 68.25,
         "base_mean_pct": 1.9,
         "diff_mean": 0.74,
         "ci95_mean": [
@@ -122,7 +122,7 @@
         "n_independent": 30,
         "up_pct": 63.93,
         "mean_pct": 1.72,
-        "base_up_pct": 68.24,
+        "base_up_pct": 68.25,
         "base_mean_pct": 1.9,
         "diff_mean": -0.18,
         "ci95_mean": [
@@ -155,17 +155,17 @@
       {
         "band": "neutral",
         "horizon": 60,
-        "n_days": 931,
-        "n_stretches": 435,
-        "n_independent": 19,
-        "up_pct": 67.56,
-        "mean_pct": 1.45,
-        "base_up_pct": 68.24,
+        "n_days": 932,
+        "n_stretches": 436,
+        "n_independent": 20,
+        "up_pct": 67.6,
+        "mean_pct": 1.46,
+        "base_up_pct": 68.25,
         "base_mean_pct": 1.9,
-        "diff_mean": -0.45,
+        "diff_mean": -0.44,
         "ci95_mean": [
-          -0.85,
-          3.69
+          -0.94,
+          3.85
         ],
         "ci_differs_base": false,
         "too_small_no_ci": false,
@@ -198,7 +198,7 @@
         "n_independent": 10,
         "up_pct": 68.17,
         "mean_pct": 1.74,
-        "base_up_pct": 68.24,
+        "base_up_pct": 68.25,
         "base_mean_pct": 1.9,
         "diff_mean": -0.16,
         "ci95_mean": [
@@ -212,17 +212,17 @@
       {
         "band": "extreme_greed",
         "horizon": 20,
-        "n_days": 1300,
-        "n_stretches": 72,
-        "n_independent": 55,
-        "up_pct": 67.69,
+        "n_days": 1301,
+        "n_stretches": 73,
+        "n_independent": 56,
+        "up_pct": 67.72,
         "mean_pct": 0.79,
         "base_up_pct": 63.74,
         "base_mean_pct": 0.63,
         "diff_mean": 0.16,
         "ci95_mean": [
-          0.27,
-          1.17
+          0.3,
+          1.16
         ],
         "ci_differs_base": false,
         "too_small_no_ci": false,
@@ -236,7 +236,7 @@
         "n_independent": 25,
         "up_pct": 73.73,
         "mean_pct": 2.32,
-        "base_up_pct": 68.24,
+        "base_up_pct": 68.25,
         "base_mean_pct": 1.9,
         "diff_mean": 0.42,
         "ci95_mean": [
