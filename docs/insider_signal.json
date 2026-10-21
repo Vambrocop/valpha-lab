@@ -1,19 +1,19 @@
 {
-  "generated": "2026-10-21T00:10:38Z",
+  "generated": "2026-10-21T17:57:40Z",
   "source": "SEC EDGAR Form 4 (开市买入 P) → 前向公开计分",
   "hold_days": 30,
   "filing_lag_days": 3,
   "min_value": 50000.0,
   "benchmark": "SPY",
   "track_record": {
-    "n_settled": 124,
-    "n_hit": 31,
-    "beat_spy_pct": 25.0,
-    "mean_excess_pct": -8.688,
-    "median_excess_pct": -6.582,
-    "n_pending": 14,
-    "n_dropped": 12,
-    "dropped_pct": 8.8
+    "n_settled": 131,
+    "n_hit": 33,
+    "beat_spy_pct": 25.2,
+    "mean_excess_pct": -8.589,
+    "median_excess_pct": -6.244,
+    "n_pending": 6,
+    "n_dropped": 13,
+    "dropped_pct": 9.0
   },
   "recent": [
     {
@@ -88,9 +88,9 @@
       "title": "President & CEO",
       "txn_date": "2026-09-18",
       "value": 93840.0,
-      "settled": false,
+      "settled": true,
       "dropped": false,
-      "excess_pct": null,
+      "excess_pct": -0.089,
       "hit": false
     },
     {
@@ -99,9 +99,9 @@
       "title": "isDirector",
       "txn_date": "2026-09-17",
       "value": 656925.0,
-      "settled": false,
+      "settled": true,
       "dropped": false,
-      "excess_pct": null,
+      "excess_pct": -4.927,
       "hit": false
     },
     {
@@ -110,9 +110,9 @@
       "title": "isDirector/isTenPercentOwner",
       "txn_date": "2026-09-17",
       "value": 87500.0,
-      "settled": false,
+      "settled": true,
       "dropped": false,
-      "excess_pct": null,
+      "excess_pct": -11.606,
       "hit": false
     },
     {
@@ -122,7 +122,7 @@
       "txn_date": "2026-09-17",
       "value": 58800.0,
       "settled": false,
-      "dropped": false,
+      "dropped": true,
       "excess_pct": null,
       "hit": false
     },
@@ -132,10 +132,10 @@
       "title": "isTenPercentOwner",
       "txn_date": "2026-09-16",
       "value": 11232960.42,
-      "settled": false,
+      "settled": true,
       "dropped": false,
-      "excess_pct": null,
-      "hit": false
+      "excess_pct": 1.909,
+      "hit": true
     },
     {
       "ticker": "THM",
@@ -143,9 +143,9 @@
       "title": "Chief Executive Officer",
       "txn_date": "2026-09-16",
       "value": 199999.98,
-      "settled": false,
+      "settled": true,
       "dropped": false,
-      "excess_pct": null,
+      "excess_pct": -20.796,
       "hit": false
     },
     {
@@ -154,9 +154,9 @@
       "title": "isDirector",
       "txn_date": "2026-09-16",
       "value": 58265.0,
-      "settled": false,
+      "settled": true,
       "dropped": false,
-      "excess_pct": null,
+      "excess_pct": -15.074,
       "hit": false
     },
     {
@@ -165,10 +165,10 @@
       "title": "isTenPercentOwner",
       "txn_date": "2026-09-16",
       "value": 56793.6,
-      "settled": false,
+      "settled": true,
       "dropped": false,
-      "excess_pct": null,
-      "hit": false
+      "excess_pct": 2.72,
+      "hit": true
     },
     {
       "ticker": "CV",
@@ -457,6 +457,6 @@
       "hit": false
     }
   ],
-  "verdict": "已结算 124 笔：跟买后 ~1 月相对 SPY 平均 -8.69%、跑赢 25.0%。多重比较/幸存者偏差未除，别当 edge。",
-  "caveat": "出格区·聪明钱前向计分。跟内部人开市买入(P·≥$50k)、披露后 +3 日可跟单、持有 30 日 vs SPY。**前向计分**：刚上线样本极小（约 1 月后才有首批结算），别当结论。幸存者偏差：8.8% 因退市/无价被丢→高估 edge；只扫近期 daily-index 前若干份=样本非全量；同一标的同一入场日多名内部人(集群买入)战绩只计一次,防单一事件主导；重叠窗口只看描述性均值/胜率不充显著性；相关≠因果；非荐股、非跟单、不可交易、会错、过去≠未来。每跑 append 公开计分。"
+  "verdict": "已结算 131 笔：跟买后 ~1 月相对 SPY 平均 -8.59%、跑赢 25.2%。多重比较/幸存者偏差未除，别当 edge。",
+  "caveat": "出格区·聪明钱前向计分。跟内部人开市买入(P·≥$50k)、披露后 +3 日可跟单、持有 30 日 vs SPY。**前向计分**：刚上线样本极小（约 1 月后才有首批结算），别当结论。幸存者偏差：9.0% 因退市/无价被丢→高估 edge；只扫近期 daily-index 前若干份=样本非全量；同一标的同一入场日多名内部人(集群买入)战绩只计一次,防单一事件主导；重叠窗口只看描述性均值/胜率不充显著性；相关≠因果；非荐股、非跟单、不可交易、会错、过去≠未来。每跑 append 公开计分。"
 }
