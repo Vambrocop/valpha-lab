@@ -1,18 +1,18 @@
 {
- "generated": "2026-10-30 18:27",
+ "generated": "2026-10-30 18:56",
  "model_version": "2.1",
  "lines": [
-  "【市场 10-30】纳指 ▼3.63%，标普 ▼2.32%，VIX ▲28.08%，BTC ▼1.28%",
+  "【市场 10-30】纳指 ▼3.71%，标普 ▼2.40%，VIX ▲30.87%，BTC ▼1.55%",
   "【信号】纳指（原始打分53%）、标普（原始打分58%）｜模型无样本外区分度：未来20日上涨概率≈基率 62% · 实验性信号",
-  "【风险】VIX期限结构正常（22.0 < 22.1），无恐慌；纳指20日年化波动 22%",
+  "【风险】⚠ VIX期限结构倒挂（22.5 ≥ 22.5）——恐慌状态，但历史上倒挂后20日胜率64.8%，往往接近底部；纳指20日年化波动 22%",
   "【未来一周】11-02(周一)69%，11-03(周二)70%，11-04(周三)71%⚠FOMC决议，11-05(周四)70%，11-06(周五)71%⚠非农就业(10月)",
   "【提示】11-04（周三）为本周最佳入场窗口（71%），建议尾盘买入",
   "【事件】11-04 FOMC决议；11-06 非农就业(10月) —— 当日波动放大，避免重仓操作"
  ],
  "lines_en": [
-  "[Market 10-30] NASDAQ ▼3.63%, S&P 500 ▼2.32%, VIX ▲28.08%, BTC ▼1.28%",
+  "[Market 10-30] NASDAQ ▼3.71%, S&P 500 ▼2.40%, VIX ▲30.87%, BTC ▼1.55%",
   "[Signal] NASDAQ (raw score 53%), S&P 500 (raw score 58%) | the model shows no out-of-sample discrimination: the 20-day probability of a gain is ~the base rate of 62% · experimental signal",
-  "[Risk] VIX term structure normal (22.0 < 22.1), no panic; NASDAQ 20-day annualised volatility 22%",
+  "[Risk] ⚠ VIX term structure inverted (22.5 >= 22.5) — a fear state, though historically the 20-day win rate after an inversion has been 64.8%, often close to a bottom; NASDAQ 20-day annualised volatility 22%",
   "[Week ahead] 11-02(Mon)69%, 11-03(Tue)70%, 11-04(Wed)71%⚠FOMC decision, 11-05(Thu)70%, 11-06(Fri)71%⚠Nonfarm payrolls (for month 10)",
   "[Note] 11-04 (Wed) is this week's best entry window (71%); buying near the close is suggested",
   "[Events] 11-04 FOMC decision; 11-06 Nonfarm payrolls (for month 10) — volatility is amplified on the day; avoid large positions"
@@ -22,16 +22,16 @@
    "name": "趋势(MA200)",
    "name_en": "Trend (MA200)",
    "status": "green",
-   "value": "上方 0.7%",
-   "value_en": "above 0.7%",
+   "value": "上方 0.6%",
+   "value_en": "above 0.6%",
    "note": "牛熊分界线，下方时一切看空信号加倍认真",
    "note_en": "The bull/bear dividing line; below it, take every bearish signal twice as seriously."
   },
   {
    "name": "VIX期限结构",
    "name_en": "VIX term structure",
-   "status": "green",
-   "value": "22.0/22.1",
+   "status": "red",
+   "value": "22.5/22.5",
    "note": "倒挂=恐慌（历史上倒挂后20日胜率64.8%，常近底部）",
    "note_en": "Inversion = fear (historically the 20-day win rate after an inversion has been 64.8%, often close to a bottom)."
   },
@@ -39,7 +39,7 @@
    "name": "VIX水平",
    "name_en": "VIX level",
    "status": "yellow",
-   "value": "22.0",
+   "value": "22.5",
    "note": "<20平静 / 20-30警惕 / >30恐慌",
    "note_en": "<20 calm / 20-30 wary / >30 panic"
   },
