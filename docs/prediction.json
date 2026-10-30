@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-29T18:49:44Z",
+  "generated": "2026-10-30T01:23:40Z",
   "source": "LLM 据真实算出的因子对 SPY 未来 5 交易日方向出判断 → 前向公开计分",
   "model": "gemini-2.5-flash-lite",
   "symbol": "SPY",
@@ -34,19 +34,30 @@
       "n_settled": 4,
       "n_hit": 1
     },
-    "n_pending": 7,
+    "n_pending": 8,
     "n_dropped": 0
   },
   "latest": {
-    "pred_date": "2026-10-29",
+    "pred_date": "2026-10-30",
     "direction": "中性",
-    "confidence": "低",
-    "reason": "波动率中性，收益率曲线偏平，信用利差偏低，个股共动偏低，纳指方向信号权重最低。",
+    "confidence": "中",
+    "reason": "波动率中性，收益率曲线偏平，信用利差偏低，个股共动偏低，纳指方向信号无明显优势。",
     "settled": false,
     "hit": false,
     "ret_pct": null
   },
   "recent": [
+    {
+      "pred_date": "2026-10-30",
+      "direction": "中性",
+      "confidence": "中",
+      "reason": "波动率中性，收益率曲线偏平，信用利差偏低，个股共动偏低，纳指方向信号无明显优势。",
+      "settled": false,
+      "dropped": false,
+      "bucket": "",
+      "ret_pct": null,
+      "hit": false
+    },
     {
       "pred_date": "2026-10-29",
       "direction": "中性",
@@ -474,17 +485,6 @@
       "dropped": false,
       "bucket": "偏空",
       "ret_pct": -1.18,
-      "hit": false
-    },
-    {
-      "pred_date": "2026-09-03",
-      "direction": "中性",
-      "confidence": "中",
-      "reason": "VIX 处于中性分位，收益率曲线为正斜率偏平，信用利差偏低但属正常范围，个股共动偏低，纳指方向信号权重最低仅供参考。",
-      "settled": true,
-      "dropped": false,
-      "bucket": "偏空",
-      "ret_pct": -1.024,
       "hit": false
     }
   ],
