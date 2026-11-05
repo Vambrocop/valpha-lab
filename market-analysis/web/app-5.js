@@ -468,7 +468,12 @@ async function loadDataFreshness() {
   const status = open ? vpL("🟢 美股盘中 · 报价每 10 分钟自动刷新","🟢 US market open · quotes auto-refresh every 10 min")
     : (weekday ? vpL("⚪ 盘前/盘后休市 · 开盘(美东9:30)后自动刷新","⚪ Pre/post-market closed · auto-refreshes after open (9:30am ET)")
               : vpL("⚪ 周末休市 · 下个交易日自动刷新","⚪ Weekend closed · auto-refreshes next trading day"));
+  // 盘中：30 分钟没刷新就报（原有行为）。
   const stale = open && qT && (now - qT > 30 * 60000);
+  // 盘后/周末：原先**什么都不报** —— 2026-11-05 的事故里数据停了 21 小时、
+  // 两个工作流连红 5 次，而这里因为 `open` 为假、一声不响（见 app-1.js 里
+  // vpCiStaleDays 的完整注释：为什么这层必须算在浏览器里）。
+  const behindDays = (typeof vpCiStaleDays === "function") ? vpCiStaleDays(qT) : null;
   const hs = h && h.summary;
   const health = hs ? ` · ${vpL("数据源","sources")} ${Number(hs.ok || 0)}/${Number(hs.total || 0)} live`
     + (hs.cache ? ` · ${vpL("缓存","cached")} ${Number(hs.cache)}` : "")
@@ -480,6 +485,9 @@ async function loadDataFreshness() {
   el.innerHTML = `📡 ${vpL("报价","Quotes")} ${ago(qT) || "—"}${ago(nT) ? " · " + vpL("要闻 ","news ") + ago(nT) : ""} · ${status}`
     + health
     + (stale ? ` <span style="color:#e67e22">${vpL("⚠ 盘中超 30 分未刷新，CI 可能异常","⚠ No refresh for 30+ min during market hours — CI may be malfunctioning")}</span>` : "")
+    + (!stale && behindDays ? ` <span style="color:#e67e22">${vpL(
+        `⚠ 报价是 ${behindDays} 个交易日前的 —— 自动刷新可能挂了，页面数字不是最新`,
+        `⚠ Quotes are ${behindDays} trading day(s) old — the auto-refresh may be down; these numbers are not current`)}</span>` : "")
     + (h && h.sources ? ` <span class="dh-toggle" role="button" tabindex="0" aria-expanded="${_dhOpen ? "true" : "false"}" style="cursor:pointer;color:var(--accent,#58a6ff);text-decoration:underline dotted;">${_dhOpen ? vpL("▴ 收起","▴ Collapse") : vpL("▾ 数据源详情","▾ Data-source details")}</span>` : "");
   const _tog = el.querySelector(".dh-toggle");
   if (_tog) {

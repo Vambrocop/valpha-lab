@@ -72,6 +72,10 @@ CHECKS = [
     # 盘中报价由 quick-quotes 工作流每 30 分钟单独刷;quick_quotes.py 也是顶层 fail-soft →
     # 抓取源一变它就静默停更,而这是全站最时敏的一份。阈值 3 天(跨周末够,再久就是真停了)。
     ("quotes",     WEB / "quotes.json",      "generated", 3,  "盘中报价 quotes.json", "live"),
+    # 2026-11-05 补:要闻此前【无人盯】。它由 run_all(工作日) + weekend-refresh(周末) 两边刷,
+    # 本该天天更新;而 fetch_news 也是顶层 fail-soft,源一变就静默停更 —— 和 ndx 烂 24 天同款陷阱。
+    # 注:时间戳字段是 `updated`(格式 "YYYY-MM-DD HH:MM UTC"),不是 `generated`。
+    ("news",       WEB / "news.json",        "updated",   3,  "首页要闻 news.json", "live"),
 ]
 # 已知未覆盖(刻意):fetch_cot / fetch_putcall 落的是 data/*.csv,没有内嵌时间戳字段;
 # 按文件 mtime 判龄在 git 干净检出里不可靠(mtime=检出时间),故不纳入,避免假阳性。

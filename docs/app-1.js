@@ -72,14 +72,72 @@ async function init() {
     );
     document.body.prepend(w);
   }
+// ── 📡 CI 存活检测（2026-11-05 加）──────────────────────────────────────────
+// **为什么必须算在浏览器里**：看门狗 `staleness_watchdog` 跑在 `run_all` 里、也就是跑在
+// CI 里 —— CI 一红它就不执行，所以「CI 挂了」这件事它**结构上报不出来**。
+// 而 `data_health.json` 的 `"freshness":"ok"` 是 CI 写产物那一刻算的、之后冻在那儿：
+// CI 停了，它还一直说 ok。浏览器永远活着，是 CI 全挂时唯一还能发现问题的地方。
+//
+// 触发这条的真实事故：2026-11-05 两个工作流连续 5 次「3~5 秒、0 个步骤」失败，
+// 站上数据停在 21 小时前，而当时**一个警告都没有** —— 盘后时段 app-5 的 30 分钟检查被
+// `open &&` 门住了，主盘这条又是 `daysDiff > 3`。用户先于任何自动告警发现了问题。
+//
+// 口径为什么按「交易日」而不按小时：实测这个仓库的 GitHub 定时任务**常规晚到 3~5 小时**
+// （盘后 cron 名义 16:30 ET，实际落在 19:42~22:00 ET），按小时算必然天天误报。
+// 按交易日 + 「已过美东中午」则天然不误报：
+//   · 周末：周六/周日不是交易日 → 与周五数据相差 0 个交易日；
+//   · 节假日：cron 按 1-5 照跑、`run_all` 照写产物 → `generated` 仍会更新。
+//     这条问的是「CI 还活着吗」，不是「行情动了吗」。
+function vpEtParts(d) {
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false })
+    .formatToParts(d);
+  const g = t => p.find(x => x.type === t).value;
+  let hh = +g("hour"); if (hh === 24) hh = 0;
+  return { ymd: `${g("year")}-${g("month")}-${g("day")}`, wd: g("weekday"),
+           mins: hh * 60 + +g("minute") };
+}
+
+// 产物落后几个**交易日**（0 = 今天的，1 = 上一个交易日的……）。取不到时间戳返回 null。
+function vpTradingDaysBehind(tsMs) {
+  if (!tsMs) return null;
+  const nowEt = vpEtParts(new Date());
+  const artEt = vpEtParts(new Date(tsMs));
+  if (artEt.ymd === nowEt.ymd) return 0;
+  // 从产物那天往后数到今天，数中间有几个工作日（不含产物那天本身）
+  let n = 0, cur = new Date(tsMs);
+  for (let i = 0; i < 20; i++) {
+    cur = new Date(cur.getTime() + 86400000);
+    const e = vpEtParts(cur);
+    if (!["Sat", "Sun"].includes(e.wd)) n++;
+    if (e.ymd === nowEt.ymd) return n;
+    if (e.ymd > nowEt.ymd) break;
+  }
+  return n;
+}
+
+// 返回 null = 正常；否则返回落后的交易日数（已过美东中午才判，给当天的刷新留足时间）
+function vpCiStaleDays(tsMs) {
+  const nowEt = vpEtParts(new Date());
+  if (nowEt.mins < 12 * 60) return null;      // 美东中午前不判：当天的刷新可能还没跑
+  const behind = vpTradingDaysBehind(tsMs);
+  return (behind != null && behind >= 1) ? behind : null;
+}
+
   try {
     const r = await fetch("signals.json?_=" + Date.now());
     const txt = await r.text();
     SIGNALS = JSON.parse(txt);   // 后端已保证严格合法 JSON（_clean + allow_nan=False）
     const genDate = new Date(SIGNALS.generated);
-    const daysDiff = Math.floor((Date.now() - genDate) / 86400000);
-    const staleHtml = daysDiff > 3
-      ? `<span style="color:#e67e22">⚠ ${vpL(`数据${daysDiff}天前`, `Data ${daysDiff}d old`)}</span>`
+    // 原先是 `daysDiff > 3` —— 2026-11-05 的事故里数据停了 21 小时、它一声不响。
+    // 改按交易日判（见 vpCiStaleDays 的注释：为什么不能按小时）。
+    const behind = vpCiStaleDays(genDate.getTime());
+    const hrs = Math.round((Date.now() - genDate) / 3600000);
+    const staleHtml = behind
+      ? `<span style="color:#e67e22">⚠ ${vpL(
+          `数据是 ${behind} 个交易日前的（约 ${hrs} 小时）——自动刷新可能挂了`,
+          `Data is ${behind} trading day(s) old (~${hrs}h) — the auto-refresh may be down`)}</span>`
       : `<span style="color:var(--muted)">${vpL(`更新：${SIGNALS.generated}`, `Updated: ${SIGNALS.generated}`)}</span>`;
     document.getElementById("updated-time").innerHTML = staleHtml;
   } catch(e) {
