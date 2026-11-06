@@ -148,6 +148,20 @@ def _pool_curation_age(day):
             print("[NDX] 仓库是浅克隆 → git 历史读不到池子真实维护日，"
                   "pool_age 留空（绝不报 tip 提交的日期当维护日）")
             return None, None
+
+        # ①' 2026-11-06 补：**不是浅克隆也可能没有历史**。
+        #     提交门禁的干净检出(`tools/pre_commit_gate.py`)是 `git archive` 索引树 +
+        #     `git init` + 单提交 → `is-shallow-repository` 返回 **false**，
+        #     可它同样没有父提交，`git log -1 -- <path>` 同样返回 tip 日期。
+        #     即「浅克隆」只是病因之一，真正的病根是**没有父提交**。
+        #     按提交数判才能同时抓住两种形状。（fe8af0a 那个失败模式的第三次现形。）
+        n = _git("rev-list", "--count", "HEAD")
+        cnt = (n.stdout or "").strip()
+        if not cnt.isdigit() or int(cnt) < 2:
+            print(f"[NDX] 仓库只有 {cnt or '?'} 个提交 → 没有可读历史，"
+                  "pool_age 留空（同浅克隆，绝不报 tip 提交的日期当维护日）")
+            return None, None
+
         r = _git("log", "-1", "--format=%cs", "--", str(POOL))
         last = (r.stdout or "").strip()
         if not last:

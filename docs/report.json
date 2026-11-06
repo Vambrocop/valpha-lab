@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-05 01:45",
+ "generated": "2026-11-06 09:54",
  "model_version": "2.1",
  "sections": [
   {
@@ -14,9 +14,9 @@
     },
     {
      "版本": "v2.1",
-     "已记录": 206,
-     "1日命中": "47.5%",
-     "5日命中": "45.9%"
+     "已记录": 208,
+     "1日命中": "47.1%",
+     "5日命中": "45.5%"
     }
    ],
    "table_en": [
@@ -28,13 +28,13 @@
     },
     {
      "Version": "v2.1",
-     "Logged": 206,
-     "1d hit": "47.5%",
-     "5d hit": "45.9%"
+     "Logged": 208,
+     "1d hit": "47.1%",
+     "5d hit": "45.5%"
     }
    ],
-   "note": "自 2026-06-08 起共 208 条。命中=方向判断正确（prob>50% 且实际上涨，或反之）。样本少时波动大，4周后才有统计意义。",
-   "note_en": "208 entries since 2026-06-08. A 'hit' means the direction call was right (prob>50% and the market rose, or the reverse). Small samples swing a lot; this only becomes statistically meaningful after about 4 weeks."
+   "note": "自 2026-06-08 起共 210 条。命中=方向判断正确（prob>50% 且实际上涨，或反之）。样本少时波动大，4周后才有统计意义。",
+   "note_en": "210 entries since 2026-06-08. A 'hit' means the direction call was right (prob>50% and the market rose, or the reverse). Small samples swing a lot; this only becomes statistically meaningful after about 4 weeks."
   },
   {
    "title": "Walk-Forward 样本外验证（纳指）",
@@ -129,18 +129,18 @@
    "title_en": "Current market state (historical percentile)",
    "table": [
     {
-     "20日波动率": "21%（高于63%的历史日）",
-     "距52周高点": "-6.8%",
-     "RSI14": "39",
-     "VIX期限结构": "正常"
+     "20日波动率": "28%（高于79%的历史日）",
+     "距52周高点": "-11.9%",
+     "RSI14": "33",
+     "VIX期限结构": "倒挂(恐慌)"
     }
    ],
    "table_en": [
     {
-     "20d volatility": "21% (above 63% of historical days)",
-     "From 52w high": "-6.8%",
-     "RSI14": "39",
-     "VIX term structure": "Normal"
+     "20d volatility": "28% (above 79% of historical days)",
+     "From 52w high": "-11.9%",
+     "RSI14": "33",
+     "VIX term structure": "Inverted (fear)"
     }
    ],
    "note": "波动率分位>80%时历史上未来20日胜率下降；倒挂期反而常接近底部（胜率64.8%）。",
@@ -151,74 +151,74 @@
    "title_en": "Five-strategy paper competition (since 2026-06-10, $10,000 each)",
    "table": [
     {
+     "策略": "🌙 隔夜",
+     "净值": "$10,111",
+     "收益": "+1.11%",
+     "仓位": "每日隔夜持有QQQ",
+     "交易": 0
+    },
+    {
      "策略": "🐢 长持",
-     "净值": "$10,225",
-     "收益": "+2.25%",
+     "净值": "$9,660",
+     "收益": "-3.40%",
      "仓位": "NASDAQ",
      "交易": 1
     },
     {
      "策略": "📈 趋势",
-     "净值": "$10,225",
-     "收益": "+2.25%",
-     "仓位": "NASDAQ",
-     "交易": 1
-    },
-    {
-     "策略": "🌙 隔夜",
-     "净值": "$10,199",
-     "收益": "+1.99%",
-     "仓位": "每日隔夜持有QQQ",
-     "交易": 0
+     "净值": "$9,660",
+     "收益": "-3.40%",
+     "仓位": "现金",
+     "交易": 2
     },
     {
      "策略": "🎯 信号",
-     "净值": "$9,757",
-     "收益": "-2.43%",
+     "净值": "$9,218",
+     "收益": "-7.82%",
      "仓位": "NASDAQ",
      "交易": 1
     },
     {
      "策略": "🚀 动量",
-     "净值": "$7,057",
-     "收益": "-29.43%",
+     "净值": "$6,151",
+     "收益": "-38.49%",
      "仓位": "LLY+MU+AMD",
      "交易": 4
     }
    ],
    "table_en": [
     {
+     "Strategy": "🌙 Overnight",
+     "Equity": "$10,111",
+     "Return": "+1.11%",
+     "Position": "Holds QQQ overnight, every day",
+     "Trades": 0
+    },
+    {
      "Strategy": "🐢 Buy & hold",
-     "Equity": "$10,225",
-     "Return": "+2.25%",
+     "Equity": "$9,660",
+     "Return": "-3.40%",
      "Position": "NASDAQ",
      "Trades": 1
     },
     {
      "Strategy": "📈 Trend",
-     "Equity": "$10,225",
-     "Return": "+2.25%",
-     "Position": "NASDAQ",
-     "Trades": 1
-    },
-    {
-     "Strategy": "🌙 Overnight",
-     "Equity": "$10,199",
-     "Return": "+1.99%",
-     "Position": "Holds QQQ overnight, every day",
-     "Trades": 0
+     "Equity": "$9,660",
+     "Return": "-3.40%",
+     "Position": "Cash",
+     "Trades": 2
     },
     {
      "Strategy": "🎯 Signal",
-     "Equity": "$9,757",
-     "Return": "-2.43%",
+     "Equity": "$9,218",
+     "Return": "-7.82%",
      "Position": "NASDAQ",
      "Trades": 1
     },
     {
      "Strategy": "🚀 Momentum",
-     "Equity": "$7,057",
-     "Return": "-29.43%",
+     "Equity": "$6,151",
+     "Return": "-38.49%",
      "Position": "LLY+MU+AMD",
      "Trades": 4
     }
