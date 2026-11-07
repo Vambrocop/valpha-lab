@@ -278,12 +278,87 @@ def test_strict_json_targets_match_the_workflow():
     assert line
 
 
-def test_local_publisher_does_not_impersonate_github_actions():
-    """git 历史不许对「这次改动从哪来」撒谎 —— 本地发布不是 Actions 跑的。"""
+def test_local_bot_constants_differ_from_the_ci_bot():
+    """常量层面的最低要求。
+
+    ⚠ **这一条单独成立是不够的，别被它骗了**（2026-11-07 实证）：
+    第一版我只有这条，它绿着，而真实提交 `c77b6a90` 的作者却是
+    `github-actions[bot]` —— 因为 `ci_publish.publish()` 内部会再
+    `configure_bot(cwd)` 一次，把调用前设的身份原样覆盖回默认值。
+    **测表不测行为**，正是本仓库 F1 ④ 记过的同一个错（禁词扫描守门，
+    审查造的 4 种违规写法全绿过）。真正的守门是下面那条行为测试。
+    """
     import ci_publish
     assert lp.LOCAL_BOT_NAME != ci_publish.BOT_NAME
     assert "github-actions" not in lp.LOCAL_BOT_NAME
     assert "local" in lp.LOCAL_BOT_NAME
+
+
+def _git(cwd, *args):
+    import subprocess
+    return subprocess.run(["git", *args], cwd=str(cwd), capture_output=True,
+                           text=True, encoding="utf-8", errors="replace")
+
+
+def test_commit_really_carries_the_local_identity_not_the_ci_bot(tmp_path):
+    """行为测试：真 git 裸仓 + 真 clone + 真提交，断言**提交对象上的作者**。
+
+    不 mock —— 这条的全部意义就是证明身份真的落到了 commit 上，
+    而不是「两个常量不相等」。套路照 `test_ci_publish.py` 的 repo fixture。
+    """
+    import ci_publish
+
+    origin = tmp_path / "origin.git"
+    work = tmp_path / "work"
+    r = _git(tmp_path, "init", "--bare", "-b", "main", str(origin))
+    if r.returncode != 0:
+        pytest.skip(f"建裸仓失败（环境限制）: {r.stderr[:200]}")
+    assert _git(tmp_path, "clone", str(origin), str(work)).returncode == 0
+
+    # 建一个初始提交，否则没有 main 可推
+    (work / "docs").mkdir(parents=True)
+    (work / "docs" / "x.json").write_text('{"a":1}', encoding="utf-8")
+    _git(work, "config", "--local", "user.name", "seed")
+    _git(work, "config", "--local", "user.email", "seed@x")
+    _git(work, "add", "-A")
+    assert _git(work, "commit", "-m", "init").returncode == 0
+    assert _git(work, "push", "-u", "origin", "main").returncode == 0
+
+    # 改一个"数据产物" → 走 publish，传本地身份
+    (work / "docs" / "x.json").write_text('{"a":2}', encoding="utf-8")
+    rc = ci_publish.publish(work, "data: test", paths=["docs"],
+                            bot_name=lp.LOCAL_BOT_NAME, bot_email=lp.LOCAL_BOT_EMAIL)
+    assert rc == 0, "publish 应当成功"
+
+    an = _git(work, "log", "-1", "--format=%an").stdout.strip()
+    ae = _git(work, "log", "-1", "--format=%ae").stdout.strip()
+    assert an == lp.LOCAL_BOT_NAME, f"提交作者是 {an!r}，不是本地发布者身份"
+    assert ae == lp.LOCAL_BOT_EMAIL
+    assert "github-actions" not in an and "github-actions" not in ae, (
+        "提交署名撒谎说这是 GitHub Actions 干的 —— 本地发布不是 Actions 跑的")
+
+
+def test_ci_default_identity_is_unchanged_by_the_new_params(tmp_path):
+    """反向守门：加了参数**不许**改变 CI 的默认行为（默认仍是 github-actions[bot]）。"""
+    import ci_publish
+    import inspect
+    sig = inspect.signature(ci_publish.publish)
+    assert sig.parameters["bot_name"].default == ci_publish.BOT_NAME
+    assert sig.parameters["bot_email"].default == ci_publish.BOT_EMAIL
+
+
+def test_local_publish_passes_identity_into_publish_not_just_before_it():
+    """钉住修法本身：身份必须作为参数传进 `publish()`。
+
+    只在调用前 `configure_bot` 是无效的（publish 内部会覆盖）——
+    这正是 c77b6a90 被错标的根因。
+    """
+    src = inspect.getsource(lp._run_gates)
+    assert "ci_publish.publish(" in src
+    call = src[src.index("ci_publish.publish("):]
+    call = call[:call.index(")\n") + 1] if ")\n" in call else call[:400]
+    assert "bot_name=" in call and "bot_email=" in call, (
+        f"publish() 没收到身份参数 → 会被内部的 configure_bot 覆盖回 CI bot。\n调用处：{call}")
 
 
 def test_log_dir_is_gitignored():

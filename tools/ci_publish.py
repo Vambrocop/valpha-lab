@@ -155,11 +155,19 @@ def run_guard(cwd, guard_path):
 
 
 def publish(cwd, message, paths=None, remote="origin", branch="main",
-            guard=None, empty_note="没有改动,跳过提交"):
-    """完整发布流程。返回 0=成功或无事可做;返回 1=推送最终失败。"""
+            guard=None, empty_note="没有改动,跳过提交",
+            bot_name=BOT_NAME, bot_email=BOT_EMAIL):
+    """完整发布流程。返回 0=成功或无事可做;返回 1=推送最终失败。
+
+    `bot_name`/`bot_email` 默认就是 github-actions[bot] → **CI 行为零变化**。
+    加这两个参数是因为 2026-11-07 发现:`tools/local_publish.py`(本地发布,不是
+    Actions 跑的)在调 publish 前先 `configure_bot(..., name=本地身份)`,**却被这里
+    内部这次无参调用原样覆盖回 github-actions[bot]** → 提交署名撒谎说"这是 CI 干的"。
+    实证:提交 c77b6a90 就是被错标的那一个(已推送,不改历史,如实记在此)。
+    """
     cwd = Path(cwd)
     paths = DEFAULT_PATHS if paths is None else paths
-    configure_bot(cwd)
+    configure_bot(cwd, name=bot_name, email=bot_email)
 
     staged_paths = stage(cwd, paths)
     if not staged_paths:

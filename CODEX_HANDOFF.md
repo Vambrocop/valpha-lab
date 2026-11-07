@@ -78,11 +78,22 @@ curl -s "https://api.github.com/repos/Vambrocop/valpha-lab/check-runs/<CHECK_ID>
 
 ### 这把锁对你的影响（重要）
 
-- ❌ **数据不会自动刷新** → 站上数据每天变旧。补法见 §6.3
 - ❌ **任何流水线/工作流改动都无法验证** → §7 里 action 版本升级一类任务**必须等解锁**
-- ✅ **Pages 部署不受影响**（GitHub 内置，不走 Actions 配额）→ **本地跑完推 `docs/` 就能上线**
+- ✅ **数据照常每天刷新** —— 2026-11-07 起由**本机计划任务**接管发布，见 §6.3。
+  ~~数据不会自动刷新~~
+- ✅ **Pages 部署不受影响**（GitHub 内置，不走 Actions 配额）→ 本地跑完推 `docs/` 就能上线
 - ✅ `git push` / `git fetch` 正常
 - ✅ 解锁后 6 个工作流**都有 `workflow_dispatch` 手动按钮**，可立刻补刷，不用等定时
+
+### 解锁之后要做的收尾（别忘）
+
+1. 点一次 `Refresh market data` → `Run workflow` 补刷
+2. **停用本机计划任务**，避免两个发布者打架（本机有锁但管不住 CI）：
+   `schtasks /change /tn "ValphaDailyPublish" /disable`
+3. 要不要恢复旧的 `ValphaWeeklyRefresh`（它只补 SEC 两源、刻意不推送）：
+   `schtasks /change /tn "ValphaWeeklyRefresh" /enable`
+   —— 恢复它是合理的，因为 **SEC 封 CI 机房 IP 这件事解锁也不会变**（§6.4）
+4. 做 §7 🔴 里那批 action 版本升级（单独一次提交 + CI 实测）
 
 ---
 
@@ -142,6 +153,10 @@ py tools/audit_frontend.py                        # 前端改动后：交叉检�
 py tools/interaction_audit.py [--mobile]          # 交互实测（桌面和移动端都要跑）
 py tools/csp_audit.py [--mobile]                  # 改 CSP/引新资源后：真浏览器收违规
 py tools/ledger_gap_audit.py                      # 怀疑账本丢过数据时（以 git 历史为参照）
+
+# ⭐ CI 被锁期间的发布入口（见 §6.3）—— 它自己跑完整序列 + 全部门禁 + 提交推送
+py tools/local_publish.py --dry-run               # 跑全部门禁，不提交不推送（先用这个）
+py tools/local_publish.py                         # 门全过则提交 + 推送
 ```
 
 环境变量（**绝不进仓库/日志/记忆**）：
@@ -306,7 +321,22 @@ E 封存门禁  ledger_sidecar（74 账本哈希链）→ verify_output（不绿
 
 **→ 测试里的「今天」用 `datetime.date.today()`，不要写死写测试那天。**
 
-### I. 其它单发坑（都已修，别重复踩）
+### I. 逻辑只存在于 workflow YAML 里 → 本地跑不了 → 只能推上去看红 —— 咬了 2 次
+
+1. **2026-07-24~27**：commit/push 逻辑写在 `refresh-data.yml` 的 `run:` 块里。
+   主流水线**连红四天**、全站数据滞留，因为改一次就得推一次等一轮 CI。
+   → 抽成 `tools/ci_publish.py`，用**真 git 裸仓**测「无改动 / 正常推 / 推冲突→rebase 重试 /
+   门告警」四条路径，**先在本地红**。`OPTIMIZATION_LOG §4c` 第一条就是这个教训。
+2. **2026-11-07（我又栽一次）**：`run_all` 之后还有 **7 个脚本**
+   （`build_valpha150` / `build_wildpool` / `ticker_ondemand` / `build_ndx` /
+   `fetch_earnings` / `fetch_cot` / `fetch_putcall`）+ `check_strict_json` 这道独立的门，
+   **也只写在 YAML 里**。我 2026-11-06 手动补数据时只跑了 `run_all`，**这 7 个产物全漏了**
+   —— `ndx` 当天恰好被另一个计划任务补上，**纯属巧合**。
+   → 抽成 `tools/local_publish.py`，并加守门测试对着 `refresh-data.yml` 核清单，防两处漂移。
+
+**→ 凡是「这段只在 CI 里跑」的逻辑，都是下一次 4 天停更的候选。** 搬进 Python。
+
+### J. 其它单发坑（都已修，别重复踩）
 
 - **`_sign(nan)` 静默返回 −1**（`1361f3c`）：`abs(nan)<1e-12` 与 `nan>0` 都为 False → 落 −1，
   等于给空/退化观测窗**编出一个「看跌」方向号**，还会进公开 JSON 被当既定假说方向判
@@ -314,9 +344,20 @@ E 封存门禁  ledger_sidecar（74 账本哈希链）→ verify_output（不绿
 - **暖机 NaN 被算进对照组**（F3）：基率被压低、因子边际被系统性夸大。
 - **AI 战绩牌基线写错**（`42b4c1c`）：原写「三桶随机基线 1/3」—— 三桶**不等概**（中性 61.5%），
   正确门槛是**多数类基线**。按它比，59.0% 其实**不如**「每天闭眼说中性」（p=0.692）。
-- **禁词扫描当守门是假的**（F1 ④）：D9「绝不取两次里更显著的」原本靠禁词扫描，
-  审查造的 4 种违规写法**全绿过**（含 `min(r["p"], …)`，禁词表只拦变量恰好叫 p/p1/p2 的）。
-  → 改成抽纯函数做**行为测试**，4/4 抓到。**守门测试要测行为，不要测字符串。**
+- **测表不测行为 —— 咬了 2 次**：
+  ① **禁词扫描当守门是假的**（F1 ④）：D9「绝不取两次里更显著的」原本靠禁词扫描，
+     审查造的 4 种违规写法**全绿过**（含 `min(r["p"], …)`，禁词表只拦变量恰好叫 p/p1/p2 的）。
+     → 改成抽纯函数做**行为测试**，4/4 抓到。
+  ② **2026-11-07 我又犯一次**：`local_publish` 要用 `valpha-local-publisher` 身份提交
+     （本地发布不是 Actions 跑的，署名成 `github-actions[bot]` 等于让 git 历史撒谎）。
+     我的测试只断言「两个常量不相等」→ 绿；而真实提交 `c77b6a90` 的作者**就是**
+     `github-actions[bot]`。根因：`ci_publish.publish()` 内部会再 `configure_bot(cwd)`
+     一次，把调用前设的身份原样覆盖回默认值。
+     → 修法：身份改为 `publish()` 的参数（默认不变 → CI 零影响）；测试换成**真 git
+     裸仓 + 真 clone + 真提交**、断言 commit 对象上的 `%an`/`%ae`。
+     变异验证：修好后 GREEN，变异回旧行为 **RED(作者=github-actions[bot])**。
+     ⚠ `c77b6a90` 已推送，**不改历史**，如实记在这里。
+  **→ 守门测试要测行为，不要测常量/字符串。** 尤其警惕「调用前设置了，但被调用方又设一次」。
 - **诚实守门测试别断言裸禁词「不存在」**：免责句本身会引用禁词（「绝不回测」/「not a sell signal」）
   → 守 enum 名 + 肯定式短语。
 - **并列 bug 我判错过并已收回**：曾怀疑 `bh_reject` 按 rank 下标拒绝会导致「同 p 不同裁决」。
@@ -361,30 +402,85 @@ for cmd in (["git","init","--quiet"],["git","add","-A"],
 改公开统计口径 → **[判断] + 双审 + 新旧对比 + 用户知情**。
 push 前先 `git fetch`（CI 正常时每 2 小时自动提交数据）。
 
-### 6.3 ⭐ CI 挂了怎么用本地补数据发布（2026-11-06 建立的规程）
+### 6.3 ⭐ 本地自动发布（`tools/local_publish.py` + 每日计划任务，2026-11-07 起）
 
 > 历史上 `CLAUDE.md` 有一条「⚠ 本机 VIX3M 历史已丢 → **别把本地产物提交/发布**」。
 > **该条 2026-11-06 已撤销** —— 历史后来被某次全量取数拉回来了（VIX3M 现 5110 行 / 2006-07-17 起，
 > 20.3y × 252 ≈ 5116 = 完整；行数比 VIX 的 6752 少只是因为 Yahoo 的 ^VIX3M 起始更晚，不是截断）。
-> 但**不是无条件放行** —— 必须先过下面三项对照。
+> 但**不是无条件放行** —— 门禁见下。
+
+**一条命令就够**（人工时先 `--dry-run` 看一遍）：
 
 ```
-① py market-analysis/scripts/run_all.py            （全量，本机实测 ~15 分钟）
-② 检查 data_health：45/45 序列 ok、0 shrunk、0 stale
-③ 三项对照：git HEAD:docs/ vs 本地新产物 —— 必须全部干净才能发
-     a) 候选池规模逐族相同        （整族塌缩 = 本地缺数据的特征）
-     b) 存活名单逐条一致或变化可解释
-     c) vix_backwardation 在 factor 族里      （历史塌缩最先咬掉的就是它）
-④ py -m pytest market-analysis/tests -q            （两处都要绿，见 6.1）
-⑤ 账本逐单元格验「非空→被改」= 0                   （见 §5.G）
-⑥ git push → Pages 自动部署（不受 Actions 锁影响）
+py tools/local_publish.py --dry-run     # 跑全部门禁，不提交不推送
+py tools/local_publish.py               # 门全过则提交 + 推送
 ```
 
-2026-11-06 实跑结果：候选池 148→148（九族逐族同数）、存活 7→7 逐条一致、
-`vix_backwardation` 在族内（p .9435→.9455，两边都 dead）→ 发布。
+**每天自动跑**：Windows 计划任务 `ValphaDailyPublish`，每日 10:00 阿德莱德
+（美股 16:00 ET 收盘 = 21:00 UTC = 阿德莱德次日约 07:30 → 10:00 跑，前一个美股交易日已定稿）。
+外壳是 `tools/local_publish.ps1`（ASCII-only：PS 5.1 无 BOM 时按 GBK 读 .ps1）。
+出问题会在**桌面**放一个 `Valpha - PUBLISH NEEDS YOU.txt` + toast；
+**桌面上没有那个文件就说明一切正常。**
 
-**对照脚本留在**
-`<scratchpad>/cmp_artifacts.py`（会话级临时目录，需要时按上面三项重写即可，逻辑很短）。
+```
+schtasks /query  /tn "ValphaDailyPublish" /v /fo LIST   # 看状态
+schtasks /change /tn "ValphaDailyPublish" /disable      # 停（Actions 解锁后要做）
+schtasks /delete /tn "ValphaDailyPublish" /f            # 删
+```
+
+> 旧的 `ValphaWeeklyRefresh`（7-31 建、Mon/Tue/Fri、只补 SEC 两源、**刻意不提交不推送**）
+> 已 **Disabled**。原因：它的步骤是新任务的严格子集（`run_all` 含 fetch_insider +
+> insider_signal + ledger_sidecar，`build_ndx` 在 `POST_GATE_SCRIPTS` 里），
+> 而且**它没有互斥锁** —— 2026-11-06 它在 10:00:30 跑 `build_ndx`，
+> 而我的手动 `run_all` 正在 09:48–10:02 跑，**两个 writer 同时写产物**。
+
+#### 门禁顺序（fail-closed；退出码 0=发布/无事，1=门拦下，2=拒绝启动）
+
+```
+门0  工作树只许有「数据产物」改动（口径 = ci_publish.DEFAULT_PATHS），否则 exit 2
+      ⚠ tools/pre_commit_gate.py 是 Claude Code 的 PreToolUse 钩子、不是 git hook
+        → 计划任务直接调 git commit 不会触发它。所以本脚本自己跑 pytest，
+          且拒绝在有代码改动时运行（代码改动才是干净检出门真正要抓的东西）。
+      · 未跟踪文件（??）不拦 —— 它们进不了显式暂存。
+        （现状：docs_internal/SPEC_FACTOR_OOS.md 长期未跟踪，不该每天把发布拦下来）
+取基线  HEAD:docs/autodiscovery.json —— **必须在跑流水线之前**取
+门1  不落后 origin（别和别的 writer 打架）
+     run_all.py（verify_output 在其第 126 步，失败即终止）
+     7 个门后脚本：build_valpha150 / build_wildpool / ticker_ondemand / build_ndx /
+       fetch_earnings / fetch_cot / fetch_putcall —— 逐个 fail-soft（照 CI 的 || warning）
+门2  check_strict_json（硬门：这 5 个产物不过 verify_output；NaN/Infinity 会让
+       浏览器 JSON.parse 整份拒绝 → 前端白屏）
+门3  data_health：ok == total 且 shrunk == 0（读不到也拦 —— 「读不到就当过」
+       又是一个写入时冻结的 ok，见 §5.C）
+门4a 候选池逐族**未缩**（硬门；只拦变少，扩容是正常演进不拦）
+门4b 哨兵 vix_backwardation 在 factor 族内（硬门；verdict 无所谓，在不在才关键）
+ ※   存活名单 diff —— **报告，不是门**（理由见下）
+门5  pytest 全量（硬门）
+发布 ci_publish.publish() + ci_ledger_guard（warn-only）→ Pages 自动部署
+```
+
+#### ⚠ 为什么「存活名单变了」刻意不拦
+
+必须区分两件根本不同的事：
+
+| | signature | 处置 |
+|---|---|---|
+| **本地环境塌缩** | 候选池某族成员变少 / 哨兵因子整条消失 | **硬门，拦住不发** |
+| **真实统计更新** | 候选池一模一样，只有 verdict 在动 | **只报不拦** |
+
+存活名单本来就该随数据变动 —— 那是整个自动发现系统的目的。
+拦住它等于「冻结我们喜欢的结论」，正是本项目反复要防的那种不诚实
+（`a2872a3` 的教训在「撤」的方向上也生效过，见 §5.F）。
+`test_survivor_list_is_deliberately_NOT_a_gate` 用源码反射钉住这条，**并做了变异验证**
+（真实源码 GREEN；两种把它变成门的变异都 RED；删掉调用报「前提没了」）。
+
+#### 它不替代什么
+
+- **不替代人工判断**：门全过只说明「没有本地数据塌缩」，不说明结论对。
+  存活名单真变了，日志会大声写出来，**该有人去看**。
+- **不替代干净检出门禁**：代码改动一律走人工流程（门0 会拒绝介入）。
+- **账本逐单元格验「非空→被改」=0**（§5.G）目前仍是**人工动作**，没进自动门
+  —— `ci_ledger_guard` 是 warn-only 的防缩水门，口径不同。改动账本逻辑后要手动验一次。
 
 ### 6.4 SEC 两个源只能本地补（known-limited，不是 bug）
 
@@ -447,6 +543,10 @@ append-only 账本里。`ipo_filings.json` 的 `curated_asof`/`n_major` 由 `ipo
 - **F2 P1 放大 + P2 披露**（2026-10-08/09）：regime +661 / factor +144 / rebound +2
 - **CI 监控盲区**（`6398d56f`）：客户端按交易日判数据陈旧（见 §5.C）
 - **本地补数据发布规程 + VIX3M 警告撤销**（`bfa2cf98`，见 §6.3）
+- **本地自动发布链**（`97cff1f8`，2026-11-07）：`tools/local_publish.py` 把此前**只存在于
+  `refresh-data.yml` YAML 里、本地跑不了**的完整序列搬进 Python（run_all + 7 个门后脚本 +
+  check_strict_json），加 fail-closed 门禁 + 互斥锁；计划任务 `ValphaDailyPublish` 每日跑。
+  30 条全合成测试，含「存活名单刻意不是门」的源码反射守门（已变异验证）
 - **CSP 真浏览器实测**（`5cc643e`）：42 页零自伤
 - **fail-soft 产物监控**：watchdog CHECKS **20 项**，且规则已自动化
   （`sys.exit(0)` 的脚本若 `write_json` 了产物，该产物必须在 CHECKS 里，否则测试红）
@@ -597,9 +697,15 @@ Sonnet = 执行（样板/测试/格式化/小改动）· Opus 全新上下文 = 
 | `.../fetch_data.py` | `_save_series` 防历史塌缩闸在这（§5.C） |
 | `.../staleness_watchdog.py` | CHECKS 20 项；**注意它跑在 CI 里，报不出「CI 挂了」** |
 | `.../verify_output.py` | 发布前自检（run_all 第 126 步，失败即终止） |
-| `tools/pre_commit_gate.py` | 提交门禁（干净检出 CI 同构，§6.1） |
+| `tools/pre_commit_gate.py` | 提交门禁（干净检出 CI 同构，§6.1）。**是 Claude 钩子不是 git hook** |
+| **`tools/local_publish.py`** | **CI 被锁期间的发布入口**：完整序列 + fail-closed 门禁 + 互斥锁（§6.3） |
+| **`tools/local_publish.ps1`** | 计划任务 `ValphaDailyPublish` 的外壳（ASCII-only + 桌面旗标 + toast） |
+| `tools/ci_publish.py` | 提交/推送（显式暂存 `DEFAULT_PATHS`、rebase 重试、真裸仓测过四条路径） |
+| `tools/ci_ledger_guard.py` | 防缩水门，**warn-only**（2026-07-28 它以阻断 push 失败过，全站停更四天） |
+| `tools/weekly_local_refresh.ps1` | 旧的 SEC 两源本地补（**已 Disabled**，功能被 local_publish 涵盖） |
 | `tools/block_calibration.py` | 旋转 null 水平测量（`--controls` / `--real` / `--refine`） |
 | `tools/ledger_gap_audit.py` | 以 git 历史查「曾经出现过的日期现在没了」 |
+| `scripts/check_strict_json.py` | 拦 NaN/Infinity（那 5 个产物不过 verify_output，前端会白屏） |
 | `web/app-1..5.js` + `docs/` 镜像 | 主盘；1181 处 `vpL(zh,en)`；`vpCiStaleDays` 在 app-1 |
 
 ### 工作流（6 个，全有 `workflow_dispatch`）
@@ -620,12 +726,13 @@ Sonnet = 执行（样板/测试/格式化/小改动）· Opus 全新上下文 = 
 
 ## 13. 最近一次会话留下的现场（2026-11-06/07）
 
-- `HEAD = bfa2cf98`，与 origin 同步（0 ahead / 0 behind）
-- 工作树干净，只有 `market-analysis/docs_internal/SPEC_FACTOR_OOS.md` **未跟踪**（等用户定）
+- 工作树干净，只有 `market-analysis/docs_internal/SPEC_FACTOR_OOS.md` **未跟踪**（等用户定）。
+  门0 刻意不拦未跟踪文件，所以它不会每天把自动发布拦下来。
 - 有一个 **stash**：`stash@{0} "local artifacts"` —— 7 周前的本地产物，
   `insider.json` 净删 2505 行（**比 origin 还少**），**不是可用素材，别拿它覆盖**。留着未删。
-- 站上数据 = `2026-11-05 23:18 UTC` 那次本地全量跑的产物（含 11-05 暴跌），
-  Pages 已成功部署。**Actions 仍锁 → 之后每天变旧，需要按 §6.3 再补或等解锁**
+- **发布已自动化**（2026-11-07）：计划任务 `ValphaDailyPublish` 每日 10:00 阿德莱德，
+  旧 `ValphaWeeklyRefresh` 已 Disabled。详见 §6.3。
+  **Actions 仍锁** —— 解锁后记得做 §1 末尾那 4 步收尾（尤其是停掉这个计划任务）。
 - **2026-11-05 是一次大跌**（站上数据之前正冻在它之前）：
   纳指 **−5.52%** · 标普 −4.36% · **VIX +69.7% 到 28.18（88.2 分位）** ·
   VIX 期限结构**倒挂**（近月恐慌 > 远月）。

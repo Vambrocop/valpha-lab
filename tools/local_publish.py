@@ -411,14 +411,17 @@ def _run_gates(a, log):
         _summary(log, True, [], dry=True)
         return 0
 
-    ci_publish.configure_bot(ROOT, name=LOCAL_BOT_NAME, email=LOCAL_BOT_EMAIL)
+    # ⚠ 身份必须**传给 publish()**，不能只在调用前 configure_bot ——
+    #   publish() 内部会再 configure_bot 一次，把外面设的覆盖掉。
+    #   2026-11-07 第一版就栽在这里：提交 c77b6a90 被错标成 github-actions[bot]。
     msg = (f"chore: 本地自动发布数据 {datetime.date.today():%Y-%m-%d} [skip ci]\n\n"
            f"CI 的 Actions 被账号计费锁挡住（见 CODEX_HANDOFF.md §1），本地代为发布。\n"
            f"过的门：工作树只含数据产物 · 不落后 origin · run_all(含 verify_output) · "
            f"strict-JSON · data_health 全 ok/0 shrunk · 候选池未缩 · 哨兵因子在位 · pytest 全绿。\n"
            f"存活名单变动：掉出 {gone or '无'} / 新进 {new or '无'}（只报不拦）。")
     rc = ci_publish.publish(ROOT, msg, guard=str(ROOT / "tools" / "ci_ledger_guard.py"),
-                            empty_note="数据无变化,跳过提交")
+                            empty_note="数据无变化,跳过提交",
+                            bot_name=LOCAL_BOT_NAME, bot_email=LOCAL_BOT_EMAIL)
     if rc != 0:
         log("!! 推送失败（ci_publish 已重试过一次）")
         _summary(log, False, ["推送失败"])
