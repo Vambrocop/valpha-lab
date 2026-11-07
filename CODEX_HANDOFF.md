@@ -482,6 +482,28 @@ schtasks /delete /tn "ValphaDailyPublish" /f            # 删
 - **账本逐单元格验「非空→被改」=0**（§5.G）目前仍是**人工动作**，没进自动门
   —— `ci_ledger_guard` 是 warn-only 的防缩水门，口径不同。改动账本逻辑后要手动验一次。
 
+#### ⚠ 三个已知缺口（相对 CI，如实列出，别以为本地等价）
+
+| 缺口 | 原因 | 现状/怎么补 |
+|---|---|---|
+| **`earnings.json` 不刷新** | `fetch_earnings.py` 要 `FINNHUB_API_KEY`，CI 里是 Secret，**本机未配** → 打印「未配置，跳过」后 exit 0（设计内 fail-soft） | 实测停在 2026-11-05。本机设一次即可补上：`setx FINNHUB_API_KEY "<key>"`（用户 GitHub Secrets 里有），**绝不写进仓库** |
+| **信号告警不发** | `alert_check.py` 要 Telegram token（推送）+ `GH_TOKEN`（建 Issue 发邮件）+ `HOLDINGS`（持仓感知），本机都没有 | **刻意未纳入本地序列** —— 没 token 它做不出任何可发布的东西。解锁后由 CI 恢复 |
+| **浏览器审计没人跑** | `tools/site_audit.py --ci` / `--mobile` 此前每次全量 CI 刷新都跑，现在 `site-audit.yml` 也被锁 → **跑在哪儿都没有** | **刻意未纳入自动路径**，理由见下 |
+
+**为什么不把 `site_audit` 塞进每日自动发布**（这是个取舍，不是遗漏）：
+
+- 它防的是**前端改动**引入的布局溢出 / 控制台报错。而**门0 保证自动发布时代码零改动**
+  → 前端与 CI 最后一次审过的完全一致，只有 JSON 数据在变。
+- 数据能弄坏渲染的主要途径是 NaN/Infinity 让 `JSON.parse` 整份拒绝 → 白屏，
+  **那条已由 `check_strict_json` 硬门覆盖**。
+- 反过来，把一个真浏览器审计设成硬门，意味着**本机的一次浏览器抖动会拦住唯一的数据发布者**
+  —— 代价大于它在「代码零改动」前提下还能多防的那一点。
+- 而设成 warn-only 则是**悄悄削弱一道 CI 有的门**，这比不加更糟。
+
+**→ 规矩不变**：任何前端改动后手动跑
+`py tools/interaction_audit.py [--mobile]` + `py tools/site_audit.py`（CLAUDE.md 本来就这么要求）。
+解锁后 `site-audit.yml` 自动恢复覆盖。
+
 ### 6.4 SEC 两个源只能本地补（known-limited，不是 bug）
 
 SEC 封 GitHub Actions 数据中心 IP（住宅 IP 能抓、CI 不能）。
