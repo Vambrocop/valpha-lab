@@ -7,8 +7,8 @@
    "desc": "全仓纳指，永不卖出（对照组）",
    "label_en": "🐢 Buy & hold",
    "desc_en": "Fully invested in the NASDAQ, never sells (control group)",
-   "equity": 9765.55,
-   "ret_pct": -2.34,
+   "equity": 10033.22,
+   "ret_pct": 0.33,
    "position": "NASDAQ",
    "position_en": "NASDAQ",
    "n_trades": 1,
@@ -120,7 +120,8 @@
      "2026-11-03",
      "2026-11-04",
      "2026-11-05",
-     "2026-11-06"
+     "2026-11-06",
+     "2026-11-09"
     ],
     "equity": [
      10000.0,
@@ -227,10 +228,11 @@
      10080.45,
      10225.27,
      9660.49,
-     9765.55
+     9765.55,
+     10033.22
     ]
    },
-   "as_of": "2026-11-06"
+   "as_of": "2026-11-09"
   },
   "trend": {
    "label": "📈 趋势",
@@ -239,11 +241,11 @@
    "desc_en": "Hold while the NASDAQ is above its MA200, go to cash when it breaks below; low turnover, suited to a 6-12 month horizon",
    "equity": 9660.49,
    "ret_pct": -3.4,
-   "position": "现金",
-   "position_en": "Cash",
-   "n_trades": 2,
-   "last_action": "2026-11-05 跌破MA200，清仓@24315",
-   "last_action_en": "2026-11-05 Broke below MA200, went to cash @24315",
+   "position": "NASDAQ",
+   "position_en": "NASDAQ",
+   "n_trades": 3,
+   "last_action": "2026-11-09 站上MA200，买入@25253",
+   "last_action_en": "2026-11-09 Crossed above MA200, bought @25253",
    "curve": {
     "dates": [
      "2026-06-10",
@@ -350,7 +352,8 @@
      "2026-11-03",
      "2026-11-04",
      "2026-11-05",
-     "2026-11-06"
+     "2026-11-06",
+     "2026-11-09"
     ],
     "equity": [
      10000.0,
@@ -457,18 +460,19 @@
      10080.45,
      10225.27,
      9660.49,
+     9660.49,
      9660.49
     ]
    },
-   "as_of": "2026-11-06"
+   "as_of": "2026-11-09"
   },
   "signal": {
    "label": "🎯 信号",
    "desc": "贝叶斯信号 tier≥4全仓 / ≤2清仓 / 3不动",
    "label_en": "🎯 Signal",
    "desc_en": "Bayesian signal: fully invested at tier>=4 / all cash at tier<=2 / unchanged at tier 3",
-   "equity": 9318.75,
-   "ret_pct": -6.81,
+   "equity": 9574.17,
+   "ret_pct": -4.26,
    "position": "NASDAQ",
    "position_en": "NASDAQ",
    "n_trades": 1,
@@ -580,7 +584,8 @@
      "2026-11-03",
      "2026-11-04",
      "2026-11-05",
-     "2026-11-06"
+     "2026-11-06",
+     "2026-11-09"
     ],
     "equity": [
      10000.0,
@@ -687,18 +692,19 @@
      9619.24,
      9757.43,
      9218.5,
-     9318.75
+     9318.75,
+     9574.17
     ]
    },
-   "as_of": "2026-11-06"
+   "as_of": "2026-11-09"
   },
   "momentum": {
    "label": "🚀 动量",
    "desc": "观察池6月动量前3等权，每月调仓",
    "label_en": "🚀 Momentum",
    "desc_en": "Equal-weighted top 3 by 6-month momentum from the watchlist, rebalanced monthly",
-   "equity": 6452.31,
-   "ret_pct": -35.48,
+   "equity": 6969.52,
+   "ret_pct": -30.3,
    "position": "LLY+MU+AMD",
    "position_en": "LLY+MU+AMD",
    "n_trades": 4,
@@ -810,7 +816,8 @@
      "2026-11-03",
      "2026-11-04",
      "2026-11-05",
-     "2026-11-06"
+     "2026-11-06",
+     "2026-11-09"
     ],
     "equity": [
      10000.0,
@@ -917,18 +924,19 @@
      7184.52,
      7056.52,
      6151.11,
-     6452.31
+     6452.31,
+     6969.52
     ]
    },
-   "as_of": "2026-11-06"
+   "as_of": "2026-11-09"
   },
   "overnight": {
    "label": "🌙 隔夜",
    "desc": "每日收盘买QQQ次日开盘卖（已扣每日2bp成本）——验证隔夜异象能否活过交易成本",
    "label_en": "🌙 Overnight",
    "desc_en": "Buy QQQ at each close, sell at the next open (2bp of daily cost already deducted) — tests whether the overnight anomaly survives trading costs",
-   "equity": 10285.72,
-   "ret_pct": 2.86,
+   "equity": 10386.82,
+   "ret_pct": 3.87,
    "position": "每日隔夜持有QQQ",
    "position_en": "Holds QQQ overnight, every day",
    "n_trades": 0,
@@ -1040,7 +1048,8 @@
      "2026-11-03",
      "2026-11-04",
      "2026-11-05",
-     "2026-11-06"
+     "2026-11-06",
+     "2026-11-09"
     ],
     "equity": [
      9910.83,
@@ -1147,10 +1156,11 @@
      10199.09,
      10243.93,
      10111.16,
-     10285.72
+     10285.72,
+     10386.82
     ]
    },
-   "as_of": "2026-11-06"
+   "as_of": "2026-11-09"
   }
  },
  "note": "五个策略同日起跑、收盘价机械成交、账本不可篡改。这是前向实验：时间会告诉我们哪个基金经理称职。",
