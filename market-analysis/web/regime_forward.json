@@ -1,9 +1,9 @@
 {
-  "generated": "2026-11-17T04:13:05Z",
+  "generated": "2026-11-17T21:33:01Z",
   "asset": "SP500",
   "date_range": [
     "2000-01-03",
-    "2026-11-16"
+    "2026-11-17"
   ],
   "horizons_td": [
     21,
@@ -24,7 +24,7 @@
       "p10": -5.0,
       "median": 1.2,
       "worst": -33.0,
-      "n": 6738
+      "n": 6739
     },
     "63": {
       "mean": 1.9,
@@ -32,7 +32,7 @@
       "p10": -8.0,
       "median": 3.1,
       "worst": -41.8,
-      "n": 6696
+      "n": 6697
     },
     "126": {
       "mean": 3.9,
@@ -40,15 +40,15 @@
       "p10": -9.8,
       "median": 5.4,
       "worst": -46.5,
-      "n": 6633
+      "n": 6634
     },
     "252": {
       "mean": 7.9,
       "up": 76,
       "p10": -16.7,
-      "median": 11.2,
+      "median": 11.1,
       "worst": -48.8,
-      "n": 6507
+      "n": 6508
     }
   },
   "regimes": [
@@ -118,7 +118,7 @@
           "p10": -10.6,
           "median": 5.7,
           "worst": -46.5,
-          "n": 4391
+          "n": 4392
         },
         "252": {
           "mean": 7.4,
@@ -126,13 +126,13 @@
           "p10": -19.1,
           "median": 10.8,
           "worst": -48.8,
-          "n": 4276
+          "n": 4277
         }
       }
     },
     {
       "state": "VIX 高 (>70分位)",
-      "n_days": 2027,
+      "n_days": 2028,
       "n_episodes": 40,
       "dist": {
         "21": {
@@ -249,7 +249,7 @@
     },
     {
       "state": "信用利差紧 (<30分位)",
-      "n_days": 2008,
+      "n_days": 2009,
       "n_episodes": 10,
       "dist": {
         "21": {
@@ -258,15 +258,15 @@
           "p10": -3.9,
           "median": 1.1,
           "worst": -12.5,
-          "n": 1987
+          "n": 1988
         },
         "63": {
-          "mean": 2.4,
+          "mean": 2.3,
           "up": 69,
           "p10": -4.8,
           "median": 3.1,
           "worst": -19.5,
-          "n": 1945
+          "n": 1946
         },
         "126": {
           "mean": 5.0,
@@ -274,7 +274,7 @@
           "p10": -4.7,
           "median": 5.5,
           "worst": -22.1,
-          "n": 1882
+          "n": 1883
         },
         "252": {
           "mean": 8.2,
@@ -282,12 +282,12 @@
           "p10": -10.5,
           "median": 10.0,
           "worst": -42.2,
-          "n": 1756
+          "n": 1757
         }
       }
     }
   ],
-  "verdict": "曲线倒挂后 SP500 未来12月：中位 12.8%、上涨率 70%（vs 基率中位 11.2%）——但仅 7 个独立倒挂段，分布不可靠，别当规律",
-  "verdict_en": "After a curve inversion, S&P 500 over the next 12 months: median 12.8%, up-rate 70% (vs base-rate median 11.2%) — but only 7 independent inversion episodes, so the distribution is unreliable; do not treat it as a rule",
+  "verdict": "曲线倒挂后 SP500 未来12月：中位 12.8%、上涨率 70%（vs 基率中位 11.1%）——但仅 7 个独立倒挂段，分布不可靠，别当规律",
+  "verdict_en": "After a curve inversion, S&P 500 over the next 12 months: median 12.8%, up-rate 70% (vs base-rate median 11.1%) — but only 7 independent inversion episodes, so the distribution is unreliable; do not treat it as a rule",
   "caveat": "出格区·把「当前体制」补成「体制→未来收益分布」。描述性、非预测、非建议。稀有体制(倒挂)日高度自相关 → 看 n_episodes(独立事件段)而非 n_days：段数少(就几段)的分布不可靠、别当规律；相关≠因果(体制与收益可能同被第三因素驱动)；重叠窗口只看分布不算显著性。每跑 append 计分。"
 }
