@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-27T03:45:04Z",
+  "generated": "2026-11-28T03:28:29Z",
   "method": "标签置换检验(permutation)；三态：真实/未显现/无定论(检验力不足)；并做 Benjamini-Hochberg 多重检验校正(q_value)——测了多个效应需控假发现率",
   "n_perm": 1000,
   "seed": 20260613,
@@ -8,8 +8,8 @@
   "data": {
     "source": "S&P 500 (^GSPC)",
     "start": "1928-01-03",
-    "end": "2026-11-25",
-    "n_daily": 24843
+    "end": "2026-11-27",
+    "n_daily": 24844
   },
   "tests": [
     {
@@ -20,18 +20,18 @@
       "stat": "组间平方和(日均收益)",
       "min_group_n": 3571,
       "detail": "周三最高 / 周一最低",
-      "real": 0.0031696858,
+      "real": 0.0031777512,
       "p_value": 0.000999,
       "mc_x": 0,
       "mc_n": 1000,
-      "null_p95": 0.0009324771,
+      "null_p95": 0.0009225348,
       "power": {
         "years_to_power": 0,
         "outlook": "powered",
         "outlook_zh": "样本已足够",
         "outlook_en": "adequately powered"
       },
-      "recent_p": 0.839161,
+      "recent_p": 0.828172,
       "recent_significant": false,
       "recent_min_group_n": 1270,
       "recent_power": {
@@ -59,18 +59,18 @@
       "stat": "组间平方和(月均收益)",
       "min_group_n": 98,
       "detail": "7月最高 / 9月最低",
-      "real": 0.0629660212,
+      "real": 0.0630572989,
       "p_value": 0.021978,
       "mc_x": 21,
       "mc_n": 1000,
-      "null_p95": 0.0546359157,
+      "null_p95": 0.0547797018,
       "power": {
         "years_to_power": 0,
         "outlook": "powered",
         "outlook_zh": "样本已足够",
         "outlook_en": "adequately powered"
       },
-      "recent_p": 0.198801,
+      "recent_p": 0.18981,
       "recent_significant": false,
       "recent_min_group_n": 26,
       "recent_power": {
@@ -158,18 +158,18 @@
       "stat": "节前均值 - 其余均值(单边)",
       "min_group_n": 264,
       "detail": "节前交易日 n=264",
-      "real": 0.0010506956,
-      "p_value": 0.075924,
-      "mc_x": 75,
+      "real": 0.0010484607,
+      "p_value": 0.088911,
+      "mc_x": 88,
       "mc_n": 1000,
-      "null_p95": 0.0011593983,
+      "null_p95": 0.0012539351,
       "power": {
         "years_to_power": 0,
         "outlook": "powered",
         "outlook_zh": "样本已足够",
         "outlook_en": "adequately powered"
       },
-      "recent_p": 0.156843,
+      "recent_p": 0.148851,
       "recent_significant": false,
       "recent_min_group_n": 246,
       "recent_power": {
@@ -180,12 +180,12 @@
       },
       "status": "rejected",
       "passed": false,
-      "verdict": "✗ 未显现：充分样本下仍不显著 (p=0.076)",
+      "verdict": "✗ 未显现：充分样本下仍不显著 (p=0.089)",
       "panel_en": "Holiday effect (pre-holiday)",
       "scope_en": "Daily S&P500 1998+",
       "claim_en": "The last trading day before a holiday is bullish on average",
       "detail_en": "pre-holiday trading days n=264",
-      "q_value": 0.1139,
+      "q_value": 0.1334,
       "fdr_significant_05": false,
       "fdr_significant_10": false
     },
@@ -197,18 +197,18 @@
       "stat": "区间均值 - 其余均值(单边)",
       "min_group_n": 530,
       "detail": "区间交易日 n=530",
-      "real": 0.0018072394,
+      "real": 0.0018065938,
       "p_value": 0.001998,
       "mc_x": 1,
       "mc_n": 1000,
-      "null_p95": 0.0008265265,
+      "null_p95": 0.000888424,
       "power": {
         "years_to_power": 0,
         "outlook": "powered",
         "outlook_zh": "样本已足够",
         "outlook_en": "adequately powered"
       },
-      "recent_p": 0.210789,
+      "recent_p": 0.195804,
       "recent_significant": false,
       "recent_min_group_n": 142,
       "recent_power": {
